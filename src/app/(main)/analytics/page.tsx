@@ -14,13 +14,13 @@ import {
 import { DonutChart, BarChart, LineChart, Legend } from "@tremor/react"
 import { useFinance, generateSampleData, backupCurrentState, restoreBackup, clearBackup } from "@/lib/store"
 import {
-  getCurrentMonthNeedsVsWants,
+  getNeedsVsWantsForMonth,
   getCategoryBreakdown,
-  buildMonthlySummaries,
+  buildMonthlySummariesUpTo,
   buildMonthlyCashFlow,
   buildNetWorthHistory,
 } from "@/lib/calculations"
-import { BarChart3, PieChart, TrendingUp, Wallet, FlaskConical } from "lucide-react"
+import { BarChart3, PieChart, TrendingUp, Wallet, FlaskConical, ChevronLeft, ChevronRight } from "lucide-react"
 
 const dataFormatter = (value: number) => `${value.toLocaleString("es-ES")}€`
 
@@ -28,10 +28,14 @@ export default function AnalyticsPage() {
   const { state, dispatch } = useFinance()
 
   const [hasBackup, setHasBackup] = useState(false)
+  const [monthOffset, setMonthOffset] = useState(0)
   useEffect(() => {
     setHasBackup(localStorage.getItem("app-finanzas-backup") !== null)
   }, [])
   const hasData = state.transactions.length > 0
+  const today = new Date()
+  const selectedDate = new Date(today.getFullYear(), today.getMonth() - monthOffset, 1)
+  const selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`
 
   const loadSampleData = () => {
     if (!window.confirm("¿Añadir datos de ejemplo? Tus datos actuales se conservarán.")) return
@@ -49,11 +53,11 @@ export default function AnalyticsPage() {
     }
   }
 
-  const { necesidades, deseos } = useMemo(() => getCurrentMonthNeedsVsWants(state.transactions), [state.transactions])
-  const categoryBreakdown = useMemo(() => getCategoryBreakdown(state.transactions), [state.transactions])
-  const summaries = useMemo(() => buildMonthlySummaries(state.transactions), [state.transactions])
-  const cashFlow = useMemo(() => buildMonthlyCashFlow(state.transactions), [state.transactions])
-  const netWorthHistory = useMemo(() => buildNetWorthHistory(state.transactions, state.accounts), [state.transactions, state.accounts])
+  const { necesidades, deseos } = useMemo(() => getNeedsVsWantsForMonth(state.transactions, selectedMonth), [state.transactions, selectedMonth])
+  const categoryBreakdown = useMemo(() => getCategoryBreakdown(state.transactions, selectedMonth), [state.transactions, selectedMonth])
+  const summaries = useMemo(() => buildMonthlySummariesUpTo(state.transactions, selectedMonth), [state.transactions, selectedMonth])
+  const cashFlow = useMemo(() => buildMonthlyCashFlow(state.transactions, selectedMonth), [state.transactions, selectedMonth])
+  const netWorthHistory = useMemo(() => buildNetWorthHistory(state.transactions, state.accounts, selectedMonth), [state.transactions, state.accounts, selectedMonth])
 
   const needsWantsData = [
     { name: "Necesidades", value: necesidades },
@@ -68,21 +72,32 @@ export default function AnalyticsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Analíticas</h1>
           <p className="text-sm text-muted-foreground">Visualización clara de tus ingresos, gastos y patrimonio.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {hasBackup && (
-            <Button variant="outline" size="sm" className="gap-2 text-emerald-600 border-emerald-500/30" onClick={restoreMyData}>
-              Restaurar mis datos
+        <div className="flex flex-col gap-2 sm:items-end">
+          <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/80 px-3 py-2 shadow-sm backdrop-blur-sm">
+            <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="min-w-[160px] text-center text-sm font-medium capitalize">{selectedDate.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}</span>
+            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2 justify-end">
+            {hasBackup && (
+              <Button variant="outline" size="sm" className="gap-2 text-emerald-600 border-emerald-500/30" onClick={restoreMyData}>
+                Restaurar mis datos
+              </Button>
+            )}
+            <Button variant="outline" size="sm" className="gap-2" onClick={loadSampleData}>
+              <FlaskConical className="h-4 w-4" />
+              Cargar datos de ejemplo
             </Button>
-          )}
-          <Button variant="outline" size="sm" className="gap-2" onClick={loadSampleData}>
-            <FlaskConical className="h-4 w-4" />
-            Cargar datos de ejemplo
-          </Button>
-          {hasData && (
-            <Button variant="ghost" size="sm" className="gap-2 text-destructive" onClick={() => window.confirm("¿Borrar todos los datos?") && dispatch({ type: "RESET" })}>
-              Limpiar todo
-            </Button>
-          )}
+            {hasData && (
+              <Button variant="ghost" size="sm" className="gap-2 text-destructive" onClick={() => window.confirm("¿Borrar todos los datos?") && dispatch({ type: "RESET" })}>
+                Limpiar todo
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

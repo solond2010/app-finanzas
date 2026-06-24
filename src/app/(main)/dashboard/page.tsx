@@ -55,9 +55,9 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-12 gap-6">
-          <AccountCards />
-          <MonthlySummary selectedMonth={monthOffset > 0 ? selectedMonth : undefined} />
-          <TransactionsTable />
+          <AccountCards selectedMonth={selectedMonth} />
+          <MonthlySummary selectedMonth={selectedMonth} />
+          <TransactionsTable selectedMonth={selectedMonth} />
           <SinkingFundsGrid />
         </div>
       )}

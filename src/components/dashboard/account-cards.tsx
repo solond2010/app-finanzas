@@ -2,13 +2,13 @@
 
 import { useState } from "react"
 import { useFinance, type Account } from "@/lib/store"
-import { getGastosBudgetProgress } from "@/lib/calculations"
 import { useRouter } from "next/navigation"
 import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AccountDialog } from "./account-dialog"
 import { useToast } from "@/components/ui/toast"
 import { currencySymbol, formatMoney } from "@/lib/currency"
+import { getAccountsAtMonth, getGastosBudgetProgress } from "@/lib/calculations"
 
 const typeConfig = {
   emergencia: { label: "Emergencia", gradient: "from-emerald-500/20 to-emerald-600/5" },
@@ -18,17 +18,18 @@ const typeConfig = {
   gastos: { label: "Gastos", gradient: "from-red-500/20 to-red-600/5" },
 }
 
-export function AccountCards() {
+export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
   const { state, dispatch } = useFinance()
   const router = useRouter()
   const { toast } = useToast()
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [showNew, setShowNew] = useState(false)
-  const budget = getGastosBudgetProgress(state.accounts, state.transactions)
+  const displayAccounts = selectedMonth ? getAccountsAtMonth(state.accounts, state.transactions, selectedMonth) : state.accounts
+  const budget = getGastosBudgetProgress(displayAccounts, state.transactions, selectedMonth)
 
   return (
     <div className="col-span-full grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {state.accounts.map((account) => {
+      {displayAccounts.map((account) => {
         const cfg = typeConfig[account.tipo]
         const progress = account.objetivo
           ? Math.min(Math.round((account.saldo / account.objetivo) * 100), 100)
