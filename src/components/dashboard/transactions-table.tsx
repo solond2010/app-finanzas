@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, generateId } from "@/lib/store"
-import { Filter, Plus, Pencil, Trash2, Search } from "lucide-react"
+import { Filter, Plus, Pencil, Trash2, Search, Download } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
 import { formatMoney } from "@/lib/currency"
 import { filterTransactionsByMonth } from "@/lib/calculations"
@@ -200,6 +200,34 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
     if (value) setFilterAccount(value)
   }
 
+  const exportCSV = () => {
+    const headers = ["fecha", "tipo", "categoria", "descripcion", "monto", "cuenta", "divisa", "tags"]
+    const rows = state.transactions.map((t) => {
+      const account = state.accounts.find((a) => a.id === t.cuenta_id)
+      const values = [
+        t.fecha,
+        t.tipo,
+        t.categoria,
+        `"${t.descripcion.replaceAll('"', '""')}"`,
+        t.monto,
+        account?.nombre ?? "",
+        account?.currency ?? "EUR",
+        `"${t.tags.join(", ").replaceAll('"', '""')}"`,
+      ]
+      return values.join(",")
+    })
+
+    const csv = [headers.join(","), ...rows].join("\n")
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `movimientos_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast("CSV exportado", "success")
+  }
+
   const sorted = useMemo(
     () =>
       filterTransactionsByMonth(state.transactions, selectedMonth)
@@ -213,10 +241,13 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
     <Card className="col-span-full border-border/60 bg-card/95 shadow-sm">
       <CardHeader className="flex flex-col gap-4 space-y-0 pb-2 lg:flex-row lg:items-center lg:justify-between">
         <CardTitle className="text-lg font-semibold">Transacciones</CardTitle>
-        <div className="flex flex-wrap items-center gap-2">
-          {!cuentaId && (
-            <>
-              <Filter className="h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
+              <Download className="h-3.5 w-3.5" /> Exportar CSV
+            </Button>
+            {!cuentaId && (
+              <>
+                <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={filterAccount} onValueChange={handleAccountFilter}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Todas" />
