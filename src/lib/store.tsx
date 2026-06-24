@@ -201,6 +201,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle")
   const loadedRef = useRef(false)
+  const stateRef = useRef(state)
+
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   useEffect(() => {
     if (loadedRef.current) return
@@ -213,15 +218,26 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     // 2. Then try Supabase in background, only apply if has real data
     loadFromSupabase().then((remote) => {
       if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0)) {
-        // Only merge Supabase accounts that don't exist locally
-        // and add Supabase transactions beyond what's local
-        const mergedAccounts = [...local.accounts, ...remote.accounts.filter((a) => !local.accounts.some((la) => la.id === a.id))]
-        const localIds = new Set(local.transactions.map((t) => t.id))
-        const mergedTxns = [...local.transactions, ...remote.transactions.filter((t) => !localIds.has(t.id))]
-        if (mergedAccounts.length > local.accounts.length || mergedTxns.length > local.transactions.length) {
+        const current = stateRef.current
+        const mergedAccounts = [...current.accounts, ...remote.accounts.filter((a) => !current.accounts.some((ca) => ca.id === a.id))]
+        const currentTxnIds = new Set(current.transactions.map((t) => t.id))
+        const mergedTxns = [...current.transactions, ...remote.transactions.filter((t) => !currentTxnIds.has(t.id))]
+        const mergedFunds = [...current.sinkingFunds, ...remote.sinkingFunds.filter((s) => !current.sinkingFunds.some((cs) => cs.id === s.id))]
+
+        const changed =
+          mergedAccounts.length > current.accounts.length ||
+          mergedTxns.length > current.transactions.length ||
+          mergedFunds.length > current.sinkingFunds.length
+
+        if (changed) {
           dispatch({
             type: "SET_STATE",
-            payload: { accounts: mergedAccounts, transactions: mergedTxns, sinkingFunds: [...local.sinkingFunds, ...remote.sinkingFunds.filter((s) => !local.sinkingFunds.some((ls) => ls.id === s.id))], categories: local.categories },
+            payload: {
+              accounts: mergedAccounts,
+              transactions: mergedTxns,
+              sinkingFunds: mergedFunds,
+              categories: current.categories,
+            },
           })
         }
       }
