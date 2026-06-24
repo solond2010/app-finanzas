@@ -45,7 +45,7 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
         return (
           <div
             key={account.id}
-            className={`relative overflow-hidden rounded-3xl border bg-card/95 p-5 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer group shadow-sm ${santander ? "border-l-4 border-l-red-600/80" : "border-border/60"}`}
+            className={`relative overflow-hidden rounded-3xl border bg-card/95 p-5 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/10 cursor-pointer group shadow-sm ${santander ? "border-l-4 border-l-red-600/80" : "border-border/60"}`}
             onClick={() => router.push(`/cuentas/${account.id}`)}
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${cfg.gradient} opacity-40`} />
@@ -120,14 +120,14 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
       })}
 
       <button
-        className="rounded-3xl border-2 border-dashed border-muted-foreground/30 p-5 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-muted-foreground/60 hover:text-foreground transition-all cursor-pointer bg-card/70"
+        className="rounded-3xl border-2 border-dashed border-muted-foreground/30 p-5 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-muted-foreground/60 hover:text-foreground transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md cursor-pointer bg-card/70"
         onClick={() => setShowNew(true)}
       >
         <Plus className="h-6 w-6" />
         <span className="text-sm font-medium">Nueva Cuenta</span>
       </button>
 
-      <div className="col-span-full rounded-2xl border border-border/60 bg-muted/30 p-4 flex items-center justify-between">
+      <div         className="col-span-full rounded-2xl border border-border/60 bg-muted/30 p-4 flex items-center justify-between transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-sm">
         <p className="text-xs text-muted-foreground">
           {state.accounts.length} cuentas · Haz clic en cualquier tarjeta para editarla
         </p>

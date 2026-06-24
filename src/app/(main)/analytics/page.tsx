@@ -244,21 +244,21 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-emerald-500/10">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">50% Necesidades</p>
                 <p className="text-2xl font-bold tabular-nums text-emerald-500">{necesidades.toLocaleString("es-ES")}€</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {necesidades + deseos > 0 ? `${Math.round((necesidades / (necesidades + deseos)) * 100)}% del gasto` : "Sin datos"}
                 </p>
               </div>
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-amber-500/10">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">30% Deseos</p>
                 <p className="text-2xl font-bold tabular-nums text-amber-500">{deseos.toLocaleString("es-ES")}€</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {necesidades + deseos > 0 ? `${Math.round((deseos / (necesidades + deseos)) * 100)}% del gasto` : "Sin datos"}
                 </p>
               </div>
-              <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+              <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-500/10">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">20% Ahorro</p>
                 <p className="text-2xl font-bold tabular-nums text-blue-500">--€</p>
                 <p className="text-xs text-muted-foreground mt-1">Añade ingresos para calcular</p>

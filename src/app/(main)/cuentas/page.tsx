@@ -42,7 +42,7 @@ export default function CuentasPage() {
         {state.accounts.map((account) => (
           <div
             key={account.id}
-            className="overflow-hidden rounded-3xl border border-border/60 bg-card/95 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+            className="overflow-hidden rounded-3xl border border-border/60 bg-card/95 p-6 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/10"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">

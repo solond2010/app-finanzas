@@ -28,7 +28,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
   )
 
   const savingsRate = ingresos > 0 ? Math.round((neto / ingresos) * 100) : 0
-  const statClass = "rounded-2xl border border-border/60 bg-card/95 p-4 shadow-sm"
+  const statClass = "rounded-2xl border border-border/60 bg-card/95 p-4 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5"
 
   return (
     <>

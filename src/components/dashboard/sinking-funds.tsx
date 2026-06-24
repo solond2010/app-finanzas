@@ -139,7 +139,7 @@ export function SinkingFundsGrid() {
               const symbol = currencySymbol(account?.currency ?? "EUR")
 
               return (
-                <div key={fund.id} className="group relative rounded-2xl border border-border/60 bg-background/70 p-5 space-y-3 shadow-sm">
+                <div key={fund.id} className="group relative rounded-2xl border border-border/60 bg-background/70 p-5 space-y-3 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5">
                   <button
                     className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => { dispatch({ type: "DELETE_SINKING_FUND", payload: fund.id }); toast("Meta eliminada", "success") }}
