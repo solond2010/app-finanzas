@@ -7,8 +7,8 @@ export function middleware(request: NextRequest) {
 
   if (!password) return NextResponse.next()
 
-  if (request.nextUrl.pathname === "/login") {
-    if (authCookie === password) {
+  if (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/api/login") {
+    if (authCookie === password && request.nextUrl.pathname !== "/api/login") {
       return NextResponse.redirect(new URL("/dashboard", request.url))
     }
     return NextResponse.next()
