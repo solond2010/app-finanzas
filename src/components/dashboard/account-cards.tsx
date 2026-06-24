@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useFinance, type Account } from "@/lib/store"
 import { useRouter } from "next/navigation"
-import { Plus, Trash2, CreditCard } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AccountDialog } from "./account-dialog"
 import { useToast } from "@/components/ui/toast"
@@ -66,22 +66,17 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
                 </button>
               </div>
               <div>
-                <div className="flex items-start gap-2">
-                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/70 text-muted-foreground shadow-sm">
-                    <CreditCard className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-2xl font-bold tracking-tight tabular-nums">{formatMoney(account.saldo, account.currency)}</p>
-                    <div className="mt-0.5 flex items-center gap-2">
-                      <p className="truncate text-xs text-muted-foreground">
-                        {account.nombre}{account.banco ? <span className="opacity-60"> · {account.banco}</span> : null}
-                      </p>
-                      {revolut && (
-                        <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-cyan-600 dark:text-cyan-300">
-                          Revolut
-                        </span>
-                      )}
-                    </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-2xl font-bold tracking-tight tabular-nums">{formatMoney(account.saldo, account.currency)}</p>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <p className="truncate text-xs text-muted-foreground">
+                      {account.nombre}{account.banco ? <span className="opacity-60"> · {account.banco}</span> : null}
+                    </p>
+                    {revolut && (
+                      <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-cyan-600 dark:text-cyan-300">
+                        Revolut
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
