@@ -273,8 +273,11 @@ export function TransactionsTable({ cuentaId }: { cuentaId?: string }) {
           <TableBody>
             {sorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
-                  No hay transacciones. ¡Añade la primera!
+                <TableCell colSpan={8} className="text-center py-8">
+                  <div className="flex flex-col items-center gap-2">
+                    <Search className="h-6 w-6 text-muted-foreground/40" />
+                    <span className="text-sm text-muted-foreground">No hay transacciones aquí</span>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (

@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useReducer, useEffect, useRef, type ReactNode } from "react"
+import { createContext, useContext, useReducer, useEffect, useRef, useState, type ReactNode } from "react"
 import { supabase } from "./supabase"
 
 export interface Account {
@@ -141,12 +141,14 @@ function reducer(state: FinanceState, action: Action): FinanceState {
 interface FinanceContextValue {
   state: FinanceState
   dispatch: React.Dispatch<Action>
+  loading: boolean
 }
 
 const FinanceContext = createContext<FinanceContextValue | null>(null)
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, defaultState)
+  const [loading, setLoading] = useState(true)
   const loadedRef = useRef(false)
 
   useEffect(() => {
@@ -161,6 +163,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         const local = loadState()
         dispatch({ type: "SET_STATE", payload: local })
       }
+    }).catch(() => {
+      const local = loadState()
+      dispatch({ type: "SET_STATE", payload: local })
+    }).finally(() => {
+      setLoading(false)
     })
   }, [])
 
@@ -172,7 +179,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     }
   }, [state])
 
-  return <FinanceContext.Provider value={{ state, dispatch }}>{children}</FinanceContext.Provider>
+  return <FinanceContext.Provider value={{ state, dispatch, loading }}>{children}</FinanceContext.Provider>
 }
 
 async function loadFromSupabase(): Promise<FinanceState | null> {

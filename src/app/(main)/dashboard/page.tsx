@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { AccountCards } from "@/components/dashboard/account-cards"
 import { MonthlySummary } from "@/components/dashboard/monthly-summary"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
@@ -8,12 +8,16 @@ import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { useFinance } from "@/lib/store"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
+function Skeleton({ className }: { className?: string }) {
+  return <div className={`animate-pulse rounded-lg bg-muted ${className ?? ""}`} />
+}
+
 function formatMonth(d: Date) {
   return d.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
 }
 
 export default function DashboardPage() {
-  const { state } = useFinance()
+  const { state, loading } = useFinance()
   const today = new Date()
   const [monthOffset, setMonthOffset] = useState(0)
 
@@ -42,12 +46,21 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
-        <AccountCards />
-        <MonthlySummary selectedMonth={monthOffset > 0 ? selectedMonth : undefined} />
-        <TransactionsTable />
-        <SinkingFundsGrid />
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-full grid grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+          </div>
+          <div className="col-span-full"><Skeleton className="h-64" /></div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-12 gap-6">
+          <AccountCards />
+          <MonthlySummary selectedMonth={monthOffset > 0 ? selectedMonth : undefined} />
+          <TransactionsTable />
+          <SinkingFundsGrid />
+        </div>
+      )}
     </div>
   )
 }

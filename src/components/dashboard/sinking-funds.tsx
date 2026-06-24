@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type SinkingFund, generateId } from "@/lib/store"
 import { calculateMonthlySaving } from "@/lib/calculations"
-import { PiggyBank, Plus, Pencil, Trash2 } from "lucide-react"
+import { PiggyBank, Plus, Pencil, Trash2, Target } from "lucide-react"
 
 function SinkingFundForm({
   fund,
@@ -124,7 +124,10 @@ export function SinkingFundsGrid() {
       <CardContent>
         {state.sinkingFunds.length === 0 ? (
           <div className="text-center text-sm text-muted-foreground py-8">
-            No hay metas de ahorro. ¡Crea la primera!
+            <div className="flex flex-col items-center gap-2 py-6">
+              <Target className="h-8 w-8 text-muted-foreground/40" />
+              <span className="text-sm text-muted-foreground">No hay metas de ahorro. ¡Crea la primera!</span>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
