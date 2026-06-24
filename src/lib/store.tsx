@@ -219,7 +219,7 @@ async function syncToSupabase(state: FinanceState) {
     const { error: txErr } = await supabase.from("transactions").upsert(state.transactions.map(unformatTransaction))
     if (txErr) throw txErr
 
-    const { error: sfErr } = await supabase.from("sinking_funds").upsert(state.sinkingFunds)
+    const { error: sfErr } = await supabase.from("sinking_funds").upsert(state.sinkingFunds.map(unformatSinkingFund))
     if (sfErr) throw sfErr
   } catch (e) {
     console.error("Supabase sync failed, data safe in localStorage:", e)
@@ -244,6 +244,10 @@ function unformatAccount(a: Account): any {
 
 function unformatTransaction(t: Transaction): any {
   return { id: t.id, cuenta_id: t.cuenta_id, monto: t.monto, fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion, tags: t.tags }
+}
+
+function unformatSinkingFund(s: SinkingFund): any {
+  return { id: s.id, nombre: s.nombre, objetivo: s.cantidad_objetivo, ahorrado: s.ahorrado_actual, fecha_limite: s.fecha_limite || null }
 }
 
 export function useFinance() {
