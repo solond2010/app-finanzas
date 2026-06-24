@@ -155,18 +155,26 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     if (loadedRef.current) return
     loadedRef.current = true
 
+    // 1. Always load localStorage first (fast, local, never overwrites)
+    const local = loadState()
+    dispatch({ type: "SET_STATE", payload: local })
+
+    // 2. Then try Supabase in background, only apply if has real data
     loadFromSupabase().then((remote) => {
-      if (remote) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(remote))
-        dispatch({ type: "SET_STATE", payload: remote })
-      } else {
-        const local = loadState()
-        dispatch({ type: "SET_STATE", payload: local })
+      if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0)) {
+        // Only merge Supabase accounts that don't exist locally
+        // and add Supabase transactions beyond what's local
+        const mergedAccounts = [...local.accounts, ...remote.accounts.filter((a) => !local.accounts.some((la) => la.id === a.id))]
+        const localIds = new Set(local.transactions.map((t) => t.id))
+        const mergedTxns = [...local.transactions, ...remote.transactions.filter((t) => !localIds.has(t.id))]
+        if (mergedAccounts.length > local.accounts.length || mergedTxns.length > local.transactions.length) {
+          dispatch({
+            type: "SET_STATE",
+            payload: { accounts: mergedAccounts, transactions: mergedTxns, sinkingFunds: [...local.sinkingFunds, ...remote.sinkingFunds.filter((s) => !local.sinkingFunds.some((ls) => ls.id === s.id))], categories: local.categories },
+          })
+        }
       }
-    }).catch(() => {
-      const local = loadState()
-      dispatch({ type: "SET_STATE", payload: local })
-    }).finally(() => {
+    }).catch(() => {}).finally(() => {
       setLoading(false)
     })
   }, [])
@@ -191,6 +199,7 @@ async function loadFromSupabase(): Promise<FinanceState | null> {
     ])
     if (accRes.error || txRes.error || sfRes.error) return null
     if (!accRes.data || !txRes.data || !sfRes.data) return null
+    if (accRes.data.length === 0 && txRes.data.length === 0) return null
     return {
       accounts: accRes.data.map(formatAccount),
       transactions: txRes.data.map(formatTransaction),
