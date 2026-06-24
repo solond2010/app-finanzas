@@ -238,7 +238,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   )
 
   return (
-    <Card className="col-span-full border-border/60 bg-card/95 shadow-sm">
+    <Card className="col-span-full">
       <CardHeader className="flex flex-col gap-4 space-y-0 pb-2 lg:flex-row lg:items-center lg:justify-between">
         <CardTitle className="text-lg font-semibold">Transacciones</CardTitle>
           <div className="flex flex-wrap items-center gap-2">

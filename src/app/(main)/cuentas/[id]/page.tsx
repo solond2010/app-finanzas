@@ -46,10 +46,11 @@ export default function AccountDetailPage() {
         <ArrowLeft className="h-4 w-4" /> Volver
       </button>
 
-      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/40 p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{account.nombre}</h1>
-          <p className="text-sm text-muted-foreground">{account.banco || "Sin banco"} · {tipoLabel(account.tipo)} · {account.currency}</p>
+      <div className="flex flex-col gap-4 rounded-[28px] bg-card/60 backdrop-blur-xl p-7 shadow-sm ring-1 ring-border/30 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.08em]">Cuentas / {tipoLabel(account.tipo)}</p>
+          <h1 className="text-[28px] font-bold tracking-tight leading-tight sm:text-[32px]">{account.nombre}</h1>
+          <p className="text-sm text-muted-foreground">{account.banco || "Sin banco"} · {account.currency}</p>
         </div>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditing(true)}>
           <Pencil className="h-3.5 w-3.5" /> Editar
@@ -57,19 +58,19 @@ export default function AccountDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card className="border-border/60 bg-card/95 shadow-sm">
+        <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Saldo actual</p>
             <p className={`text-xl font-bold ${balanceColor}`}>{formatMoney(account.saldo, account.currency)}</p>
           </CardContent>
         </Card>
-        <Card className="border-border/60 bg-card/95 shadow-sm">
+        <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Total ingresos</p>
             <p className="text-xl font-bold text-emerald-500">+{totalIngresos.toLocaleString("es-ES")} {currencySymbol(account.currency)}</p>
           </CardContent>
         </Card>
-        <Card className="border-border/60 bg-card/95 shadow-sm">
+        <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Total gastos</p>
             <p className="text-xl font-bold text-red-500">-{totalGastos.toLocaleString("es-ES")} {currencySymbol(account.currency)}</p>

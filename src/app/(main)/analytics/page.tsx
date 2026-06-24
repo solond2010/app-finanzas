@@ -63,22 +63,23 @@ export default function AnalyticsPage() {
     { name: "Necesidades", value: necesidades },
     { name: "Deseos", value: deseos },
   ]
-  const panelClass = "border-border/60 bg-card/95 shadow-sm"
+  const panelClass = ""
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/40 p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-2xl space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Analíticas</h1>
-          <p className="text-sm text-muted-foreground">Visualización clara de tus ingresos, gastos y patrimonio.</p>
+      <div className="flex flex-col gap-4 rounded-[28px] bg-card/60 backdrop-blur-xl p-7 shadow-sm ring-1 ring-border/30 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.08em]">Analíticas</p>
+          <h1 className="text-[28px] font-bold tracking-tight leading-tight sm:text-[32px]">Visualización de Datos</h1>
+          <p className="text-sm text-muted-foreground">Ingresos, gastos y evolución del patrimonio.</p>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
-          <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/80 px-3 py-2 shadow-sm backdrop-blur-sm">
-            <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
+          <div className="flex items-center gap-2 rounded-2xl bg-muted/60 backdrop-blur-sm px-3 py-2 ring-1 ring-border/20">
+            <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90">
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="min-w-[160px] text-center text-sm font-medium capitalize">{selectedDate.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}</span>
-            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
+            <span className="min-w-[150px] text-center text-sm font-semibold capitalize tracking-tight">{selectedDate.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}</span>
+            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -244,24 +245,24 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-emerald-500/10">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">50% Necesidades</p>
-                <p className="text-2xl font-bold tabular-nums text-emerald-500">{necesidades.toLocaleString("es-ES")}€</p>
-                <p className="text-xs text-muted-foreground mt-1">
+              <div className="rounded-2xl bg-emerald-500/[0.04] ring-1 ring-emerald-500/15 p-5 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-emerald-500/10">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.08em] mb-2">50% Necesidades</p>
+                <p className="text-[28px] font-bold tabular-nums text-emerald-500 leading-none">{necesidades.toLocaleString("es-ES")}€</p>
+                <p className="text-xs text-muted-foreground mt-2">
                   {necesidades + deseos > 0 ? `${Math.round((necesidades / (necesidades + deseos)) * 100)}% del gasto` : "Sin datos"}
                 </p>
               </div>
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-amber-500/10">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">30% Deseos</p>
-                <p className="text-2xl font-bold tabular-nums text-amber-500">{deseos.toLocaleString("es-ES")}€</p>
-                <p className="text-xs text-muted-foreground mt-1">
+              <div className="rounded-2xl bg-amber-500/[0.04] ring-1 ring-amber-500/15 p-5 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-amber-500/10">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.08em] mb-2">30% Deseos</p>
+                <p className="text-[28px] font-bold tabular-nums text-amber-500 leading-none">{deseos.toLocaleString("es-ES")}€</p>
+                <p className="text-xs text-muted-foreground mt-2">
                   {necesidades + deseos > 0 ? `${Math.round((deseos / (necesidades + deseos)) * 100)}% del gasto` : "Sin datos"}
                 </p>
               </div>
-              <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-500/10">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">20% Ahorro</p>
-                <p className="text-2xl font-bold tabular-nums text-blue-500">--€</p>
-                <p className="text-xs text-muted-foreground mt-1">Añade ingresos para calcular</p>
+              <div className="rounded-2xl bg-blue-500/[0.04] ring-1 ring-blue-500/15 p-5 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-500/10">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.08em] mb-2">20% Ahorro</p>
+                <p className="text-[28px] font-bold tabular-nums text-blue-500 leading-none">--€</p>
+                <p className="text-xs text-muted-foreground mt-2">Añade ingresos para calcular</p>
               </div>
             </div>
           </CardContent>

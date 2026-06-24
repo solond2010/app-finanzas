@@ -100,7 +100,7 @@ export function SinkingFundsGrid() {
   const [showNew, setShowNew] = useState(false)
 
   return (
-    <Card className="col-span-full border-border/60 bg-card/95 shadow-sm">
+    <Card className="col-span-full">
       <CardHeader className="flex flex-col gap-3 space-y-0 pb-2 lg:flex-row lg:items-center lg:justify-between">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <PiggyBank className="h-5 w-5 text-amber-500" />

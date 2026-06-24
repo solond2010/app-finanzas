@@ -5,9 +5,51 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineChart } from "@tremor/react"
 import { useFinance } from "@/lib/store"
 import { getMonthTotalsByString, getNetWorthAtMonth, buildMonthlySummariesUpTo, getGastosBudgetProgress } from "@/lib/calculations"
-import { TrendingUp, TrendingDown, Wallet, Target } from "lucide-react"
+import { TrendingUp, TrendingDown, Wallet, Target, Euro } from "lucide-react"
 
 const dataFormatter = (value: number) => `${value.toLocaleString("es-ES")}€`
+
+function StatCard({
+  label,
+  value,
+  subtitle,
+  icon: Icon,
+  color,
+  trend,
+}: {
+  label: string
+  value: string
+  subtitle: string
+  icon: React.ElementType
+  color?: string
+  trend?: { direction: "up" | "down"; label: string }
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-card/70 backdrop-blur-xl p-5 shadow-sm ring-1 ring-border/20 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5">
+      <div className="flex items-start justify-between mb-3">
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.08em]">{label}</span>
+        <div
+          className="rounded-xl p-2 ring-1 ring-border/10"
+          style={{ backgroundColor: color ? `${color}0d` : undefined }}
+        >
+          <Icon className="h-[18px] w-[18px]" style={{ color }} />
+        </div>
+      </div>
+      <p className="text-[28px] font-bold tracking-tight tabular-nums leading-none" style={{ color }}>
+        {value}
+      </p>
+      <div className="flex items-center gap-1.5 mt-2">
+        {trend && (
+          <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${trend.direction === "up" ? "text-emerald-500" : "text-red-500"}`}>
+            <TrendingUp className="h-3 w-3" />
+            {trend.label}
+          </span>
+        )}
+        <span className="text-xs text-muted-foreground">{subtitle}</span>
+      </div>
+    </div>
+  )
+}
 
 export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
   const { state } = useFinance()
@@ -28,59 +70,46 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
   )
 
   const savingsRate = ingresos > 0 ? Math.round((neto / ingresos) * 100) : 0
-  const statClass = "rounded-2xl border border-border/60 bg-card/95 p-4 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5"
 
   return (
     <>
       <div className="col-span-full grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className={statClass}>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-            <Wallet className="h-3.5 w-3.5" />
-            Patrimonio Neto
-          </div>
-          <p className="text-2xl font-bold tabular-nums">{netWorth.toLocaleString("es-ES")}€</p>
-          <p className="text-xs text-muted-foreground mt-1">{state.accounts.length} cuentas</p>
-        </div>
-
-        <div className={statClass}>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-            <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-            Ingresos del mes
-          </div>
-          <p className="text-2xl font-bold tabular-nums text-emerald-500">+{ingresos.toLocaleString("es-ES")}€</p>
-          <p className="text-xs text-muted-foreground mt-1">Últimos 30 días</p>
-        </div>
-
-        <div className={statClass}>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-            <TrendingDown className="h-3.5 w-3.5 text-red-500" />
-            Gastos del mes
-          </div>
-          <p className="text-2xl font-bold tabular-nums text-red-500">-{gastos.toLocaleString("es-ES")}€</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {budget
-              ? `${Math.round((gastos / budget.limite) * 100)}% del presupuesto`
-              : "Últimos 30 días"}
-          </p>
-        </div>
-
-        <div className={statClass}>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-            <Target className="h-3.5 w-3.5" />
-            Tasa de ahorro
-          </div>
-          <p className={`text-2xl font-bold tabular-nums ${savingsRate >= 20 ? "text-emerald-500" : savingsRate > 0 ? "text-amber-500" : "text-red-500"}`}>
-            {savingsRate}%
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {savingsRate >= 20 ? "Objetivo 20% alcanzado" : savingsRate > 0 ? "Meta: 20%" : "Sin ingresos registrados"}
-          </p>
-        </div>
+        <StatCard
+          label="Patrimonio Neto"
+          value={`${netWorth.toLocaleString("es-ES")}€`}
+          subtitle={`${state.accounts.length} cuentas`}
+          icon={Wallet}
+          color="var(--foreground)"
+        />
+        <StatCard
+          label="Ingresos del Mes"
+          value={`+${ingresos.toLocaleString("es-ES")}€`}
+          subtitle="Últimos 30 días"
+          icon={TrendingUp}
+          color="#10b981"
+        />
+        <StatCard
+          label="Gastos del Mes"
+          value={`-${gastos.toLocaleString("es-ES")}€`}
+          subtitle={budget ? `${Math.round((gastos / budget.limite) * 100)}% del presupuesto` : "Últimos 30 días"}
+          icon={TrendingDown}
+          color="#ef4444"
+        />
+        <StatCard
+          label="Tasa de Ahorro"
+          value={`${savingsRate}%`}
+          subtitle={savingsRate >= 20 ? "Objetivo 20% alcanzado" : savingsRate > 0 ? "Meta: 20%" : "Sin ingresos registrados"}
+          icon={Target}
+          color={savingsRate >= 20 ? "#10b981" : savingsRate > 0 ? "#f59e0b" : "#ef4444"}
+        />
       </div>
 
-      <Card className="col-span-full md:col-span-7 border-border/60 bg-card/95 shadow-sm">
+      <Card className="col-span-full md:col-span-7">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold">Evolución Mensual</CardTitle>
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Euro className="h-4 w-4 text-muted-foreground" />
+            Evolución Mensual
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {summaries.every((s) => s.ingresos === 0 && s.gastos === 0) ? (
@@ -102,12 +131,15 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
         </CardContent>
       </Card>
 
-      <Card className="col-span-full md:col-span-5 border-border/60 bg-card/95 shadow-sm">
+      <Card className="col-span-full md:col-span-5">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold">Resumen del Mes</CardTitle>
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+            Resumen del Mes
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between rounded-lg border p-3">
+        <CardContent className="space-y-2.5">
+          <div className="flex items-center justify-between rounded-xl bg-emerald-500/[0.04] ring-1 ring-emerald-500/10 p-3.5">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-emerald-500/10 p-2">
                 <TrendingUp className="h-4 w-4 text-emerald-500" />
@@ -121,7 +153,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border p-3">
+          <div className="flex items-center justify-between rounded-xl bg-red-500/[0.04] ring-1 ring-red-500/10 p-3.5">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-red-500/10 p-2">
                 <TrendingDown className="h-4 w-4 text-red-500" />
@@ -135,7 +167,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border p-3">
+          <div className="flex items-center justify-between rounded-xl bg-primary/[0.04] ring-1 ring-primary/10 p-3.5">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-primary/10 p-2">
                 <Wallet className="h-4 w-4 text-primary" />
@@ -150,7 +182,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
           </div>
 
           {budget && (
-            <div className="rounded-lg border p-3 space-y-1.5">
+            <div className="rounded-xl bg-muted/30 ring-1 ring-border/20 p-3.5 space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Presupuesto mensual</span>
                 <span className={budget.progreso >= 100 ? "text-red-500 font-medium" : "text-muted-foreground"}>
@@ -159,7 +191,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
               </div>
               <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all ${budget.progreso >= 100 ? "bg-red-500" : "bg-red-400"}`}
+                  className={`h-full rounded-full transition-all duration-700 ease-out ${budget.progreso >= 100 ? "bg-red-500" : "bg-red-400"}`}
                   style={{ width: `${budget.progreso}%` }}
                 />
               </div>

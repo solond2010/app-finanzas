@@ -27,14 +27,15 @@ export default function CuentasPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/40 p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Cuentas</h1>
-          <p className="text-sm text-muted-foreground">Todas tus cuentas, saldos y progreso de objetivo.</p>
+      <div className="flex flex-col gap-4 rounded-[28px] bg-card/60 backdrop-blur-xl p-7 shadow-sm ring-1 ring-border/30 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.08em]">Cuentas</p>
+          <h1 className="text-[28px] font-bold tracking-tight leading-tight sm:text-[32px]">Tus Cuentas</h1>
+          <p className="text-sm text-muted-foreground">Saldos, bancos y progreso de objetivos financieros.</p>
         </div>
-        <div className="rounded-2xl border border-border/60 bg-background/80 px-4 py-3 shadow-sm backdrop-blur-sm">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Patrimonio neto</p>
-          <p className="text-2xl font-bold tabular-nums">{netWorth.toLocaleString("es-ES")}€</p>
+        <div className="rounded-2xl bg-muted/60 backdrop-blur-sm px-5 py-3 ring-1 ring-border/20">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Patrimonio neto</p>
+          <p className="text-2xl font-bold tracking-tight tabular-nums">{netWorth.toLocaleString("es-ES")}€</p>
         </div>
       </div>
 
@@ -42,7 +43,7 @@ export default function CuentasPage() {
         {state.accounts.map((account) => (
           <div
             key={account.id}
-            className="overflow-hidden rounded-3xl border border-border/60 bg-card/95 p-6 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/10"
+            className="overflow-hidden rounded-[20px] bg-card/70 backdrop-blur-xl p-6 shadow-sm ring-1 ring-border/20 transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -86,7 +87,7 @@ export default function CuentasPage() {
         ))}
       </div>
 
-      <Card className="border-border/60 bg-card/95 shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Resumen de Patrimonio</CardTitle>
         </CardHeader>
