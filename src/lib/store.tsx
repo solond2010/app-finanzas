@@ -1,6 +1,7 @@
 "use client"
 
-import { createContext, useContext, useReducer, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useReducer, useEffect, useRef, type ReactNode } from "react"
+import { supabase } from "./supabase"
 
 export interface Account {
   id: string
@@ -135,19 +136,83 @@ const FinanceContext = createContext<FinanceContextValue | null>(null)
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, defaultState)
+  const loadedRef = useRef(false)
 
   useEffect(() => {
-    const saved = loadState()
-    dispatch({ type: "SET_STATE", payload: saved })
+    if (loadedRef.current) return
+    loadedRef.current = true
+
+    loadFromSupabase().then((remote) => {
+      if (remote) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(remote))
+        dispatch({ type: "SET_STATE", payload: remote })
+      } else {
+        const local = loadState()
+        dispatch({ type: "SET_STATE", payload: local })
+      }
+    })
   }, [])
 
   useEffect(() => {
+    if (!loadedRef.current) return
     if (state !== defaultState) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      syncToSupabase(state)
     }
   }, [state])
 
   return <FinanceContext.Provider value={{ state, dispatch }}>{children}</FinanceContext.Provider>
+}
+
+async function loadFromSupabase(): Promise<FinanceState | null> {
+  try {
+    const [accRes, txRes, sfRes] = await Promise.all([
+      supabase.from("accounts").select("*"),
+      supabase.from("transactions").select("*"),
+      supabase.from("sinking_funds").select("*"),
+    ])
+    if (accRes.error || txRes.error || sfRes.error) return null
+    if (!accRes.data || !txRes.data || !sfRes.data) return null
+    return {
+      accounts: accRes.data.map(formatAccount),
+      transactions: txRes.data.map(formatTransaction),
+      sinkingFunds: sfRes.data.map(formatSinkingFund),
+    }
+  } catch {
+    return null
+  }
+}
+
+async function syncToSupabase(state: FinanceState) {
+  try {
+    await Promise.all([
+      supabase.from("accounts").upsert(state.accounts.map(unformatAccount)),
+      supabase.from("transactions").upsert(state.transactions.map(unformatTransaction)),
+      supabase.from("sinking_funds").upsert(state.sinkingFunds),
+    ])
+  } catch (e) {
+    console.error("Supabase sync failed, data safe in localStorage:", e)
+  }
+}
+
+function formatAccount(a: any): Account {
+  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco ?? "", saldo: Number(a.saldo), objetivo: a.objetivo ? Number(a.objetivo) : null, limite_mensual: a.limite_mensual ? Number(a.limite_mensual) : null, color: a.color ?? "#3b82f6" }
+}
+
+function formatTransaction(t: any): Transaction {
+  return { id: t.id, cuenta_id: t.cuenta_id, monto: Number(t.monto), fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion ?? "", tags: t.tags ?? [] }
+}
+
+function formatSinkingFund(s: any): SinkingFund {
+  return { id: s.id, nombre: s.nombre, cantidad_objetivo: Number(s.objetivo), fecha_limite: s.fecha_limite ?? "", ahorrado_actual: Number(s.ahorrado), cuenta_id: s.cuenta_id ?? "" }
+}
+
+function unformatAccount(a: Account): any {
+  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco, saldo: a.saldo, objetivo: a.objetivo, limite_mensual: a.limite_mensual, color: a.color }
+}
+
+function unformatTransaction(t: Transaction): any {
+  return { id: t.id, cuenta_id: t.cuenta_id, monto: t.monto, fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion, tags: t.tags }
 }
 
 export function useFinance() {
