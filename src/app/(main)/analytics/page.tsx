@@ -67,7 +67,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/30 p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/40 p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Analíticas</h1>
           <p className="text-sm text-muted-foreground">Visualización clara de tus ingresos, gastos y patrimonio.</p>

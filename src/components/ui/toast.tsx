@@ -27,10 +27,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
         {toasts.map((t) => (
-          <div key={t.id} className={`flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm shadow-lg animate-in slide-in-from-right ${t.type === "success" ? "bg-emerald-950 border-emerald-800 text-emerald-200" : t.type === "error" ? "bg-red-950 border-red-800 text-red-200" : "bg-zinc-900 border-zinc-700 text-zinc-200"}`}>
-            {t.type === "success" ? <CheckCircle className="h-4 w-4 text-emerald-400" /> : t.type === "error" ? <AlertCircle className="h-4 w-4 text-red-400" /> : <Info className="h-4 w-4 text-blue-400" />}
+          <div key={t.id} className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm shadow-lg data-open:animate-in data-open:fade-in data-open:slide-in-from-right-5 data-closed:animate-out data-closed:fade-out data-closed:slide-out-to-right-5 ${t.type === "success" ? "bg-emerald-950/90 border-emerald-800/60 text-emerald-200 backdrop-blur-sm" : t.type === "error" ? "bg-red-950/90 border-red-800/60 text-red-200 backdrop-blur-sm" : "bg-zinc-900/90 border-zinc-700/60 text-zinc-200 backdrop-blur-sm"}`}>
+            {t.type === "success" ? <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" /> : t.type === "error" ? <AlertCircle className="h-4 w-4 text-red-400 shrink-0" /> : <Info className="h-4 w-4 text-blue-400 shrink-0" />}
             <span className="flex-1">{t.message}</span>
-            <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}><X className="h-3.5 w-3.5 opacity-60 hover:opacity-100" /></button>
+            <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} className="shrink-0 rounded-lg p-1 opacity-60 hover:opacity-100 hover:bg-black/20 transition-all"><X className="h-3.5 w-3.5" /></button>
           </div>
         ))}
       </div>

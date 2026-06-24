@@ -262,13 +262,13 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             </>
           )}
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <input
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar..."
-              className="h-9 w-40 rounded-xl border border-input bg-background pl-7 pr-3 text-sm outline-none focus:border-ring"
+              className="h-9 w-40 rounded-xl pl-7"
             />
           </div>
           <Button size="sm" className="gap-1" onClick={() => setShowNew(true)}>
