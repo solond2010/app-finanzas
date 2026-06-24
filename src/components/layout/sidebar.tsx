@@ -14,7 +14,11 @@ import {
   Cloud,
   CloudOff,
   Loader2,
+  SunMedium,
+  MoonStar,
 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -28,6 +32,18 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const { syncStatus } = useFinance()
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("dark"))
+  }, [])
+
+  const toggleTheme = () => {
+    const next = !isDark
+    document.documentElement.classList.toggle("dark", next)
+    localStorage.setItem("app-finanzas-theme", next ? "dark" : "light")
+    setIsDark(next)
+  }
 
   const syncMeta =
     syncStatus === "syncing"
@@ -69,10 +85,16 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-4 rounded-lg border bg-sidebar-accent/30 px-3 py-2">
-        <div className={cn("flex items-center gap-2 text-xs font-medium", syncMeta.className)}>
-          {syncMeta.icon}
-          <span>{syncMeta.label}</span>
+      <div className="mt-4 space-y-3">
+        <Button variant="outline" className="w-full justify-start gap-2 border-sidebar-border bg-sidebar/70 text-sidebar-foreground hover:bg-sidebar-accent/60" onClick={toggleTheme}>
+          {isDark ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+          {isDark ? "Modo claro" : "Modo oscuro"}
+        </Button>
+        <div className="rounded-lg border border-sidebar-border bg-sidebar-accent/30 px-3 py-2">
+          <div className={cn("flex items-center gap-2 text-xs font-medium", syncMeta.className)}>
+            {syncMeta.icon}
+            <span>{syncMeta.label}</span>
+          </div>
         </div>
       </div>
     </aside>
