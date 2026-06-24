@@ -27,9 +27,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, generateId } from "@/lib/store"
-import { Filter, Plus, Pencil, Trash2 } from "lucide-react"
-
-const CATEGORIES = ["Salario", "Alquiler", "Supermercado", "Transporte", "Internet", "Cena", "Spotify", "Ropa", "Transferencia", "Ocio", "Gym", "Freelance", "Inversión", "Otros"]
+import { Filter, Plus, Pencil, Trash2, Search } from "lucide-react"
+import { useToast } from "@/components/ui/toast"
 
 const CATEGORY_COLORS: Record<string, string> = {
   Salario: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
@@ -38,21 +37,24 @@ const CATEGORY_COLORS: Record<string, string> = {
   Transporte: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
   Internet: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
   Cena: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-  Spotify: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+  Suscripciones: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
   Ropa: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
   Transferencia: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
   Ocio: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
   Gym: "bg-lime-500/10 text-lime-600 dark:text-lime-400",
+  Salud: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
 }
 
 function TransactionForm({
   transaction,
   accounts,
+  categories,
   onSave,
   onCancel,
 }: {
   transaction?: Transaction
   accounts: { id: string; nombre: string }[]
+  categories: string[]
   onSave: (t: Transaction) => void
   onCancel: () => void
 }) {
@@ -128,7 +130,7 @@ function TransactionForm({
           <Select value={categoria} onValueChange={(v) => v && setCategoria(v)}>
             <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
             <SelectContent>
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <SelectItem key={c} value={c}>{c}</SelectItem>
               ))}
             </SelectContent>
@@ -186,7 +188,9 @@ function TransactionForm({
 
 export function TransactionsTable({ cuentaId }: { cuentaId?: string }) {
   const { state, dispatch } = useFinance()
+  const { toast } = useToast()
   const [filterAccount, setFilterAccount] = useState<string>(cuentaId ?? "all")
+  const [search, setSearch] = useState("")
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null)
   const [showNew, setShowNew] = useState(false)
 
@@ -198,8 +202,9 @@ export function TransactionsTable({ cuentaId }: { cuentaId?: string }) {
     () =>
       [...state.transactions]
         .filter((t) => filterAccount === "all" || t.cuenta_id === filterAccount)
+        .filter((t) => !search || t.descripcion.toLowerCase().includes(search.toLowerCase()) || t.categoria.toLowerCase().includes(search.toLowerCase()) || t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())))
         .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()),
-    [state.transactions, filterAccount]
+    [state.transactions, filterAccount, search]
   )
 
   return (
@@ -223,6 +228,16 @@ export function TransactionsTable({ cuentaId }: { cuentaId?: string }) {
               </Select>
             </>
           )}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar..."
+              className="h-8 w-36 rounded-md border border-input bg-background pl-7 pr-2 text-xs outline-none focus:border-ring"
+            />
+          </div>
           <Button size="sm" className="gap-1" onClick={() => setShowNew(true)}>
             <Plus className="h-3.5 w-3.5" /> Nueva
           </Button>
@@ -233,7 +248,8 @@ export function TransactionsTable({ cuentaId }: { cuentaId?: string }) {
               </DialogHeader>
               <TransactionForm
                 accounts={state.accounts}
-                onSave={(t) => { dispatch({ type: "ADD_TRANSACTION", payload: t }); setShowNew(false) }}
+                categories={state.categories}
+                onSave={(t) => { dispatch({ type: "ADD_TRANSACTION", payload: t }); setShowNew(false); toast("Transacción creada", "success") }}
                 onCancel={() => setShowNew(false)}
               />
             </DialogContent>
@@ -298,7 +314,7 @@ export function TransactionsTable({ cuentaId }: { cuentaId?: string }) {
                         <button onClick={() => setEditingTxn(t)}>
                           <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                         </button>
-                        <button onClick={() => dispatch({ type: "DELETE_TRANSACTION", payload: t.id })}>
+                        <button onClick={() => { dispatch({ type: "DELETE_TRANSACTION", payload: t.id }); toast("Transacción eliminada", "success") }}>
                           <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
                         </button>
                       </div>
@@ -320,7 +336,8 @@ export function TransactionsTable({ cuentaId }: { cuentaId?: string }) {
             <TransactionForm
               transaction={editingTxn}
               accounts={state.accounts}
-              onSave={(tx) => { dispatch({ type: "UPDATE_TRANSACTION", payload: tx }); setEditingTxn(null) }}
+              categories={state.categories}
+              onSave={(tx) => { dispatch({ type: "UPDATE_TRANSACTION", payload: tx }); setEditingTxn(null); toast("Transacción actualizada", "success") }}
               onCancel={() => setEditingTxn(null)}
             />
           )}

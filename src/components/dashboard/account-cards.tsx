@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AccountDialog } from "./account-dialog"
+import { useToast } from "@/components/ui/toast"
 
 const typeConfig = {
   emergencia: { label: "Emergencia", gradient: "from-emerald-500/20 to-emerald-600/5" },
@@ -19,6 +20,7 @@ const typeConfig = {
 export function AccountCards() {
   const { state, dispatch } = useFinance()
   const router = useRouter()
+  const { toast } = useToast()
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [showNew, setShowNew] = useState(false)
   const budget = getGastosBudgetProgress(state.accounts, state.transactions)
@@ -47,7 +49,7 @@ export function AccountCards() {
                   className="opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={(e) => {
                     e.stopPropagation()
-                    if (confirm("¿Eliminar esta cuenta?")) dispatch({ type: "DELETE_ACCOUNT", payload: account.id })
+                    if (confirm("¿Eliminar esta cuenta?")) { dispatch({ type: "DELETE_ACCOUNT", payload: account.id }); toast("Cuenta eliminada", "success") }
                   }}
                 >
                   <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />

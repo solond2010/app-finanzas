@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useToast } from "@/components/ui/toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
@@ -93,6 +94,7 @@ function SinkingFundForm({
 
 export function SinkingFundsGrid() {
   const { state, dispatch } = useFinance()
+  const { toast } = useToast()
   const [editingFund, setEditingFund] = useState<SinkingFund | null>(null)
   const [showNew, setShowNew] = useState(false)
 
@@ -113,7 +115,7 @@ export function SinkingFundsGrid() {
             </DialogHeader>
             <SinkingFundForm
               accounts={state.accounts}
-              onSave={(f) => { dispatch({ type: "ADD_SINKING_FUND", payload: f }); setShowNew(false) }}
+               onSave={(f) => { dispatch({ type: "ADD_SINKING_FUND", payload: f }); setShowNew(false); toast("Meta de ahorro creada", "success") }}
               onCancel={() => setShowNew(false)}
             />
           </DialogContent>
@@ -135,7 +137,7 @@ export function SinkingFundsGrid() {
                 <div key={fund.id} className="rounded-xl border bg-card p-5 space-y-3 group relative">
                   <button
                     className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => dispatch({ type: "DELETE_SINKING_FUND", payload: fund.id })}
+                    onClick={() => { dispatch({ type: "DELETE_SINKING_FUND", payload: fund.id }); toast("Meta eliminada", "success") }}
                   >
                     <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
                   </button>

@@ -4,17 +4,17 @@ import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineChart } from "@tremor/react"
 import { useFinance } from "@/lib/store"
-import { getCurrentMonthTotals, getNetWorth, buildMonthlySummaries, getGastosBudgetProgress } from "@/lib/calculations"
+import { getCurrentMonthTotals, getMonthTotalsByString, getNetWorth, buildMonthlySummaries, getGastosBudgetProgress } from "@/lib/calculations"
 import { TrendingUp, TrendingDown, Wallet, Target } from "lucide-react"
 
 const dataFormatter = (value: number) => `${value.toLocaleString("es-ES")}€`
 
-export function MonthlySummary() {
+export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
   const { state } = useFinance()
 
   const { ingresos, gastos, neto } = useMemo(
-    () => getCurrentMonthTotals(state.transactions),
-    [state.transactions]
+    () => selectedMonth ? getMonthTotalsByString(state.transactions, selectedMonth) : getCurrentMonthTotals(state.transactions),
+    [state.transactions, selectedMonth]
   )
   const netWorth = useMemo(() => getNetWorth(state.accounts), [state.accounts])
   const summaries = useMemo(

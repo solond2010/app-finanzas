@@ -50,6 +50,7 @@ interface FinanceState {
   accounts: Account[]
   transactions: Transaction[]
   sinkingFunds: SinkingFund[]
+  categories: string[]
 }
 
 type Action =
@@ -65,8 +66,12 @@ type Action =
   | { type: "DELETE_SINKING_FUND"; payload: string }
   | { type: "MERGE_SAMPLE"; payload: FinanceState }
   | { type: "RESET" }
+  | { type: "ADD_CATEGORY"; payload: string }
+  | { type: "DELETE_CATEGORY"; payload: string }
 
 const STORAGE_KEY = "app-finanzas-data"
+
+const DEFAULT_CATEGORIES = ["Salario", "Freelance", "Alquiler", "Supermercado", "Transporte", "Internet", "Suscripciones", "Cena", "Ropa", "Ocio", "Gym", "Salud", "Inversión", "Transferencia", "Otros"]
 
 const defaultState: FinanceState = {
   accounts: [
@@ -78,6 +83,7 @@ const defaultState: FinanceState = {
   ],
   transactions: [],
   sinkingFunds: [],
+  categories: DEFAULT_CATEGORIES,
 }
 
 function loadState(): FinanceState {
@@ -86,7 +92,7 @@ function loadState(): FinanceState {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved) as FinanceState
-      return parsed
+      return { ...defaultState, ...parsed, categories: parsed.categories ?? defaultState.categories }
     }
   } catch {}
   return defaultState
@@ -101,6 +107,7 @@ function reducer(state: FinanceState, action: Action): FinanceState {
         accounts: [...state.accounts, ...action.payload.accounts.filter((a: Account) => !state.accounts.some((ea) => ea.id === a.id))],
         transactions: [...state.transactions, ...action.payload.transactions],
         sinkingFunds: [...state.sinkingFunds, ...action.payload.sinkingFunds],
+        categories: state.categories,
       }
     case "RESET":
       return defaultState
@@ -122,6 +129,10 @@ function reducer(state: FinanceState, action: Action): FinanceState {
       return { ...state, sinkingFunds: state.sinkingFunds.map((s) => (s.id === action.payload.id ? action.payload : s)) }
     case "DELETE_SINKING_FUND":
       return { ...state, sinkingFunds: state.sinkingFunds.filter((s) => s.id !== action.payload) }
+    case "ADD_CATEGORY":
+      return state.categories.includes(action.payload) ? state : { ...state, categories: [...state.categories, action.payload] }
+    case "DELETE_CATEGORY":
+      return { ...state, categories: state.categories.filter((c) => c !== action.payload) }
     default:
       return state
   }
@@ -177,6 +188,7 @@ async function loadFromSupabase(): Promise<FinanceState | null> {
       accounts: accRes.data.map(formatAccount),
       transactions: txRes.data.map(formatTransaction),
       sinkingFunds: sfRes.data.map(formatSinkingFund),
+      categories: DEFAULT_CATEGORIES,
     }
   } catch {
     return null
@@ -283,5 +295,5 @@ export function generateSampleData(): FinanceState {
     { id: "s_sf2", nombre: "Viaje Verano 2027", cantidad_objetivo: 8000, fecha_limite: "2027-06-30", ahorrado_actual: 2000, cuenta_id: "s_acc_ahorro" },
   ]
 
-  return { accounts: sampleAccounts, transactions: sampleTransactions, sinkingFunds: sampleFunds }
+  return { accounts: sampleAccounts, transactions: sampleTransactions, sinkingFunds: sampleFunds, categories: DEFAULT_CATEGORIES }
 }

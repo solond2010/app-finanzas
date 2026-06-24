@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Plus, ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, Send } from "lucide-react"
+import { useToast } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -248,11 +249,13 @@ export function QuickActionsFAB() {
   const { state, dispatch } = useFinance()
   const [open, setOpen] = useState(false)
   const [activeModal, setActiveModal] = useState<"gasto" | "ingreso" | "traspaso" | null>(null)
+  const { toast } = useToast()
 
   const handleAddTransaction = (t: Transaction) => {
     dispatch({ type: "ADD_TRANSACTION", payload: t })
     setActiveModal(null)
     setOpen(false)
+    toast(t.tipo === "gasto" ? "Gasto registrado" : "Ingreso registrado", "success")
   }
 
   const handleTransfer = (sourceId: string, destId: string, monto: number, descripcion: string) => {
@@ -281,6 +284,7 @@ export function QuickActionsFAB() {
 
     setActiveModal(null)
     setOpen(false)
+    toast("Traspaso realizado", "success")
   }
 
   return (

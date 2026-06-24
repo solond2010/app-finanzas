@@ -26,6 +26,13 @@ export function getCurrentMonthTotals(transactions: Transaction[]) {
   return { ingresos, gastos, neto: ingresos - gastos }
 }
 
+export function getMonthTotalsByString(transactions: Transaction[], month: string) {
+  const monthTxns = transactions.filter((t) => t.fecha.startsWith(month))
+  const ingresos = monthTxns.filter((t) => t.tipo === "ingreso").reduce((s, t) => s + t.monto, 0)
+  const gastos = monthTxns.filter((t) => t.tipo === "gasto").reduce((s, t) => s + t.monto, 0)
+  return { ingresos, gastos, neto: ingresos - gastos }
+}
+
 export function getMonthTotals(transactions: Transaction[], monthsAgo: number) {
   const now = new Date()
   const d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
