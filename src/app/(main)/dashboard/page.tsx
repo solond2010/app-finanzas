@@ -9,7 +9,16 @@ import { useFinance } from "@/lib/store"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded-xl bg-muted ${className ?? ""}`} />
+  return <div className={`skeleton-shimmer rounded-xl ${className ?? ""}`} />
+}
+
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <div className="col-span-full flex items-center gap-3">
+      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.1em]">{label}</span>
+      <div className="flex-1 h-px bg-border/50" />
+    </div>
+  )
 }
 
 function formatMonth(d: Date) {
@@ -81,8 +90,11 @@ export default function DashboardPage() {
       ) : (
         <div className="grid grid-cols-12 gap-6">
           <AccountCards selectedMonth={selectedMonth} />
+          <SectionLabel label="Estadísticas" />
           <MonthlySummary selectedMonth={selectedMonth} />
+          <SectionLabel label="Movimientos" />
           <TransactionsTable selectedMonth={selectedMonth} />
+          <SectionLabel label="Metas" />
           <SinkingFundsGrid />
         </div>
       )}

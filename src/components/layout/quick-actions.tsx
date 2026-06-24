@@ -314,24 +314,27 @@ export function QuickActionsFAB() {
     <>
       <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-3">
         {open && (
-          <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="flex flex-col gap-2">
             <button
               onClick={() => setActiveModal("gasto")}
-              className="flex items-center gap-3 rounded-xl border bg-card px-5 py-3 text-sm font-medium shadow-xl hover:bg-accent hover:scale-105 transition-all"
+              className="stagger-fade flex items-center gap-3 rounded-xl border bg-card/90 backdrop-blur-sm px-5 py-3 text-sm font-medium shadow-xl hover:bg-accent hover:scale-105 transition-all"
+              style={{ animationDelay: "0ms" }}
             >
               <ArrowDownCircle className="h-5 w-5 text-red-500" />
               <span>Gasto</span>
             </button>
             <button
               onClick={() => setActiveModal("ingreso")}
-              className="flex items-center gap-3 rounded-xl border bg-card px-5 py-3 text-sm font-medium shadow-xl hover:bg-accent hover:scale-105 transition-all"
+              className="stagger-fade flex items-center gap-3 rounded-xl border bg-card/90 backdrop-blur-sm px-5 py-3 text-sm font-medium shadow-xl hover:bg-accent hover:scale-105 transition-all"
+              style={{ animationDelay: "80ms" }}
             >
               <ArrowUpCircle className="h-5 w-5 text-emerald-500" />
               <span>Ingreso</span>
             </button>
             <button
               onClick={() => setActiveModal("traspaso")}
-              className="flex items-center gap-3 rounded-xl border bg-card px-5 py-3 text-sm font-medium shadow-xl hover:bg-accent hover:scale-105 transition-all"
+              className="stagger-fade flex items-center gap-3 rounded-xl border bg-card/90 backdrop-blur-sm px-5 py-3 text-sm font-medium shadow-xl hover:bg-accent hover:scale-105 transition-all"
+              style={{ animationDelay: "160ms" }}
             >
               <Send className="h-5 w-5 text-blue-500" />
               <span>Traspaso</span>

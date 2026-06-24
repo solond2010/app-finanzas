@@ -32,7 +32,7 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
 
   return (
     <div className="col-span-full grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {displayAccounts.map((account) => {
+      {displayAccounts.map((account, idx) => {
         const cfg = typeConfig[account.tipo]
         const progress = account.objetivo
           ? Math.min(Math.round((account.saldo / account.objetivo) * 100), 100)
@@ -45,7 +45,8 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
         return (
           <div
             key={account.id}
-            className={`relative overflow-hidden rounded-[20px] bg-card/70 backdrop-blur-xl p-5 shadow-sm ring-1 ring-border/20 transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 cursor-pointer group ${santander ? "ring-l-4 ring-l-red-600/70" : ""}`}
+            className={`stagger-fade relative overflow-hidden rounded-[20px] bg-card/70 backdrop-blur-xl p-5 shadow-sm ring-1 ring-border/20 transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 cursor-pointer group ${santander ? "ring-l-4 ring-l-red-600/70" : ""}`}
+            style={{ animationDelay: `${idx * 80}ms` }}
             onClick={() => router.push(`/cuentas/${account.id}`)}
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${cfg.gradient} opacity-50`} />

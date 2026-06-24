@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, Fragment } from "react"
 import {
   Table,
   TableBody,
@@ -228,6 +228,16 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
     toast("CSV exportado", "success")
   }
 
+  const dateLabel = (dateStr: string) => {
+    const d = new Date(dateStr)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    if (d.toDateString() === today.toDateString()) return "Hoy"
+    if (d.toDateString() === yesterday.toDateString()) return "Ayer"
+    return d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })
+  }
+
   const sorted = useMemo(
     () =>
       filterTransactionsByMonth(state.transactions, selectedMonth)
@@ -236,6 +246,19 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
         .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()),
     [state.transactions, filterAccount, search, selectedMonth]
   )
+
+  const grouped = useMemo(() => {
+    const groups: { date: string; label: string; transactions: typeof sorted }[] = []
+    for (const t of sorted) {
+      const last = groups[groups.length - 1]
+      if (last?.date === t.fecha) {
+        last.transactions.push(t)
+      } else {
+        groups.push({ date: t.fecha, label: dateLabel(t.fecha), transactions: [t] })
+      }
+    }
+    return groups
+  }, [sorted])
 
   return (
     <Card className="col-span-full">
@@ -314,50 +337,59 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                 </TableCell>
               </TableRow>
             ) : (
-              sorted.map((t) => {
-                const account = state.accounts.find((a) => a.id === t.cuenta_id)
-                return (
-                  <TableRow key={t.id} className="group">
-                    <TableCell className="tabular-nums text-sm">
-                      {new Date(t.fecha).toLocaleDateString("es-ES", {
-                        day: "2-digit", month: "short",
-                      })}
-                    </TableCell>
-                    <TableCell className="text-sm max-w-[140px] truncate">{t.descripcion || "—"}</TableCell>
-                    <TableCell><span className="text-xs text-muted-foreground">{account?.nombre}</span></TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={`font-medium ${CATEGORY_COLORS[t.categoria] || ""}`}>
-                        {t.categoria}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`text-sm font-medium ${t.tipo === "ingreso" ? "text-emerald-500" : "text-red-500"}`}>
-                        {t.tipo === "ingreso" ? "Ingreso" : "Gasto"}
-                      </span>
-                    </TableCell>
-                    <TableCell className={`text-right tabular-nums font-medium ${t.tipo === "ingreso" ? "text-emerald-500" : ""}`}>
-                      {t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, account?.currency ?? "EUR")}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        {t.tags.slice(0, 2).map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">{tag}</Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingTxn(t)}>
-                          <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                        </button>
-                        <button onClick={() => { dispatch({ type: "DELETE_TRANSACTION", payload: t.id }); toast("Transacción eliminada", "success") }}>
-                          <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
-                        </button>
-                      </div>
+              grouped.map((group) => (
+                <Fragment key={group.date}>
+                  <TableRow className="sticky top-10 z-10">
+                    <TableCell colSpan={8} className="px-2 py-1.5 bg-background/80 backdrop-blur-sm text-xs font-semibold text-muted-foreground capitalize tracking-wide">
+                      {group.label}
                     </TableCell>
                   </TableRow>
-                )
-              })
+                  {group.transactions.map((t) => {
+                    const account = state.accounts.find((a) => a.id === t.cuenta_id)
+                    return (
+                      <TableRow key={t.id} className="group">
+                        <TableCell className="tabular-nums text-sm text-muted-foreground">
+                          {new Date(t.fecha).toLocaleDateString("es-ES", {
+                            day: "2-digit", month: "short",
+                          })}
+                        </TableCell>
+                        <TableCell className="text-sm max-w-[140px] truncate">{t.descripcion || "—"}</TableCell>
+                        <TableCell><span className="text-xs text-muted-foreground">{account?.nombre}</span></TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className={`font-medium ${CATEGORY_COLORS[t.categoria] || ""}`}>
+                            {t.categoria}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`text-sm font-medium ${t.tipo === "ingreso" ? "text-emerald-500" : "text-red-500"}`}>
+                            {t.tipo === "ingreso" ? "Ingreso" : "Gasto"}
+                          </span>
+                        </TableCell>
+                        <TableCell className={`text-right tabular-nums font-medium ${t.tipo === "ingreso" ? "text-emerald-500" : ""}`}>
+                          {t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, account?.currency ?? "EUR")}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {t.tags.slice(0, 2).map((tag) => (
+                              <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">{tag}</Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => setEditingTxn(t)}>
+                              <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                            </button>
+                            <button onClick={() => { dispatch({ type: "DELETE_TRANSACTION", payload: t.id }); toast("Transacción eliminada", "success") }}>
+                              <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </Fragment>
+              ))
             )}
           </TableBody>
         </Table>
