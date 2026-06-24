@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation"
 import { useFinance } from "@/lib/store"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
-import { ArrowLeft, Pencil } from "lucide-react"
+import { ArrowLeft, Pencil, SearchX } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -18,7 +18,20 @@ export default function AccountDetailPage() {
   const [editing, setEditing] = useState(false)
 
   const account = state.accounts.find((a) => a.id === id)
-  if (!account) return <div className="p-6 text-muted-foreground">Cuenta no encontrada</div>
+  if (!account) return (
+    <div className="flex flex-col items-center justify-center gap-5 py-32 text-center">
+      <div className="rounded-full bg-muted/50 p-6 ring-1 ring-border/30">
+        <SearchX className="h-10 w-10 text-muted-foreground/40" />
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-xl font-semibold tracking-tight">Cuenta no encontrada</h2>
+        <p className="text-sm text-muted-foreground">La cuenta que buscas no existe o ha sido eliminada.</p>
+      </div>
+      <button onClick={() => router.push("/cuentas")} className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:brightness-110 active:scale-[0.97]">
+        <ArrowLeft className="h-4 w-4" /> Volver a cuentas
+      </button>
+    </div>
+  )
 
   const balanceColor = account.saldo >= 0 ? "text-foreground" : "text-red-500"
   const progress = account.objetivo && account.objetivo > 0 ? Math.min((account.saldo / account.objetivo) * 100, 100) : null

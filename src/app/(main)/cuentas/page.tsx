@@ -39,6 +39,18 @@ export default function CuentasPage() {
         </div>
       </div>
 
+      {state.accounts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-5 py-24 text-center">
+          <div className="rounded-full bg-muted/50 p-6 ring-1 ring-border/30">
+            <Wallet className="h-10 w-10 text-muted-foreground/40" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold tracking-tight">Sin cuentas aún</h2>
+            <p className="text-sm text-muted-foreground max-w-sm">Añade tu primera cuenta bancaria para empezar a gestionar tus finanzas.</p>
+          </div>
+          <p className="text-sm text-muted-foreground">Usa el botón <strong>+</strong> en la barra lateral para añadir tu primera cuenta.</p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {state.accounts.map((account) => (
           <div
@@ -86,42 +98,45 @@ export default function CuentasPage() {
           </div>
         ))}
       </div>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Resumen de Patrimonio</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cuenta</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Banco</TableHead>
-                <TableHead className="text-right">Saldo</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {state.accounts.map((a) => (
-                <TableRow key={a.id}>
-                  <TableCell className="font-medium">{a.nombre}</TableCell>
-                  <TableCell className="text-muted-foreground">{typeLabels[a.tipo]}</TableCell>
-                  <TableCell className="text-muted-foreground">{a.banco || "—"}</TableCell>
-                  <TableCell className="text-right tabular-nums font-medium">
-                    {formatMoney(a.saldo, a.currency)}
+      {state.accounts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Resumen de Patrimonio</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cuenta</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Banco</TableHead>
+                  <TableHead className="text-right">Saldo</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {state.accounts.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">{a.nombre}</TableCell>
+                    <TableCell className="text-muted-foreground">{typeLabels[a.tipo]}</TableCell>
+                    <TableCell className="text-muted-foreground">{a.banco || "—"}</TableCell>
+                    <TableCell className="text-right tabular-nums font-medium">
+                      {formatMoney(a.saldo, a.currency)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow>
+                  <TableCell colSpan={3} className="font-semibold">Patrimonio Neto</TableCell>
+                  <TableCell className="text-right tabular-nums font-bold text-lg">
+                    {netWorth.toLocaleString("es-ES")}€
                   </TableCell>
                 </TableRow>
-              ))}
-              <TableRow>
-                <TableCell colSpan={3} className="font-semibold">Patrimonio Neto</TableCell>
-                <TableCell className="text-right tabular-nums font-bold text-lg">
-                  {netWorth.toLocaleString("es-ES")}€
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

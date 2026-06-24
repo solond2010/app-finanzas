@@ -6,7 +6,8 @@ import { MonthlySummary } from "@/components/dashboard/monthly-summary"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { useFinance } from "@/lib/store"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, Wallet, Plus } from "lucide-react"
+import Link from "next/link"
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`skeleton-shimmer rounded-xl ${className ?? ""}`} />
@@ -86,6 +87,23 @@ export default function DashboardPage() {
             {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
           </div>
           <div className="col-span-full"><Skeleton className="h-64" /></div>
+        </div>
+      ) : state.accounts.length === 0 && state.transactions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-5 py-24 text-center">
+          <div className="rounded-full bg-muted/50 p-6 ring-1 ring-border/30">
+            <Wallet className="h-10 w-10 text-muted-foreground/40" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold tracking-tight">Bienvenido a App Finanzas</h2>
+            <p className="text-sm text-muted-foreground max-w-sm">Crea tu primera cuenta para empezar a gestionar tus finanzas.</p>
+          </div>
+          <Link
+            href="/cuentas"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:brightness-110 active:scale-[0.97]"
+          >
+            <Plus className="h-4 w-4" />
+            Crear cuenta
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-12 gap-6">
