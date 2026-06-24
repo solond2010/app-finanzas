@@ -26,7 +26,7 @@ export function AccountCards() {
   const budget = getGastosBudgetProgress(state.accounts, state.transactions)
 
   return (
-    <div className="col-span-full grid grid-cols-4 gap-4">
+    <div className="col-span-full grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
       {state.accounts.map((account) => {
         const cfg = typeConfig[account.tipo]
         const progress = account.objetivo
@@ -38,7 +38,7 @@ export function AccountCards() {
         return (
           <div
             key={account.id}
-            className="relative overflow-hidden rounded-2xl border bg-card p-5 transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer group"
+            className="relative overflow-hidden rounded-3xl border border-border/60 bg-card/95 p-5 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer group shadow-sm"
             onClick={() => router.push(`/cuentas/${account.id}`)}
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${cfg.gradient} opacity-50`} />
@@ -101,14 +101,14 @@ export function AccountCards() {
       })}
 
       <button
-        className="rounded-2xl border-2 border-dashed border-muted-foreground/30 p-5 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-muted-foreground/60 hover:text-foreground transition-all cursor-pointer"
+        className="rounded-3xl border-2 border-dashed border-muted-foreground/30 p-5 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-muted-foreground/60 hover:text-foreground transition-all cursor-pointer bg-card/70"
         onClick={() => setShowNew(true)}
       >
         <Plus className="h-6 w-6" />
         <span className="text-sm font-medium">Nueva Cuenta</span>
       </button>
 
-      <div className="col-span-full rounded-xl border bg-muted/30 p-4 flex items-center justify-between">
+      <div className="col-span-full rounded-2xl border border-border/60 bg-muted/30 p-4 flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
           {state.accounts.length} cuentas · Haz clic en cualquier tarjeta para editarla
         </p>

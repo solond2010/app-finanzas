@@ -208,18 +208,18 @@ export function TransactionsTable({ cuentaId }: { cuentaId?: string }) {
   )
 
   return (
-    <Card className="col-span-full">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className="col-span-full border-border/60 bg-card/95 shadow-sm">
+      <CardHeader className="flex flex-col gap-4 space-y-0 pb-2 lg:flex-row lg:items-center lg:justify-between">
         <CardTitle className="text-lg font-semibold">Transacciones</CardTitle>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {!cuentaId && (
             <>
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={filterAccount} onValueChange={handleAccountFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-48">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="p-2">
                   <SelectItem value="all">Todas las cuentas</SelectItem>
                   {state.accounts.map((a) => (
                     <SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>
@@ -235,7 +235,7 @@ export function TransactionsTable({ cuentaId }: { cuentaId?: string }) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar..."
-              className="h-8 w-36 rounded-md border border-input bg-background pl-7 pr-2 text-xs outline-none focus:border-ring"
+              className="h-9 w-40 rounded-xl border border-input bg-background pl-7 pr-3 text-sm outline-none focus:border-ring"
             />
           </div>
           <Button size="sm" className="gap-1" onClick={() => setShowNew(true)}>

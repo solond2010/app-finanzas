@@ -27,11 +27,12 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
   )
 
   const savingsRate = ingresos > 0 ? Math.round((neto / ingresos) * 100) : 0
+  const statClass = "rounded-2xl border border-border/60 bg-card/95 p-4 shadow-sm"
 
   return (
     <>
-      <div className="col-span-full grid grid-cols-4 gap-4">
-        <div className="rounded-xl border bg-card p-4">
+      <div className="col-span-full grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className={statClass}>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
             <Wallet className="h-3.5 w-3.5" />
             Patrimonio Neto
@@ -40,7 +41,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
           <p className="text-xs text-muted-foreground mt-1">{state.accounts.length} cuentas</p>
         </div>
 
-        <div className="rounded-xl border bg-card p-4">
+        <div className={statClass}>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
             <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
             Ingresos del mes
@@ -49,7 +50,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
           <p className="text-xs text-muted-foreground mt-1">Últimos 30 días</p>
         </div>
 
-        <div className="rounded-xl border bg-card p-4">
+        <div className={statClass}>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
             <TrendingDown className="h-3.5 w-3.5 text-red-500" />
             Gastos del mes
@@ -62,7 +63,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-4">
+        <div className={statClass}>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
             <Target className="h-3.5 w-3.5" />
             Tasa de ahorro
@@ -76,7 +77,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
         </div>
       </div>
 
-      <Card className="col-span-full md:col-span-7">
+      <Card className="col-span-full md:col-span-7 border-border/60 bg-card/95 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold">Evolución Mensual</CardTitle>
         </CardHeader>
@@ -100,7 +101,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
         </CardContent>
       </Card>
 
-      <Card className="col-span-full md:col-span-5">
+      <Card className="col-span-full md:col-span-5 border-border/60 bg-card/95 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold">Resumen del Mes</CardTitle>
         </CardHeader>

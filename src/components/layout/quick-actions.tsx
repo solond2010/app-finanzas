@@ -31,15 +31,26 @@ const typeBadge: Record<string, { label: string; color: string }> = {
 function AccountSelectItem({ account, showBalance = true }: { account: Account; showBalance?: boolean }) {
   const badge = typeBadge[account.tipo]
   return (
-    <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-      <div className="flex min-w-0 flex-col">
-        <span className="text-sm font-medium leading-tight">{account.nombre}</span>
-        <span className={`text-xs leading-tight ${badge?.color ?? "text-muted-foreground"}`}>
-          {badge?.label}{account.banco ? ` · ${account.banco}` : ""}
-        </span>
+    <div className="flex w-full items-center gap-3">
+      <div
+        className="flex size-10 shrink-0 items-center justify-center rounded-xl text-xs font-semibold text-white shadow-sm"
+        style={{ backgroundColor: account.color }}
+      >
+        {account.nombre.slice(0, 2).toUpperCase()}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-[15px] font-semibold leading-tight">{account.nombre}</span>
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${badge?.color ?? "bg-muted text-muted-foreground"}`}>
+            {badge?.label}
+          </span>
+        </div>
+        <p className="truncate text-xs leading-tight text-muted-foreground">
+          {account.banco || "Sin banco"}
+        </p>
       </div>
       {showBalance && (
-        <span className="text-sm font-semibold tabular-nums whitespace-nowrap justify-self-end">
+        <span className="text-sm font-semibold tabular-nums whitespace-nowrap text-foreground/90">
           {account.saldo.toLocaleString("es-ES")}€
         </span>
       )}
@@ -94,12 +105,12 @@ function TransactionQuickForm({
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-foreground">Cuenta</label>
         <Select value={cuentaId} onValueChange={(v) => v && setCuentaId(v)}>
-          <SelectTrigger className="h-12 text-sm">
+          <SelectTrigger className="h-12 w-full text-sm">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="w-[28rem] max-w-[calc(100vw-2rem)]">
+          <SelectContent className="w-[28rem] max-w-[calc(100vw-2rem)] p-2">
             {accounts.map((a) => (
-              <SelectItem key={a.id} value={a.id}>
+              <SelectItem key={a.id} value={a.id} className="py-0">
                 <AccountSelectItem account={a} />
               </SelectItem>
             ))}
@@ -121,10 +132,10 @@ function TransactionQuickForm({
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-foreground">Categoría</label>
         <Select value={categoria} onValueChange={(v) => v && setCategoria(v)}>
-          <SelectTrigger className="h-12 text-sm">
+          <SelectTrigger className="h-12 w-full text-sm">
             <SelectValue placeholder="Seleccionar categoría" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="p-2">
             {categories.map((c) => (
               <SelectItem key={c} value={c} className="py-2.5 text-sm">{c}</SelectItem>
             ))}
@@ -184,12 +195,12 @@ function TransferForm({
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-foreground">Desde (origen)</label>
         <Select value={origenId} onValueChange={(v) => v && setOrigenId(v)}>
-          <SelectTrigger className="h-12 text-sm">
+          <SelectTrigger className="h-12 w-full text-sm">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="w-[28rem] max-w-[calc(100vw-2rem)]">
+          <SelectContent className="w-[28rem] max-w-[calc(100vw-2rem)] p-2">
             {accounts.map((a) => (
-              <SelectItem key={a.id} value={a.id}>
+              <SelectItem key={a.id} value={a.id} className="py-0">
                 <AccountSelectItem account={a} />
               </SelectItem>
             ))}
@@ -206,12 +217,12 @@ function TransferForm({
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-foreground">Hacia (destino)</label>
         <Select value={destinoId} onValueChange={(v) => v && setDestinoId(v)}>
-          <SelectTrigger className="h-12 text-sm">
+          <SelectTrigger className="h-12 w-full text-sm">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="min-w-[var(--anchor-width)]">
+          <SelectContent className="min-w-[var(--anchor-width)] p-2">
             {accounts.filter((a) => a.id !== origenId).map((a) => (
-              <SelectItem key={a.id} value={a.id}>
+              <SelectItem key={a.id} value={a.id} className="py-0">
                 <AccountSelectItem account={a} />
               </SelectItem>
             ))}

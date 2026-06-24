@@ -99,8 +99,8 @@ export function SinkingFundsGrid() {
   const [showNew, setShowNew] = useState(false)
 
   return (
-    <Card className="col-span-full">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className="col-span-full border-border/60 bg-card/95 shadow-sm">
+      <CardHeader className="flex flex-col gap-3 space-y-0 pb-2 lg:flex-row lg:items-center lg:justify-between">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <PiggyBank className="h-5 w-5 text-amber-500" />
           Metas de Ahorro
@@ -137,7 +137,7 @@ export function SinkingFundsGrid() {
               const account = state.accounts.find((a) => a.id === fund.cuenta_id)
 
               return (
-                <div key={fund.id} className="rounded-xl border bg-card p-5 space-y-3 group relative">
+                <div key={fund.id} className="group relative rounded-2xl border border-border/60 bg-background/70 p-5 space-y-3 shadow-sm">
                   <button
                     className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => { dispatch({ type: "DELETE_SINKING_FUND", payload: fund.id }); toast("Meta eliminada", "success") }}

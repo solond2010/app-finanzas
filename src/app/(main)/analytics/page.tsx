@@ -59,32 +59,35 @@ export default function AnalyticsPage() {
     { name: "Necesidades", value: necesidades },
     { name: "Deseos", value: deseos },
   ]
+  const panelClass = "border-border/60 bg-card/95 shadow-sm"
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Analíticas</h1>
-          <p className="text-muted-foreground">Visualización detallada de tus finanzas</p>
+      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/30 p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-2xl space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight">Analíticas</h1>
+          <p className="text-sm text-muted-foreground">Visualización clara de tus ingresos, gastos y patrimonio.</p>
         </div>
-        {hasBackup && (
-          <Button variant="outline" size="sm" className="gap-2 text-emerald-500 border-emerald-500/30" onClick={restoreMyData}>
-            Restaurar mis datos
+        <div className="flex flex-wrap gap-2">
+          {hasBackup && (
+            <Button variant="outline" size="sm" className="gap-2 text-emerald-600 border-emerald-500/30" onClick={restoreMyData}>
+              Restaurar mis datos
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="gap-2" onClick={loadSampleData}>
+            <FlaskConical className="h-4 w-4" />
+            Cargar datos de ejemplo
           </Button>
-        )}
-        <Button variant="outline" size="sm" className="gap-2" onClick={loadSampleData}>
-          <FlaskConical className="h-4 w-4" />
-          Cargar datos de ejemplo
-        </Button>
-        {hasData && (
-          <Button variant="ghost" size="sm" className="gap-2 text-destructive" onClick={() => window.confirm("¿Borrar todos los datos?") && dispatch({ type: "RESET" })}>
-            Limpiar todo
-          </Button>
-        )}
+          {hasData && (
+            <Button variant="ghost" size="sm" className="gap-2 text-destructive" onClick={() => window.confirm("¿Borrar todos los datos?") && dispatch({ type: "RESET" })}>
+              Limpiar todo
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-12 gap-6">
-        <Card className="col-span-full">
+        <Card className={`col-span-full ${panelClass}`}>
           <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-emerald-500" />
@@ -109,7 +112,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-full md:col-span-5">
+        <Card className={`col-span-full md:col-span-5 ${panelClass}`}>
           <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <Wallet className="h-4 w-4" />
@@ -150,7 +153,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-full md:col-span-7">
+        <Card className={`col-span-full md:col-span-7 ${panelClass}`}>
           <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -175,7 +178,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-full md:col-span-4">
+        <Card className={`col-span-full md:col-span-4 ${panelClass}`}>
           <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <PieChart className="h-4 w-4" />
@@ -204,7 +207,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-full md:col-span-8">
+        <Card className={`col-span-full md:col-span-8 ${panelClass}`}>
           <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -220,7 +223,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-full">
+        <Card className={`col-span-full ${panelClass}`}>
           <CardHeader>
             <CardTitle className="text-lg font-semibold">Regla 50/30/20</CardTitle>
           </CardHeader>

@@ -26,34 +26,40 @@ export default function CuentasPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Cuentas</h1>
-        <p className="text-muted-foreground">Todas tus cuentas bancarias y su saldo</p>
+      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/30 p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Cuentas</h1>
+          <p className="text-sm text-muted-foreground">Todas tus cuentas, saldos y progreso de objetivo.</p>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-background/80 px-4 py-3 shadow-sm backdrop-blur-sm">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Patrimonio neto</p>
+          <p className="text-2xl font-bold tabular-nums">{netWorth.toLocaleString("es-ES")}€</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {state.accounts.map((account) => (
           <div
             key={account.id}
-            className="rounded-xl border bg-card p-6 space-y-4 transition-all hover:shadow-md"
+            className="overflow-hidden rounded-3xl border border-border/60 bg-card/95 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="rounded-full p-2.5" style={{ backgroundColor: `${account.color}20` }}>
+                <div className="rounded-2xl p-2.5" style={{ backgroundColor: `${account.color}20` }}>
                   <Wallet className="h-5 w-5" style={{ color: account.color }} />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{account.nombre}</h3>
+                  <h3 className="font-semibold text-base">{account.nombre}</h3>
                   <p className="text-xs text-muted-foreground">{account.banco || "Sin banco"}</p>
                 </div>
               </div>
-              <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 {typeLabels[account.tipo]}
               </span>
             </div>
 
             <div>
-              <p className="text-3xl font-bold tabular-nums">
+              <p className="text-3xl font-bold tabular-nums tracking-tight">
                 {account.saldo.toLocaleString("es-ES")}€
               </p>
             </div>
@@ -64,7 +70,7 @@ export default function CuentasPage() {
                   <span>Objetivo: {account.objetivo.toLocaleString("es-ES")}€</span>
                   <span>{Math.round((account.saldo / account.objetivo) * 100)}%</span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{
@@ -79,11 +85,11 @@ export default function CuentasPage() {
         ))}
       </div>
 
-      <Card>
+      <Card className="border-border/60 bg-card/95 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Resumen de Patrimonio</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>

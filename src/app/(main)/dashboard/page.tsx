@@ -28,18 +28,18 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/30 p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Resumen financiero general</p>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Resumen financiero general y evolución reciente.</p>
         </div>
         {showSelector && (
-          <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5">
-            <button onClick={() => setMonthOffset((p) => p + 1)} className="p-0.5 hover:text-foreground text-muted-foreground">
+          <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/80 px-3 py-2 shadow-sm backdrop-blur-sm">
+            <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-sm font-medium min-w-[140px] text-center capitalize">{formatMonth(selectedDate)}</span>
-            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="p-0.5 hover:text-foreground text-muted-foreground">
+            <span className="min-w-[160px] text-center text-sm font-medium capitalize">{formatMonth(selectedDate)}</span>
+            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
