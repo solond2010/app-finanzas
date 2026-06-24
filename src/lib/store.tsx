@@ -213,11 +213,14 @@ async function loadFromSupabase(): Promise<FinanceState | null> {
 
 async function syncToSupabase(state: FinanceState) {
   try {
-    await Promise.all([
-      supabase.from("accounts").upsert(state.accounts.map(unformatAccount)),
-      supabase.from("transactions").upsert(state.transactions.map(unformatTransaction)),
-      supabase.from("sinking_funds").upsert(state.sinkingFunds),
-    ])
+    const { error: accErr } = await supabase.from("accounts").upsert(state.accounts.map(unformatAccount))
+    if (accErr) throw accErr
+
+    const { error: txErr } = await supabase.from("transactions").upsert(state.transactions.map(unformatTransaction))
+    if (txErr) throw txErr
+
+    const { error: sfErr } = await supabase.from("sinking_funds").upsert(state.sinkingFunds)
+    if (sfErr) throw sfErr
   } catch (e) {
     console.error("Supabase sync failed, data safe in localStorage:", e)
   }

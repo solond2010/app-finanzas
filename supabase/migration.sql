@@ -42,3 +42,8 @@ create table if not exists sinking_funds (
 create index if not exists idx_transactions_cuenta_id on transactions(cuenta_id);
 create index if not exists idx_transactions_fecha on transactions(fecha);
 create index if not exists idx_transactions_tipo on transactions(tipo);
+
+-- Desactivar RLS para que el anon key pueda leer/escribir sin autenticación
+alter table accounts disable row level security;
+alter table transactions disable row level security;
+alter table sinking_funds disable row level security;
