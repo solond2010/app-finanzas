@@ -22,6 +22,7 @@ import {
 import { useFinance, type SinkingFund, generateId } from "@/lib/store"
 import { calculateMonthlySaving } from "@/lib/calculations"
 import { PiggyBank, Plus, Pencil, Trash2, Target } from "lucide-react"
+import { currencySymbol } from "@/lib/currency"
 
 function SinkingFundForm({
   fund,
@@ -135,6 +136,7 @@ export function SinkingFundsGrid() {
               const progress = Math.min(Math.round((fund.ahorrado_actual / fund.cantidad_objetivo) * 100), 100)
               const monthly = calculateMonthlySaving(fund.cantidad_objetivo, fund.ahorrado_actual, fund.fecha_limite)
               const account = state.accounts.find((a) => a.id === fund.cuenta_id)
+              const symbol = currencySymbol(account?.currency ?? "EUR")
 
               return (
                 <div key={fund.id} className="group relative rounded-2xl border border-border/60 bg-background/70 p-5 space-y-3 shadow-sm">
@@ -155,7 +157,7 @@ export function SinkingFundsGrid() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Progreso</span>
                       <span className="font-medium tabular-nums">
-                        {fund.ahorrado_actual.toLocaleString("es-ES")}€ / {fund.cantidad_objetivo.toLocaleString("es-ES")}€
+                        {fund.ahorrado_actual.toLocaleString("es-ES")} {symbol} / {fund.cantidad_objetivo.toLocaleString("es-ES")} {symbol}
                       </span>
                     </div>
                     <Progress value={progress} className="h-2" />
@@ -171,7 +173,7 @@ export function SinkingFundsGrid() {
                     {account && <p>Cuenta: {account.nombre}</p>}
                     {monthly > 0 && (
                       <p className="font-medium text-foreground">
-                        Ahorro necesario: <span className="tabular-nums">{monthly.toLocaleString("es-ES")}€/mes</span>
+                        Ahorro necesario: <span className="tabular-nums">{monthly.toLocaleString("es-ES")} {symbol}/mes</span>
                       </p>
                     )}
                   </div>

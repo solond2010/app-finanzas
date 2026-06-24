@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Wallet } from "lucide-react"
+import { formatMoney, currencySymbol } from "@/lib/currency"
 
 const typeLabels: Record<string, string> = {
   emergencia: "Emergencia",
@@ -60,14 +61,14 @@ export default function CuentasPage() {
 
             <div>
               <p className="text-3xl font-bold tabular-nums tracking-tight">
-                {account.saldo.toLocaleString("es-ES")}€
+                {formatMoney(account.saldo, account.currency)}
               </p>
             </div>
 
             {account.objetivo && (
               <div className="space-y-1">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Objetivo: {account.objetivo.toLocaleString("es-ES")}€</span>
+                  <span>Objetivo: {account.objetivo.toLocaleString("es-ES")} {currencySymbol(account.currency)}</span>
                   <span>{Math.round((account.saldo / account.objetivo) * 100)}%</span>
                 </div>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -106,7 +107,7 @@ export default function CuentasPage() {
                   <TableCell className="text-muted-foreground">{typeLabels[a.tipo]}</TableCell>
                   <TableCell className="text-muted-foreground">{a.banco || "—"}</TableCell>
                   <TableCell className="text-right tabular-nums font-medium">
-                    {a.saldo.toLocaleString("es-ES")}€
+                    {formatMoney(a.saldo, a.currency)}
                   </TableCell>
                 </TableRow>
               ))}

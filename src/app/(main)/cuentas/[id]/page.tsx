@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useState } from "react"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
+import { currencySymbol, formatMoney } from "@/lib/currency"
 
 export default function AccountDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -48,7 +49,7 @@ export default function AccountDetailPage() {
       <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/30 p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{account.nombre}</h1>
-          <p className="text-sm text-muted-foreground">{account.banco || "Sin banco"} · {tipoLabel(account.tipo)}</p>
+          <p className="text-sm text-muted-foreground">{account.banco || "Sin banco"} · {tipoLabel(account.tipo)} · {account.currency}</p>
         </div>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditing(true)}>
           <Pencil className="h-3.5 w-3.5" /> Editar
@@ -59,19 +60,19 @@ export default function AccountDetailPage() {
         <Card className="border-border/60 bg-card/95 shadow-sm">
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Saldo actual</p>
-            <p className={`text-xl font-bold ${balanceColor}`}>{account.saldo.toLocaleString("es-ES")}€</p>
+            <p className={`text-xl font-bold ${balanceColor}`}>{formatMoney(account.saldo, account.currency)}</p>
           </CardContent>
         </Card>
         <Card className="border-border/60 bg-card/95 shadow-sm">
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Total ingresos</p>
-            <p className="text-xl font-bold text-emerald-500">+{totalIngresos.toLocaleString("es-ES")}€</p>
+            <p className="text-xl font-bold text-emerald-500">+{totalIngresos.toLocaleString("es-ES")} {currencySymbol(account.currency)}</p>
           </CardContent>
         </Card>
         <Card className="border-border/60 bg-card/95 shadow-sm">
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Total gastos</p>
-            <p className="text-xl font-bold text-red-500">-{totalGastos.toLocaleString("es-ES")}€</p>
+            <p className="text-xl font-bold text-red-500">-{totalGastos.toLocaleString("es-ES")} {currencySymbol(account.currency)}</p>
           </CardContent>
         </Card>
       </div>
@@ -80,7 +81,7 @@ export default function AccountDetailPage() {
         <div className="space-y-1.5">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Progreso hacia objetivo</span>
-            <span className="font-medium">{account.saldo.toLocaleString("es-ES")}€ / {account.objetivo!.toLocaleString("es-ES")}€</span>
+            <span className="font-medium">{account.saldo.toLocaleString("es-ES")} {currencySymbol(account.currency)} / {account.objetivo!.toLocaleString("es-ES")} {currencySymbol(account.currency)}</span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>

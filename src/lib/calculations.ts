@@ -1,4 +1,5 @@
 import type { Account, Transaction, MonthlySummary, NetWorthSnapshot } from "./store"
+import { convertToEur } from "./currency"
 
 export function getLastQuarterTransactions(transactions: Transaction[]) {
   const now = new Date()
@@ -71,7 +72,7 @@ export function getCurrentMonthNeedsVsWants(transactions: Transaction[]) {
 }
 
 export function getNetWorth(accounts: Account[]): number {
-  return accounts.reduce((sum, a) => sum + a.saldo, 0)
+  return accounts.reduce((sum, a) => sum + convertToEur(a.saldo, a.currency), 0)
 }
 
 export function getCategoryBreakdown(transactions: Transaction[]) {

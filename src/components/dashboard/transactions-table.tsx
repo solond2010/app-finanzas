@@ -29,6 +29,7 @@ import {
 import { useFinance, type Transaction, generateId } from "@/lib/store"
 import { Filter, Plus, Pencil, Trash2, Search } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
+import { formatMoney } from "@/lib/currency"
 
 const CATEGORY_COLORS: Record<string, string> = {
   Salario: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
@@ -303,7 +304,7 @@ export function TransactionsTable({ cuentaId }: { cuentaId?: string }) {
                       </span>
                     </TableCell>
                     <TableCell className={`text-right tabular-nums font-medium ${t.tipo === "ingreso" ? "text-emerald-500" : ""}`}>
-                      {t.tipo === "ingreso" ? "+" : "-"}{t.monto.toLocaleString("es-ES")}€
+                      {t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, account?.currency ?? "EUR")}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">

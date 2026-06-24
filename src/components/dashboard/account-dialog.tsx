@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CURRENCY_OPTIONS, currencySymbol } from "@/lib/currency"
 
 const COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#14b8a6", "#f97316"]
 
@@ -26,6 +27,7 @@ export function AccountDialog({
   const [tipo, setTipo] = useState<Account["tipo"]>(account?.tipo ?? "efectivo")
   const [banco, setBanco] = useState(account?.banco ?? "")
   const [saldo, setSaldo] = useState(String(account?.saldo ?? 0))
+  const [currency, setCurrency] = useState<Account["currency"]>(account?.currency ?? "EUR")
   const [objetivo, setObjetivo] = useState(String(account?.objetivo ?? ""))
   const [limiteMensual, setLimiteMensual] = useState(String(account?.limite_mensual ?? ""))
   const [color, setColor] = useState(account?.color ?? COLORS[0])
@@ -36,6 +38,7 @@ export function AccountDialog({
     setTipo(account?.tipo ?? "efectivo")
     setBanco(account?.banco ?? "")
     setSaldo(String(account?.saldo ?? 0))
+    setCurrency(account?.currency ?? "EUR")
     setObjetivo(String(account?.objetivo ?? ""))
     setLimiteMensual(String(account?.limite_mensual ?? ""))
     setColor(account?.color ?? COLORS[0])
@@ -49,6 +52,7 @@ export function AccountDialog({
       tipo,
       banco,
       saldo: Number(saldo) || 0,
+      currency,
       objetivo: objetivo ? Number(objetivo) : null,
       limite_mensual: limiteMensual ? Number(limiteMensual) : null,
       color,
@@ -85,11 +89,26 @@ export function AccountDialog({
               <Input value={banco} onChange={(e) => setBanco(e.target.value)} placeholder="Ej: Trade Republic" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Saldo (€)</label>
+              <label className="text-xs text-muted-foreground">Saldo ({currencySymbol(currency)})</label>
               <Input type="number" value={saldo} onChange={(e) => setSaldo(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Objetivo (€)</label>
+              <label className="text-xs text-muted-foreground">Divisa</label>
+              <Select value={currency} onValueChange={(v) => setCurrency(v as Account["currency"])}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="p-2">
+                  {CURRENCY_OPTIONS.map((option) => (
+                    <SelectItem key={option.code} value={option.code}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Objetivo ({currencySymbol(currency)})</label>
               <Input type="number" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} placeholder="Sin objetivo" />
             </div>
             <div className="space-y-1.5">

@@ -8,6 +8,7 @@ import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AccountDialog } from "./account-dialog"
 import { useToast } from "@/components/ui/toast"
+import { currencySymbol, formatMoney } from "@/lib/currency"
 
 const typeConfig = {
   emergencia: { label: "Emergencia", gradient: "from-emerald-500/20 to-emerald-600/5" },
@@ -56,7 +57,7 @@ export function AccountCards() {
                 </button>
               </div>
               <div>
-                <p className="text-2xl font-bold tracking-tight tabular-nums">{account.saldo.toLocaleString("es-ES")}€</p>
+                <p className="text-2xl font-bold tracking-tight tabular-nums">{formatMoney(account.saldo, account.currency)}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {account.nombre}{account.banco ? <span className="opacity-60"> · {account.banco}</span> : null}
                 </p>
@@ -67,7 +68,7 @@ export function AccountCards() {
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Presupuesto mensual</span>
                     <span className={budget.progreso >= 100 ? "text-red-500 font-medium" : "text-muted-foreground"}>
-                      {budget.gastado.toLocaleString("es-ES")}€ / {budget.limite.toLocaleString("es-ES")}€
+                      {budget.gastado.toLocaleString("es-ES")} {currencySymbol(account.currency)} / {budget.limite.toLocaleString("es-ES")} {currencySymbol(account.currency)}
                     </span>
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
@@ -78,8 +79,8 @@ export function AccountCards() {
                   </div>
                   <p className={`text-[10px] ${budget.restante >= 0 ? "text-muted-foreground" : "text-red-500 font-medium"}`}>
                     {budget.restante >= 0
-                      ? `Te quedan ${budget.restante.toLocaleString("es-ES")}€`
-                      : `Te has pasado por ${Math.abs(budget.restante).toLocaleString("es-ES")}€`}
+                      ? `Te quedan ${budget.restante.toLocaleString("es-ES")} ${currencySymbol(account.currency)}`
+                      : `Te has pasado por ${Math.abs(budget.restante).toLocaleString("es-ES")} ${currencySymbol(account.currency)}`}
                   </p>
                 </div>
               )}

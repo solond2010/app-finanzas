@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Account, generateId } from "@/lib/store"
+import { formatMoney } from "@/lib/currency"
 
 const typeBadge: Record<string, { label: string; color: string }> = {
   emergencia: { label: "Emergencia", color: "text-emerald-500" },
@@ -51,7 +52,7 @@ function AccountSelectItem({ account, showBalance = true }: { account: Account; 
       </div>
       {showBalance && (
         <span className="text-sm font-semibold tabular-nums whitespace-nowrap text-foreground/90">
-          {account.saldo.toLocaleString("es-ES")}€
+          {formatMoney(account.saldo, account.currency)}
         </span>
       )}
     </div>

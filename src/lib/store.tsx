@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useReducer, useEffect, useRef, useState, type ReactNode } from "react"
 import { supabase } from "./supabase"
+import { type CurrencyCode } from "./currency"
 
 export interface Account {
   id: string
@@ -9,6 +10,7 @@ export interface Account {
   tipo: "emergencia" | "ahorro" | "inversion" | "efectivo" | "gastos"
   banco: string
   saldo: number
+  currency: CurrencyCode
   objetivo: number | null
   limite_mensual: number | null
   color: string
@@ -77,11 +79,11 @@ const DEFAULT_CATEGORIES = ["Salario", "Freelance", "Alquiler", "Supermercado", 
 
 const defaultState: FinanceState = {
   accounts: [
-    { id: "acc_emergency", nombre: "Emergencias", tipo: "emergencia", banco: "", saldo: 0, objetivo: null, limite_mensual: null, color: "#10b981" },
-    { id: "acc_ahorro", nombre: "Ahorro", tipo: "ahorro", banco: "", saldo: 0, objetivo: null, limite_mensual: null, color: "#3b82f6" },
-    { id: "acc_inversion", nombre: "Inversión", tipo: "inversion", banco: "", saldo: 0, objetivo: null, limite_mensual: null, color: "#8b5cf6" },
-    { id: "acc_principal", nombre: "Principal", tipo: "efectivo", banco: "", saldo: 0, objetivo: null, limite_mensual: null, color: "#f59e0b" },
-    { id: "acc_gastos", nombre: "Gastos Mes", tipo: "gastos", banco: "", saldo: 0, objetivo: null, limite_mensual: null, color: "#ef4444" },
+    { id: "acc_emergency", nombre: "Emergencias", tipo: "emergencia", banco: "", saldo: 0, currency: "EUR", objetivo: null, limite_mensual: null, color: "#10b981" },
+    { id: "acc_ahorro", nombre: "Ahorro", tipo: "ahorro", banco: "", saldo: 0, currency: "EUR", objetivo: null, limite_mensual: null, color: "#3b82f6" },
+    { id: "acc_inversion", nombre: "Inversión", tipo: "inversion", banco: "", saldo: 0, currency: "EUR", objetivo: null, limite_mensual: null, color: "#8b5cf6" },
+    { id: "acc_principal", nombre: "Principal", tipo: "efectivo", banco: "", saldo: 0, currency: "EUR", objetivo: null, limite_mensual: null, color: "#f59e0b" },
+    { id: "acc_gastos", nombre: "Gastos Mes", tipo: "gastos", banco: "", saldo: 0, currency: "EUR", objetivo: null, limite_mensual: null, color: "#ef4444" },
   ],
   transactions: [],
   sinkingFunds: [],
@@ -94,7 +96,7 @@ function loadState(): FinanceState {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved) as FinanceState
-      return { ...defaultState, ...parsed, categories: parsed.categories ?? defaultState.categories }
+      return normalizeFinanceState({ ...defaultState, ...parsed, categories: parsed.categories ?? defaultState.categories })
     }
   } catch {}
   return defaultState
@@ -103,7 +105,7 @@ function loadState(): FinanceState {
 function reducer(state: FinanceState, action: Action): FinanceState {
   switch (action.type) {
     case "SET_STATE":
-      return action.payload
+      return normalizeFinanceState(action.payload)
     case "MERGE_SAMPLE":
       return {
         accounts: [...state.accounts, ...action.payload.accounts.filter((a: Account) => !state.accounts.some((ea) => ea.id === a.id))],
@@ -302,7 +304,14 @@ async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sin
 }
 
 function formatAccount(a: any): Account {
-  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco ?? "", saldo: Number(a.saldo), objetivo: a.objetivo ? Number(a.objetivo) : null, limite_mensual: a.limite_mensual ? Number(a.limite_mensual) : null, color: a.color ?? "#3b82f6" }
+  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco ?? "", saldo: Number(a.saldo), currency: a.currency ?? "EUR", objetivo: a.objetivo ? Number(a.objetivo) : null, limite_mensual: a.limite_mensual ? Number(a.limite_mensual) : null, color: a.color ?? "#3b82f6" }
+}
+
+function normalizeFinanceState(state: FinanceState): FinanceState {
+  return {
+    ...state,
+    accounts: state.accounts.map((account) => ({ ...account, currency: account.currency ?? "EUR" })),
+  }
 }
 
 function formatTransaction(t: any): Transaction {
@@ -314,7 +323,7 @@ function formatSinkingFund(s: any): SinkingFund {
 }
 
 function unformatAccount(a: Account): any {
-  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco, saldo: a.saldo, objetivo: a.objetivo, limite_mensual: a.limite_mensual, color: a.color }
+  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco, saldo: a.saldo, currency: a.currency, objetivo: a.objetivo, limite_mensual: a.limite_mensual, color: a.color }
 }
 
 function unformatTransaction(t: Transaction): any {
@@ -359,11 +368,11 @@ export function clearBackup() {
 
 export function generateSampleData(): FinanceState {
   const sampleAccounts: Account[] = [
-    { id: "s_acc_emergency", nombre: "Emergencias", tipo: "emergencia", banco: "Trade Republic", saldo: 8250, objetivo: 15000, limite_mensual: null, color: "#10b981" },
-    { id: "s_acc_ahorro", nombre: "Ahorro", tipo: "ahorro", banco: "MyInvestor", saldo: 3400, objetivo: 20000, limite_mensual: null, color: "#3b82f6" },
-    { id: "s_acc_inversion", nombre: "Inversión", tipo: "inversion", banco: "Interactive Brokers", saldo: 12750, objetivo: null, limite_mensual: null, color: "#8b5cf6" },
-    { id: "s_acc_principal", nombre: "Principal", tipo: "efectivo", banco: "BBVA", saldo: 2200, objetivo: null, limite_mensual: null, color: "#f59e0b" },
-    { id: "s_acc_gastos", nombre: "Gastos Mes", tipo: "gastos", banco: "Revolut", saldo: 500, objetivo: null, limite_mensual: 2000, color: "#ef4444" },
+    { id: "s_acc_emergency", nombre: "Emergencias", tipo: "emergencia", banco: "Trade Republic", saldo: 8250, currency: "EUR", objetivo: 15000, limite_mensual: null, color: "#10b981" },
+    { id: "s_acc_ahorro", nombre: "Ahorro", tipo: "ahorro", banco: "MyInvestor", saldo: 3400, currency: "USD", objetivo: 20000, limite_mensual: null, color: "#3b82f6" },
+    { id: "s_acc_inversion", nombre: "Inversión", tipo: "inversion", banco: "Interactive Brokers", saldo: 12750, currency: "CHF", objetivo: null, limite_mensual: null, color: "#8b5cf6" },
+    { id: "s_acc_principal", nombre: "Principal", tipo: "efectivo", banco: "BBVA", saldo: 2200, currency: "EUR", objetivo: null, limite_mensual: null, color: "#f59e0b" },
+    { id: "s_acc_gastos", nombre: "Gastos Mes", tipo: "gastos", banco: "Revolut", saldo: 500, currency: "EUR", objetivo: null, limite_mensual: 2000, color: "#ef4444" },
   ]
 
   const months = [0, 1, 2, 3, 4, 5]
