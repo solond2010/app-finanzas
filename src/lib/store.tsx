@@ -115,8 +115,24 @@ function reducer(state: FinanceState, action: Action): FinanceState {
       }
     case "RESET":
       return defaultState
-    case "ADD_ACCOUNT":
-      return { ...state, accounts: [...state.accounts, action.payload] }
+    case "ADD_ACCOUNT": {
+      const newAccount = { ...action.payload }
+      const newTransactions = [...state.transactions]
+      if (newAccount.saldo !== 0) {
+        newTransactions.push({
+          id: `init_${newAccount.id}`,
+          cuenta_id: newAccount.id,
+          monto: newAccount.saldo,
+          fecha: new Date().toISOString().split("T")[0],
+          tipo: "ingreso",
+          categoria: "Saldo inicial",
+          es_necesidad: false,
+          descripcion: `Saldo inicial de ${newAccount.nombre}`,
+          tags: [],
+        })
+      }
+      return { ...state, accounts: [...state.accounts, newAccount], transactions: newTransactions }
+    }
     case "UPDATE_ACCOUNT":
       return { ...state, accounts: state.accounts.map((a) => (a.id === action.payload.id ? action.payload : a)) }
     case "DELETE_ACCOUNT":
@@ -153,6 +169,10 @@ function reducer(state: FinanceState, action: Action): FinanceState {
   }
 }
 
+function isInitialTx(t: Transaction) {
+  return t.categoria === "Saldo inicial" && t.id.startsWith("init_")
+}
+
 function signedAmount(t: Transaction): number {
   return t.tipo === "ingreso" ? t.monto : -t.monto
 }
@@ -160,6 +180,7 @@ function signedAmount(t: Transaction): number {
 function updateTransactionWithBalance(state: FinanceState, updated: Transaction): FinanceState {
   const prev = state.transactions.find((t) => t.id === updated.id)
   if (!prev) return { ...state, transactions: state.transactions.map((t) => (t.id === updated.id ? updated : t)) }
+  if (isInitialTx(prev)) return { ...state, transactions: state.transactions.map((t) => (t.id === updated.id ? updated : t)) }
 
   const withPrevReverted = state.accounts.map((a) =>
     a.id === prev.cuenta_id ? { ...a, saldo: a.saldo - signedAmount(prev) } : a
@@ -179,6 +200,7 @@ function updateTransactionWithBalance(state: FinanceState, updated: Transaction)
 function deleteTransactionWithBalance(state: FinanceState, id: string): FinanceState {
   const deleted = state.transactions.find((t) => t.id === id)
   if (!deleted) return { ...state, transactions: state.transactions.filter((t) => t.id !== id) }
+  if (isInitialTx(deleted)) return { ...state, transactions: state.transactions.filter((t) => t.id !== id) }
 
   return {
     ...state,
@@ -308,10 +330,30 @@ function formatAccount(a: any): Account {
 }
 
 function normalizeFinanceState(state: FinanceState): FinanceState {
-  return {
-    ...state,
-    accounts: state.accounts.map((account) => ({ ...account, currency: account.currency ?? "EUR" })),
+  const accounts = state.accounts.map((account) => ({ ...account, currency: account.currency ?? "EUR" }))
+  const transactions = [...state.transactions]
+  for (const account of accounts) {
+    if (account.saldo !== 0 && !transactions.some((t) => t.cuenta_id === account.id && t.categoria === "Saldo inicial")) {
+      const ids = transactions.filter((t) => t.cuenta_id === account.id).map((t) => t.id)
+      const hasInitTx = ids.some((id) => typeof id === "string" && id.startsWith(`init_${account.id}`))
+      if (!hasInitTx) {
+        const txDates = transactions.filter((t) => t.cuenta_id === account.id).map((t) => t.fecha).sort()
+        const fecha = txDates.length > 0 ? txDates[0] : new Date().toISOString().split("T")[0]
+        transactions.push({
+          id: `init_${account.id}`,
+          cuenta_id: account.id,
+          monto: account.saldo,
+          fecha,
+          tipo: "ingreso",
+          categoria: "Saldo inicial",
+          es_necesidad: false,
+          descripcion: `Saldo inicial de ${account.nombre}`,
+          tags: [],
+        })
+      }
+    }
   }
+  return { ...state, accounts, transactions }
 }
 
 function formatTransaction(t: any): Transaction {

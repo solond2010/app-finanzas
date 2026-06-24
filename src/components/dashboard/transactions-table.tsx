@@ -241,6 +241,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const sorted = useMemo(
     () =>
       filterTransactionsByMonth(state.transactions, selectedMonth)
+        .filter((t) => !t.id.startsWith("init_"))
         .filter((t) => filterAccount === "all" || t.cuenta_id === filterAccount)
         .filter((t) => !search || t.descripcion.toLowerCase().includes(search.toLowerCase()) || t.categoria.toLowerCase().includes(search.toLowerCase()) || t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())))
         .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()),
