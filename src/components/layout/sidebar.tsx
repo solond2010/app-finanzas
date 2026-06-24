@@ -85,16 +85,19 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-4 space-y-3">
-        <Button variant="outline" className="w-full justify-start gap-2 border-sidebar-border bg-sidebar/70 text-sidebar-foreground hover:bg-sidebar-accent/60" onClick={toggleTheme}>
-          {isDark ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
-          {isDark ? "Modo claro" : "Modo oscuro"}
-        </Button>
-        <div className="rounded-lg border border-sidebar-border bg-sidebar-accent/30 px-3 py-2">
-          <div className={cn("flex items-center gap-2 text-xs font-medium", syncMeta.className)}>
-            {syncMeta.icon}
-            <span>{syncMeta.label}</span>
+      <div className="mt-4 space-y-2">
+        <button
+          onClick={toggleTheme}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <div className="flex size-5 items-center justify-center">
+            {isDark ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
           </div>
+          {isDark ? "Modo claro" : "Modo oscuro"}
+        </button>
+        <div className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium", syncMeta.className)}>
+          {syncMeta.icon}
+          <span>{syncMeta.label}</span>
         </div>
       </div>
     </aside>
