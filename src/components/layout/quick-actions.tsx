@@ -20,8 +20,6 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Account, generateId } from "@/lib/store"
 
-const CATEGORIES = ["Salario", "Alquiler", "Supermercado", "Transporte", "Internet", "Cena", "Spotify", "Ropa", "Ocio", "Gym", "Freelance", "Inversión", "Salud", "Educación", "Otros"]
-
 const typeBadge: Record<string, { label: string; color: string }> = {
   emergencia: { label: "Emergencia", color: "text-emerald-500" },
   ahorro: { label: "Ahorro", color: "text-blue-500" },
@@ -33,15 +31,15 @@ const typeBadge: Record<string, { label: string; color: string }> = {
 function AccountSelectItem({ account, showBalance = true }: { account: Account; showBalance?: boolean }) {
   const badge = typeBadge[account.tipo]
   return (
-    <div className="flex items-center justify-between w-full py-1">
-      <div className="flex flex-col">
-        <span className="text-sm font-medium">{account.nombre}</span>
-        <span className={`text-xs ${badge?.color ?? "text-muted-foreground"}`}>
+    <div className="flex items-center justify-between w-full gap-2">
+      <div className="flex flex-col min-w-0">
+        <span className="text-sm font-medium truncate">{account.nombre}</span>
+        <span className={`text-xs truncate ${badge?.color ?? "text-muted-foreground"}`}>
           {badge?.label}{account.banco ? ` · ${account.banco}` : ""}
         </span>
       </div>
       {showBalance && (
-        <span className="text-sm font-semibold tabular-nums ml-4">
+        <span className="text-sm font-semibold tabular-nums shrink-0">
           {account.saldo.toLocaleString("es-ES")}€
         </span>
       )}
@@ -52,11 +50,13 @@ function AccountSelectItem({ account, showBalance = true }: { account: Account; 
 function TransactionQuickForm({
   defaultTipo,
   accounts,
+  categories,
   onSave,
   onCancel,
 }: {
   defaultTipo: "ingreso" | "gasto"
   accounts: Account[]
+  categories: string[]
   onSave: (t: Transaction) => void
   onCancel: () => void
 }) {
@@ -97,9 +97,9 @@ function TransactionQuickForm({
           <SelectTrigger className="h-12 text-sm">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="min-w-[var(--anchor-width)]">
             {accounts.map((a) => (
-              <SelectItem key={a.id} value={a.id} className="py-2.5">
+              <SelectItem key={a.id} value={a.id}>
                 <AccountSelectItem account={a} />
               </SelectItem>
             ))}
@@ -125,7 +125,7 @@ function TransactionQuickForm({
             <SelectValue placeholder="Seleccionar categoría" />
           </SelectTrigger>
           <SelectContent>
-            {CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <SelectItem key={c} value={c} className="py-2.5 text-sm">{c}</SelectItem>
             ))}
           </SelectContent>
@@ -187,9 +187,9 @@ function TransferForm({
           <SelectTrigger className="h-12 text-sm">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="min-w-[var(--anchor-width)]">
             {accounts.map((a) => (
-              <SelectItem key={a.id} value={a.id} className="py-2.5">
+              <SelectItem key={a.id} value={a.id}>
                 <AccountSelectItem account={a} />
               </SelectItem>
             ))}
@@ -209,9 +209,9 @@ function TransferForm({
           <SelectTrigger className="h-12 text-sm">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="min-w-[var(--anchor-width)]">
             {accounts.filter((a) => a.id !== origenId).map((a) => (
-              <SelectItem key={a.id} value={a.id} className="py-2.5">
+              <SelectItem key={a.id} value={a.id}>
                 <AccountSelectItem account={a} />
               </SelectItem>
             ))}
@@ -263,9 +263,6 @@ export function QuickActionsFAB() {
     const dest = state.accounts.find((a) => a.id === destId)
     if (!source || !dest) return
 
-    dispatch({ type: "UPDATE_ACCOUNT", payload: { ...source, saldo: source.saldo - monto } })
-    dispatch({ type: "UPDATE_ACCOUNT", payload: { ...dest, saldo: dest.saldo + monto } })
-
     const fecha = new Date().toISOString().split("T")[0]
     dispatch({
       type: "ADD_TRANSACTION",
@@ -278,6 +275,20 @@ export function QuickActionsFAB() {
         categoria: "Transferencia",
         es_necesidad: false,
         descripcion: `${descripcion} → ${dest.nombre}`,
+        tags: ["traspaso"],
+      },
+    })
+    dispatch({
+      type: "ADD_TRANSACTION",
+      payload: {
+        id: generateId(),
+        cuenta_id: destId,
+        monto,
+        fecha,
+        tipo: "ingreso",
+        categoria: "Transferencia",
+        es_necesidad: false,
+        descripcion: `${descripcion} ← ${source.nombre}`,
         tags: ["traspaso"],
       },
     })
@@ -331,14 +342,14 @@ export function QuickActionsFAB() {
       <Dialog open={activeModal === "gasto"} onOpenChange={(o) => { if (!o) setActiveModal(null) }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle className="text-lg">Nuevo Gasto</DialogTitle></DialogHeader>
-          <TransactionQuickForm defaultTipo="gasto" accounts={state.accounts} onSave={handleAddTransaction} onCancel={() => setActiveModal(null)} />
+          <TransactionQuickForm defaultTipo="gasto" accounts={state.accounts} categories={state.categories} onSave={handleAddTransaction} onCancel={() => setActiveModal(null)} />
         </DialogContent>
       </Dialog>
 
       <Dialog open={activeModal === "ingreso"} onOpenChange={(o) => { if (!o) setActiveModal(null) }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle className="text-lg">Nuevo Ingreso</DialogTitle></DialogHeader>
-          <TransactionQuickForm defaultTipo="ingreso" accounts={state.accounts} onSave={handleAddTransaction} onCancel={() => setActiveModal(null)} />
+          <TransactionQuickForm defaultTipo="ingreso" accounts={state.accounts} categories={state.categories} onSave={handleAddTransaction} onCancel={() => setActiveModal(null)} />
         </DialogContent>
       </Dialog>
 

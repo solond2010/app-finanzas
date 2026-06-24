@@ -53,6 +53,8 @@ interface FinanceState {
   categories: string[]
 }
 
+type SyncStatus = "idle" | "syncing" | "saved" | "error"
+
 type Action =
   | { type: "SET_STATE"; payload: FinanceState }
   | { type: "ADD_ACCOUNT"; payload: Account }
@@ -116,13 +118,24 @@ function reducer(state: FinanceState, action: Action): FinanceState {
     case "UPDATE_ACCOUNT":
       return { ...state, accounts: state.accounts.map((a) => (a.id === action.payload.id ? action.payload : a)) }
     case "DELETE_ACCOUNT":
-      return { ...state, accounts: state.accounts.filter((a) => a.id !== action.payload) }
+      return {
+        ...state,
+        accounts: state.accounts.filter((a) => a.id !== action.payload),
+        transactions: state.transactions.filter((t) => t.cuenta_id !== action.payload),
+        sinkingFunds: state.sinkingFunds.filter((s) => s.cuenta_id !== action.payload),
+      }
     case "ADD_TRANSACTION":
-      return { ...state, transactions: [...state.transactions, action.payload] }
+      return {
+        ...state,
+        transactions: [...state.transactions, action.payload],
+        accounts: state.accounts.map((a) =>
+          a.id === action.payload.cuenta_id ? { ...a, saldo: a.saldo + signedAmount(action.payload) } : a
+        ),
+      }
     case "UPDATE_TRANSACTION":
-      return { ...state, transactions: state.transactions.map((t) => (t.id === action.payload.id ? action.payload : t)) }
+      return updateTransactionWithBalance(state, action.payload)
     case "DELETE_TRANSACTION":
-      return { ...state, transactions: state.transactions.filter((t) => t.id !== action.payload) }
+      return deleteTransactionWithBalance(state, action.payload)
     case "ADD_SINKING_FUND":
       return { ...state, sinkingFunds: [...state.sinkingFunds, action.payload] }
     case "UPDATE_SINKING_FUND":
@@ -138,10 +151,47 @@ function reducer(state: FinanceState, action: Action): FinanceState {
   }
 }
 
+function signedAmount(t: Transaction): number {
+  return t.tipo === "ingreso" ? t.monto : -t.monto
+}
+
+function updateTransactionWithBalance(state: FinanceState, updated: Transaction): FinanceState {
+  const prev = state.transactions.find((t) => t.id === updated.id)
+  if (!prev) return { ...state, transactions: state.transactions.map((t) => (t.id === updated.id ? updated : t)) }
+
+  const withPrevReverted = state.accounts.map((a) =>
+    a.id === prev.cuenta_id ? { ...a, saldo: a.saldo - signedAmount(prev) } : a
+  )
+
+  const withUpdatedApplied = withPrevReverted.map((a) =>
+    a.id === updated.cuenta_id ? { ...a, saldo: a.saldo + signedAmount(updated) } : a
+  )
+
+  return {
+    ...state,
+    accounts: withUpdatedApplied,
+    transactions: state.transactions.map((t) => (t.id === updated.id ? updated : t)),
+  }
+}
+
+function deleteTransactionWithBalance(state: FinanceState, id: string): FinanceState {
+  const deleted = state.transactions.find((t) => t.id === id)
+  if (!deleted) return { ...state, transactions: state.transactions.filter((t) => t.id !== id) }
+
+  return {
+    ...state,
+    transactions: state.transactions.filter((t) => t.id !== id),
+    accounts: state.accounts.map((a) =>
+      a.id === deleted.cuenta_id ? { ...a, saldo: a.saldo - signedAmount(deleted) } : a
+    ),
+  }
+}
+
 interface FinanceContextValue {
   state: FinanceState
   dispatch: React.Dispatch<Action>
   loading: boolean
+  syncStatus: SyncStatus
 }
 
 const FinanceContext = createContext<FinanceContextValue | null>(null)
@@ -149,6 +199,7 @@ const FinanceContext = createContext<FinanceContextValue | null>(null)
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, defaultState)
   const [loading, setLoading] = useState(true)
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle")
   const loadedRef = useRef(false)
 
   useEffect(() => {
@@ -183,11 +234,22 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     if (!loadedRef.current) return
     if (state !== defaultState) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      let cancelled = false
+      setSyncStatus("syncing")
       syncToSupabase(state)
+        .then(() => {
+          if (!cancelled) setSyncStatus("saved")
+        })
+        .catch(() => {
+          if (!cancelled) setSyncStatus("error")
+        })
+      return () => {
+        cancelled = true
+      }
     }
   }, [state])
 
-  return <FinanceContext.Provider value={{ state, dispatch, loading }}>{children}</FinanceContext.Provider>
+  return <FinanceContext.Provider value={{ state, dispatch, loading, syncStatus }}>{children}</FinanceContext.Provider>
 }
 
 async function loadFromSupabase(): Promise<FinanceState | null> {
@@ -212,18 +274,30 @@ async function loadFromSupabase(): Promise<FinanceState | null> {
 }
 
 async function syncToSupabase(state: FinanceState) {
-  try {
-    const { error: accErr } = await supabase.from("accounts").upsert(state.accounts.map(unformatAccount))
-    if (accErr) throw accErr
+  const { error: accErr } = await supabase.from("accounts").upsert(state.accounts.map(unformatAccount))
+  if (accErr) throw accErr
 
-    const { error: txErr } = await supabase.from("transactions").upsert(state.transactions.map(unformatTransaction))
-    if (txErr) throw txErr
+  const { error: txErr } = await supabase.from("transactions").upsert(state.transactions.map(unformatTransaction))
+  if (txErr) throw txErr
 
-    const { error: sfErr } = await supabase.from("sinking_funds").upsert(state.sinkingFunds.map(unformatSinkingFund))
-    if (sfErr) throw sfErr
-  } catch (e) {
-    console.error("Supabase sync failed, data safe in localStorage:", e)
-  }
+  const { error: sfErr } = await supabase.from("sinking_funds").upsert(state.sinkingFunds.map(unformatSinkingFund))
+  if (sfErr) throw sfErr
+
+  await deleteRemoteMissingRows("transactions", state.transactions.map((t) => t.id))
+  await deleteRemoteMissingRows("sinking_funds", state.sinkingFunds.map((s) => s.id))
+  await deleteRemoteMissingRows("accounts", state.accounts.map((a) => a.id))
+}
+
+async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sinking_funds", localIds: string[]) {
+  const { data, error } = await supabase.from(table).select("id")
+  if (error) throw error
+
+  const remoteIds = (data ?? []).map((row: { id: string }) => row.id)
+  const missing = remoteIds.filter((id) => !localIds.includes(id))
+  if (missing.length === 0) return
+
+  const { error: deleteErr } = await supabase.from(table).delete().in("id", missing)
+  if (deleteErr) throw deleteErr
 }
 
 function formatAccount(a: any): Account {
