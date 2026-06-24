@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { type Account, generateId } from "@/lib/store"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -29,6 +29,17 @@ export function AccountDialog({
   const [objetivo, setObjetivo] = useState(String(account?.objetivo ?? ""))
   const [limiteMensual, setLimiteMensual] = useState(String(account?.limite_mensual ?? ""))
   const [color, setColor] = useState(account?.color ?? COLORS[0])
+
+  useEffect(() => {
+    if (!open) return
+    setNombre(account?.nombre ?? "")
+    setTipo(account?.tipo ?? "efectivo")
+    setBanco(account?.banco ?? "")
+    setSaldo(String(account?.saldo ?? 0))
+    setObjetivo(String(account?.objetivo ?? ""))
+    setLimiteMensual(String(account?.limite_mensual ?? ""))
+    setColor(account?.color ?? COLORS[0])
+  }, [account, open])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

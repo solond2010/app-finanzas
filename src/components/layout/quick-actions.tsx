@@ -31,15 +31,15 @@ const typeBadge: Record<string, { label: string; color: string }> = {
 function AccountSelectItem({ account, showBalance = true }: { account: Account; showBalance?: boolean }) {
   const badge = typeBadge[account.tipo]
   return (
-    <div className="flex items-center justify-between w-full gap-2">
-      <div className="flex flex-col min-w-0">
-        <span className="text-sm font-medium truncate">{account.nombre}</span>
-        <span className={`text-xs truncate ${badge?.color ?? "text-muted-foreground"}`}>
+    <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+      <div className="flex min-w-0 flex-col">
+        <span className="text-sm font-medium leading-tight">{account.nombre}</span>
+        <span className={`text-xs leading-tight ${badge?.color ?? "text-muted-foreground"}`}>
           {badge?.label}{account.banco ? ` · ${account.banco}` : ""}
         </span>
       </div>
       {showBalance && (
-        <span className="text-sm font-semibold tabular-nums shrink-0">
+        <span className="text-sm font-semibold tabular-nums whitespace-nowrap justify-self-end">
           {account.saldo.toLocaleString("es-ES")}€
         </span>
       )}
@@ -97,7 +97,7 @@ function TransactionQuickForm({
           <SelectTrigger className="h-12 text-sm">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="min-w-[var(--anchor-width)]">
+          <SelectContent className="w-[28rem] max-w-[calc(100vw-2rem)]">
             {accounts.map((a) => (
               <SelectItem key={a.id} value={a.id}>
                 <AccountSelectItem account={a} />
@@ -187,7 +187,7 @@ function TransferForm({
           <SelectTrigger className="h-12 text-sm">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="min-w-[var(--anchor-width)]">
+          <SelectContent className="w-[28rem] max-w-[calc(100vw-2rem)]">
             {accounts.map((a) => (
               <SelectItem key={a.id} value={a.id}>
                 <AccountSelectItem account={a} />

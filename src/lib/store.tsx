@@ -201,47 +201,31 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle")
   const loadedRef = useRef(false)
-  const stateRef = useRef(state)
-
-  useEffect(() => {
-    stateRef.current = state
-  }, [state])
+  const syncChainRef = useRef(Promise.resolve())
 
   useEffect(() => {
     if (loadedRef.current) return
     loadedRef.current = true
 
-    // 1. Always load localStorage first (fast, local, never overwrites)
-    const local = loadState()
-    dispatch({ type: "SET_STATE", payload: local })
-
-    // 2. Then try Supabase in background, only apply if has real data
-    loadFromSupabase().then((remote) => {
-      if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0)) {
-        const current = stateRef.current
-        const mergedAccounts = [...current.accounts, ...remote.accounts.filter((a) => !current.accounts.some((ca) => ca.id === a.id))]
-        const currentTxnIds = new Set(current.transactions.map((t) => t.id))
-        const mergedTxns = [...current.transactions, ...remote.transactions.filter((t) => !currentTxnIds.has(t.id))]
-        const mergedFunds = [...current.sinkingFunds, ...remote.sinkingFunds.filter((s) => !current.sinkingFunds.some((cs) => cs.id === s.id))]
-
-        const changed =
-          mergedAccounts.length > current.accounts.length ||
-          mergedTxns.length > current.transactions.length ||
-          mergedFunds.length > current.sinkingFunds.length
-
-        if (changed) {
-          dispatch({
-            type: "SET_STATE",
-            payload: {
-              accounts: mergedAccounts,
-              transactions: mergedTxns,
-              sinkingFunds: mergedFunds,
-              categories: current.categories,
-            },
-          })
+    const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null
+    if (saved) {
+      dispatch({ type: "SET_STATE", payload: loadState() })
+    } else {
+      loadFromSupabase().then((remote) => {
+        if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
+          dispatch({ type: "SET_STATE", payload: remote })
+        } else {
+          dispatch({ type: "SET_STATE", payload: defaultState })
         }
-      }
-    }).catch(() => {}).finally(() => {
+      }).catch(() => {
+        dispatch({ type: "SET_STATE", payload: defaultState })
+      }).finally(() => {
+        setLoading(false)
+      })
+      return
+    }
+
+    loadFromSupabase().catch(() => {}).finally(() => {
       setLoading(false)
     })
   }, [])
@@ -252,7 +236,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
       let cancelled = false
       setSyncStatus("syncing")
-      syncToSupabase(state)
+      syncChainRef.current = syncChainRef.current
+        .then(() => syncToSupabase(state))
         .then(() => {
           if (!cancelled) setSyncStatus("saved")
         })
