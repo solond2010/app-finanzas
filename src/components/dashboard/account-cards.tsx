@@ -1,24 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { useFinance, type Account, generateId } from "@/lib/store"
+import { useFinance, type Account } from "@/lib/store"
 import { getGastosBudgetProgress } from "@/lib/calculations"
+import { useRouter } from "next/navigation"
 import { Plus, Trash2 } from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { AccountDialog } from "./account-dialog"
 
 const typeConfig = {
   emergencia: { label: "Emergencia", gradient: "from-emerald-500/20 to-emerald-600/5" },
@@ -28,105 +16,9 @@ const typeConfig = {
   gastos: { label: "Gastos", gradient: "from-red-500/20 to-red-600/5" },
 }
 
-const COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#14b8a6", "#f97316"]
-
-function AccountForm({
-  account,
-  onSave,
-  onCancel,
-}: {
-  account?: Account
-  onSave: (a: Account) => void
-  onCancel: () => void
-}) {
-  const [nombre, setNombre] = useState(account?.nombre ?? "")
-  const [tipo, setTipo] = useState<Account["tipo"]>(account?.tipo ?? "efectivo")
-  const [banco, setBanco] = useState(account?.banco ?? "")
-  const [saldo, setSaldo] = useState(String(account?.saldo ?? 0))
-  const [objetivo, setObjetivo] = useState(String(account?.objetivo ?? ""))
-  const [limiteMensual, setLimiteMensual] = useState(String(account?.limite_mensual ?? ""))
-  const [color, setColor] = useState(account?.color ?? COLORS[0])
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSave({
-      id: account?.id ?? generateId(),
-      nombre,
-      tipo,
-      banco,
-      saldo: Number(saldo) || 0,
-      objetivo: objetivo ? Number(objetivo) : null,
-      limite_mensual: limiteMensual ? Number(limiteMensual) : null,
-      color,
-    })
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Nombre</label>
-          <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Emergencias" required />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Tipo</label>
-          <Select value={tipo} onValueChange={(v) => setTipo(v as Account["tipo"])}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="emergencia">Emergencia</SelectItem>
-              <SelectItem value="ahorro">Ahorro</SelectItem>
-              <SelectItem value="inversion">Inversión</SelectItem>
-              <SelectItem value="efectivo">Efectivo</SelectItem>
-              <SelectItem value="gastos">Gastos Mensuales</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Banco</label>
-          <Input value={banco} onChange={(e) => setBanco(e.target.value)} placeholder="Ej: Trade Republic" />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Saldo (€)</label>
-          <Input type="number" value={saldo} onChange={(e) => setSaldo(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Objetivo (€)</label>
-          <Input type="number" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} placeholder="Sin objetivo" />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Color</label>
-          <div className="flex gap-1.5 flex-wrap">
-            {COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                className={`h-6 w-6 rounded-full border-2 transition-all ${color === c ? "border-white scale-110" : "border-transparent"}`}
-                style={{ backgroundColor: c }}
-                onClick={() => setColor(c)}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {tipo === "gastos" && (
-        <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Límite mensual de gasto (€)</label>
-          <Input type="number" value={limiteMensual} onChange={(e) => setLimiteMensual(e.target.value)} placeholder="Ej: 2000" />
-          <p className="text-[10px] text-muted-foreground">Este límite se usará para mostrar el progreso de tu presupuesto mensual</p>
-        </div>
-      )}
-
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="outline" size="sm" onClick={onCancel}>Cancelar</Button>
-        <Button type="submit" size="sm">{account ? "Guardar" : "Crear"}</Button>
-      </div>
-    </form>
-  )
-}
-
 export function AccountCards() {
   const { state, dispatch } = useFinance()
+  const router = useRouter()
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [showNew, setShowNew] = useState(false)
   const budget = getGastosBudgetProgress(state.accounts, state.transactions)
@@ -145,7 +37,7 @@ export function AccountCards() {
           <div
             key={account.id}
             className="relative overflow-hidden rounded-2xl border bg-card p-5 transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer group"
-            onClick={() => setEditingAccount(account)}
+            onClick={() => router.push(`/cuentas/${account.id}`)}
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${cfg.gradient} opacity-50`} />
             <div className="relative z-10 space-y-3">
@@ -220,21 +112,18 @@ export function AccountCards() {
         </p>
       </div>
 
-      <Dialog open={editingAccount !== null} onOpenChange={(open) => { if (!open) setEditingAccount(null) }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Editar Cuenta</DialogTitle></DialogHeader>
-          {editingAccount && (
-            <AccountForm account={editingAccount} onSave={(a) => { dispatch({ type: "UPDATE_ACCOUNT", payload: a }); setEditingAccount(null) }} onCancel={() => setEditingAccount(null)} />
-          )}
-        </DialogContent>
-      </Dialog>
+      <AccountDialog
+        account={editingAccount ?? undefined}
+        open={editingAccount !== null}
+        onOpenChange={(open) => { if (!open) setEditingAccount(null) }}
+        onSave={(a) => { dispatch({ type: "UPDATE_ACCOUNT", payload: a }); setEditingAccount(null) }}
+      />
 
-      <Dialog open={showNew} onOpenChange={setShowNew}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Nueva Cuenta</DialogTitle></DialogHeader>
-          <AccountForm onSave={(a) => { dispatch({ type: "ADD_ACCOUNT", payload: a }); setShowNew(false) }} onCancel={() => setShowNew(false)} />
-        </DialogContent>
-      </Dialog>
+      <AccountDialog
+        open={showNew}
+        onOpenChange={setShowNew}
+        onSave={(a) => { dispatch({ type: "ADD_ACCOUNT", payload: a }); setShowNew(false) }}
+      />
     </div>
   )
 }

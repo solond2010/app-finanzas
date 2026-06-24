@@ -184,9 +184,9 @@ function TransactionForm({
   )
 }
 
-export function TransactionsTable() {
+export function TransactionsTable({ cuentaId }: { cuentaId?: string }) {
   const { state, dispatch } = useFinance()
-  const [filterAccount, setFilterAccount] = useState<string>("all")
+  const [filterAccount, setFilterAccount] = useState<string>(cuentaId ?? "all")
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null)
   const [showNew, setShowNew] = useState(false)
 
@@ -207,18 +207,22 @@ export function TransactionsTable() {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-lg font-semibold">Transacciones</CardTitle>
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={filterAccount} onValueChange={handleAccountFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Todas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las cuentas</SelectItem>
-              {state.accounts.map((a) => (
-                <SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {!cuentaId && (
+            <>
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={filterAccount} onValueChange={handleAccountFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las cuentas</SelectItem>
+                  {state.accounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
           <Button size="sm" className="gap-1" onClick={() => setShowNew(true)}>
             <Plus className="h-3.5 w-3.5" /> Nueva
           </Button>
