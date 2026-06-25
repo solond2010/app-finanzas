@@ -1,31 +1,16 @@
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
-import { useFinance, type Account } from "@/lib/store"
+import { useFinance } from "@/lib/store"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
-import { ArrowLeft, Pencil, SearchX, Landmark, ShieldCheck, TrendingUp, Wallet as WalletIcon, CreditCard, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { ArrowLeft, Pencil, SearchX, Wallet, ArrowUpRight, ArrowDownRight } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useState } from "react"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { currencySymbol, formatMoney } from "@/lib/currency"
-
-const typeConfig: Record<Account["tipo"], { label: string; icon: React.ElementType; color: string; tint: string }> = {
-  emergencia: { label: "Emergencia", icon: ShieldCheck, color: "#10b981", tint: "from-emerald-500/16 to-emerald-500/[0.02]" },
-  ahorro: { label: "Ahorro", icon: WalletIcon, color: "#3b82f6", tint: "from-blue-500/16 to-blue-500/[0.02]" },
-  inversion: { label: "Inversión", icon: TrendingUp, color: "#8b5cf6", tint: "from-violet-500/16 to-violet-500/[0.02]" },
-  efectivo: { label: "Efectivo", icon: Landmark, color: "#f59e0b", tint: "from-amber-500/16 to-amber-500/[0.02]" },
-  gastos: { label: "Gastos", icon: CreditCard, color: "#ef4444", tint: "from-red-500/16 to-red-500/[0.02]" },
-}
-
-function tipoLabel(tipo: string) {
-  const map: Record<string, string> = {
-    emergencia: "Emergencia", ahorro: "Ahorro", inversion: "Inversión",
-    efectivo: "Efectivo", gastos: "Gastos",
-  }
-  return map[tipo] || tipo
-}
+import { typeConfig } from "@/lib/account-types"
 
 export default function AccountDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -72,7 +57,7 @@ export default function AccountDetailPage() {
 
   return (
     <div className="space-y-6">
-      <button onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-all">
+      <button onClick={() => router.push("/cuentas")} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-all">
         <ArrowLeft className="h-4 w-4" /> Volver
       </button>
 
@@ -141,7 +126,7 @@ export default function AccountDetailPage() {
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Neto histórico</span>
               <div className="rounded-2xl bg-background/60 p-2 ring-1 ring-blue-500/15">
-                <WalletIcon className="h-4 w-4 text-blue-500" />
+                <Wallet className="h-4 w-4 text-blue-500" />
               </div>
             </div>
             <p className={`text-[28px] font-bold leading-none tracking-tight tabular-nums ${totalIngresos - totalGastos >= 0 ? "text-emerald-500" : "text-red-500"}`}>

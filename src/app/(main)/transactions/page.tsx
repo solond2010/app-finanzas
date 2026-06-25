@@ -6,20 +6,8 @@ import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { Card } from "@/components/ui/card"
 import { useFinance } from "@/lib/store"
 import { getMonthTotalsByString } from "@/lib/calculations"
-import { useAnimatedNumber } from "@/lib/hooks/use-animated-number"
-
-function isInitialBalanceTransaction(id: string) {
-  return id.startsWith("init_")
-}
-
-function formatMonth(date: Date) {
-  return date.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
-}
-
-function AnimatedNumber({ value, prefix = "" }: { value: number; prefix?: string }) {
-  const animated = useAnimatedNumber(Math.round(value))
-  return <>{prefix}{animated.toLocaleString("es-ES")}€</>
-}
+import { formatMonth, isInitialBalanceTransaction } from "@/lib/format"
+import { AnimatedNumber } from "@/components/shared/animated-number"
 
 export default function TransactionsPage() {
   const { state } = useFinance()

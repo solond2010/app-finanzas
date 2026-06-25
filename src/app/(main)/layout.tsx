@@ -11,7 +11,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <ToastProvider>
         <div className="flex min-h-screen">
           <Sidebar />
-          <main className="ml-64 flex-1 p-8 animate-in fade-in duration-500">
+          <main className="min-h-screen flex-1 lg:ml-64 pt-[52px] lg:pt-8 p-4 sm:p-6 lg:p-8 animate-in fade-in duration-500">
             {children}
           </main>
         </div>

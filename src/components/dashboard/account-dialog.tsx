@@ -34,14 +34,16 @@ export function AccountDialog({
 
   useEffect(() => {
     if (!open) return
-    setNombre(account?.nombre ?? "")
-    setTipo(account?.tipo ?? "efectivo")
-    setBanco(account?.banco ?? "")
-    setSaldo(String(account?.saldo ?? 0))
-    setCurrency(account?.currency ?? "EUR")
-    setObjetivo(String(account?.objetivo ?? ""))
-    setLimiteMensual(String(account?.limite_mensual ?? ""))
-    setColor(account?.color ?? COLORS[0])
+    queueMicrotask(() => {
+      setNombre(account?.nombre ?? "")
+      setTipo(account?.tipo ?? "efectivo")
+      setBanco(account?.banco ?? "")
+      setSaldo(String(account?.saldo ?? 0))
+      setCurrency(account?.currency ?? "EUR")
+      setObjetivo(String(account?.objetivo ?? ""))
+      setLimiteMensual(String(account?.limite_mensual ?? ""))
+      setColor(account?.color ?? COLORS[0])
+    })
   }, [account, open])
 
   const handleSubmit = (e: React.FormEvent) => {

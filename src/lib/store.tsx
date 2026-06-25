@@ -75,7 +75,51 @@ type Action =
 
 const STORAGE_KEY = "app-finanzas-data"
 
-const DEFAULT_CATEGORIES = ["Salario", "Freelance", "Alquiler", "Supermercado", "Transporte", "Internet", "Suscripciones", "Cena", "Ropa", "Ocio", "Gym", "Salud", "Inversión", "Transferencia", "Otros"]
+const DEFAULT_CATEGORIES = ["Salario", "Freelance", "Alquiler", "Supermercado", "Transporte", "Internet", "Suscripciones", "Cena", "Ropa", "Ocio", "Gym", "Salud", "Inversión", "Transferencia", "Spotify", "Otros"]
+
+type AccountRow = {
+  id: string
+  nombre: string
+  tipo: Account["tipo"]
+  banco: string | null
+  saldo: number | string
+  currency?: CurrencyCode | null
+  objetivo: number | string | null
+  limite_mensual: number | string | null
+  color: string | null
+}
+
+type TransactionRow = {
+  id: string
+  cuenta_id: string
+  monto: number | string
+  fecha: string
+  tipo: Transaction["tipo"]
+  categoria: string
+  es_necesidad: boolean
+  descripcion: string | null
+  tags: unknown
+}
+
+type SinkingFundRow = {
+  id: string
+  nombre: string | null
+  objetivo: number | string | null
+  ahorrado: number | string | null
+  fecha_limite: string | null
+  cuenta_id?: string | null
+}
+
+type AccountPayload = Omit<AccountRow, "saldo"> & { saldo: number }
+type TransactionPayload = Omit<TransactionRow, "monto" | "tags" | "descripcion"> & { monto: number; tags: string[]; descripcion: string }
+type SinkingFundPayload = {
+  id: string
+  nombre: string
+  objetivo: number
+  ahorrado: number
+  fecha_limite: string | null
+  cuenta_id: string
+}
 
 const defaultState: FinanceState = {
   accounts: [
@@ -234,30 +278,27 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null
     if (saved) {
       dispatch({ type: "SET_STATE", payload: loadState() })
-      setLoading(false)
-    } else {
-      loadFromSupabase().then((remote) => {
-        if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
-          dispatch({ type: "SET_STATE", payload: remote })
-        } else {
-          dispatch({ type: "SET_STATE", payload: defaultState })
-        }
-      }).catch(() => {
-        dispatch({ type: "SET_STATE", payload: defaultState })
-      }).finally(() => {
-        setLoading(false)
-      })
+      queueMicrotask(() => setLoading(false))
+      loadFromSupabase().catch(() => {})
       return
     }
 
-    loadFromSupabase().catch(() => {}).finally(() => {
+    loadFromSupabase().then((remote) => {
+      if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
+        dispatch({ type: "SET_STATE", payload: remote })
+      } else {
+        dispatch({ type: "SET_STATE", payload: defaultState })
+      }
+    }).catch(() => {
+      dispatch({ type: "SET_STATE", payload: defaultState })
+    }).finally(() => {
       setLoading(false)
     })
   }, [])
 
   useEffect(() => {
     if (!loadedRef.current) return
-    if (state !== defaultState) {
+    const timer = setTimeout(() => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
       let cancelled = false
       setSyncStatus("syncing")
@@ -272,7 +313,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       return () => {
         cancelled = true
       }
-    }
+    }, 500)
+    return () => clearTimeout(timer)
   }, [state])
 
   return <FinanceContext.Provider value={{ state, dispatch, loading, syncStatus }}>{children}</FinanceContext.Provider>
@@ -287,7 +329,7 @@ async function loadFromSupabase(): Promise<FinanceState | null> {
     ])
     if (accRes.error || txRes.error || sfRes.error) return null
     if (!accRes.data || !txRes.data || !sfRes.data) return null
-    if (accRes.data.length === 0 && txRes.data.length === 0) return null
+    if (accRes.data.length === 0 && txRes.data.length === 0 && sfRes.data.length === 0) return null
     return {
       accounts: accRes.data.map(formatAccount),
       transactions: txRes.data.map(formatTransaction),
@@ -319,14 +361,15 @@ async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sin
   if (error) throw error
 
   const remoteIds = (data ?? []).map((row: { id: string }) => row.id)
-  const missing = remoteIds.filter((id) => !localIds.includes(id))
+  const localSet = new Set(localIds)
+  const missing = remoteIds.filter((id) => !localSet.has(id))
   if (missing.length === 0) return
 
   const { error: deleteErr } = await supabase.from(table).delete().in("id", missing)
   if (deleteErr) throw deleteErr
 }
 
-function formatAccount(a: any): Account {
+function formatAccount(a: AccountRow): Account {
   return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco ?? "", saldo: Number(a.saldo), currency: a.currency ?? "EUR", objetivo: a.objetivo ? Number(a.objetivo) : null, limite_mensual: a.limite_mensual ? Number(a.limite_mensual) : null, color: a.color ?? "#3b82f6" }
 }
 
@@ -334,7 +377,7 @@ function normalizeFinanceState(state: FinanceState): FinanceState {
   const accounts = state.accounts.map((account) => ({ ...account, currency: account.currency ?? "EUR" }))
   const transactions = [...state.transactions]
   for (const account of accounts) {
-    if (account.saldo !== 0 && !transactions.some((t) => t.cuenta_id === account.id && t.categoria === "Saldo inicial")) {
+    if (account.saldo !== 0 && !transactions.some((t) => t.cuenta_id === account.id && (t.categoria === "Saldo inicial" || t.id.startsWith(`init_${account.id}`)))) {
       const ids = transactions.filter((t) => t.cuenta_id === account.id).map((t) => t.id)
       const hasInitTx = ids.some((id) => typeof id === "string" && id.startsWith(`init_${account.id}`))
       if (!hasInitTx) {
@@ -357,24 +400,24 @@ function normalizeFinanceState(state: FinanceState): FinanceState {
   return { ...state, accounts, transactions }
 }
 
-function formatTransaction(t: any): Transaction {
-  return { id: t.id, cuenta_id: t.cuenta_id, monto: Number(t.monto), fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion ?? "", tags: t.tags ?? [] }
+function formatTransaction(t: TransactionRow): Transaction {
+  return { id: t.id, cuenta_id: t.cuenta_id, monto: Number(t.monto), fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion ?? "", tags: Array.isArray(t.tags) ? t.tags.map(String) : [] }
 }
 
-function formatSinkingFund(s: any): SinkingFund {
+function formatSinkingFund(s: SinkingFundRow): SinkingFund {
   return { id: s.id, nombre: s.nombre ?? "", cantidad_objetivo: Number(s.objetivo) || 0, fecha_limite: s.fecha_limite ?? "", ahorrado_actual: Number(s.ahorrado) || 0, cuenta_id: s.cuenta_id ?? "" }
 }
 
-function unformatAccount(a: Account): any {
+function unformatAccount(a: Account): AccountPayload {
   return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco, saldo: a.saldo, currency: a.currency, objetivo: a.objetivo, limite_mensual: a.limite_mensual, color: a.color }
 }
 
-function unformatTransaction(t: Transaction): any {
+function unformatTransaction(t: Transaction): TransactionPayload {
   return { id: t.id, cuenta_id: t.cuenta_id, monto: t.monto, fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion, tags: t.tags }
 }
 
-function unformatSinkingFund(s: SinkingFund): any {
-  return { id: s.id, nombre: s.nombre, objetivo: s.cantidad_objetivo, ahorrado: s.ahorrado_actual, fecha_limite: s.fecha_limite || null }
+function unformatSinkingFund(s: SinkingFund): SinkingFundPayload {
+  return { id: s.id, nombre: s.nombre, objetivo: s.cantidad_objetivo, ahorrado: s.ahorrado_actual, fecha_limite: s.fecha_limite || null, cuenta_id: s.cuenta_id }
 }
 
 export function useFinance() {
@@ -384,7 +427,7 @@ export function useFinance() {
 }
 
 export function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+  return crypto.randomUUID?.() ?? (Date.now().toString(36) + Math.random().toString(36).slice(2, 7))
 }
 
 const BACKUP_KEY = "app-finanzas-backup"

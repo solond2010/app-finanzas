@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useFinance } from "@/lib/store"
 import { useToast } from "@/components/ui/toast"
-import { Settings, Plus, Trash2, Download, Sparkles, Tags, FileDown, Layers } from "lucide-react"
+import { Plus, Trash2, Download, Sparkles, Tags, FileDown, Layers } from "lucide-react"
 
 const CATEGORY_COLORS: Record<string, string> = {
   Salario: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/15",
@@ -57,7 +57,7 @@ export default function ConfiguracionPage() {
     const headers = ["fecha", "tipo", "categoria", "descripcion", "monto", "cuenta", "tags"]
     const rows = state.transactions.map((t) => {
       const account = state.accounts.find((a) => a.id === t.cuenta_id)
-      return [t.fecha, t.tipo, t.categoria, `"${t.descripcion}"`, t.monto, account?.nombre ?? "", `"${t.tags.join(", ")}"`].join(",")
+      return [t.fecha, t.tipo, t.categoria, `"${t.descripcion.replaceAll('"', '""')}"`, t.monto, account?.nombre ?? "", `"${t.tags.join(", ").replaceAll('"', '""')}"`].join(",")
     })
     const csv = [headers.join(","), ...rows].join("\n")
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
@@ -119,7 +119,7 @@ export default function ConfiguracionPage() {
                 return (
                   <div key={cat} className={`stagger-fade group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 ${colorClass}`} style={{ animationDelay: `${state.categories.indexOf(cat) * 30}ms` }}>
                     {cat}
-                    <button onClick={() => deleteCategory(cat)} className="opacity-40 group-hover:opacity-100 transition-opacity hover:opacity-100">
+                    <button onClick={() => deleteCategory(cat)} className="opacity-40 group-hover:opacity-100 transition-opacity hover:opacity-100 cursor-pointer" aria-label={`Eliminar categoría ${cat}`}>
                       <Trash2 className="h-3 w-3" />
                     </button>
                   </div>

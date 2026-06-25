@@ -2,15 +2,10 @@
 
 import { useMemo } from "react"
 import { Sparkles, Target, TrendingUp, Wallet } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { useFinance } from "@/lib/store"
-import { useAnimatedNumber } from "@/lib/hooks/use-animated-number"
-
-function AnimatedNumber({ value }: { value: number }) {
-  const animated = useAnimatedNumber(Math.round(value))
-  return <>{animated.toLocaleString("es-ES")}</>
-}
+import { AnimatedNumber } from "@/components/shared/animated-number"
 
 export default function ObjetivosPage() {
   const { state } = useFinance()

@@ -1,9 +1,8 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useFinance, type Account } from "@/lib/store"
+import { useFinance } from "@/lib/store"
 import { getNetWorth } from "@/lib/calculations"
 import {
   Table,
@@ -13,37 +12,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useAnimatedNumber } from "@/lib/hooks/use-animated-number"
-import { Landmark, ShieldCheck, TrendingUp, Wallet as WalletIcon, CreditCard, Sparkles, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { AnimatedNumber } from "@/components/shared/animated-number"
+import { Wallet as WalletIcon, Sparkles } from "lucide-react"
 import { formatMoney, currencySymbol } from "@/lib/currency"
-
-const typeLabels: Record<string, string> = {
-  emergencia: "Emergencia",
-  ahorro: "Ahorro",
-  inversion: "Inversión",
-  efectivo: "Efectivo",
-  gastos: "Gastos",
-}
-
-const typeConfig: Record<Account["tipo"], { label: string; icon: React.ElementType; color: string; tint: string }> = {
-  emergencia: { label: "Emergencia", icon: ShieldCheck, color: "#10b981", tint: "from-emerald-500/16 to-emerald-500/[0.02]" },
-  ahorro: { label: "Ahorro", icon: WalletIcon, color: "#3b82f6", tint: "from-blue-500/16 to-blue-500/[0.02]" },
-  inversion: { label: "Inversión", icon: TrendingUp, color: "#8b5cf6", tint: "from-violet-500/16 to-violet-500/[0.02]" },
-  efectivo: { label: "Efectivo", icon: Landmark, color: "#f59e0b", tint: "from-amber-500/16 to-amber-500/[0.02]" },
-  gastos: { label: "Gastos", icon: CreditCard, color: "#ef4444", tint: "from-red-500/16 to-red-500/[0.02]" },
-}
-
-function AnimatedMoney({ value }: { value: number }) {
-  const animated = useAnimatedNumber(Math.round(value))
-  return <>{animated.toLocaleString("es-ES")}€</>
-}
+import { typeConfig, typeLabels } from "@/lib/account-types"
 
 export default function CuentasPage() {
   const { state } = useFinance()
   const router = useRouter()
   const netWorth = getNetWorth(state.accounts)
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
 
   const totalBalance = state.accounts.reduce((s, a) => s + a.saldo, 0)
 
@@ -67,7 +44,7 @@ export default function CuentasPage() {
           <div className="flex flex-col gap-2 rounded-[22px] bg-background/60 px-6 py-4 shadow-sm ring-1 ring-border/25 backdrop-blur-xl">
             <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Patrimonio neto total</p>
             <p className="text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[38px]">
-              {mounted ? <AnimatedMoney value={netWorth} /> : `${netWorth.toLocaleString("es-ES")}€`}
+              <AnimatedNumber value={netWorth} />
             </p>
           </div>
         </div>
@@ -166,7 +143,7 @@ export default function CuentasPage() {
                   {state.accounts.map((a) => {
                     const progress = a.objetivo && a.objetivo > 0 ? Math.min(Math.round((a.saldo / a.objetivo) * 100), 100) : null
                     return (
-                      <TableRow key={a.id} className="cursor-pointer group" onClick={() => router.push(`/cuentas/${a.id}`)}>
+                      <TableRow key={a.id} className="cursor-pointer group" onClick={() => router.push(`/cuentas/${a.id}`)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && router.push(`/cuentas/${a.id}`)} role="button">
                         <TableCell className="font-medium">{a.nombre}</TableCell>
                         <TableCell className="text-muted-foreground">{typeLabels[a.tipo]}</TableCell>
                         <TableCell className="text-muted-foreground">{a.banco || "—"}</TableCell>

@@ -1,34 +1,19 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState, memo } from "react"
 import { BarChart, DonutChart, LineChart } from "@tremor/react"
 import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, FlaskConical, Gauge, Layers3, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
 import { backupCurrentState, clearBackup, generateSampleData, restoreBackup, useFinance } from "@/lib/store"
-import { useAnimatedNumber } from "@/lib/hooks/use-animated-number"
+import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
+import { AnimatedNumber } from "@/components/shared/animated-number"
 
-const money = (value: number) => `${value.toLocaleString("es-ES")}€`
-const signedMoney = (value: number) => `${value >= 0 ? "+" : ""}${money(value)}`
-const chartFormatter = (value: number) => money(value)
-
-function isInitialBalanceTransaction(id: string) {
-  return id.startsWith("init_")
-}
-
-function formatMonth(date: Date) {
-  return date.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
-}
-
-function AnimatedNumber({ value, prefix = "", suffix = "€" }: { value: number; prefix?: string; suffix?: string }) {
-  const animated = useAnimatedNumber(Math.round(value))
-  return <>{prefix}{animated.toLocaleString("es-ES")}{suffix}</>
-}
-
-function EmptyPanel({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
+const EmptyPanel = memo(function EmptyPanel({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
   return (
     <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl bg-muted/20 text-center ring-1 ring-border/20">
       <div className="rounded-2xl bg-background/70 p-3 ring-1 ring-border/20">
@@ -40,9 +25,9 @@ function EmptyPanel({ icon: Icon, title, text }: { icon: React.ElementType; titl
       </div>
     </div>
   )
-}
+})
 
-function MetricCard({
+const MetricCard = memo(function MetricCard({
   label,
   value,
   subtitle,
@@ -85,9 +70,9 @@ function MetricCard({
       </div>
     </div>
   )
-}
+})
 
-function SectionTitle({ label, title, text }: { label: string; title: string; text?: string }) {
+const SectionTitle = memo(function SectionTitle({ label, title, text }: { label: string; title: string; text?: string }) {
   return (
     <div className="col-span-full flex flex-col gap-1 pt-2">
       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
@@ -97,9 +82,9 @@ function SectionTitle({ label, title, text }: { label: string; title: string; te
       </div>
     </div>
   )
-}
+})
 
-function RuleCard({ label, target, actual, value, tone, delay }: { label: string; target: number; actual: number; value: number; tone: string; delay: number }) {
+const RuleCard = memo(function RuleCard({ label, target, actual, value, tone, delay }: { label: string; target: number; actual: number; value: number; tone: string; delay: number }) {
   const diff = actual - target
   const width = Math.min(Math.max(actual, 0), 100)
   const good = Math.abs(diff) <= 6 || (label.includes("Ahorro") && actual >= target)
@@ -126,16 +111,14 @@ function RuleCard({ label, target, actual, value, tone, delay }: { label: string
       </div>
     </div>
   )
-}
+})
 
 export default function AnalyticsPage() {
   const { state, dispatch } = useFinance()
-  const [hasBackup, setHasBackup] = useState(false)
+  const [hasBackup, setHasBackup] = useState(() =>
+    typeof window !== "undefined" && localStorage.getItem("app-finanzas-backup") !== null
+  )
   const [monthOffset, setMonthOffset] = useState(0)
-
-  useEffect(() => {
-    setHasBackup(localStorage.getItem("app-finanzas-backup") !== null)
-  }, [])
 
   const today = new Date()
   const selectedDate = new Date(today.getFullYear(), today.getMonth() - monthOffset, 1)
@@ -143,8 +126,10 @@ export default function AnalyticsPage() {
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
   const hasData = analysisTransactions.length > 0
 
+  const [confirmReset, setConfirmReset] = useState(false)
+  const [confirmSample, setConfirmSample] = useState(false)
+
   const loadSampleData = () => {
-    if (!window.confirm("¿Añadir datos de ejemplo? Tus datos actuales se conservarán.")) return
     backupCurrentState(state)
     dispatch({ type: "MERGE_SAMPLE", payload: generateSampleData() })
     setHasBackup(true)
@@ -172,7 +157,6 @@ export default function AnalyticsPage() {
   const needsPct = totalSpending > 0 ? (necesidades / totalSpending) * 100 : 0
   const wantsPct = totalSpending > 0 ? (deseos / totalSpending) * 100 : 0
   const savingsActual = monthTotals.ingresos > 0 ? Math.max((monthTotals.neto / monthTotals.ingresos) * 100, 0) : 0
-  const savingsTargetValue = monthTotals.ingresos * 0.2
   const topCategory = categoryBreakdown[0]
   const categoryTotal = categoryBreakdown.reduce((sum, item) => sum + item.monto, 0)
   const topCategoryPct = topCategory && categoryTotal > 0 ? Math.round((topCategory.monto / categoryTotal) * 100) : 0
@@ -214,8 +198,8 @@ export default function AnalyticsPage() {
             </div>
             <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
               {hasBackup && <Button variant="outline" size="sm" className="border-emerald-500/30 text-emerald-600" onClick={restoreMyData}>Restaurar mis datos</Button>}
-              <Button variant="outline" size="sm" className="gap-2" onClick={loadSampleData}><FlaskConical className="h-4 w-4" />Datos ejemplo</Button>
-              {hasData && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => window.confirm("¿Borrar todos los datos?") && dispatch({ type: "RESET" })}>Limpiar</Button>}
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setConfirmSample(true)}><FlaskConical className="h-4 w-4" />Datos ejemplo</Button>
+              {hasData && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmReset(true)}>Limpiar</Button>}
             </div>
           </div>
         </div>
@@ -314,7 +298,7 @@ export default function AnalyticsPage() {
         <div className="col-span-full grid grid-cols-1 gap-4 md:grid-cols-3">
           <RuleCard label="50% Necesidades" target={50} actual={needsPct} value={necesidades} tone="#10b981" delay={100} />
           <RuleCard label="30% Deseos" target={30} actual={wantsPct} value={deseos} tone="#f59e0b" delay={170} />
-          <RuleCard label="20% Ahorro" target={20} actual={savingsActual} value={savingsTargetValue} tone="#3b82f6" delay={240} />
+          <RuleCard label="20% Ahorro" target={20} actual={savingsActual} value={monthTotals.neto} tone="#3b82f6" delay={240} />
         </div>
 
         <SectionTitle label="Detalle" title="Cash flow mensual" text="La tabla compacta para confirmar si la historia que cuentan los gráficos es real." />
@@ -357,6 +341,24 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       </section>
+
+      <ConfirmDialog
+        open={confirmSample}
+        onOpenChange={setConfirmSample}
+        onConfirm={loadSampleData}
+        title="¿Añadir datos de ejemplo?"
+        description="Se añadirán cuentas, transacciones y metas de ejemplo. Tus datos actuales se conservarán."
+        confirmLabel="Añadir"
+      />
+      <ConfirmDialog
+        open={confirmReset}
+        onOpenChange={setConfirmReset}
+        onConfirm={() => dispatch({ type: "RESET" })}
+        title="¿Borrar todos los datos?"
+        description="Esta acción eliminará todas tus cuentas, transacciones y metas. No se puede deshacer."
+        confirmLabel="Borrar todo"
+        destructive
+      />
     </div>
   )
 }

@@ -29,6 +29,7 @@ import {
 import { useFinance, type Transaction, generateId } from "@/lib/store"
 import { Filter, Plus, Pencil, Trash2, Search, Download } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { formatMoney } from "@/lib/currency"
 import { filterTransactionsByMonth } from "@/lib/calculations"
 
@@ -193,11 +194,14 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const { toast } = useToast()
   const [filterAccount, setFilterAccount] = useState<string>(cuentaId ?? "all")
   const [search, setSearch] = useState("")
+  const [page, setPage] = useState(0)
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null)
   const [showNew, setShowNew] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<Transaction | null>(null)
+  const PAGE_SIZE = 25
 
   const handleAccountFilter = (value: string | null) => {
-    if (value) setFilterAccount(value)
+    if (value) { setFilterAccount(value); setPage(0) }
   }
 
   const exportCSV = () => {
@@ -222,7 +226,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `movimientos_${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `movimientos_${new Date().toISOString().slice(0, 19).replace(/[:-]/g, "")}.csv`
     a.click()
     URL.revokeObjectURL(url)
     toast("CSV exportado", "success")
@@ -239,12 +243,14 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   }
 
   const sorted = useMemo(
-    () =>
-      filterTransactionsByMonth(state.transactions, selectedMonth)
+    () => {
+      const safeTime = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? 0 : d.getTime() }
+      return filterTransactionsByMonth(state.transactions, selectedMonth)
         .filter((t) => !t.id.startsWith("init_"))
         .filter((t) => filterAccount === "all" || t.cuenta_id === filterAccount)
         .filter((t) => !search || t.descripcion.toLowerCase().includes(search.toLowerCase()) || t.categoria.toLowerCase().includes(search.toLowerCase()) || t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())))
-        .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()),
+        .sort((a, b) => safeTime(b.fecha) - safeTime(a.fecha))
+    },
     [state.transactions, filterAccount, search, selectedMonth]
   )
 
@@ -261,6 +267,10 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
     return groups
   }, [sorted])
 
+  const totalPages = Math.max(1, Math.ceil(grouped.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages - 1)
+  const currentGrouped = useMemo(() => grouped.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE), [grouped, safePage])
+
   return (
     <Card className="col-span-full">
       <CardHeader className="flex flex-col gap-4 space-y-0 pb-2 lg:flex-row lg:items-center lg:justify-between">
@@ -273,7 +283,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
               <>
                 <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={filterAccount} onValueChange={handleAccountFilter}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-48" aria-label="Filtrar por cuenta">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent className="p-2">
@@ -290,7 +300,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             <Input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(0) }}
               placeholder="Buscar..."
               className="h-9 w-40 rounded-xl pl-7"
             />
@@ -338,7 +348,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                 </TableCell>
               </TableRow>
             ) : (
-              grouped.map((group) => (
+              currentGrouped.map((group) => (
                 <Fragment key={group.date}>
                   <TableRow className="sticky top-10 z-10">
                     <TableCell colSpan={8} className="px-2 py-1.5 bg-background/80 backdrop-blur-sm text-xs font-semibold text-muted-foreground capitalize tracking-wide">
@@ -374,14 +384,17 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                             {t.tags.slice(0, 2).map((tag) => (
                               <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">{tag}</Badge>
                             ))}
+                            {t.tags.length > 2 && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">+{t.tags.length - 2}</Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => setEditingTxn(t)}>
+                          <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => setEditingTxn(t)} aria-label="Editar transacción">
                               <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                             </button>
-                            <button onClick={() => { dispatch({ type: "DELETE_TRANSACTION", payload: t.id }); toast("Transacción eliminada", "success") }}>
+                            <button onClick={() => setDeleteConfirm(t)} aria-label="Eliminar transacción">
                               <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
                             </button>
                           </div>
@@ -394,6 +407,46 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             )}
           </TableBody>
         </Table>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t px-4 py-3">
+            <p className="text-xs text-muted-foreground">
+              Página {safePage + 1} de {totalPages} · {sorted.length} transacciones
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(safePage - 1)}
+                disabled={safePage === 0}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none active:scale-95"
+              >
+                Anterior
+              </button>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                const start = Math.max(0, Math.min(safePage - 2, totalPages - 5))
+                const p = start + i
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
+                      p === safePage
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    {p + 1}
+                  </button>
+                )
+              })}
+              <button
+                onClick={() => setPage(safePage + 1)}
+                disabled={safePage >= totalPages - 1}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none active:scale-95"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
       </CardContent>
 
       <Dialog open={editingTxn !== null} onOpenChange={(open) => { if (!open) setEditingTxn(null) }}>
@@ -412,6 +465,15 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
           )}
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        onOpenChange={() => setDeleteConfirm(null)}
+        onConfirm={() => { if (deleteConfirm) { dispatch({ type: "DELETE_TRANSACTION", payload: deleteConfirm.id }); toast("Transacción eliminada", "success") }}}
+        title="¿Eliminar transacción?"
+        description={`Se eliminará la transacción "${deleteConfirm?.descripcion || deleteConfirm?.categoria || ""}" de ${deleteConfirm?.monto?.toLocaleString("es-ES")}€. No se puede deshacer.`}
+        confirmLabel="Eliminar"
+        destructive
+      />
     </Card>
   )
 }

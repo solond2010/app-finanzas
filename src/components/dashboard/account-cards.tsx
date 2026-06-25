@@ -4,19 +4,13 @@ import { useState } from "react"
 import { useFinance, type Account } from "@/lib/store"
 import { useRouter } from "next/navigation"
 import { Plus, Trash2, Wallet } from "lucide-react"
-import { Button } from "@/components/ui/button"
+
 import { AccountDialog } from "./account-dialog"
 import { useToast } from "@/components/ui/toast"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { currencySymbol, formatMoney } from "@/lib/currency"
 import { getAccountsAtMonth, getGastosBudgetProgress } from "@/lib/calculations"
-
-const typeConfig = {
-  emergencia: { label: "Emergencia", gradient: "from-emerald-500/20 to-emerald-600/5", color: "#10b981" },
-  ahorro: { label: "Ahorro", gradient: "from-blue-500/20 to-blue-600/5", color: "#3b82f6" },
-  inversion: { label: "Inversión", gradient: "from-violet-500/20 to-violet-600/5", color: "#8b5cf6" },
-  efectivo: { label: "Efectivo", gradient: "from-amber-500/20 to-amber-600/5", color: "#f59e0b" },
-  gastos: { label: "Gastos", gradient: "from-red-500/20 to-red-600/5", color: "#ef4444" },
-}
+import { typeConfig } from "@/lib/account-types"
 
 export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
   const { state, dispatch } = useFinance()
@@ -24,6 +18,7 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
   const { toast } = useToast()
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [showNew, setShowNew] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null)
   const displayAccounts = selectedMonth ? getAccountsAtMonth(state.accounts, state.transactions, selectedMonth) : state.accounts
   const budget = getGastosBudgetProgress(displayAccounts, state.transactions, selectedMonth)
 
@@ -45,11 +40,11 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
         return (
           <div
             key={account.id}
-            className={`stagger-fade relative overflow-hidden rounded-[20px] bg-card/70 backdrop-blur-xl p-5 shadow-sm ring-1 ring-border/20 transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 cursor-pointer group ${santander ? "ring-l-4 ring-l-red-600/70" : ""}`}
+            className={`stagger-fade relative overflow-hidden rounded-[20px] bg-card/70 backdrop-blur-xl p-5 shadow-sm ring-1 ring-border/20 transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 cursor-pointer group ${santander ? "border-l-4 border-l-red-600/70" : ""}`}
             style={{ animationDelay: `${idx * 80}ms` }}
             onClick={() => router.push(`/cuentas/${account.id}`)}
           >
-            <div className={`absolute inset-0 bg-gradient-to-br ${cfg.gradient} opacity-50`} />
+            <div className={`absolute inset-0 bg-gradient-to-br ${cfg.tint} opacity-50`} />
             {revolut && (
               <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#163f8a] via-[#7b61ff] to-[#00d9d0]" />
             )}
@@ -65,8 +60,9 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
                   className="opacity-0 group-hover:opacity-100 transition-all duration-200"
                   onClick={(e) => {
                     e.stopPropagation()
-                    if (confirm("¿Eliminar esta cuenta?")) { dispatch({ type: "DELETE_ACCOUNT", payload: account.id }); toast("Cuenta eliminada", "success") }
+                    setDeleteConfirm(account)
                   }}
+                  aria-label={`Eliminar cuenta ${account.nombre}`}
                 >
                   <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
                 </button>
@@ -150,6 +146,16 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
         open={showNew}
         onOpenChange={setShowNew}
         onSave={(a) => { dispatch({ type: "ADD_ACCOUNT", payload: a }); setShowNew(false) }}
+      />
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        onOpenChange={() => setDeleteConfirm(null)}
+        onConfirm={() => { if (deleteConfirm) { dispatch({ type: "DELETE_ACCOUNT", payload: deleteConfirm.id }); toast("Cuenta eliminada", "success") }}}
+        title="¿Eliminar esta cuenta?"
+        description={`Se eliminará "${deleteConfirm?.nombre}" y todas sus transacciones. No se puede deshacer.`}
+        confirmLabel="Eliminar"
+        destructive
       />
     </div>
   )

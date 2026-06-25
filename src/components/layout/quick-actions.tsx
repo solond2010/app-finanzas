@@ -175,7 +175,7 @@ function TransferForm({
   onCancel,
 }: {
   accounts: Account[]
-  onSave: (sourceId: string, destId: string, monto: number, descripcion: string) => void
+  onSave: (sourceId: string, destId: string, monto: number, descripcion: string, fecha?: string) => void
   onCancel: () => void
 }) {
   const today = new Date().toISOString().split("T")[0]
@@ -188,7 +188,7 @@ function TransferForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!origenId || !destinoId || !monto || origenId === destinoId) return
-    onSave(origenId, destinoId, Number(monto), descripcion || `Traspaso ${fecha}`)
+    onSave(origenId, destinoId, Number(monto), descripcion || `Traspaso`, fecha)
   }
 
   return (
@@ -270,19 +270,19 @@ export function QuickActionsFAB() {
     toast(t.tipo === "gasto" ? "Gasto registrado" : "Ingreso registrado", "success")
   }
 
-  const handleTransfer = (sourceId: string, destId: string, monto: number, descripcion: string) => {
+  const handleTransfer = (sourceId: string, destId: string, monto: number, descripcion: string, fecha?: string) => {
     const source = state.accounts.find((a) => a.id === sourceId)
     const dest = state.accounts.find((a) => a.id === destId)
     if (!source || !dest) return
 
-    const fecha = new Date().toISOString().split("T")[0]
+    const txFecha = fecha || new Date().toISOString().split("T")[0]
     dispatch({
       type: "ADD_TRANSACTION",
       payload: {
         id: generateId(),
         cuenta_id: sourceId,
         monto,
-        fecha,
+        fecha: txFecha,
         tipo: "gasto",
         categoria: "Transferencia",
         es_necesidad: false,
@@ -296,7 +296,7 @@ export function QuickActionsFAB() {
         id: generateId(),
         cuenta_id: destId,
         monto,
-        fecha,
+        fecha: txFecha,
         tipo: "ingreso",
         categoria: "Transferencia",
         es_necesidad: false,

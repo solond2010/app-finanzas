@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { BarChart, LineChart } from "@tremor/react"
-import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, CreditCard, Flame, Landmark, Plus, ShieldCheck, Sparkles, Target, TrendingUp, Wallet } from "lucide-react"
+import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, Flame, Plus, Sparkles, Target, TrendingUp, Wallet } from "lucide-react"
 
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -15,65 +15,14 @@ import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/components/ui/toast"
 import { buildMonthlySummariesUpTo, getAccountsAtMonth, getGastosBudgetProgress, getMonthTotalsByString, getNetWorthAtMonth } from "@/lib/calculations"
 import { currencySymbol, formatMoney } from "@/lib/currency"
-import { generateId, type Account, useFinance } from "@/lib/store"
-import { useAnimatedNumber } from "@/lib/hooks/use-animated-number"
+import { useFinance, type Account } from "@/lib/store"
+import { typeConfig } from "@/lib/account-types"
+import { money, signedMoney, formatMonth, getGreeting, isInitialBalanceTransaction, chartFormatter } from "@/lib/format"
+import { AnimatedNumber as AnimatedMoney } from "@/components/shared/animated-number"
 
-const chartFormatter = (value: number) => `${value.toLocaleString("es-ES")}€`
+import { memo } from "react"
 
-const typeConfig: Record<Account["tipo"], { label: string; icon: React.ElementType; color: string; tint: string }> = {
-  emergencia: { label: "Emergencia", icon: ShieldCheck, color: "#10b981", tint: "from-emerald-500/16 to-emerald-500/[0.02]" },
-  ahorro: { label: "Ahorro", icon: Wallet, color: "#3b82f6", tint: "from-blue-500/16 to-blue-500/[0.02]" },
-  inversion: { label: "Inversión", icon: TrendingUp, color: "#8b5cf6", tint: "from-violet-500/16 to-violet-500/[0.02]" },
-  efectivo: { label: "Efectivo", icon: Landmark, color: "#f59e0b", tint: "from-amber-500/16 to-amber-500/[0.02]" },
-  gastos: { label: "Gastos", icon: CreditCard, color: "#ef4444", tint: "from-red-500/16 to-red-500/[0.02]" },
-}
-
-function money(value: number) {
-  return `${value.toLocaleString("es-ES")}€`
-}
-
-function signedMoney(value: number) {
-  return `${value >= 0 ? "+" : ""}${money(value)}`
-}
-
-function formatMonth(date: Date) {
-  return date.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
-}
-
-function getGreeting() {
-  const h = new Date().getHours()
-  if (h < 12) return "Buenos días"
-  if (h < 18) return "Buenas tardes"
-  return "Buenas noches"
-}
-
-function isInitialBalanceTransaction(id: string) {
-  return id.startsWith("init_")
-}
-
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`skeleton-shimmer rounded-[24px] ${className ?? ""}`} />
-}
-
-function AnimatedMoney({ value, prefix = "" }: { value: number; prefix?: string }) {
-  const animated = useAnimatedNumber(Math.round(value))
-  return <>{prefix}{animated.toLocaleString("es-ES")}€</>
-}
-
-function SectionTitle({ eyebrow, title, text, action }: { eyebrow: string; title: string; text?: string; action?: React.ReactNode }) {
-  return (
-    <div className="col-span-full flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div className="space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{eyebrow}</p>
-        <h2 className="text-xl font-bold tracking-tight">{title}</h2>
-        {text && <p className="max-w-2xl text-sm text-muted-foreground">{text}</p>}
-      </div>
-      {action}
-    </div>
-  )
-}
-
-function SnapshotCard({ label, value, subtitle, icon: Icon, color, delay }: { label: string; value: React.ReactNode; subtitle: string; icon: React.ElementType; color: string; delay: number }) {
+const SnapshotCard = memo(function SnapshotCard({ label, value, subtitle, icon: Icon, color, delay }: { label: string; value: React.ReactNode; subtitle: string; icon: React.ElementType; color: string; delay: number }) {
   return (
     <div className="stagger-fade rounded-[24px] bg-card/70 p-5 shadow-sm ring-1 ring-border/25 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5" style={{ animationDelay: `${delay}ms` }}>
       <div className="mb-4 flex items-center justify-between">
@@ -86,9 +35,9 @@ function SnapshotCard({ label, value, subtitle, icon: Icon, color, delay }: { la
       <p className="mt-2 text-xs text-muted-foreground">{subtitle}</p>
     </div>
   )
-}
+})
 
-function EmptyWelcome({ onCreateAccount }: { onCreateAccount: () => void }) {
+const EmptyWelcome = memo(function EmptyWelcome({ onCreateAccount }: { onCreateAccount: () => void }) {
   return (
     <div className="relative overflow-hidden rounded-[34px] bg-card/70 p-8 text-center shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-12">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.16),transparent_35%),radial-gradient(circle_at_10%_100%,rgba(16,185,129,0.14),transparent_35%)] dark:bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.28),transparent_35%),radial-gradient(circle_at_10%_100%,rgba(16,185,129,0.24),transparent_35%)]" />
@@ -108,18 +57,41 @@ function EmptyWelcome({ onCreateAccount }: { onCreateAccount: () => void }) {
       </div>
     </div>
   )
+})
+
+function Skeleton({ className }: { className?: string }) {
+  return <div className={`skeleton-shimmer rounded-[24px] ${className ?? ""}`} />
+}
+
+function SectionTitle({ eyebrow, title, text, action }: { eyebrow: string; title: string; text?: string; action?: React.ReactNode }) {
+  return (
+    <div className="col-span-full flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="space-y-1">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{eyebrow}</p>
+        <h2 className="text-xl font-bold tracking-tight">{title}</h2>
+        {text && <p className="max-w-2xl text-sm text-muted-foreground">{text}</p>}
+      </div>
+      {action}
+    </div>
+  )
 }
 
 export default function DashboardPage() {
   const { state, loading, dispatch } = useFinance()
   const router = useRouter()
   const { toast } = useToast()
-  const today = new Date()
+  const today = useMemo(() => new Date(), [])
   const [monthOffset, setMonthOffset] = useState(0)
   const [showNewAccount, setShowNewAccount] = useState(false)
 
-  const selectedDate = new Date(today.getFullYear(), today.getMonth() - monthOffset, 1)
-  const previousDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1)
+  const selectedDate = useMemo(
+    () => new Date(today.getFullYear(), today.getMonth() - monthOffset, 1),
+    [today, monthOffset]
+  )
+  const previousDate = useMemo(
+    () => new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1),
+    [selectedDate]
+  )
   const selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`
   const previousMonth = `${previousDate.getFullYear()}-${String(previousDate.getMonth() + 1).padStart(2, "0")}`
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
@@ -143,15 +115,26 @@ export default function DashboardPage() {
       : "El mes va en positivo; el siguiente paso es elevar el ahorro automático."
     : "Mes en déficit: revisa gastos variables y prioriza recortar categorías no esenciales."
 
+  const safeTime = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? 0 : d.getTime() }
+
   const recentTransactions = useMemo(
     () => analysisTransactions
       .filter((t) => t.fecha.startsWith(selectedMonth))
-      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+      .sort((a, b) => safeTime(b.fecha) - safeTime(a.fecha))
       .slice(0, 5),
     [analysisTransactions, selectedMonth]
   )
 
   const topAccounts = displayAccounts.slice().sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo)).slice(0, 4)
+
+  const netWorthTrend = useMemo(
+    () => [-5, -4, -3, -2, -1, 0].map((offset) => {
+      const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + offset, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonth(state.accounts, state.transactions, key) }
+    }),
+    [selectedDate, state.accounts, state.transactions]
+  )
   const goalProgress = state.sinkingFunds.length > 0
     ? Math.round(state.sinkingFunds.reduce((sum, fund) => sum + Math.min((fund.ahorrado_actual / fund.cantidad_objetivo) * 100, 100), 0) / state.sinkingFunds.length)
     : 0
@@ -234,7 +217,7 @@ export default function DashboardPage() {
             <SnapshotCard label="Ingresos" value={<AnimatedMoney value={monthTotals.ingresos} prefix="+" />} subtitle="Entradas registradas este mes" icon={ArrowUpRight} color="#10b981" delay={0} />
             <SnapshotCard label="Gastos" value={<AnimatedMoney value={monthTotals.gastos} prefix="-" />} subtitle={previousTotals.gastos > 0 ? `${expenseDelta >= 0 ? "+" : ""}${expenseDelta}% vs mes anterior` : "Sin comparativa previa"} icon={ArrowDownRight} color="#ef4444" delay={80} />
             <SnapshotCard label="Neto del mes" value={<AnimatedMoney value={monthTotals.neto} />} subtitle={monthTotals.neto >= 0 ? "Cash flow positivo" : "Cash flow negativo"} icon={CircleDollarSign} color={monthTotals.neto >= 0 ? "#3b82f6" : "#f59e0b"} delay={160} />
-            <SnapshotCard label="Ahorro" value={`${Math.max(savingsRate, 0)}%`} subtitle={savingsRate >= 20 ? "Objetivo 20% alcanzado" : "Meta recomendada: 20%"} icon={Target} color={savingsRate >= 20 ? "#10b981" : "#f59e0b"} delay={240} />
+            <SnapshotCard label="Ahorro" value={`${savingsRate}%`} subtitle={savingsRate >= 20 ? "Objetivo 20% alcanzado" : savingsRate > 0 ? "Meta recomendada: 20%" : "Cash flow negativo este mes"} icon={Target} color={savingsRate >= 20 ? "#10b981" : "#f59e0b"} delay={240} />
           </section>
 
           <section className="grid grid-cols-12 gap-6">
@@ -345,11 +328,7 @@ export default function DashboardPage() {
                 <CardTitle className="flex items-center gap-2 text-base font-semibold"><TrendingUp className="h-4 w-4 text-emerald-500" />Patrimonio histórico</CardTitle>
               </CardHeader>
               <CardContent>
-                <LineChart data={[-5, -4, -3, -2, -1, 0].map((offset) => {
-                  const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + offset, 1)
-                  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-                  return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonth(state.accounts, state.transactions, key) }
-                })} index="mes" categories={["patrimonio"]} colors={["emerald"]} valueFormatter={chartFormatter} yAxisWidth={72} className="h-[286px]" showAnimation />
+                <LineChart data={netWorthTrend} index="mes" categories={["patrimonio"]} colors={["emerald"]} valueFormatter={chartFormatter} yAxisWidth={72} className="h-[286px]" showAnimation />
               </CardContent>
             </Card>
 

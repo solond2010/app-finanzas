@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useToast } from "@/components/ui/toast"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
@@ -107,6 +108,7 @@ export function SinkingFundsGrid() {
   const { toast } = useToast()
   const [editingFund, setEditingFund] = useState<SinkingFund | null>(null)
   const [showNew, setShowNew] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<SinkingFund | null>(null)
 
   return (
     <Card className="col-span-full">
@@ -150,8 +152,9 @@ export function SinkingFundsGrid() {
               return (
                 <div key={fund.id} className="group relative rounded-2xl border border-border/60 bg-background/70 p-5 space-y-3 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5">
                   <button
-                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => { dispatch({ type: "DELETE_SINKING_FUND", payload: fund.id }); toast("Meta eliminada", "success") }}
+                    className="absolute top-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                    onClick={() => setDeleteConfirm(fund)}
+                    aria-label={`Eliminar meta ${fund.nombre}`}
                   >
                     <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
                   </button>
@@ -174,10 +177,10 @@ export function SinkingFundsGrid() {
                   <div className="text-xs text-muted-foreground space-y-0.5">
                     <p>
                       Meta:{" "}
-                      {new Date(fund.fecha_limite).toLocaleDateString("es-ES", {
-                        month: "long",
-                        year: "numeric",
-                      })}
+                      {(() => {
+                        const d = new Date(fund.fecha_limite)
+                        return isNaN(d.getTime()) ? "Sin fecha" : d.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+                      })()}
                     </p>
                     {account && <p>Cuenta: {account.nombre}</p>}
                     {monthly > 0 && (
@@ -208,6 +211,15 @@ export function SinkingFundsGrid() {
           )}
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        onOpenChange={() => setDeleteConfirm(null)}
+        onConfirm={() => { if (deleteConfirm) { dispatch({ type: "DELETE_SINKING_FUND", payload: deleteConfirm.id }); toast("Meta eliminada", "success") }}}
+        title="¿Eliminar esta meta?"
+        description={`Se eliminará "${deleteConfirm?.nombre}". No se puede deshacer.`}
+        confirmLabel="Eliminar"
+        destructive
+      />
     </Card>
   )
 }
