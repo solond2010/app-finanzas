@@ -197,39 +197,48 @@
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-/* Tremor builds chart colors from runtime class names inside node_modules.
-   Tailwind v4 may not emit those utilities, so Recharts falls back to black. */
-.fill-emerald-500, .dark .dark\:fill-emerald-500 { fill: #10b981; }
-.stroke-emerald-500, .dark .dark\:stroke-emerald-500 { stroke: #10b981; }
-.text-emerald-500, .dark .dark\:text-emerald-500 { color: #10b981; }
+/* ── Tremor / Recharts dark mode overrides ──
+   Tailwind v4 may not emit utilities used only inside node_modules.
+   Recharts SVG elements get direct class names like fill-emerald-500, text-tremor-content, etc.
+   These overrides ensure colors render correctly in both light and dark mode. */
 
-.fill-red-500, .dark .dark\:fill-red-500 { fill: #ef4444; }
-.stroke-red-500, .dark .dark\:stroke-red-500 { stroke: #ef4444; }
-.text-red-500, .dark .dark\:text-red-500 { color: #ef4444; }
+/* Chart fill colors */
+.fill-emerald-500 { fill: #10b981; }
+.fill-red-500 { fill: #ef4444; }
+.fill-violet-500 { fill: #8b5cf6; }
+.fill-amber-500 { fill: #f59e0b; }
+.fill-blue-500 { fill: #3b82f6; }
+.fill-gray-500 { fill: #6b7280; }
+.fill-gray-400 { fill: #9ca3af; }
 
-.fill-violet-500, .dark .dark\:fill-violet-500 { fill: #8b5cf6; }
-.stroke-violet-500, .dark .dark\:stroke-violet-500 { stroke: #8b5cf6; }
-.text-violet-500, .dark .dark\:text-violet-500 { color: #8b5cf6; }
-
-.fill-amber-500, .dark .dark\:fill-amber-500 { fill: #f59e0b; }
-.stroke-amber-500, .dark .dark\:stroke-amber-500 { stroke: #f59e0b; }
-.text-amber-500, .dark .dark\:text-amber-500 { color: #f59e0b; }
-
-.fill-blue-500, .dark .dark\:fill-blue-500 { fill: #3b82f6; }
-.stroke-blue-500, .dark .dark\:stroke-blue-500 { stroke: #3b82f6; }
-.text-blue-500, .dark .dark\:text-blue-500 { color: #3b82f6; }
-
-.fill-gray-500, .dark .dark\:fill-gray-500 { fill: #6b7280; }
-.stroke-gray-500, .dark .dark\:stroke-gray-500 { stroke: #6b7280; }
-.text-gray-500, .dark .dark\:text-gray-500 { color: #6b7280; }
-
-.fill-tremor-content-emphasis { fill: var(--tremor-content-emphasis); }
-.dark .dark\:fill-dark-tremor-content-emphasis { fill: var(--tremor-content-emphasis); }
+/* Chart stroke colors */
+.stroke-emerald-500 { stroke: #10b981; }
+.stroke-red-500 { stroke: #ef4444; }
+.stroke-violet-500 { stroke: #8b5cf6; }
+.stroke-amber-500 { stroke: #f59e0b; }
+.stroke-blue-500 { stroke: #3b82f6; }
+.stroke-gray-500 { stroke: #6b7280; }
 .stroke-tremor-background { stroke: var(--tremor-background); }
-.dark .dark\:stroke-dark-tremor-background { stroke: var(--tremor-background); }
 .stroke-tremor-border { stroke: var(--tremor-border); }
-.dark .dark\:stroke-dark-tremor-border { stroke: var(--tremor-border); }
+.stroke-tremor-ring { stroke: var(--tremor-ring); }
+
+/* Chart text colors */
+.text-emerald-500 { color: #10b981; }
+.text-red-500 { color: #ef4444; }
+.text-violet-500 { color: #8b5cf6; }
+.text-amber-500 { color: #f59e0b; }
+.text-blue-500 { color: #3b82f6; }
+.text-gray-500 { color: #6b7280; }
 .text-tremor-content { color: var(--tremor-content); }
-.dark .dark\:text-dark-tremor-content { color: var(--tremor-content); }
 .text-tremor-content-emphasis { color: var(--tremor-content-emphasis); }
-.dark .dark\:text-dark-tremor-content-emphasis { color: var(--tremor-content-emphasis); }
+.text-tremor-label { color: var(--tremor-label); }
+
+/* Chart element fills (tooltips, backgrounds) */
+.fill-tremor-background { fill: var(--tremor-background); }
+.fill-tremor-content-emphasis { fill: var(--tremor-content-emphasis); }
+
+/* Chart tooltip background */
+.bg-tremor-background { background-color: var(--tremor-background); }
+
+/* Chart tooltip rings/borders */
+.ring-tremor-ring { --tw-ring-color: var(--tremor-ring); }

@@ -73,7 +73,7 @@ export default function ConfiguracionPage() {
   return (
     <div className="space-y-7">
       <section className="relative overflow-hidden rounded-[32px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(59,130,246,0.14),transparent_28%),radial-gradient(circle_at_90%_80%,rgba(139,92,246,0.12),transparent_30%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(59,130,246,0.14),transparent_28%),radial-gradient(circle_at_90%_80%,rgba(139,92,246,0.12),transparent_30%)] dark:bg-[radial-gradient(circle_at_10%_20%,rgba(59,130,246,0.26),transparent_28%),radial-gradient(circle_at_90%_80%,rgba(139,92,246,0.22),transparent_30%)]" />
         <div className="relative z-10 space-y-4">
           <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
             <Sparkles className="h-3.5 w-3.5 text-amber-500" />

@@ -91,7 +91,7 @@ function SnapshotCard({ label, value, subtitle, icon: Icon, color, delay }: { la
 function EmptyWelcome({ onCreateAccount }: { onCreateAccount: () => void }) {
   return (
     <div className="relative overflow-hidden rounded-[34px] bg-card/70 p-8 text-center shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-12">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.16),transparent_35%),radial-gradient(circle_at_10%_100%,rgba(16,185,129,0.14),transparent_35%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.16),transparent_35%),radial-gradient(circle_at_10%_100%,rgba(16,185,129,0.14),transparent_35%)] dark:bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.28),transparent_35%),radial-gradient(circle_at_10%_100%,rgba(16,185,129,0.24),transparent_35%)]" />
       <div className="relative z-10 mx-auto flex max-w-xl flex-col items-center gap-5">
         <div className="rounded-[28px] bg-background/70 p-5 shadow-sm ring-1 ring-border/25">
           <Wallet className="h-10 w-10 text-muted-foreground/55" />
@@ -178,7 +178,7 @@ export default function DashboardPage() {
       ) : (
         <>
           <section className="relative overflow-hidden rounded-[36px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.18),transparent_28%),radial-gradient(circle_at_90%_0%,rgba(59,130,246,0.16),transparent_30%),radial-gradient(circle_at_75%_100%,rgba(139,92,246,0.12),transparent_30%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.18),transparent_28%),radial-gradient(circle_at_90%_0%,rgba(59,130,246,0.16),transparent_30%),radial-gradient(circle_at_75%_100%,rgba(139,92,246,0.12),transparent_30%)] dark:bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.30),transparent_28%),radial-gradient(circle_at_90%_0%,rgba(59,130,246,0.26),transparent_30%),radial-gradient(circle_at_75%_100%,rgba(139,92,246,0.22),transparent_30%)]" />
             <div className="relative z-10 grid gap-7 xl:grid-cols-[1.45fr_0.9fr] xl:items-end">
               <div className="space-y-6">
                 <div className="flex flex-wrap items-center gap-2">
