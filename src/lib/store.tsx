@@ -234,6 +234,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null
     if (saved) {
       dispatch({ type: "SET_STATE", payload: loadState() })
+      setLoading(false)
     } else {
       loadFromSupabase().then((remote) => {
         if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
@@ -361,7 +362,7 @@ function formatTransaction(t: any): Transaction {
 }
 
 function formatSinkingFund(s: any): SinkingFund {
-  return { id: s.id, nombre: s.nombre, cantidad_objetivo: Number(s.objetivo), fecha_limite: s.fecha_limite ?? "", ahorrado_actual: Number(s.ahorrado), cuenta_id: s.cuenta_id ?? "" }
+  return { id: s.id, nombre: s.nombre ?? "", cantidad_objetivo: Number(s.objetivo) || 0, fecha_limite: s.fecha_limite ?? "", ahorrado_actual: Number(s.ahorrado) || 0, cuenta_id: s.cuenta_id ?? "" }
 }
 
 function unformatAccount(a: Account): any {

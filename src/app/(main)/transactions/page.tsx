@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight, Sparkles, ArrowUpRight, ArrowDownRight, Activity } from "lucide-react"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { useFinance } from "@/lib/store"
 import { getMonthTotalsByString } from "@/lib/calculations"
 import { useAnimatedNumber } from "@/lib/hooks/use-animated-number"

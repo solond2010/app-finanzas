@@ -49,7 +49,7 @@ export default function AccountDetailPage() {
     </div>
   )
 
-  const cfg = typeConfig[account.tipo]
+  const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
   const Icon = cfg.icon
   const progress = account.objetivo && account.objetivo > 0 ? Math.min((account.saldo / account.objetivo) * 100, 100) : null
   const budgetUsed = account.limite_mensual && account.limite_mensual > 0

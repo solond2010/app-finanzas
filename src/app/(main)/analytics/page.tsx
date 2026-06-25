@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { BarChart, DonutChart, LineChart } from "@tremor/react"
-import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, FlaskConical, Gauge, Layers3, PiggyBank, Sparkles, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react"
+import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, FlaskConical, Gauge, Layers3, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,7 +24,7 @@ function formatMonth(date: Date) {
 }
 
 function AnimatedNumber({ value, prefix = "", suffix = "€" }: { value: number; prefix?: string; suffix?: string }) {
-  const animated = useAnimatedNumber(value)
+  const animated = useAnimatedNumber(Math.round(value))
   return <>{prefix}{animated.toLocaleString("es-ES")}{suffix}</>
 }
 

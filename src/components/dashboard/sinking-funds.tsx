@@ -142,7 +142,7 @@ export function SinkingFundsGrid() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {state.sinkingFunds.map((fund) => {
-              const progress = Math.min(Math.round((fund.ahorrado_actual / fund.cantidad_objetivo) * 100), 100)
+              const progress = fund.cantidad_objetivo > 0 ? Math.min(Math.round((fund.ahorrado_actual / fund.cantidad_objetivo) * 100), 100) : 0
               const monthly = calculateMonthlySaving(fund.cantidad_objetivo, fund.ahorrado_actual, fund.fecha_limite)
               const account = state.accounts.find((a) => a.id === fund.cuenta_id)
               const symbol = currencySymbol(account?.currency ?? "EUR")

@@ -1,11 +1,10 @@
 "use client"
 
 import { useMemo } from "react"
-import { Sparkles, PiggyBank, Target, TrendingUp, Wallet } from "lucide-react"
+import { Sparkles, Target, TrendingUp, Wallet } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { useFinance } from "@/lib/store"
-import { currencySymbol } from "@/lib/currency"
 import { useAnimatedNumber } from "@/lib/hooks/use-animated-number"
 
 function AnimatedNumber({ value }: { value: number }) {

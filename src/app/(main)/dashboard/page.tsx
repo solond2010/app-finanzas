@@ -267,7 +267,7 @@ export default function DashboardPage() {
                     <button onClick={() => setShowNewAccount(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-muted-foreground/30 p-8 text-sm text-muted-foreground transition-all hover:border-muted-foreground/50 hover:text-foreground"><Plus className="h-4 w-4" />Nueva cuenta</button>
                   ) : (
                     topAccounts.map((account, index) => {
-                      const cfg = typeConfig[account.tipo]
+                      const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
                       const Icon = cfg.icon
                       return (
                         <button key={account.id} onClick={() => router.push(`/cuentas/${account.id}`)} className="group flex w-full items-center justify-between gap-4 rounded-2xl bg-muted/25 p-3.5 text-left ring-1 ring-border/15 transition-all hover:-translate-y-0.5 hover:bg-muted/40 hover:shadow-sm" style={{ animationDelay: `${index * 70}ms` }}>

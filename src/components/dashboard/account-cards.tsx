@@ -33,7 +33,7 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
   return (
     <div className="col-span-full grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
       {displayAccounts.map((account, idx) => {
-        const cfg = typeConfig[account.tipo]
+        const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
         const progress = account.objetivo
           ? Math.min(Math.round((account.saldo / account.objetivo) * 100), 100)
           : null

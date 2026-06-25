@@ -88,7 +88,7 @@ export default function CuentasPage() {
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {state.accounts.map((account, index) => {
-              const cfg = typeConfig[account.tipo]
+              const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
               const Icon = cfg.icon
               return (
                 <button
