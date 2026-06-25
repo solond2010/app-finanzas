@@ -200,9 +200,10 @@
 /* ── Tremor / Recharts dark mode overrides ──
    Tailwind v4 may not emit utilities used only inside node_modules.
    Recharts SVG elements get direct class names like fill-emerald-500, text-tremor-content, etc.
-   These overrides ensure colors render correctly in both light and dark mode. */
+   These overrides ensure colors render correctly in both light and dark mode.
+   NOTE: SVG <text> elements need 'fill' not 'color'. */
 
-/* Chart fill colors */
+/* Chart fill colors (for SVG rect, circle, path elements) */
 .fill-emerald-500 { fill: #10b981; }
 .fill-red-500 { fill: #ef4444; }
 .fill-violet-500 { fill: #8b5cf6; }
@@ -222,20 +223,23 @@
 .stroke-tremor-border { stroke: var(--tremor-border); }
 .stroke-tremor-ring { stroke: var(--tremor-ring); }
 
-/* Chart text colors */
-.text-emerald-500 { color: #10b981; }
-.text-red-500 { color: #ef4444; }
-.text-violet-500 { color: #8b5cf6; }
-.text-amber-500 { color: #f59e0b; }
-.text-blue-500 { color: #3b82f6; }
-.text-gray-500 { color: #6b7280; }
-.text-tremor-content { color: var(--tremor-content); }
-.text-tremor-content-emphasis { color: var(--tremor-content-emphasis); }
-.text-tremor-label { color: var(--tremor-label); }
+/* Chart text — SVG <text> needs 'fill', HTML text uses 'color'
+   Use svg selectors to override Recharts inline fill=currentColor */
+svg .text-emerald-500, .text-emerald-500 { color: #10b981; fill: #10b981; }
+svg .text-red-500, .text-red-500 { color: #ef4444; fill: #ef4444; }
+svg .text-violet-500, .text-violet-500 { color: #8b5cf6; fill: #8b5cf6; }
+svg .text-amber-500, .text-amber-500 { color: #f59e0b; fill: #f59e0b; }
+svg .text-blue-500, .text-blue-500 { color: #3b82f6; fill: #3b82f6; }
+svg .text-gray-500, .text-gray-500 { color: #6b7280; fill: #6b7280; }
+svg .text-tremor-content, .text-tremor-content { color: var(--tremor-content); fill: var(--tremor-content); }
+svg .text-tremor-content-emphasis, .text-tremor-content-emphasis { color: var(--tremor-content-emphasis); fill: var(--tremor-content-emphasis); }
+svg .text-tremor-label, .text-tremor-label { color: var(--tremor-label); fill: var(--tremor-label); }
 
 /* Chart element fills (tooltips, backgrounds) */
 .fill-tremor-background { fill: var(--tremor-background); }
 .fill-tremor-content-emphasis { fill: var(--tremor-content-emphasis); }
+.fill-tremor-content { fill: var(--tremor-content); }
+.fill-tremor-label { fill: var(--tremor-label); }
 
 /* Chart tooltip background */
 .bg-tremor-background { background-color: var(--tremor-background); }
