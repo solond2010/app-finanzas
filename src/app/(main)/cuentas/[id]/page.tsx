@@ -1,15 +1,31 @@
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
-import { useFinance } from "@/lib/store"
+import { useFinance, type Account } from "@/lib/store"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
-import { ArrowLeft, Pencil, SearchX } from "lucide-react"
+import { ArrowLeft, Pencil, SearchX, Landmark, ShieldCheck, TrendingUp, Wallet as WalletIcon, CreditCard, ArrowUpRight, ArrowDownRight } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useState } from "react"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { currencySymbol, formatMoney } from "@/lib/currency"
+
+const typeConfig: Record<Account["tipo"], { label: string; icon: React.ElementType; color: string; tint: string }> = {
+  emergencia: { label: "Emergencia", icon: ShieldCheck, color: "#10b981", tint: "from-emerald-500/16 to-emerald-500/[0.02]" },
+  ahorro: { label: "Ahorro", icon: WalletIcon, color: "#3b82f6", tint: "from-blue-500/16 to-blue-500/[0.02]" },
+  inversion: { label: "Inversión", icon: TrendingUp, color: "#8b5cf6", tint: "from-violet-500/16 to-violet-500/[0.02]" },
+  efectivo: { label: "Efectivo", icon: Landmark, color: "#f59e0b", tint: "from-amber-500/16 to-amber-500/[0.02]" },
+  gastos: { label: "Gastos", icon: CreditCard, color: "#ef4444", tint: "from-red-500/16 to-red-500/[0.02]" },
+}
+
+function tipoLabel(tipo: string) {
+  const map: Record<string, string> = {
+    emergencia: "Emergencia", ahorro: "Ahorro", inversion: "Inversión",
+    efectivo: "Efectivo", gastos: "Gastos",
+  }
+  return map[tipo] || tipo
+}
 
 export default function AccountDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -33,7 +49,8 @@ export default function AccountDetailPage() {
     </div>
   )
 
-  const balanceColor = account.saldo >= 0 ? "text-foreground" : "text-red-500"
+  const cfg = typeConfig[account.tipo]
+  const Icon = cfg.icon
   const progress = account.objetivo && account.objetivo > 0 ? Math.min((account.saldo / account.objetivo) * 100, 100) : null
   const budgetUsed = account.limite_mensual && account.limite_mensual > 0
     ? (() => {
@@ -55,61 +72,119 @@ export default function AccountDetailPage() {
 
   return (
     <div className="space-y-6">
-      <button onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+      <button onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-all">
         <ArrowLeft className="h-4 w-4" /> Volver
       </button>
 
-      <div className="flex flex-col gap-4 rounded-[28px] bg-card/60 backdrop-blur-xl p-7 shadow-sm ring-1 ring-border/30 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.08em]">Cuentas / {tipoLabel(account.tipo)}</p>
-          <h1 className="text-[28px] font-bold tracking-tight leading-tight sm:text-[32px]">{account.nombre}</h1>
-          <p className="text-sm text-muted-foreground">{account.banco || "Sin banco"} · {account.currency}</p>
+      <section className="relative overflow-hidden rounded-[32px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
+        <div className={`absolute inset-0 bg-gradient-to-br ${cfg.tint} opacity-60`} />
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
+              <Icon className="h-3.5 w-3.5" style={{ color: cfg.color }} />
+              {cfg.label}
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{account.banco || "Sin banco"} · {account.currency}</p>
+              <h1 className="max-w-3xl text-[34px] font-bold leading-[0.95] tracking-tight sm:text-[44px] lg:text-[52px]">{account.nombre}</h1>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Saldo actual</p>
+              <p className="text-[48px] font-bold leading-none tracking-tight tabular-nums sm:text-[56px]"
+                style={{ color: account.saldo >= 0 ? cfg.color : "#ef4444" }}>
+                {formatMoney(account.saldo, account.currency)}
+              </p>
+            </div>
+          </div>
+
+          <Button variant="outline" size="sm" className="gap-1.5 rounded-2xl bg-background/60 backdrop-blur-sm" onClick={() => setEditing(true)}>
+            <Pencil className="h-3.5 w-3.5" /> Editar cuenta
+          </Button>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditing(true)}>
-          <Pencil className="h-3.5 w-3.5" /> Editar
-        </Button>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card className="relative overflow-hidden rounded-[24px] bg-card/70 p-5 shadow-sm ring-1 ring-border/25 backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-emerald-500/[0.02]" />
+          <div className="relative z-10 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Total ingresos</span>
+              <div className="rounded-2xl bg-background/60 p-2 ring-1 ring-emerald-500/15">
+                <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+              </div>
+            </div>
+            <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums text-emerald-500">
+              +{totalIngresos.toLocaleString("es-ES")} {currencySymbol(account.currency)}
+            </p>
+          </div>
+        </Card>
+
+        <Card className="relative overflow-hidden rounded-[24px] bg-card/70 p-5 shadow-sm ring-1 ring-border/25 backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-red-500/[0.02]" />
+          <div className="relative z-10 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Total gastos</span>
+              <div className="rounded-2xl bg-background/60 p-2 ring-1 ring-red-500/15">
+                <ArrowDownRight className="h-4 w-4 text-red-500" />
+              </div>
+            </div>
+            <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums text-red-500">
+              -{totalGastos.toLocaleString("es-ES")} {currencySymbol(account.currency)}
+            </p>
+          </div>
+        </Card>
+
+        <Card className="relative overflow-hidden rounded-[24px] bg-card/70 p-5 shadow-sm ring-1 ring-border/25 backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-500/[0.02]" />
+          <div className="relative z-10 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Neto histórico</span>
+              <div className="rounded-2xl bg-background/60 p-2 ring-1 ring-blue-500/15">
+                <WalletIcon className="h-4 w-4 text-blue-500" />
+              </div>
+            </div>
+            <p className={`text-[28px] font-bold leading-none tracking-tight tabular-nums ${totalIngresos - totalGastos >= 0 ? "text-emerald-500" : "text-red-500"}`}>
+              {totalIngresos - totalGastos >= 0 ? "+" : ""}{(totalIngresos - totalGastos).toLocaleString("es-ES")} {currencySymbol(account.currency)}
+            </p>
+          </div>
+        </Card>
+      </section>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {progress !== null && (
+          <Card>
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Progreso hacia objetivo</p>
+                <span className="rounded-full bg-muted/60 px-2.5 py-1 text-xs font-semibold tabular-nums ring-1 ring-border/20">{Math.round(progress)}%</span>
+              </div>
+              <Progress value={progress} className="h-2" />
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground tabular-nums">{formatMoney(account.saldo, account.currency)}</strong> de <span className="tabular-nums">{formatMoney(account.objetivo!, account.currency)}</span>
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {budgetUsed !== null && (
+          <Card>
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Presupuesto del mes</p>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${budgetUsed >= 80 ? "bg-red-500/10 text-red-500" : budgetUsed >= 50 ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"}`}>{Math.round(budgetUsed)}%</span>
+              </div>
+              <Progress value={budgetUsed} className="h-2" />
+              {(budgetUsed >= 80) && <p className="text-xs text-amber-500">Te estás acercando al límite mensual</p>}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Saldo actual</p>
-            <p className={`text-xl font-bold ${balanceColor}`}>{formatMoney(account.saldo, account.currency)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Total ingresos</p>
-            <p className="text-xl font-bold text-emerald-500">+{totalIngresos.toLocaleString("es-ES")} {currencySymbol(account.currency)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Total gastos</p>
-            <p className="text-xl font-bold text-red-500">-{totalGastos.toLocaleString("es-ES")} {currencySymbol(account.currency)}</p>
-          </CardContent>
-        </Card>
+      <div className="space-y-1">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Movimientos</p>
+        <h2 className="text-xl font-bold tracking-tight">Historial de transacciones</h2>
       </div>
-
-      {progress !== null && (
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Progreso hacia objetivo</span>
-            <span className="font-medium">{account.saldo.toLocaleString("es-ES")} {currencySymbol(account.currency)} / {account.objetivo!.toLocaleString("es-ES")} {currencySymbol(account.currency)}</span>
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
-      )}
-
-      {budgetUsed !== null && (
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Presupuesto del mes</span>
-            <span className="font-medium">{Math.round(budgetUsed)}% usado</span>
-          </div>
-          <Progress value={budgetUsed} className="h-2" />
-        </div>
-      )}
 
       <TransactionsTable cuentaId={account.id} />
 
@@ -124,12 +199,4 @@ export default function AccountDetailPage() {
       )}
     </div>
   )
-}
-
-function tipoLabel(tipo: string) {
-  const map: Record<string, string> = {
-    emergencia: "Emergencia", ahorro: "Ahorro", inversion: "Inversión",
-    efectivo: "Efectivo", gastos: "Gastos",
-  }
-  return map[tipo] || tipo
 }

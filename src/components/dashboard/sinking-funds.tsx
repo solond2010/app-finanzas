@@ -31,7 +31,7 @@ function SinkingFundForm({
   onCancel,
 }: {
   fund?: SinkingFund
-  accounts: { id: string; nombre: string }[]
+  accounts: { id: string; nombre: string; saldo: number }[]
   onSave: (f: SinkingFund) => void
   onCancel: () => void
 }) {
@@ -40,6 +40,7 @@ function SinkingFundForm({
   const [ahorrado, setAhorrado] = useState(String(fund?.ahorrado_actual ?? ""))
   const [fechaLimite, setFechaLimite] = useState(fund?.fecha_limite ?? "")
   const [cuentaId, setCuentaId] = useState(fund?.cuenta_id ?? accounts[0]?.id ?? "")
+  const [ahorradoTocado, setAhorradoTocado] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,6 +53,14 @@ function SinkingFundForm({
       fecha_limite: fechaLimite,
       cuenta_id: cuentaId,
     })
+  }
+
+  const syncAhorradoFromCuenta = (id: string) => {
+    setCuentaId(id)
+    if (!fund && !ahorradoTocado) {
+      const account = accounts.find((a) => a.id === id)
+      if (account) setAhorrado(String(account.saldo))
+    }
   }
 
   return (
@@ -67,7 +76,7 @@ function SinkingFundForm({
         </div>
         <div className="space-y-1.5">
           <label className="text-xs text-muted-foreground">Ahorrado actual (€)</label>
-          <Input type="number" value={ahorrado} onChange={(e) => setAhorrado(e.target.value)} />
+          <Input type="number" value={ahorrado} onChange={(e) => { setAhorradoTocado(true); setAhorrado(e.target.value) }} />
         </div>
         <div className="space-y-1.5">
           <label className="text-xs text-muted-foreground">Fecha límite</label>
@@ -75,7 +84,7 @@ function SinkingFundForm({
         </div>
         <div className="space-y-1.5">
           <label className="text-xs text-muted-foreground">Cuenta vinculada</label>
-          <Select value={cuentaId} onValueChange={(v) => v && setCuentaId(v)}>
+          <Select value={cuentaId} onValueChange={(v) => v && syncAhorradoFromCuenta(v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {accounts.map((a) => (
