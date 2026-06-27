@@ -24,6 +24,7 @@ import { useFinance, type SinkingFund, generateId } from "@/lib/store"
 import { calculateMonthlySaving } from "@/lib/calculations"
 import { PiggyBank, Plus, Pencil, Trash2, Target } from "lucide-react"
 import { currencySymbol } from "@/lib/currency"
+import { Sensitive } from "@/components/shared/sensitive"
 
 function SinkingFundForm({
   fund,
@@ -169,7 +170,7 @@ export function SinkingFundsGrid() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Progreso</span>
                       <span className="font-medium tabular-nums">
-                        {fund.ahorrado_actual.toLocaleString("es-ES")} {symbol} / {fund.cantidad_objetivo.toLocaleString("es-ES")} {symbol}
+                        <Sensitive>{fund.ahorrado_actual.toLocaleString("es-ES")} {symbol}</Sensitive> / <Sensitive>{fund.cantidad_objetivo.toLocaleString("es-ES")} {symbol}</Sensitive>
                       </span>
                     </div>
                     <Progress value={progress} className="h-2" />
@@ -185,7 +186,7 @@ export function SinkingFundsGrid() {
                     {account && <p>Cuenta: {account.nombre}</p>}
                     {monthly > 0 && (
                       <p className="font-medium text-foreground">
-                        Ahorro necesario: <span className="tabular-nums">{monthly.toLocaleString("es-ES")} {symbol}/mes</span>
+                        Ahorro necesario: <Sensitive as="span" className="tabular-nums">{monthly.toLocaleString("es-ES")} {symbol}/mes</Sensitive>
                       </p>
                     )}
                   </div>

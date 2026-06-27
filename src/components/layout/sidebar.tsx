@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useFinance } from "@/lib/store"
+import { usePrivacy } from "@/lib/privacy"
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -18,6 +19,8 @@ import {
   MoonStar,
   Menu,
   X,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
@@ -33,6 +36,7 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const { syncStatus } = useFinance()
+  const { privacy, toggle: togglePrivacy } = usePrivacy()
   const [isDark, setIsDark] = useState(() =>
     typeof document !== "undefined" && document.documentElement.classList.contains("dark")
   )
@@ -93,6 +97,16 @@ export function Sidebar() {
 
       <div className="mt-4 space-y-2">
         <button
+          onClick={togglePrivacy}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          aria-label={privacy ? "Desactivar modo privacidad" : "Activar modo privacidad"}
+        >
+          <div className="flex size-5 items-center justify-center">
+            {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </div>
+          {privacy ? "Mostrar cifras" : "Ocultar cifras"}
+        </button>
+        <button
           onClick={toggleTheme}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
           aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
@@ -113,11 +127,20 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile toggle */}
-      <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b bg-background/80 px-4 py-2.5 backdrop-blur-xl lg:hidden">
-        <h1 className="text-base font-bold tracking-tight">Finanzas</h1>
+      <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b bg-background/80 px-3 py-2.5 backdrop-blur-xl lg:hidden">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={togglePrivacy}
+            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-90 touch-manipulation"
+            aria-label={privacy ? "Desactivar modo privacidad" : "Activar modo privacidad"}
+          >
+            {privacy ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+          </button>
+          <h1 className="text-base font-bold tracking-tight">Finanzas</h1>
+        </div>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-90"
+          className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-90 touch-manipulation"
           aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

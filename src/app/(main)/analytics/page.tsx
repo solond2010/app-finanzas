@@ -12,6 +12,7 @@ import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, 
 import { backupCurrentState, clearBackup, generateSampleData, restoreBackup, useFinance } from "@/lib/store"
 import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
+import { Sensitive } from "@/components/shared/sensitive"
 
 const EmptyPanel = memo(function EmptyPanel({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
   return (
@@ -37,7 +38,7 @@ const MetricCard = memo(function MetricCard({
 }: {
   label: string
   value: React.ReactNode
-  subtitle: string
+  subtitle: React.ReactNode
   icon: React.ElementType
   tone: "emerald" | "red" | "blue" | "amber" | "violet"
   delay: number
@@ -206,7 +207,7 @@ export default function AnalyticsPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Patrimonio" value={<AnimatedNumber value={Math.round(currentNetWorth)} />} subtitle={`${netWorthTrendPositive ? "Sube" : "Baja"} ${signedMoney(netWorthChange)} vs mes previo`} icon={Wallet} tone={netWorthTrendPositive ? "emerald" : "red"} delay={0} />
+        <MetricCard label="Patrimonio" value={<AnimatedNumber value={Math.round(currentNetWorth)} />} subtitle={<>{netWorthTrendPositive ? "Sube" : "Baja"} <Sensitive>{signedMoney(netWorthChange)}</Sensitive> vs mes previo</>} icon={Wallet} tone={netWorthTrendPositive ? "emerald" : "red"} delay={0} />
         <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix="+" />} subtitle={`Registrados en ${formatMonth(selectedDate)}`} icon={ArrowUpRight} tone="emerald" delay={70} />
         <MetricCard label="Gastos" value={<AnimatedNumber value={monthTotals.gastos} prefix="-" />} subtitle={topCategory ? `${topCategory.categoria} concentra el ${topCategoryPct}%` : "Sin gastos este mes"} icon={ArrowDownRight} tone="red" delay={140} />
         <MetricCard label="Neto" value={<AnimatedNumber value={monthTotals.neto} />} subtitle={`${positiveMonths}/6 meses con cash flow positivo`} icon={Activity} tone={monthTotals.neto >= 0 ? "blue" : "amber"} delay={210} />
@@ -218,7 +219,7 @@ export default function AnalyticsPage() {
         <Card className="stagger-fade col-span-full xl:col-span-7" style={{ animationDelay: "80ms" }}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold"><TrendingUp className="h-4 w-4 text-emerald-500" />Patrimonio neto</CardTitle>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${netWorthTrendPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>{signedMoney(netWorthChange)}</span>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${netWorthTrendPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}><Sensitive>{signedMoney(netWorthChange)}</Sensitive></span>
           </CardHeader>
           <CardContent>
             {state.accounts.length === 0 ? <EmptyPanel icon={Wallet} title="Sin patrimonio registrado" text="Crea cuentas para ver la evolución de tu riqueza neta." /> : (
@@ -264,11 +265,11 @@ export default function AnalyticsPage() {
                   <div className="space-y-3">
                     <div className="rounded-2xl bg-emerald-500/[0.05] p-3 ring-1 ring-emerald-500/10">
                       <div className="flex items-center justify-between text-sm"><span>Necesidades</span><strong className="text-emerald-500 tabular-nums">{Math.round(needsPct)}%</strong></div>
-                      <p className="mt-1 text-xs text-muted-foreground">{money(necesidades)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground"><Sensitive>{money(necesidades)}</Sensitive></p>
                     </div>
                     <div className="rounded-2xl bg-amber-500/[0.05] p-3 ring-1 ring-amber-500/10">
                       <div className="flex items-center justify-between text-sm"><span>Deseos</span><strong className="text-amber-500 tabular-nums">{Math.round(wantsPct)}%</strong></div>
-                      <p className="mt-1 text-xs text-muted-foreground">{money(deseos)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground"><Sensitive>{money(deseos)}</Sensitive></p>
                     </div>
                   </div>
                 </div>
@@ -283,7 +284,7 @@ export default function AnalyticsPage() {
             <CardContent className="space-y-3">
               <div className="rounded-2xl bg-muted/35 p-4 ring-1 ring-border/20">
                 <p className="text-xs text-muted-foreground">Cash flow medio 6 meses</p>
-                <p className={`mt-1 text-2xl font-bold tabular-nums ${averageMonthlyNet >= 0 ? "text-emerald-500" : "text-red-500"}`}>{signedMoney(averageMonthlyNet)}</p>
+                <p className={`mt-1 text-2xl font-bold tabular-nums ${averageMonthlyNet >= 0 ? "text-emerald-500" : "text-red-500"}`}><Sensitive>{signedMoney(averageMonthlyNet)}</Sensitive></p>
               </div>
               <div className="rounded-2xl bg-muted/35 p-4 ring-1 ring-border/20">
                 <p className="text-xs text-muted-foreground">Recomendación</p>
@@ -324,9 +325,9 @@ export default function AnalyticsPage() {
                   cashFlow.slice().reverse().map((month) => (
                     <TableRow key={month.mes}>
                       <TableCell className="font-medium capitalize">{month.mes}</TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums text-emerald-500">+{money(month.ingresos)}</TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums text-red-500">-{money(month.gastos)}</TableCell>
-                      <TableCell className={`text-right font-bold tabular-nums ${month.neto >= 0 ? "text-emerald-500" : "text-red-500"}`}>{signedMoney(month.neto)}</TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums text-emerald-500"><Sensitive>+{money(month.ingresos)}</Sensitive></TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums text-red-500"><Sensitive>-{money(month.gastos)}</Sensitive></TableCell>
+                      <TableCell className={`text-right font-bold tabular-nums ${month.neto >= 0 ? "text-emerald-500" : "text-red-500"}`}><Sensitive>{signedMoney(month.neto)}</Sensitive></TableCell>
                       <TableCell className="text-right">
                         <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${month.neto >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
                           {month.neto >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}

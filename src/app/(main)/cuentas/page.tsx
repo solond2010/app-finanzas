@@ -15,6 +15,7 @@ import {
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Wallet as WalletIcon, Sparkles } from "lucide-react"
 import { formatMoney, currencySymbol } from "@/lib/currency"
+import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig, typeLabels } from "@/lib/account-types"
 
 export default function CuentasPage() {
@@ -44,7 +45,7 @@ export default function CuentasPage() {
           <div className="flex flex-col gap-2 rounded-[22px] bg-background/60 px-6 py-4 shadow-sm ring-1 ring-border/25 backdrop-blur-xl">
             <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Patrimonio neto total</p>
             <p className="text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[38px]">
-              <AnimatedNumber value={netWorth} />
+              <Sensitive as="span"><AnimatedNumber value={netWorth} /></Sensitive>
             </p>
           </div>
         </div>
@@ -93,14 +94,14 @@ export default function CuentasPage() {
 
                     <div>
                       <p className="text-3xl font-bold tabular-nums tracking-tight">
-                        {formatMoney(account.saldo, account.currency)}
+                        <Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive>
                       </p>
                     </div>
 
                     {account.objetivo && account.objetivo > 0 && (
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Objetivo: {account.objetivo.toLocaleString("es-ES")} {currencySymbol(account.currency)}</span>
+                          <span>Objetivo: <Sensitive>{account.objetivo.toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive></span>
                           <span>{Math.round((account.saldo / account.objetivo) * 100)}%</span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-muted/50">
@@ -148,10 +149,10 @@ export default function CuentasPage() {
                         <TableCell className="text-muted-foreground">{typeLabels[a.tipo]}</TableCell>
                         <TableCell className="text-muted-foreground">{a.banco || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums font-semibold">
-                          {formatMoney(a.saldo, a.currency)}
+                          <Sensitive>{formatMoney(a.saldo, a.currency)}</Sensitive>
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-muted-foreground">
-                          {a.objetivo ? `${a.objetivo.toLocaleString("es-ES")} ${currencySymbol(a.currency)}` : "—"}
+                          {a.objetivo ? <Sensitive>{a.objetivo.toLocaleString("es-ES")} {currencySymbol(a.currency)}</Sensitive> : "—"}
                         </TableCell>
                         <TableCell className="text-right">
                           {progress !== null ? (
@@ -166,7 +167,7 @@ export default function CuentasPage() {
                   <TableRow>
                     <TableCell colSpan={3} className="font-semibold">Total</TableCell>
                     <TableCell className="text-right tabular-nums font-bold text-lg">
-                      {totalBalance.toLocaleString("es-ES")}€
+                      <Sensitive>{totalBalance.toLocaleString("es-ES")}€</Sensitive>
                     </TableCell>
                     <TableCell colSpan={2} />
                   </TableRow>

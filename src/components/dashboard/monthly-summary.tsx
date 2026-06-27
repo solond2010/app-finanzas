@@ -7,6 +7,7 @@ import { useFinance } from "@/lib/store"
 import { useAnimatedNumber } from "@/lib/hooks/use-animated-number"
 import { getMonthTotalsByString, getNetWorthAtMonth, buildMonthlySummariesUpTo, getGastosBudgetProgress } from "@/lib/calculations"
 import { TrendingUp, TrendingDown, Wallet, Target, Euro } from "lucide-react"
+import { Sensitive } from "@/components/shared/sensitive"
 
 const dataFormatter = (value: number) => `${value.toLocaleString("es-ES")}€`
 
@@ -171,7 +172,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
                 <div>
                   <p className="text-xs text-muted-foreground">Ingresos</p>
                   <p className="text-sm font-semibold tabular-nums text-emerald-500">
-                    +{ingresos.toLocaleString("es-ES")}€
+                    <Sensitive>+{ingresos.toLocaleString("es-ES")}€</Sensitive>
                   </p>
                 </div>
               </div>
@@ -185,7 +186,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
                 <div>
                   <p className="text-xs text-muted-foreground">Gastos</p>
                   <p className="text-sm font-semibold tabular-nums text-red-500">
-                    -{gastos.toLocaleString("es-ES")}€
+                    <Sensitive>-{gastos.toLocaleString("es-ES")}€</Sensitive>
                   </p>
                 </div>
               </div>
@@ -199,7 +200,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
                 <div>
                   <p className="text-xs text-muted-foreground">Neto del mes</p>
                   <p className={`text-sm font-semibold tabular-nums ${neto >= 0 ? "text-emerald-500" : "text-red-500"}`}>
-                    {neto >= 0 ? "+" : ""}{neto.toLocaleString("es-ES")}€
+                    <Sensitive>{neto >= 0 ? "+" : ""}{neto.toLocaleString("es-ES")}€</Sensitive>
                   </p>
                 </div>
               </div>
@@ -210,7 +211,7 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Presupuesto mensual</span>
                   <span className={budget.progreso >= 100 ? "text-red-500 font-medium" : "text-muted-foreground"}>
-                    {budget.gastado.toLocaleString("es-ES")}€ / {budget.limite.toLocaleString("es-ES")}€
+<Sensitive>{budget.gastado.toLocaleString("es-ES")}€</Sensitive> / <Sensitive>{budget.limite.toLocaleString("es-ES")}€</Sensitive>
                   </span>
                 </div>
                 <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
@@ -221,8 +222,8 @@ export function MonthlySummary({ selectedMonth }: { selectedMonth?: string }) {
                 </div>
                 <p className={`text-[11px] ${budget.restante >= 0 ? "text-muted-foreground" : "text-red-500 font-medium"}`}>
                   {budget.restante >= 0
-                    ? `Te quedan ${budget.restante.toLocaleString("es-ES")}€`
-                    : `Te has pasado por ${Math.abs(budget.restante).toLocaleString("es-ES")}€`}
+                    ? <>Te quedan <Sensitive>{budget.restante.toLocaleString("es-ES")}€</Sensitive></>
+                    : <>Te has pasado por <Sensitive>{Math.abs(budget.restante).toLocaleString("es-ES")}€</Sensitive></>}
                 </p>
               </div>
             )}

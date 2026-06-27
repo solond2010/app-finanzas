@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { useState } from "react"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { currencySymbol, formatMoney } from "@/lib/currency"
+import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
 
 export default function AccountDetailPage() {
@@ -78,7 +79,7 @@ export default function AccountDetailPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Saldo actual</p>
               <p className="text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[48px] lg:text-[56px]"
                 style={{ color: account.saldo >= 0 ? cfg.color : "#ef4444" }}>
-                {formatMoney(account.saldo, account.currency)}
+                <Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive>
               </p>
             </div>
           </div>
@@ -99,9 +100,9 @@ export default function AccountDetailPage() {
                 <ArrowUpRight className="h-4 w-4 text-emerald-500" />
               </div>
             </div>
-            <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums text-emerald-500">
-              +{totalIngresos.toLocaleString("es-ES")} {currencySymbol(account.currency)}
-            </p>
+              <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums text-emerald-500">
+                <Sensitive>+{totalIngresos.toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive>
+              </p>
           </div>
         </Card>
 
@@ -114,9 +115,9 @@ export default function AccountDetailPage() {
                 <ArrowDownRight className="h-4 w-4 text-red-500" />
               </div>
             </div>
-            <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums text-red-500">
-              -{totalGastos.toLocaleString("es-ES")} {currencySymbol(account.currency)}
-            </p>
+              <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums text-red-500">
+                <Sensitive>-{totalGastos.toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive>
+              </p>
           </div>
         </Card>
 
@@ -129,9 +130,9 @@ export default function AccountDetailPage() {
                 <Wallet className="h-4 w-4 text-blue-500" />
               </div>
             </div>
-            <p className={`text-[28px] font-bold leading-none tracking-tight tabular-nums ${totalIngresos - totalGastos >= 0 ? "text-emerald-500" : "text-red-500"}`}>
-              {totalIngresos - totalGastos >= 0 ? "+" : ""}{(totalIngresos - totalGastos).toLocaleString("es-ES")} {currencySymbol(account.currency)}
-            </p>
+              <p className={`text-[28px] font-bold leading-none tracking-tight tabular-nums ${totalIngresos - totalGastos >= 0 ? "text-emerald-500" : "text-red-500"}`}>
+                <Sensitive>{totalIngresos - totalGastos >= 0 ? "+" : ""}{(totalIngresos - totalGastos).toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive>
+              </p>
           </div>
         </Card>
       </section>
@@ -146,7 +147,7 @@ export default function AccountDetailPage() {
               </div>
               <Progress value={progress} className="h-2" />
               <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground tabular-nums">{formatMoney(account.saldo, account.currency)}</strong> de <span className="tabular-nums">{formatMoney(account.objetivo!, account.currency)}</span>
+                <strong className="text-foreground tabular-nums"><Sensitive as="strong">{formatMoney(account.saldo, account.currency)}</Sensitive></strong> de <span className="tabular-nums"><Sensitive>{formatMoney(account.objetivo!, account.currency)}</Sensitive></span>
               </p>
             </CardContent>
           </Card>

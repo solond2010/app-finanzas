@@ -19,6 +19,7 @@ import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
 import { money, signedMoney, formatMonth, getGreeting, isInitialBalanceTransaction, chartFormatter } from "@/lib/format"
 import { AnimatedNumber as AnimatedMoney } from "@/components/shared/animated-number"
+import { Sensitive } from "@/components/shared/sensitive"
 
 import { memo } from "react"
 
@@ -170,7 +171,7 @@ export default function DashboardPage() {
                   </span>
                   <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${netWorthDelta >= 0 ? "bg-emerald-500/10 text-emerald-500 ring-emerald-500/20" : "bg-red-500/10 text-red-500 ring-red-500/20"}`}>
                     {netWorthDelta >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
-                    {signedMoney(netWorthDelta)} vs mes anterior
+                    <Sensitive>{signedMoney(netWorthDelta)}</Sensitive> vs mes anterior
                   </span>
                 </div>
 
@@ -261,7 +262,7 @@ export default function DashboardPage() {
                               <span className="block truncate text-xs text-muted-foreground">{cfg.label}{account.banco ? ` · ${account.banco}` : ""}</span>
                             </span>
                           </span>
-                          <span className="shrink-0 text-right text-sm font-bold tabular-nums">{formatMoney(account.saldo, account.currency)}</span>
+                          <span className="shrink-0 text-right text-sm font-bold tabular-nums"><Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive></span>
                         </button>
                       )
                     })
@@ -281,7 +282,7 @@ export default function DashboardPage() {
                       <>
                         <div className="mt-2 flex items-end justify-between gap-3">
                           <p className="text-2xl font-bold tabular-nums">{budget.progreso}%</p>
-                          <p className="text-xs text-muted-foreground">{money(budget.gastado)} / {money(budget.limite)}</p>
+                          <p className="text-xs text-muted-foreground"><Sensitive>{money(budget.gastado)}</Sensitive> / <Sensitive>{money(budget.limite)}</Sensitive></p>
                         </div>
                         <Progress value={budget.progreso} className="mt-3 h-2" />
                       </>
@@ -316,7 +317,7 @@ export default function DashboardPage() {
                         <p className="truncate text-sm font-semibold">{transaction.descripcion || transaction.categoria}</p>
                         <p className="truncate text-xs text-muted-foreground">{new Date(transaction.fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {account?.nombre ?? "Cuenta"}</p>
                       </div>
-                      <p className={`shrink-0 text-sm font-bold tabular-nums ${transaction.tipo === "ingreso" ? "text-emerald-500" : "text-red-500"}`}>{transaction.tipo === "ingreso" ? "+" : "-"}{transaction.monto.toLocaleString("es-ES")} {currencySymbol(account?.currency ?? "EUR")}</p>
+                      <p className={`shrink-0 text-sm font-bold tabular-nums ${transaction.tipo === "ingreso" ? "text-emerald-500" : "text-red-500"}`}><Sensitive>{transaction.tipo === "ingreso" ? "+" : "-"}{transaction.monto.toLocaleString("es-ES")} {currencySymbol(account?.currency ?? "EUR")}</Sensitive></p>
                     </div>
                   )
                 })}

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Account, generateId } from "@/lib/store"
 import { formatMoney } from "@/lib/currency"
+import { Sensitive } from "@/components/shared/sensitive"
 
 const typeBadge: Record<string, { label: string; color: string }> = {
   emergencia: { label: "Emergencia", color: "text-emerald-500" },
@@ -52,7 +53,7 @@ function AccountSelectItem({ account, showBalance = true }: { account: Account; 
       </div>
       {showBalance && (
         <span className="text-sm font-semibold tabular-nums whitespace-nowrap text-foreground/90">
-          {formatMoney(account.saldo, account.currency)}
+          <Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive>
         </span>
       )}
     </div>

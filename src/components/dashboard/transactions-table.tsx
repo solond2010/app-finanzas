@@ -31,6 +31,7 @@ import { Filter, Plus, Pencil, Trash2, Search, Download } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { formatMoney } from "@/lib/currency"
+import { Sensitive } from "@/components/shared/sensitive"
 import { filterTransactionsByMonth } from "@/lib/calculations"
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -377,7 +378,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                           </span>
                         </TableCell>
                         <TableCell className={`text-right tabular-nums font-medium text-xs sm:text-sm ${t.tipo === "ingreso" ? "text-emerald-500" : ""}`}>
-                          {t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, account?.currency ?? "EUR")}
+                          <Sensitive>{t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, account?.currency ?? "EUR")}</Sensitive>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <div className="flex gap-1">
@@ -470,7 +471,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
         onOpenChange={() => setDeleteConfirm(null)}
         onConfirm={() => { if (deleteConfirm) { dispatch({ type: "DELETE_TRANSACTION", payload: deleteConfirm.id }); toast("Transacción eliminada", "success") }}}
         title="¿Eliminar transacción?"
-        description={`Se eliminará la transacción "${deleteConfirm?.descripcion || deleteConfirm?.categoria || ""}" de ${deleteConfirm?.monto?.toLocaleString("es-ES")}€. No se puede deshacer.`}
+        description={<>Se eliminará la transacción &ldquo;{deleteConfirm?.descripcion || deleteConfirm?.categoria || ""}&rdquo; de <Sensitive>{deleteConfirm?.monto?.toLocaleString("es-ES")}€</Sensitive>. No se puede deshacer.</>}
         confirmLabel="Eliminar"
         destructive
       />

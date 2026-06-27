@@ -9,6 +9,7 @@ import { AccountDialog } from "./account-dialog"
 import { useToast } from "@/components/ui/toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { currencySymbol, formatMoney } from "@/lib/currency"
+import { Sensitive } from "@/components/shared/sensitive"
 import { getAccountsAtMonth, getGastosBudgetProgress } from "@/lib/calculations"
 import { typeConfig } from "@/lib/account-types"
 
@@ -69,7 +70,7 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
               </div>
               <div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[26px] font-bold tracking-tight tabular-nums leading-none">{formatMoney(account.saldo, account.currency)}</p>
+                  <p className="text-[26px] font-bold tracking-tight tabular-nums leading-none"><Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive></p>
                   <div className="mt-1.5 flex items-center gap-2">
                     <p className="truncate text-xs text-muted-foreground">
                       {account.nombre}{account.banco ? <span className="opacity-60"> · {account.banco}</span> : null}
@@ -88,7 +89,7 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Presupuesto mensual</span>
                     <span className={budget.progreso >= 100 ? "text-red-500 font-medium" : "text-muted-foreground"}>
-                      {budget.gastado.toLocaleString("es-ES")} {currencySymbol(account.currency)} / {budget.limite.toLocaleString("es-ES")} {currencySymbol(account.currency)}
+                      <Sensitive>{budget.gastado.toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive> / <Sensitive>{budget.limite.toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive>
                     </span>
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden">
@@ -99,8 +100,8 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
                   </div>
                   <p className={`text-[10px] ${budget.restante >= 0 ? "text-muted-foreground" : "text-red-500 font-medium"}`}>
                     {budget.restante >= 0
-                      ? `Te quedan ${budget.restante.toLocaleString("es-ES")} ${currencySymbol(account.currency)}`
-                      : `Te has pasado por ${Math.abs(budget.restante).toLocaleString("es-ES")} ${currencySymbol(account.currency)}`}
+                      ? <>Te quedan <Sensitive>{budget.restante.toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive></>
+                      : <>Te has pasado por <Sensitive>{Math.abs(budget.restante).toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive></>}
                   </p>
                 </div>
               )}
