@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { BarChart, LineChart } from "@tremor/react"
-import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, Flame, Plus, Sparkles, Target, TrendingUp, Wallet } from "lucide-react"
+import { LineChart, DonutChart } from "@tremor/react"
+import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, Eye, EyeOff, Plus, Sparkles, Target, TrendingUp, Wallet } from "lucide-react"
 
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -20,6 +20,7 @@ import { typeConfig } from "@/lib/account-types"
 import { money, signedMoney, formatMonth, getGreeting, isInitialBalanceTransaction, chartFormatter } from "@/lib/format"
 import { AnimatedNumber as AnimatedMoney } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
+import { usePrivacy } from "@/lib/privacy"
 
 import { memo } from "react"
 
@@ -64,23 +65,11 @@ function Skeleton({ className }: { className?: string }) {
   return <div className={`skeleton-shimmer rounded-[24px] ${className ?? ""}`} />
 }
 
-function SectionTitle({ eyebrow, title, text, action }: { eyebrow: string; title: string; text?: string; action?: React.ReactNode }) {
-  return (
-    <div className="col-span-full flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div className="space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{eyebrow}</p>
-        <h2 className="text-xl font-bold tracking-tight">{title}</h2>
-        {text && <p className="max-w-2xl text-sm text-muted-foreground">{text}</p>}
-      </div>
-      {action}
-    </div>
-  )
-}
-
 export default function DashboardPage() {
   const { state, loading, dispatch } = useFinance()
   const router = useRouter()
   const { toast } = useToast()
+  const { privacy, toggle: togglePrivacy } = usePrivacy()
   const today = useMemo(() => new Date(), [])
   const [monthOffset, setMonthOffset] = useState(0)
   const [showNewAccount, setShowNewAccount] = useState(false)
@@ -136,6 +125,21 @@ export default function DashboardPage() {
     }),
     [selectedDate, state.accounts, state.transactions]
   )
+
+  const assetDistribution = useMemo(() => displayAccounts
+    .filter((a) => a.saldo !== 0)
+    .map((a) => {
+      const cfg = typeConfig[a.tipo] ?? typeConfig.efectivo
+      return {
+        name: a.nombre,
+        value: Math.abs(a.saldo),
+        color: cfg.color,
+      }
+    })
+    .sort((a, b) => b.value - a.value),
+    [displayAccounts]
+  )
+
   const goalProgress = state.sinkingFunds.length > 0
     ? Math.round(state.sinkingFunds.reduce((sum, fund) => sum + Math.min((fund.ahorrado_actual / fund.cantidad_objetivo) * 100, 100), 0) / state.sinkingFunds.length)
     : 0
@@ -147,10 +151,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {loading ? (
         <div className="space-y-6">
-          <Skeleton className="h-72" />
+          <Skeleton className="h-56" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32" />)}</div>
           <Skeleton className="h-80" />
         </div>
@@ -161,105 +165,118 @@ export default function DashboardPage() {
         </>
       ) : (
         <>
-          <section className="relative overflow-hidden rounded-[36px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.18),transparent_28%),radial-gradient(circle_at_90%_0%,rgba(59,130,246,0.16),transparent_30%),radial-gradient(circle_at_75%_100%,rgba(139,92,246,0.12),transparent_30%)] dark:bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.30),transparent_28%),radial-gradient(circle_at_90%_0%,rgba(59,130,246,0.26),transparent_30%),radial-gradient(circle_at_75%_100%,rgba(139,92,246,0.22),transparent_30%)]" />
-            <div className="relative z-10 grid gap-7 xl:grid-cols-[1.45fr_0.9fr] xl:items-end">
-              <div className="space-y-6">
+          <section className="relative overflow-hidden rounded-[28px] bg-card/70 p-5 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-6">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.18),transparent_28%),radial-gradient(circle_at_90%_0%,rgba(59,130,246,0.16),transparent_30%)] dark:bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.30),transparent_28%),radial-gradient(circle_at_90%_0%,rgba(59,130,246,0.26),transparent_30%)]" />
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
-                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />Dashboard principal
+                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />Dashboard
                   </span>
                   <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${netWorthDelta >= 0 ? "bg-emerald-500/10 text-emerald-500 ring-emerald-500/20" : "bg-red-500/10 text-red-500 ring-red-500/20"}`}>
                     {netWorthDelta >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
-                    <Sensitive>{signedMoney(netWorthDelta)}</Sensitive> vs mes anterior
+                    <Sensitive>{signedMoney(netWorthDelta)}</Sensitive>
                   </span>
                 </div>
-
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-muted-foreground">{getGreeting()} · {formatMonth(selectedDate)}</p>
-                  <h1 className="max-w-4xl text-[34px] font-bold leading-[0.95] tracking-tight sm:text-[48px] lg:text-[58px]">Tu dinero, en una sola lectura.</h1>
-                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Patrimonio histórico, cash flow del mes, cuentas y próximos objetivos. Lo importante arriba, el detalle debajo.</p>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Patrimonio neto</p>
-                  <p className="text-[48px] font-bold leading-none tracking-tight tabular-nums sm:text-[68px]"><AnimatedMoney value={netWorth} /></p>
+                <p className="text-sm text-muted-foreground">{getGreeting()} · {formatMonth(selectedDate)}</p>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Patrimonio neto</p>
+                  <p className="text-[36px] font-bold leading-none tracking-tight tabular-nums sm:text-[48px]"><AnimatedMoney value={netWorth} /></p>
                 </div>
               </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between rounded-2xl bg-background/70 p-2.5 shadow-sm ring-1 ring-border/25 backdrop-blur-xl">
-                  <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes anterior"><ChevronLeft className="h-4 w-4" /></button>
-                  <span className="min-w-[165px] text-center text-sm font-bold capitalize tracking-tight">{formatMonth(selectedDate)}</span>
-                  <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes siguiente"><ChevronRight className="h-4 w-4" /></button>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center rounded-2xl bg-background/70 p-1 shadow-sm ring-1 ring-border/25 backdrop-blur-xl">
+                  <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-xl p-1.5 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes anterior"><ChevronLeft className="h-4 w-4" /></button>
+                  <span className="min-w-[120px] text-center text-xs font-bold capitalize tracking-tight sm:min-w-[150px] sm:text-sm">{formatMonth(selectedDate)}</span>
+                  <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-xl p-1.5 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes siguiente"><ChevronRight className="h-4 w-4" /></button>
                 </div>
-
-                <div className="rounded-[26px] bg-background/65 p-5 shadow-sm ring-1 ring-border/25 backdrop-blur-xl">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Salud financiera</p>
-                      <p className="mt-2 text-4xl font-bold tabular-nums">{healthScore}</p>
-                    </div>
-                    <div className="rounded-2xl bg-emerald-500/10 p-3 ring-1 ring-emerald-500/15"><Activity className="h-5 w-5 text-emerald-500" /></div>
-                  </div>
-                  <Progress value={healthScore} className="mt-4 h-2" />
-                  <p className="mt-3 text-sm leading-5 text-muted-foreground">{primaryInsight}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <Button className="gap-2 rounded-2xl" onClick={() => setShowNewAccount(true)}><Plus className="h-4 w-4" />Cuenta</Button>
-                  <Link href="/analytics" className="inline-flex h-9 items-center justify-center gap-2 rounded-2xl border border-input bg-background px-4 text-sm font-medium shadow-xs transition-all hover:bg-accent hover:text-accent-foreground active:scale-[0.97]"><BarChart3 className="h-4 w-4" />Analíticas</Link>
-                </div>
+                <button
+                  onClick={togglePrivacy}
+                  className="rounded-xl p-2.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90 touch-manipulation ring-1 ring-border/25 bg-background/70"
+                  aria-label={privacy ? "Desactivar modo privacidad" : "Activar modo privacidad"}
+                >
+                  {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
           </section>
 
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <SnapshotCard label="Ingresos" value={<AnimatedMoney value={monthTotals.ingresos} prefix="+" />} subtitle="Entradas registradas este mes" icon={ArrowUpRight} color="#10b981" delay={0} />
             <SnapshotCard label="Gastos" value={<AnimatedMoney value={monthTotals.gastos} prefix="-" />} subtitle={previousTotals.gastos > 0 ? `${expenseDelta >= 0 ? "+" : ""}${expenseDelta}% vs mes anterior` : "Sin comparativa previa"} icon={ArrowDownRight} color="#ef4444" delay={80} />
             <SnapshotCard label="Neto del mes" value={<AnimatedMoney value={monthTotals.neto} />} subtitle={monthTotals.neto >= 0 ? "Cash flow positivo" : "Cash flow negativo"} icon={CircleDollarSign} color={monthTotals.neto >= 0 ? "#3b82f6" : "#f59e0b"} delay={160} />
             <SnapshotCard label="Ahorro" value={`${savingsRate}%`} subtitle={savingsRate >= 20 ? "Objetivo 20% alcanzado" : savingsRate > 0 ? "Meta recomendada: 20%" : "Cash flow negativo este mes"} icon={Target} color={savingsRate >= 20 ? "#10b981" : "#f59e0b"} delay={240} />
           </section>
 
-          <section className="grid grid-cols-12 gap-6">
-            <SectionTitle eyebrow="Visión general" title="Tendencia y cuentas clave" text="Una vista rápida de si el mes avanza mejor que el anterior y dónde está concentrado tu patrimonio." />
+          <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.5fr_1fr]">
+            <div className="space-y-5">
+              <Card className="stagger-fade" style={{ animationDelay: "80ms" }}>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><TrendingUp className="h-4 w-4 text-emerald-500" />Patrimonio neto</CardTitle>
+                  <span className="text-xs text-muted-foreground">Últimos 6 meses</span>
+                </CardHeader>
+                <CardContent>
+                  {netWorthTrend.every((item) => item.patrimonio === 0) ? (
+                    <div className="flex h-[260px] flex-col items-center justify-center gap-3 rounded-2xl bg-muted/20 text-center ring-1 ring-border/20">
+                      <BarChart3 className="h-8 w-8 text-muted-foreground/35" />
+                      <p className="text-sm text-muted-foreground">Añade movimientos para ver la tendencia.</p>
+                    </div>
+                  ) : (
+                    <LineChart data={netWorthTrend} index="mes" categories={["patrimonio"]} colors={["emerald"]} valueFormatter={chartFormatter} yAxisWidth={64} className="h-[260px]" showAnimation />
+                  )}
+                </CardContent>
+              </Card>
 
-            <Card className="stagger-fade col-span-full xl:col-span-7" style={{ animationDelay: "80ms" }}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Flame className="h-4 w-4 text-amber-500" />Evolución mensual</CardTitle>
-                <span className="text-xs text-muted-foreground">Ingresos vs gastos</span>
-              </CardHeader>
-              <CardContent>
-                {trendData.every((item) => item.ingresos === 0 && item.gastos === 0) ? (
-                  <div className="flex h-[300px] flex-col items-center justify-center gap-3 rounded-2xl bg-muted/20 text-center ring-1 ring-border/20">
-                    <BarChart3 className="h-8 w-8 text-muted-foreground/35" />
-                    <p className="text-sm text-muted-foreground">Añade movimientos para ver la tendencia.</p>
+              <div className="stagger-fade space-y-3" style={{ animationDelay: "160ms" }}>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Últimos movimientos</p>
+                  <Link href="/transactions" className="text-xs font-medium text-primary hover:underline">Ver todo</Link>
+                </div>
+                {recentTransactions.length === 0 ? (
+                  <div className="flex h-[120px] flex-col items-center justify-center gap-2 rounded-2xl bg-muted/20 text-center ring-1 ring-border/20">
+                    <Activity className="h-6 w-6 text-muted-foreground/35" />
+                    <p className="text-sm text-muted-foreground">Sin movimientos en {formatMonth(selectedDate)}.</p>
                   </div>
                 ) : (
-                  <BarChart data={trendData} index="mes" categories={["ingresos", "gastos"]} colors={["emerald", "red"]} valueFormatter={chartFormatter} yAxisWidth={72} className="h-[300px]" showAnimation />
+                  <div className="divide-y divide-border/40 rounded-2xl bg-card/60 ring-1 ring-border/20 backdrop-blur-sm">
+                    {recentTransactions.map((transaction) => {
+                      const account = state.accounts.find((a) => a.id === transaction.cuenta_id)
+                      return (
+                        <div key={transaction.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{transaction.descripcion || transaction.categoria}</p>
+                            <p className="truncate text-xs text-muted-foreground">{new Date(transaction.fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {account?.nombre ?? "Cuenta"}</p>
+                          </div>
+                          <p className={`shrink-0 text-sm font-bold tabular-nums ${transaction.tipo === "ingreso" ? "text-emerald-500" : "text-red-500"}`}>
+                            <Sensitive>{transaction.tipo === "ingreso" ? "+" : "-"}{transaction.monto.toLocaleString("es-ES")} {currencySymbol(account?.currency ?? "EUR")}</Sensitive>
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <div className="col-span-full grid gap-4 xl:col-span-5">
-              <Card className="stagger-fade" style={{ animationDelay: "140ms" }}>
+            <div className="space-y-5">
+              <Card className="stagger-fade" style={{ animationDelay: "120ms" }}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><Wallet className="h-4 w-4 text-muted-foreground" />Cuentas principales</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><Wallet className="h-4 w-4 text-muted-foreground" />Cuentas</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-2">
                   {topAccounts.length === 0 ? (
-                    <button onClick={() => setShowNewAccount(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-muted-foreground/30 p-8 text-sm text-muted-foreground transition-all hover:border-muted-foreground/50 hover:text-foreground"><Plus className="h-4 w-4" />Nueva cuenta</button>
+                    <button onClick={() => setShowNewAccount(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-muted-foreground/30 p-6 text-sm text-muted-foreground transition-all hover:border-muted-foreground/50 hover:text-foreground"><Plus className="h-4 w-4" />Nueva cuenta</button>
                   ) : (
                     topAccounts.map((account, index) => {
                       const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
                       const Icon = cfg.icon
                       return (
-                        <button key={account.id} onClick={() => router.push(`/cuentas/${account.id}`)} className="group flex w-full items-center justify-between gap-4 rounded-2xl bg-muted/25 p-3.5 text-left ring-1 ring-border/15 transition-all hover:-translate-y-0.5 hover:bg-muted/40 hover:shadow-sm" style={{ animationDelay: `${index * 70}ms` }}>
-                          <span className="flex min-w-0 items-center gap-3">
-                            <span className={`rounded-2xl bg-gradient-to-br ${cfg.tint} p-2.5 ring-1 ring-border/15`}><Icon className="h-4 w-4" style={{ color: cfg.color }} /></span>
+                        <button key={account.id} onClick={() => router.push(`/cuentas/${account.id}`)} className="group flex w-full items-center justify-between gap-3 rounded-2xl bg-muted/25 p-3 text-left ring-1 ring-border/15 transition-all hover:-translate-y-0.5 hover:bg-muted/40 hover:shadow-sm" style={{ animationDelay: `${index * 70}ms` }}>
+                          <span className="flex min-w-0 items-center gap-2.5">
+                            <span className={`rounded-xl bg-gradient-to-br ${cfg.tint} p-2 ring-1 ring-border/15`}><Icon className="h-3.5 w-3.5" style={{ color: cfg.color }} /></span>
                             <span className="min-w-0">
                               <span className="block truncate text-sm font-semibold">{account.nombre}</span>
-                              <span className="block truncate text-xs text-muted-foreground">{cfg.label}{account.banco ? ` · ${account.banco}` : ""}</span>
+                              <span className="block truncate text-[11px] text-muted-foreground">{cfg.label}{account.banco ? ` · ${account.banco}` : ""}</span>
                             </span>
                           </span>
                           <span className="shrink-0 text-right text-sm font-bold tabular-nums"><Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive></span>
@@ -267,73 +284,40 @@ export default function DashboardPage() {
                       )
                     })
                   )}
-                  <Button variant="outline" className="w-full rounded-2xl" onClick={() => setShowNewAccount(true)}><Plus className="mr-2 h-4 w-4" />Añadir cuenta</Button>
+                  <Button variant="outline" size="sm" className="w-full rounded-2xl" onClick={() => setShowNewAccount(true)}><Plus className="mr-2 h-3.5 w-3.5" />Añadir cuenta</Button>
                 </CardContent>
               </Card>
 
-              <Card className="stagger-fade" style={{ animationDelay: "200ms" }}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><Target className="h-4 w-4 text-blue-500" />Foco del mes</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="rounded-2xl bg-muted/30 p-4 ring-1 ring-border/20">
-                    <p className="text-xs text-muted-foreground">Presupuesto</p>
-                    {budget ? (
-                      <>
-                        <div className="mt-2 flex items-end justify-between gap-3">
-                          <p className="text-2xl font-bold tabular-nums">{budget.progreso}%</p>
-                          <p className="text-xs text-muted-foreground"><Sensitive>{money(budget.gastado)}</Sensitive> / <Sensitive>{money(budget.limite)}</Sensitive></p>
+              {assetDistribution.length > 0 && (
+                <Card className="stagger-fade" style={{ animationDelay: "200ms" }}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold"><CircleDollarSign className="h-4 w-4 text-muted-foreground" />Distribución</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DonutChart data={assetDistribution} category="value" index="name" variant="donut" className="mx-auto h-44 w-44" showAnimation />
+                    <div className="mt-3 space-y-1.5">
+                      {assetDistribution.map((item) => (
+                        <div key={item.name} className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1.5 truncate">
+                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                            {item.name}
+                          </span>
+                          <Sensitive as="span" className="tabular-nums font-medium">{formatMoney(item.value, displayAccounts.find((a) => a.nombre === item.name)?.currency ?? "EUR")}</Sensitive>
                         </div>
-                        <Progress value={budget.progreso} className="mt-3 h-2" />
-                      </>
-                    ) : <p className="mt-2 text-sm text-muted-foreground">Crea una cuenta de gastos con límite mensual para activar esta señal.</p>}
-                  </div>
-                  <div className="rounded-2xl bg-muted/30 p-4 ring-1 ring-border/20">
-                    <p className="text-xs text-muted-foreground">Metas</p>
-                    <p className="mt-2 text-2xl font-bold tabular-nums">{state.sinkingFunds.length > 0 ? `${goalProgress}%` : "—"}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{state.sinkingFunds.length > 0 ? `${state.sinkingFunds.length} metas activas` : "Sin metas activas"}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <SectionTitle eyebrow="Movimientos" title="Últimas decisiones del mes" text="El historial completo está abajo, pero aquí ves lo más reciente sin perder contexto." action={<Link href="/transactions" className="inline-flex h-9 items-center justify-center rounded-full border border-input bg-background px-4 text-sm font-medium shadow-xs transition-all hover:bg-accent hover:text-accent-foreground active:scale-[0.97]">Ver todo</Link>} />
-
-            <Card className="stagger-fade col-span-full lg:col-span-5" style={{ animationDelay: "160ms" }}>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Activity className="h-4 w-4 text-muted-foreground" />Movimientos recientes</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {recentTransactions.length === 0 ? (
-                  <div className="flex min-h-[220px] flex-col items-center justify-center gap-2 rounded-2xl bg-muted/20 text-center ring-1 ring-border/20">
-                    <Activity className="h-7 w-7 text-muted-foreground/35" />
-                    <p className="text-sm text-muted-foreground">Sin movimientos en {formatMonth(selectedDate)}.</p>
-                  </div>
-                ) : recentTransactions.map((transaction) => {
-                  const account = state.accounts.find((a) => a.id === transaction.cuenta_id)
-                  return (
-                    <div key={transaction.id} className="flex items-center justify-between gap-4 rounded-2xl bg-muted/25 p-3.5 ring-1 ring-border/15">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">{transaction.descripcion || transaction.categoria}</p>
-                        <p className="truncate text-xs text-muted-foreground">{new Date(transaction.fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {account?.nombre ?? "Cuenta"}</p>
-                      </div>
-                      <p className={`shrink-0 text-sm font-bold tabular-nums ${transaction.tipo === "ingreso" ? "text-emerald-500" : "text-red-500"}`}><Sensitive>{transaction.tipo === "ingreso" ? "+" : "-"}{transaction.monto.toLocaleString("es-ES")} {currencySymbol(account?.currency ?? "EUR")}</Sensitive></p>
+                      ))}
                     </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </section>
 
-            <Card className="stagger-fade col-span-full lg:col-span-7" style={{ animationDelay: "220ms" }}>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold"><TrendingUp className="h-4 w-4 text-emerald-500" />Patrimonio histórico</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <LineChart data={netWorthTrend} index="mes" categories={["patrimonio"]} colors={["emerald"]} valueFormatter={chartFormatter} yAxisWidth={72} className="h-[286px]" showAnimation />
-              </CardContent>
-            </Card>
-
-            <SectionTitle eyebrow="Detalle" title="Historial y metas" text="La parte operativa sigue disponible debajo, con filtros, exportación y edición." />
+          <section className="grid grid-cols-12 gap-6">
+            <div className="col-span-full space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Operativo</p>
+              <h2 className="text-xl font-bold tracking-tight">Historial y metas</h2>
+              <p className="max-w-2xl text-sm text-muted-foreground">Transacciones completas y fondos de ahorro con filtros, exportación y edición.</p>
+            </div>
             <TransactionsTable selectedMonth={selectedMonth} />
             <SinkingFundsGrid />
           </section>
