@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useToast } from "@/components/ui/toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -22,7 +21,8 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type SinkingFund, generateId } from "@/lib/store"
 import { calculateMonthlySaving } from "@/lib/calculations"
-import { PiggyBank, Plus, Pencil, Trash2, Target } from "lucide-react"
+import { CircularProgress } from "@/components/ui/circular-progress"
+import { PiggyBank, Plus, Pencil, Trash2, Target, TrendingUp, Clock } from "lucide-react"
 import { currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 
@@ -42,7 +42,7 @@ function SinkingFundForm({
   const [ahorrado, setAhorrado] = useState(String(fund?.ahorrado_actual ?? ""))
   const [fechaLimite, setFechaLimite] = useState(fund?.fecha_limite ?? "")
   const [cuentaId, setCuentaId] = useState(fund?.cuenta_id ?? accounts[0]?.id ?? "")
-  const [ahorradoTocado, setAhorradoTocado] = useState(false)
+  const [ahorradoTocado, setAhorradoTocado] = useState(!!fund?.ahorrado_actual)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,7 +59,7 @@ function SinkingFundForm({
 
   const syncAhorradoFromCuenta = (id: string) => {
     setCuentaId(id)
-    if (!fund && !ahorradoTocado) {
+    if (!ahorradoTocado) {
       const account = accounts.find((a) => a.id === id)
       if (account) setAhorrado(String(account.saldo))
     }
@@ -104,12 +104,55 @@ function SinkingFundForm({
   )
 }
 
+function PredictionTooltip({ remaining, avgMonthly, symbol }: { remaining: number; avgMonthly: number; symbol: string }) {
+  if (remaining <= 0 || avgMonthly <= 0) return null
+
+  const monthsNeeded = Math.ceil(remaining / avgMonthly)
+  const estimated = new Date()
+  estimated.setMonth(estimated.getMonth() + monthsNeeded)
+  const label = estimated.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+
+  return (
+    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20">
+      <div className="rounded-xl bg-foreground/10 backdrop-blur-xl px-3 py-2 text-[11px] leading-relaxed text-foreground shadow-xl ring-1 ring-border/30 whitespace-nowrap">
+        <div className="flex items-center gap-1.5 font-medium">
+          <TrendingUp className="h-3 w-3 text-emerald-500" />
+          Al ritmo actual (~{avgMonthly.toLocaleString("es-ES")} {symbol}/mes),
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Clock className="h-3 w-3 text-amber-500" />
+          completarás en <strong>{monthsNeeded} {monthsNeeded === 1 ? "mes" : "meses"}</strong> ({label})
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function SinkingFundsGrid() {
   const { state, dispatch } = useFinance()
   const { toast } = useToast()
   const [editingFund, setEditingFund] = useState<SinkingFund | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<SinkingFund | null>(null)
+
+  const averageMonthlySavings = useMemo(() => {
+    const now = new Date()
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1)
+    const filtered = state.transactions
+      .filter((t) => !t.id.startsWith("init_"))
+      .filter((t) => new Date(t.fecha) >= threeMonthsAgo && new Date(t.fecha) <= now)
+    const netPerMonth: number[] = []
+    for (let i = 0; i < 3; i++) {
+      const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const key = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}`
+      const monthTxns = filtered.filter((t) => t.fecha.startsWith(key))
+      const ingresos = monthTxns.filter((t) => t.tipo === "ingreso").reduce((s, t) => s + t.monto, 0)
+      const gastos = monthTxns.filter((t) => t.tipo === "gasto").reduce((s, t) => s + t.monto, 0)
+      netPerMonth.push(ingresos - gastos)
+    }
+    const total = netPerMonth.reduce((s, v) => s + v, 0)
+    return Math.round(total / netPerMonth.length)
+  }, [state.transactions])
 
   return (
     <Card className="col-span-full">
@@ -149,9 +192,12 @@ export function SinkingFundsGrid() {
               const monthly = calculateMonthlySaving(fund.cantidad_objetivo, fund.ahorrado_actual, fund.fecha_limite)
               const account = state.accounts.find((a) => a.id === fund.cuenta_id)
               const symbol = currencySymbol(account?.currency ?? "EUR")
+              const remaining = fund.cantidad_objetivo - fund.ahorrado_actual
+              const circleColor = progress >= 100 ? "#10b981" : progress >= 50 ? "#f59e0b" : "#3b82f6"
 
               return (
-                <div key={fund.id} className="group relative rounded-2xl border border-border/60 bg-background/70 p-5 space-y-3 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5">
+                <div key={fund.id} className="group relative rounded-2xl border border-border/60 bg-background/70 p-5 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5">
+                  <PredictionTooltip remaining={remaining} avgMonthly={averageMonthlySavings} symbol={symbol} />
                   <button
                     className="absolute top-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                     onClick={() => setDeleteConfirm(fund)}
@@ -159,23 +205,30 @@ export function SinkingFundsGrid() {
                   >
                     <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
                   </button>
-                  <h3
-                    className="font-semibold text-sm cursor-pointer hover:text-amber-500 transition-colors flex items-center gap-2"
-                    onClick={() => setEditingFund(fund)}
-                  >
-                    {fund.nombre}
-                    <Pencil className="h-3 w-3 text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100" />
-                  </h3>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Progreso</span>
-                      <span className="font-medium tabular-nums">
-                        <Sensitive>{fund.ahorrado_actual.toLocaleString("es-ES")} {symbol}</Sensitive> / <Sensitive>{fund.cantidad_objetivo.toLocaleString("es-ES")} {symbol}</Sensitive>
+                  <div className="flex flex-col items-center gap-3 pt-2">
+                    <div className="relative flex items-center justify-center">
+                      <CircularProgress value={progress} size={88} strokeWidth={7} color={circleColor} />
+                      <span className="absolute text-lg font-bold tabular-nums tracking-tight" style={{ color: circleColor }}>
+                        {progress}%
                       </span>
                     </div>
-                    <Progress value={progress} className="h-2" />
+                    <h3
+                      className="font-semibold text-sm cursor-pointer hover:text-amber-500 transition-colors flex items-center gap-2 text-center"
+                      onClick={() => setEditingFund(fund)}
+                    >
+                      {fund.nombre}
+                      <Pencil className="h-3 w-3 text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100" />
+                    </h3>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">
+                        <Sensitive>{fund.ahorrado_actual.toLocaleString("es-ES")} {symbol}</Sensitive>
+                      </p>
+                      <p className="text-[11px] text-muted-foreground/60">
+                        de <Sensitive>{fund.cantidad_objetivo.toLocaleString("es-ES")} {symbol}</Sensitive>
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground space-y-0.5">
+                  <div className="mt-3 space-y-1 text-center text-[11px] text-muted-foreground">
                     <p>
                       Meta:{" "}
                       {(() => {
@@ -186,7 +239,7 @@ export function SinkingFundsGrid() {
                     {account && <p>Cuenta: {account.nombre}</p>}
                     {monthly > 0 && (
                       <p className="font-medium text-foreground">
-                        Ahorro necesario: <Sensitive as="span" className="tabular-nums">{monthly.toLocaleString("es-ES")} {symbol}/mes</Sensitive>
+                        <Sensitive as="span" className="tabular-nums">{monthly.toLocaleString("es-ES")} {symbol}/mes</Sensitive>
                       </p>
                     )}
                   </div>
