@@ -13,22 +13,28 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AnimatedNumber } from "@/components/shared/animated-number"
-import { Wallet as WalletIcon, Sparkles } from "lucide-react"
+import { Wallet as WalletIcon, Sparkles, Plus } from "lucide-react"
 import { formatMoney, currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig, typeLabels } from "@/lib/account-types"
+import { Button } from "@/components/ui/button"
+import { useState } from "react"
+import { AccountDialog } from "@/components/dashboard/account-dialog"
+import { useFinance as useFinanceActions } from "@/lib/store"
+import { useToast } from "@/components/ui/toast"
 
 export default function CuentasPage() {
-  const { state } = useFinance()
+  const { state, dispatch } = useFinance()
   const router = useRouter()
+  const { toast } = useToast()
   const netWorth = getNetWorth(state.accounts)
+  const [showNewAccount, setShowNewAccount] = useState(false)
 
   const totalBalance = state.accounts.reduce((s, a) => s + a.saldo, 0)
 
   return (
     <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-[32px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_85%_0%,rgba(16,185,129,0.14),transparent_30%)] dark:bg-[radial-gradient(circle_at_10%_20%,rgba(59,130,246,0.28),transparent_28%),radial-gradient(circle_at_85%_0%,rgba(16,185,129,0.24),transparent_30%)]" />
+      <section className="hero-gradient rounded-[32px] bg-card/70 p-6 sm:p-8 card-glow">
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
@@ -36,14 +42,14 @@ export default function CuentasPage() {
               Tus cuentas
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Patrimonio</p>
+              <p className="page-section-label">Patrimonio</p>
               <h1 className="max-w-3xl text-[34px] font-bold leading-[0.95] tracking-tight sm:text-[44px] lg:text-[52px]">Todo tu dinero, centralizado.</h1>
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Saldos, bancos y progreso de objetivos financieros en un solo vistazo.</p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 rounded-[22px] bg-background/60 px-6 py-4 shadow-sm ring-1 ring-border/25 backdrop-blur-xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Patrimonio neto total</p>
+          <div className="flex flex-col gap-2 rounded-[22px] bg-background/60 px-6 py-4 card-glow">
+            <p className="page-section-label">Patrimonio neto total</p>
             <p className="text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[38px]">
               <Sensitive as="span"><AnimatedNumber value={netWorth} /></Sensitive>
             </p>
@@ -52,7 +58,7 @@ export default function CuentasPage() {
       </section>
 
       {state.accounts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-5 py-24 text-center">
+        <div className="flex flex-col items-center justify-center gap-6 py-24 text-center">
           <div className="rounded-full bg-muted/50 p-6 ring-1 ring-border/30">
             <WalletIcon className="h-10 w-10 text-muted-foreground/40" />
           </div>
@@ -60,7 +66,7 @@ export default function CuentasPage() {
             <h2 className="text-xl font-semibold tracking-tight">Sin cuentas aún</h2>
             <p className="text-sm text-muted-foreground max-w-sm">Añade tu primera cuenta bancaria para empezar a gestionar tus finanzas.</p>
           </div>
-          <p className="text-sm text-muted-foreground">Usa el botón <strong>+</strong> en la barra lateral para añadir tu primera cuenta.</p>
+          <Button className="gap-2 rounded-full" onClick={() => setShowNewAccount(true)}><Plus className="h-4 w-4" />Crear primera cuenta</Button>
         </div>
       ) : (
         <>
@@ -72,10 +78,10 @@ export default function CuentasPage() {
                 <button
                   key={account.id}
                   onClick={() => router.push(`/cuentas/${account.id}`)}
-                  className="stagger-fade group relative overflow-hidden rounded-[22px] bg-card/70 p-6 text-left shadow-sm ring-1 ring-border/25 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10"
+                  className="stagger-fade group relative overflow-hidden rounded-[22px] bg-card/70 p-6 text-left ring-1 ring-border/25 backdrop-blur-xl card-glow glass-card-hover"
                   style={{ animationDelay: `${index * 60}ms` }}
                 >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${cfg.tint} opacity-60`} />
+                  <div className={`absolute inset-0 bg-gradient-to-br ${cfg.tint} opacity-60 rounded-[22px]`} />
                   <div className="relative z-10 space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
@@ -119,6 +125,14 @@ export default function CuentasPage() {
                 </button>
               )
             })}
+            <button
+              onClick={() => setShowNewAccount(true)}
+              className="stagger-fade flex flex-col items-center justify-center gap-3 rounded-[22px] border-2 border-dashed border-muted-foreground/25 p-6 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground transition-all duration-300 hover:-translate-y-1 hover:shadow-md bg-card/50 backdrop-blur-sm ring-1 ring-border/10"
+              style={{ animationDelay: `${state.accounts.length * 60}ms` }}
+            >
+              <Plus className="h-8 w-8" />
+              <span className="text-sm font-medium">Nueva Cuenta</span>
+            </button>
           </div>
 
           <Card>
@@ -144,7 +158,7 @@ export default function CuentasPage() {
                   {state.accounts.map((a) => {
                     const progress = a.objetivo && a.objetivo > 0 ? Math.min(Math.round((a.saldo / a.objetivo) * 100), 100) : null
                     return (
-                      <TableRow key={a.id} className="cursor-pointer group" onClick={() => router.push(`/cuentas/${a.id}`)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && router.push(`/cuentas/${a.id}`)} role="button">
+                      <TableRow key={a.id} className="cursor-pointer group transition-colors hover:bg-muted/20" onClick={() => router.push(`/cuentas/${a.id}`)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && router.push(`/cuentas/${a.id}`)} role="button">
                         <TableCell className="font-medium">{a.nombre}</TableCell>
                         <TableCell className="text-muted-foreground">{typeLabels[a.tipo]}</TableCell>
                         <TableCell className="text-muted-foreground">{a.banco || "—"}</TableCell>
@@ -177,6 +191,8 @@ export default function CuentasPage() {
           </Card>
         </>
       )}
+
+      <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={(a) => { dispatch({ type: "ADD_ACCOUNT", payload: a }); setShowNewAccount(false); toast("Cuenta creada", "success") }} />
     </div>
   )
 }

@@ -62,7 +62,7 @@ export default function AccountDetailPage() {
         <ArrowLeft className="h-4 w-4" /> Volver
       </button>
 
-      <section className="relative overflow-hidden rounded-[32px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
+      <section className="relative overflow-hidden rounded-[32px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8 card-glow">
         <div className={`absolute inset-0 bg-gradient-to-br ${cfg.tint} opacity-60`} />
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">

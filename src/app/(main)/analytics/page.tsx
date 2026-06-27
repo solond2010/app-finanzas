@@ -52,14 +52,11 @@ const MetricCard = memo(function MetricCard({
   }
 
   return (
-    <div
-      className="stagger-fade relative overflow-hidden rounded-[24px] bg-card/70 p-5 shadow-sm ring-1 ring-border/25 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className={`absolute inset-0 bg-gradient-to-br ${tones[tone]} opacity-75`} />
+    <div className="stagger-fade glass-card rounded-[24px] p-5 card-glow glass-card-hover" style={{ animationDelay: `${delay}ms` }}>
+      <div className={`absolute inset-0 bg-gradient-to-br ${tones[tone]} opacity-75 rounded-[24px]`} />
       <div className="relative z-10 space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+          <p className="page-section-label">{label}</p>
           <div className={`rounded-2xl bg-background/60 p-2.5 ring-1 ${tones[tone]}`}>
             <Icon className="h-4 w-4" />
           </div>
@@ -76,7 +73,7 @@ const MetricCard = memo(function MetricCard({
 const SectionTitle = memo(function SectionTitle({ label, title, text }: { label: string; title: string; text?: string }) {
   return (
     <div className="col-span-full flex flex-col gap-1 pt-2">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+      <p className="page-section-label">{label}</p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <h2 className="text-xl font-bold tracking-tight">{title}</h2>
         {text && <p className="max-w-xl text-sm text-muted-foreground">{text}</p>}
@@ -91,10 +88,10 @@ const RuleCard = memo(function RuleCard({ label, target, actual, value, tone, de
   const good = Math.abs(diff) <= 6 || (label.includes("Ahorro") && actual >= target)
 
   return (
-    <div className="stagger-fade rounded-[22px] bg-card/70 p-5 shadow-sm ring-1 ring-border/25 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5" style={{ animationDelay: `${delay}ms` }}>
+    <div className="stagger-fade glass-card rounded-[22px] p-5 card-glow glass-card-hover" style={{ animationDelay: `${delay}ms` }}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+          <p className="page-section-label">{label}</p>
           <p className="mt-2 text-2xl font-bold tabular-nums" style={{ color: tone }}>
             <AnimatedNumber value={Math.round(value)} />
           </p>
@@ -172,8 +169,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-[32px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_10%,rgba(16,185,129,0.16),transparent_28%),radial-gradient(circle_at_90%_0%,rgba(59,130,246,0.14),transparent_30%)] dark:bg-[radial-gradient(circle_at_10%_10%,rgba(16,185,129,0.28),transparent_28%),radial-gradient(circle_at_90%_0%,rgba(59,130,246,0.24),transparent_30%)]" />
+      <section className="hero-gradient rounded-[32px] bg-card/70 p-6 sm:p-8 card-glow">
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
@@ -181,14 +177,14 @@ export default function AnalyticsPage() {
               Centro de inteligencia financiera
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Analíticas</p>
+              <p className="page-section-label">Analíticas</p>
               <h1 className="max-w-3xl text-[34px] font-bold leading-[0.95] tracking-tight sm:text-[44px] lg:text-[52px]">Entiende tu dinero sin leer una hoja de cálculo.</h1>
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Patrimonio, cash flow, hábitos de gasto y regla 50/30/20 en una vista pensada para tomar decisiones.</p>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 lg:min-w-[310px] lg:items-end">
-            <div className="flex items-center gap-2 rounded-2xl bg-background/70 px-3 py-2 shadow-sm ring-1 ring-border/25 backdrop-blur-xl">
+            <div className="flex items-center gap-2 rounded-2xl bg-background/70 px-3 py-2 card-glow">
               <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes anterior">
                 <ChevronLeft className="h-4 w-4" />
               </button>
