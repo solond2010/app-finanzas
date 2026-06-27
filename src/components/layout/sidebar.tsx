@@ -22,6 +22,7 @@ import {
   ChevronLeft,
   Eye,
   EyeOff,
+  Sparkles,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useSidebar } from "@/lib/sidebar"
@@ -59,16 +60,15 @@ export function Sidebar() {
 
   const syncMeta =
     syncStatus === "syncing"
-      ? { label: "Sincronizando nube...", icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, className: "text-amber-500" }
+      ? { label: "Sincronizando...", icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, className: "text-amber-500" }
       : syncStatus === "saved"
         ? { label: "Guardado en nube", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-emerald-500" }
         : syncStatus === "error"
-          ? { label: "Error al sincronizar", icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-red-500" }
+          ? { label: "Error de sincronización", icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-red-500" }
           : { label: "Sin cambios pendientes", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-muted-foreground" }
 
   return (
     <>
-      {/* Mobile toggle */}
       <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b bg-background/80 px-3 py-2.5 backdrop-blur-xl lg:hidden">
         <div className="flex items-center gap-2">
           <button
@@ -89,24 +89,27 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Mobile overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-full w-64 flex-col border-r bg-sidebar p-6 shadow-lg shadow-sidebar-border/5 transition-transform duration-300 ease-in-out",
+          "fixed left-0 top-0 z-50 flex h-full w-64 flex-col border-r bg-sidebar py-6 shadow-xl shadow-sidebar-border/50 transition-transform duration-300 ease-in-out",
           "max-lg:top-[var(--mobile-header-h)] max-lg:h-[calc(100vh-var(--mobile-header-h))] max-lg:shadow-2xl",
           mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full",
           sidebarOpen ? "lg:translate-x-0" : "lg:-translate-x-full"
         )}
       >
-        <div className="flex items-center justify-between mb-8 px-2">
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-sidebar-foreground">Finanzas</h1>
-            <p className="text-xs text-muted-foreground">Panel de Control</p>
+        <div className="flex items-center justify-between mb-8 px-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold tracking-tight text-sidebar-foreground">Finanzas</h1>
+              <p className="text-[10px] font-medium text-muted-foreground tracking-wider uppercase">Panel de Control</p>
+            </div>
           </div>
           <button
             onClick={toggleSidebar}
@@ -117,7 +120,7 @@ export function Sidebar() {
           </button>
         </div>
 
-        <nav className="flex flex-col gap-1 flex-1">
+        <nav className="flex flex-col gap-0.5 flex-1 px-3">
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
@@ -127,41 +130,42 @@ export function Sidebar() {
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground pl-10 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-1 before:rounded-full before:bg-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:scale-[1.02] active:scale-[0.98]"
+                    ? "bg-primary/10 text-primary shadow-sm"
+                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:scale-[1.02] active:scale-[0.98]"
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary" : "text-sidebar-foreground/40")} />
                 {item.label}
+                {isActive && <span className="absolute right-2 top-1/2 -translate-y-1/2 flex h-1.5 w-1.5 rounded-full bg-primary" />}
               </Link>
             )
           })}
         </nav>
 
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-1 px-3 pt-4 border-t border-sidebar-border/50">
           <button
             onClick={togglePrivacy}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             aria-label={privacy ? "Desactivar modo privacidad" : "Activar modo privacidad"}
           >
-            <div className="flex size-5 items-center justify-center">
+            <div className="flex size-4 items-center justify-center">
               {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </div>
             {privacy ? "Mostrar cifras" : "Ocultar cifras"}
           </button>
           <button
             onClick={toggleTheme}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
           >
-            <div className="flex size-5 items-center justify-center">
+            <div className="flex size-4 items-center justify-center">
               {isDark ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
             </div>
             {isDark ? "Modo claro" : "Modo oscuro"}
           </button>
-          <div className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium", syncMeta.className)}>
+          <div className={cn("flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium", syncMeta.className)}>
             {syncMeta.icon}
             <span>{syncMeta.label}</span>
           </div>

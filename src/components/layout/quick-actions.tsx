@@ -318,7 +318,7 @@ export function QuickActionsFAB() {
           <div className="flex flex-col gap-2">
             <button
               onClick={() => setActiveModal("gasto")}
-              className="stagger-fade flex items-center gap-3 rounded-xl border bg-card/90 backdrop-blur-sm px-5 py-3 text-sm font-medium shadow-xl hover:bg-accent hover:scale-105 transition-all"
+              className="stagger-fade-fast flex items-center gap-3 rounded-xl bg-card/95 backdrop-blur-xl px-5 py-3 text-sm font-medium shadow-2xl shadow-black/10 ring-1 ring-border/30 hover:bg-accent hover:scale-105 transition-all"
               style={{ animationDelay: "0ms" }}
             >
               <ArrowDownCircle className="h-5 w-5 text-red-500" />
@@ -326,7 +326,7 @@ export function QuickActionsFAB() {
             </button>
             <button
               onClick={() => setActiveModal("ingreso")}
-              className="stagger-fade flex items-center gap-3 rounded-xl border bg-card/90 backdrop-blur-sm px-5 py-3 text-sm font-medium shadow-xl hover:bg-accent hover:scale-105 transition-all"
+              className="stagger-fade-fast flex items-center gap-3 rounded-xl bg-card/95 backdrop-blur-xl px-5 py-3 text-sm font-medium shadow-2xl shadow-black/10 ring-1 ring-border/30 hover:bg-accent hover:scale-105 transition-all"
               style={{ animationDelay: "80ms" }}
             >
               <ArrowUpCircle className="h-5 w-5 text-emerald-500" />
@@ -334,7 +334,7 @@ export function QuickActionsFAB() {
             </button>
             <button
               onClick={() => setActiveModal("traspaso")}
-              className="stagger-fade flex items-center gap-3 rounded-xl border bg-card/90 backdrop-blur-sm px-5 py-3 text-sm font-medium shadow-xl hover:bg-accent hover:scale-105 transition-all"
+              className="stagger-fade-fast flex items-center gap-3 rounded-xl bg-card/95 backdrop-blur-xl px-5 py-3 text-sm font-medium shadow-2xl shadow-black/10 ring-1 ring-border/30 hover:bg-accent hover:scale-105 transition-all"
               style={{ animationDelay: "160ms" }}
             >
               <Send className="h-5 w-5 text-blue-500" />
@@ -347,8 +347,8 @@ export function QuickActionsFAB() {
           onClick={() => setOpen(!open)}
           className={`flex h-16 w-16 items-center justify-center rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 ${
             open
-              ? "bg-red-500 rotate-45 shadow-red-500/30"
-              : "bg-blue-600 shadow-blue-500/40 hover:bg-blue-500"
+              ? "bg-rose-500 rotate-45 shadow-rose-500/30"
+              : "bg-gradient-to-br from-primary to-[color-mix(in_oklch,var(--primary),oklch(1_0_0)_15%)] shadow-xl shadow-primary/40 hover:shadow-2xl hover:shadow-primary/50"
           }`}
         >
           <Plus className="h-7 w-7 text-white" />
