@@ -93,9 +93,23 @@ export function Sidebar() {
         <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
+      <button
+        onClick={toggleSidebar}
+        className={cn(
+          "fixed top-[72px] z-50 hidden lg:flex items-center justify-center transition-all duration-300 active:scale-90 press-effect",
+          sidebarOpen ? "left-64" : "left-3"
+        )}
+        style={{ transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}
+        aria-label={sidebarOpen ? "Colapsar menú" : "Expandir menú"}
+      >
+        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground/60 shadow-md backdrop-blur-xl hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all hover:scale-110">
+          <ChevronLeft className={cn("h-3.5 w-3.5 transition-transform duration-300", !sidebarOpen && "rotate-180")} />
+        </span>
+      </button>
+
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-full w-64 flex-col border-r bg-sidebar py-6 shadow-xl shadow-sidebar-border/50 transition-transform duration-300 ease-in-out",
+          "fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r bg-sidebar py-6 shadow-xl shadow-sidebar-border/50 transition-transform duration-300 ease-in-out",
           "max-lg:top-[var(--mobile-header-h)] max-lg:h-[calc(100vh-var(--mobile-header-h))] max-lg:shadow-2xl",
           mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full",
           sidebarOpen ? "lg:translate-x-0" : "lg:-translate-x-full"
@@ -111,13 +125,6 @@ export function Sidebar() {
               <p className="text-[10px] font-medium text-muted-foreground tracking-wider uppercase">Panel de Control</p>
             </div>
           </div>
-          <button
-            onClick={toggleSidebar}
-            className="hidden lg:flex items-center justify-center rounded-xl p-1.5 text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors active:scale-90"
-            aria-label="Colapsar menú"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
         </div>
 
         <nav className="flex flex-col gap-0.5 flex-1 px-3">
