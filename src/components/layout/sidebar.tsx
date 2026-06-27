@@ -133,7 +133,7 @@ export function Sidebar() {
       <aside
         className={cn(
           "fixed left-0 top-0 z-50 flex h-full w-64 flex-col border-r bg-sidebar p-6 shadow-lg shadow-sidebar-border/5 transition-transform duration-300 ease-in-out",
-          "max-lg:top-[52px] max-lg:h-[calc(100vh-52px)] max-lg:shadow-2xl",
+          "max-lg:top-[var(--mobile-header-h)] max-lg:h-[calc(100vh-var(--mobile-header-h))] max-lg:shadow-2xl",
           mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full",
           "lg:translate-x-0"
         )}

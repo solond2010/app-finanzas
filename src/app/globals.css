@@ -57,6 +57,7 @@
 }
 
 :root {
+  --mobile-header-h: 52px;
   --background: oklch(0.985 0.001 80);
   --foreground: oklch(0.13 0.005 80);
   --card: oklch(0.995 0.001 80);

@@ -68,7 +68,7 @@ export function AccountDialog({
           <DialogTitle>{account ? "Editar Cuenta" : "Nueva Cuenta"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Nombre</label>
               <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Emergencias" required />
@@ -113,14 +113,14 @@ export function AccountDialog({
               <label className="text-xs text-muted-foreground">Objetivo ({currencySymbol(currency)})</label>
               <Input type="number" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} placeholder="Sin objetivo" />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs text-muted-foreground">Color</label>
               <div className="flex gap-1.5 flex-wrap">
                 {COLORS.map((c) => (
                   <button
                     key={c}
                     type="button"
-                    className={`h-6 w-6 rounded-full border-2 transition-all ${color === c ? "border-white scale-110" : "border-transparent"}`}
+                    className={`h-7 w-7 sm:h-6 sm:w-6 rounded-full border-2 transition-all active:scale-90 touch-manipulation ${color === c ? "border-white scale-110" : "border-transparent"}`}
                     style={{ backgroundColor: c }}
                     onClick={() => setColor(c)}
                   />

@@ -119,7 +119,7 @@ function TransactionQuickForm({
         </Select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-foreground">Monto (€)</label>
           <Input type="number" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" required autoFocus className="h-12 text-base" />
@@ -128,25 +128,25 @@ function TransactionQuickForm({
           <label className="text-sm font-medium text-foreground">Fecha</label>
           <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="h-12 text-base" />
         </div>
-      </div>
 
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-foreground">Categoría</label>
-        <Select value={categoria} onValueChange={(v) => v && setCategoria(v)}>
-          <SelectTrigger className="h-12 w-full text-sm">
-            <SelectValue placeholder="Seleccionar categoría" />
-          </SelectTrigger>
-          <SelectContent className="p-2">
-            {categories.map((c) => (
-              <SelectItem key={c} value={c} className="py-2.5 text-sm">{c}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-foreground">Categoría</label>
+          <Select value={categoria} onValueChange={(v) => v && setCategoria(v)}>
+            <SelectTrigger className="h-12 w-full text-sm">
+              <SelectValue placeholder="Seleccionar categoría" />
+            </SelectTrigger>
+            <SelectContent className="p-2">
+              {categories.map((c) => (
+                <SelectItem key={c} value={c} className="py-2.5 text-sm">{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-foreground">Descripción</label>
-        <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: Nómina junio" className="h-12 text-base" />
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-foreground">Descripción</label>
+          <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: Nómina junio" className="h-12 text-base" />
+        </div>
       </div>
 
       <label className="flex items-center gap-3 cursor-pointer py-1">
@@ -231,7 +231,7 @@ function TransferForm({
         </Select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-foreground">Monto (€)</label>
           <Input type="number" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" required autoFocus className="h-12 text-base" />
@@ -240,11 +240,11 @@ function TransferForm({
           <label className="text-sm font-medium text-foreground">Fecha</label>
           <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="h-12 text-base" />
         </div>
-      </div>
 
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-foreground">Descripción</label>
-        <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: Traspaso a ahorro" className="h-12 text-base" />
+        <div className="sm:col-span-2 space-y-1.5">
+          <label className="text-sm font-medium text-foreground">Descripción</label>
+          <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: Traspaso a ahorro" className="h-12 text-base" />
+        </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-2">

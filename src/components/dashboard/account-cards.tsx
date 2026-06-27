@@ -57,7 +57,7 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
                   <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.08em]">{cfg.label}</span>
                 </div>
                 <button
-                  className="opacity-0 group-hover:opacity-100 transition-all duration-200"
+                  className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-200 touch-manipulation"
                   onClick={(e) => {
                     e.stopPropagation()
                     setDeleteConfirm(account)

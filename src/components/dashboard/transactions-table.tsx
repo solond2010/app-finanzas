@@ -98,7 +98,7 @@ function TransactionForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label className="text-xs text-muted-foreground">Cuenta</label>
           <Select value={cuentaId} onValueChange={(v) => v && setCuentaId(v)}>
@@ -329,12 +329,12 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             <TableRow>
               <TableHead>Fecha</TableHead>
               <TableHead>Descripción</TableHead>
-              <TableHead>Cuenta</TableHead>
-              <TableHead>Categoría</TableHead>
-              <TableHead>Tipo</TableHead>
+              <TableHead className="hidden md:table-cell">Cuenta</TableHead>
+              <TableHead className="hidden sm:table-cell">Categoría</TableHead>
+              <TableHead className="hidden sm:table-cell">Tipo</TableHead>
               <TableHead className="text-right">Monto</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead className="w-16" />
+              <TableHead className="hidden lg:table-cell">Tags</TableHead>
+              <TableHead className="w-12 sm:w-16" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -351,7 +351,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
               currentGrouped.map((group) => (
                 <Fragment key={group.date}>
                   <TableRow className="sticky top-10 z-10">
-                    <TableCell colSpan={8} className="px-2 py-1.5 bg-background/80 backdrop-blur-sm text-xs font-semibold text-muted-foreground capitalize tracking-wide">
+                    <TableCell colSpan={8} className="px-2 py-1.5 bg-background/80 backdrop-blur-sm text-[11px] sm:text-xs font-semibold text-muted-foreground capitalize tracking-wide">
                       {group.label}
                     </TableCell>
                   </TableRow>
@@ -359,27 +359,27 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                     const account = state.accounts.find((a) => a.id === t.cuenta_id)
                     return (
                       <TableRow key={t.id} className="group">
-                        <TableCell className="tabular-nums text-sm text-muted-foreground">
+                        <TableCell className="tabular-nums text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                           {new Date(t.fecha).toLocaleDateString("es-ES", {
                             day: "2-digit", month: "short",
                           })}
                         </TableCell>
-                        <TableCell className="text-sm max-w-[140px] truncate">{t.descripcion || "—"}</TableCell>
-                        <TableCell><span className="text-xs text-muted-foreground">{account?.nombre}</span></TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className={`font-medium ${CATEGORY_COLORS[t.categoria] || ""}`}>
+                        <TableCell className="text-xs sm:text-sm max-w-[100px] sm:max-w-[140px] truncate">{t.descripcion || "—"}</TableCell>
+                        <TableCell className="hidden md:table-cell"><span className="text-xs text-muted-foreground">{account?.nombre}</span></TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant="secondary" className={`font-medium text-[10px] sm:text-xs ${CATEGORY_COLORS[t.categoria] || ""}`}>
                             {t.categoria}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <span className={`text-sm font-medium ${t.tipo === "ingreso" ? "text-emerald-500" : "text-red-500"}`}>
+                        <TableCell className="hidden sm:table-cell">
+                          <span className={`text-xs sm:text-sm font-medium ${t.tipo === "ingreso" ? "text-emerald-500" : "text-red-500"}`}>
                             {t.tipo === "ingreso" ? "Ingreso" : "Gasto"}
                           </span>
                         </TableCell>
-                        <TableCell className={`text-right tabular-nums font-medium ${t.tipo === "ingreso" ? "text-emerald-500" : ""}`}>
+                        <TableCell className={`text-right tabular-nums font-medium text-xs sm:text-sm ${t.tipo === "ingreso" ? "text-emerald-500" : ""}`}>
                           {t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, account?.currency ?? "EUR")}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden lg:table-cell">
                           <div className="flex gap-1">
                             {t.tags.slice(0, 2).map((tag) => (
                               <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">{tag}</Badge>
@@ -391,10 +391,10 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => setEditingTxn(t)} aria-label="Editar transacción">
+                            <button onClick={() => setEditingTxn(t)} className="touch-manipulation" aria-label="Editar transacción">
                               <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                             </button>
-                            <button onClick={() => setDeleteConfirm(t)} aria-label="Eliminar transacción">
+                            <button onClick={() => setDeleteConfirm(t)} className="touch-manipulation" aria-label="Eliminar transacción">
                               <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
                             </button>
                           </div>

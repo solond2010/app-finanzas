@@ -66,11 +66,11 @@ function SinkingFundForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="space-y-1.5">
-        <label className="text-xs text-muted-foreground">Nombre</label>
-        <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Coche Nuevo" required />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="sm:col-span-2 space-y-1.5">
+          <label className="text-xs text-muted-foreground">Nombre</label>
+          <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Coche Nuevo" required />
+        </div>
         <div className="space-y-1.5">
           <label className="text-xs text-muted-foreground">Objetivo (€)</label>
           <Input type="number" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} required />
@@ -163,7 +163,7 @@ export function SinkingFundsGrid() {
                     onClick={() => setEditingFund(fund)}
                   >
                     {fund.nombre}
-                    <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100" />
+                    <Pencil className="h-3 w-3 text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100" />
                   </h3>
                   <div className="space-y-1">
                     <div className="flex justify-between text-sm">

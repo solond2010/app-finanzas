@@ -76,7 +76,7 @@ export default function AccountDetailPage() {
 
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Saldo actual</p>
-              <p className="text-[48px] font-bold leading-none tracking-tight tabular-nums sm:text-[56px]"
+              <p className="text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[48px] lg:text-[56px]"
                 style={{ color: account.saldo >= 0 ? cfg.color : "#ef4444" }}>
                 {formatMoney(account.saldo, account.currency)}
               </p>
