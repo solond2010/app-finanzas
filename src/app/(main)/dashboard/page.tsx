@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AreaChart, DonutChart } from "@tremor/react"
@@ -72,6 +72,9 @@ function Skeleton({ className }: { className?: string }) {
 
 export default function DashboardPage() {
   const { state, loading, dispatch } = useFinance()
+  const [hydrated, setHydrated] = useState(false)
+  useEffect(() => { setHydrated(true) }, [])
+  console.log("[Dashboard] accounts:", state.accounts.length, "transactions:", state.transactions.length, "loading:", loading, "hydrated:", hydrated)
   const router = useRouter()
   const { toast } = useToast()
   const { privacy, toggle: togglePrivacy } = usePrivacy()
@@ -100,14 +103,22 @@ export default function DashboardPage() {
   const safeTime = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? 0 : d.getTime() }
 
   const recentTransactions = useMemo(
-    () => analysisTransactions
-      .filter((t) => t.fecha.startsWith(selectedMonth))
-      .sort((a, b) => safeTime(b.fecha) - safeTime(a.fecha))
-      .slice(0, 5),
+    () => {
+      const result = analysisTransactions
+        .filter((t) => t.fecha.startsWith(selectedMonth))
+        .sort((a, b) => safeTime(b.fecha) - safeTime(a.fecha))
+        .slice(0, 5)
+      console.log("[Dashboard] recentTransactions:", result.length, result.map(t => t.descripcion))
+      return result
+    },
     [analysisTransactions, selectedMonth]
   )
 
-  const topAccounts = useMemo(() => displayAccounts.slice().sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo)).slice(0, 4), [displayAccounts])
+  const topAccounts = useMemo(() => {
+    const result = displayAccounts.slice().sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo)).slice(0, 4)
+    console.log("[Dashboard] topAccounts:", result.length, result.map(a => a.nombre))
+    return result
+  }, [displayAccounts])
 
   const netWorthTrend = useMemo(
     () => [-5, -4, -3, -2, -1, 0].map((offset) => {
