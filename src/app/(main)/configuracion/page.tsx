@@ -27,6 +27,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 }
 
 export default function ConfiguracionPage() {
+  console.log("--- LA PÁGINA DE CONFIGURACIÓN ESTÁ CARGADA ---")
   const { state, dispatch } = useFinance()
   const { toast } = useToast()
   const [newCat, setNewCat] = useState("")
@@ -34,22 +35,24 @@ export default function ConfiguracionPage() {
   const addCategory = () => {
     const name = newCat.trim()
     if (!name) return
-    if (state.categories.includes(name)) {
+    if (state.categories.some(c => c.name === name)) {
       toast("Esa categoría ya existe", "error")
       return
     }
-    dispatch({ type: "ADD_CATEGORY", payload: name })
+    const newCatObj = { name, color: "#64748b" }
+    console.log("[Config] Dispatching ADD_CATEGORY:", newCatObj)
+    dispatch({ type: "ADD_CATEGORY", payload: newCatObj })
     setNewCat("")
     toast(`Categoría "${name}" creada`, "success")
   }
 
-  const deleteCategory = (name: string) => {
+  const deleteCategory = (id: string, name: string) => {
     const inUse = state.transactions.some((t) => t.categoria === name)
     if (inUse) {
       toast("No puedes eliminar una categoría con transacciones", "error")
       return
     }
-    dispatch({ type: "DELETE_CATEGORY", payload: name })
+    dispatch({ type: "DELETE_CATEGORY", payload: id })
     toast(`Categoría "${name}" eliminada`, "success")
   }
 
@@ -115,11 +118,11 @@ export default function ConfiguracionPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {state.categories.map((cat) => {
-                const colorClass = CATEGORY_COLORS[cat] || "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 ring-zinc-500/15"
                 return (
-                  <div key={cat} className={`stagger-fade group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 ${colorClass}`} style={{ animationDelay: `${state.categories.indexOf(cat) * 30}ms` }}>
-                    {cat}
-                    <button onClick={() => deleteCategory(cat)} className="opacity-40 group-hover:opacity-100 transition-opacity hover:opacity-100 cursor-pointer" aria-label={`Eliminar categoría ${cat}`}>
+                  <div key={cat.id} className="stagger-fade group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 bg-slate-100 text-slate-800 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                    {cat.name}
+                    <button onClick={() => deleteCategory(cat.id, cat.name)} className="opacity-40 group-hover:opacity-100 transition-opacity hover:opacity-100 cursor-pointer" aria-label={`Eliminar categoría ${cat.name}`}>
                       <Trash2 className="h-3 w-3" />
                     </button>
                   </div>

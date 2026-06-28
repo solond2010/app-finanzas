@@ -48,11 +48,26 @@ export interface NetWorthSnapshot {
   patrimonio: number
 }
 
+export interface Category {
+  id: string
+  name: string
+  color: string
+}
+
+export interface Budget {
+  id: string
+  category_id: string
+  amount: number
+  month: string
+  user_id: string
+}
+
 interface FinanceState {
   accounts: Account[]
   transactions: Transaction[]
   sinkingFunds: SinkingFund[]
-  categories: string[]
+  categories: Category[]
+  budgets: Budget[]
 }
 
 type SyncStatus = "idle" | "syncing" | "saved" | "error"
@@ -70,8 +85,11 @@ type Action =
   | { type: "DELETE_SINKING_FUND"; payload: string }
   | { type: "MERGE_SAMPLE"; payload: FinanceState }
   | { type: "RESET" }
-  | { type: "ADD_CATEGORY"; payload: string }
+  | { type: "ADD_CATEGORY"; payload: Omit<Category, 'id'> }
   | { type: "DELETE_CATEGORY"; payload: string }
+  | { type: "ADD_BUDGET"; payload: Omit<Budget, 'id'> }
+  | { type: "UPDATE_BUDGET"; payload: Budget }
+  | { type: "DELETE_BUDGET"; payload: string }
 
 const DEFAULT_CATEGORIES = ["Salario", "Freelance", "Alquiler", "Supermercado", "Transporte", "Internet", "Suscripciones", "Cena", "Ropa", "Ocio", "Gym", "Salud", "Inversión", "Transferencia", "Spotify", "Otros"]
 
@@ -181,9 +199,11 @@ function reducer(state: FinanceState, action: Action): FinanceState {
     case "DELETE_SINKING_FUND":
       return { ...state, sinkingFunds: state.sinkingFunds.filter((s) => s.id !== action.payload) }
     case "ADD_CATEGORY":
-      return state.categories.includes(action.payload) ? state : { ...state, categories: [...state.categories, action.payload] }
+      return state.categories.some(c => c.name === action.payload.name) 
+        ? state 
+        : { ...state, categories: [...state.categories, { id: generateId(), ...action.payload }] }
     case "DELETE_CATEGORY":
-      return { ...state, categories: state.categories.filter((c) => c !== action.payload) }
+      return { ...state, categories: state.categories.filter((c) => c.id !== action.payload) }
     default:
       return state
   }
@@ -291,38 +311,60 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
 async function loadFromSupabase(): Promise<FinanceState | null> {
   try {
-    const [accRes, txRes, sfRes] = await Promise.all([
+    const [accRes, txRes, sfRes, catRes, budRes] = await Promise.all([
       supabase.from("accounts").select("*"),
       supabase.from("transactions").select("*"),
       supabase.from("sinking_funds").select("*"),
+      supabase.from("categories").select("*"),
+      supabase.from("budgets").select("*"),
     ])
-    if (accRes.error || txRes.error || sfRes.error) return null
-    if (!accRes.data || !txRes.data || !sfRes.data) return null
-    if (accRes.data.length === 0 && txRes.data.length === 0 && sfRes.data.length === 0) return null
+    if (accRes.error || txRes.error || sfRes.error || catRes.error || budRes.error) return null
+    if (!accRes.data || !txRes.data || !sfRes.data || !catRes.data || !budRes.data) return null
     return {
       accounts: accRes.data.map(formatAccount),
       transactions: txRes.data.map(formatTransaction),
       sinkingFunds: sfRes.data.map(formatSinkingFund),
-      categories: DEFAULT_CATEGORIES,
+      categories: catRes.data as Category[],
+      budgets: budRes.data as Budget[],
     }
   } catch {
     return null
   }
 }
 
+const USER_ID = '8c449806-d8b4-498a-98d7-28809bb7c95a'
+
 async function syncToSupabase(state: FinanceState) {
-  const { error: accErr } = await supabase.from("accounts").upsert(state.accounts.map(unformatAccount))
+  const { error: accErr } = await supabase.from("accounts").upsert(
+    state.accounts.map(a => ({ ...unformatAccount(a), user_id: USER_ID }))
+  )
   if (accErr) throw accErr
 
-  const { error: txErr } = await supabase.from("transactions").upsert(state.transactions.map(unformatTransaction))
+  const { error: txErr } = await supabase.from("transactions").upsert(
+    state.transactions.map(t => ({ ...unformatTransaction(t), user_id: USER_ID }))
+  )
   if (txErr) throw txErr
 
-  const { error: sfErr } = await supabase.from("sinking_funds").upsert(state.sinkingFunds.map(unformatSinkingFund))
+  const { error: sfErr } = await supabase.from("sinking_funds").upsert(
+    state.sinkingFunds.map(sf => ({ ...unformatSinkingFund(sf), user_id: USER_ID }))
+  )
   if (sfErr) throw sfErr
+
+  const categoryPayload = state.categories.map(c => ({ ...c, user_id: USER_ID }))
+  console.log("[Finance] Syncing categories payload:", categoryPayload)
+  const { error: catErr } = await supabase.from("categories").upsert(categoryPayload)
+  
+  if (catErr) {
+    console.error("[Finance] SYNC CATEGORIES FAILED:", catErr)
+    throw catErr
+  } else {
+    console.log("[Finance] Categorías guardadas correctamente:", categoryPayload.length)
+  }
 
   await deleteRemoteMissingRows("transactions", state.transactions.map((t) => t.id))
   await deleteRemoteMissingRows("sinking_funds", state.sinkingFunds.map((s) => s.id))
   await deleteRemoteMissingRows("accounts", state.accounts.map((a) => a.id))
+  // NOTA: No borramos categorías automáticamente para evitar borrados accidentales
 }
 
 function loadLocalBackup(): FinanceState | null {
