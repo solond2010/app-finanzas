@@ -25,15 +25,15 @@ import { memo } from "react"
 
 const SnapshotCard = memo(function SnapshotCard({ label, value, subtitle, icon: Icon, color, delay }: { label: string; value: React.ReactNode; subtitle: string; icon: React.ElementType; color: string; delay: number }) {
   return (
-    <div className="stagger-fade glass-card rounded-[24px] p-5 card-elevated glass-card-hover" style={{ animationDelay: `${delay}ms` }}>
-      <div className="mb-4 flex items-center justify-between">
-        <span className="page-section-label">{label}</span>
-        <span className="rounded-2xl bg-background/60 p-2 ring-1 ring-border/15">
+    <div className="stagger-fade rounded-3xl bg-white/70 dark:bg-slate-900/70 p-5 ring-1 ring-black/5 dark:ring-white/10 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md" style={{ animationDelay: `${delay}ms` }}>
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground">{label}</span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white dark:bg-slate-800 shadow-sm">
           <Icon className="h-4 w-4" style={{ color }} />
         </span>
       </div>
-      <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums" style={{ color }}>{value}</p>
-      <p className="mt-1.5 text-xs text-muted-foreground">{subtitle}</p>
+      <p className="text-[26px] font-bold leading-none tracking-tight tabular-nums" style={{ color }}>{value}</p>
+      <p className="mt-1.5 text-[11px] text-muted-foreground">{subtitle}</p>
     </div>
   )
 })
@@ -148,6 +148,8 @@ export default function DashboardPage() {
     toast("Cuenta creada", "success")
   }
 
+  const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
+
   return (
     <div className="space-y-6">
       {loading ? (
@@ -163,91 +165,89 @@ export default function DashboardPage() {
         </>
       ) : (
         <>
-          <section className="hero-gradient rounded-[28px] bg-card/70 p-5 sm:p-6 card-elevated">
-            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div className="space-y-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="insight-badge bg-background/70 ring-1 ring-border/20">
-                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />Dashboard
-                  </span>
-                  <span className={`insight-badge ring-1 ${netWorthDelta >= 0 ? "bg-emerald-500/10 text-emerald-500 ring-emerald-500/20" : "bg-red-500/10 text-red-500 ring-red-500/20"}`}>
-                    {netWorthDelta >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+          {/* ── Top bar: greeting + month nav + privacy ── */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">{getGreeting()}</p>
+                <p className="text-xs text-muted-foreground">{formatMonth(selectedDate)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <nav className="hidden sm:flex items-center gap-1 rounded-2xl bg-white/70 dark:bg-slate-900/70 p-1 ring-1 ring-black/5 dark:ring-white/10">
+                {["All", "Transactions", "Analytics"].map((tab) => (
+                  <span key={tab} className={`px-3 py-1.5 text-xs font-medium rounded-xl cursor-pointer transition-all ${tab === "All" ? "bg-white dark:bg-slate-800 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{tab}</span>
+                ))}
+              </nav>
+              <div className="flex items-center rounded-2xl bg-white/70 dark:bg-slate-900/70 p-1 ring-1 ring-black/5 dark:ring-white/10">
+                <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-xl p-1.5 text-muted-foreground transition-all hover:bg-white dark:hover:bg-slate-800 hover:text-foreground active:scale-90" aria-label="Mes anterior"><ChevronLeft className="h-4 w-4" /></button>
+                <span className="min-w-[110px] text-center text-xs font-bold capitalize tracking-tight">{formatMonth(selectedDate)}</span>
+                <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-xl p-1.5 text-muted-foreground transition-all hover:bg-white dark:hover:bg-slate-800 hover:text-foreground active:scale-90" aria-label="Mes siguiente"><ChevronRight className="h-4 w-4" /></button>
+              </div>
+              <button onClick={togglePrivacy} className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/70 dark:bg-slate-900/70 text-muted-foreground hover:text-foreground ring-1 ring-black/5 dark:ring-white/10 transition-all active:scale-90" aria-label={privacy ? "Desactivar modo privacidad" : "Activar modo privacidad"}>
+                {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* ── Snapshot metrics row ── */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <SnapshotCard label="Ingresos" value={<AnimatedMoney value={monthTotals.ingresos} prefix="+" />} subtitle="Entradas del mes" icon={ArrowUpRight} color="#10b981" delay={0} />
+            <SnapshotCard label="Gastos" value={<AnimatedMoney value={monthTotals.gastos} prefix="-" />} subtitle={previousTotals.gastos > 0 ? `${expenseDelta >= 0 ? "+" : ""}${expenseDelta}% vs anterior` : "Sin comparativa"} icon={ArrowDownRight} color="#ef4444" delay={80} />
+            <SnapshotCard label="Neto del mes" value={<AnimatedMoney value={monthTotals.neto} />} subtitle={monthTotals.neto >= 0 ? "Cash flow positivo" : "Cash flow negativo"} icon={CircleDollarSign} color={monthTotals.neto >= 0 ? "#3b82f6" : "#f59e0b"} delay={160} />
+            <SnapshotCard label="Ahorro" value={`${savingsRate}%`} subtitle={savingsRate >= 20 ? "Objetivo 20% alcanzado" : savingsRate > 0 ? "Meta: 20%" : "Cash flow negativo"} icon={Target} color={savingsRate >= 20 ? "#10b981" : "#f59e0b"} delay={240} />
+          </div>
+
+          {/* ── Bento grid: 3 columns ── */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            {/* ── LEFT COLUMN (5/12): Net Worth + Chart + Accounts ── */}
+            <div className="lg:col-span-5 space-y-4">
+              {/* Net Worth Hero */}
+              <div className="rounded-3xl bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-900/80 dark:to-slate-900/40 p-6 ring-1 ring-black/5 dark:ring-white/10 shadow-sm backdrop-blur-xl">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="page-section-label">Patrimonio neto</p>
+                    <p className="text-[34px] font-bold leading-none tracking-tight tabular-nums mt-1"><AnimatedMoney value={netWorth} /></p>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${netWorthDelta >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
+                    {netWorthDelta >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                     <Sensitive>{signedMoney(netWorthDelta)}</Sensitive>
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground">{getGreeting()} &middot; {formatMonth(selectedDate)}</p>
-                <div>
-                  <p className="page-section-label">Patrimonio neto</p>
-                  <p className="text-[36px] font-bold leading-none tracking-tight tabular-nums sm:text-[48px]"><AnimatedMoney value={netWorth} /></p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center rounded-2xl bg-background/70 p-1 card-glow">
-                  <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-xl p-1.5 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90 press-effect-subtle" aria-label="Mes anterior"><ChevronLeft className="h-4 w-4" /></button>
-                  <span className="min-w-[120px] text-center text-xs font-bold capitalize tracking-tight sm:min-w-[150px] sm:text-sm">{formatMonth(selectedDate)}</span>
-                  <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-xl p-1.5 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90 press-effect-subtle" aria-label="Mes siguiente"><ChevronRight className="h-4 w-4" /></button>
-                </div>
-                <button
-                  onClick={togglePrivacy}
-                  className="rounded-xl p-2.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90 touch-manipulation card-glow bg-background/70 press-effect-subtle"
-                  aria-label={privacy ? "Desactivar modo privacidad" : "Activar modo privacidad"}
-                >
-                  {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <SnapshotCard label="Ingresos" value={<AnimatedMoney value={monthTotals.ingresos} prefix="+" />} subtitle="Entradas registradas este mes" icon={ArrowUpRight} color="#10b981" delay={0} />
-            <SnapshotCard label="Gastos" value={<AnimatedMoney value={monthTotals.gastos} prefix="-" />} subtitle={previousTotals.gastos > 0 ? `${expenseDelta >= 0 ? "+" : ""}${expenseDelta}% vs mes anterior` : "Sin comparativa previa"} icon={ArrowDownRight} color="#ef4444" delay={80} />
-            <SnapshotCard label="Neto del mes" value={<AnimatedMoney value={monthTotals.neto} />} subtitle={monthTotals.neto >= 0 ? "Cash flow positivo" : "Cash flow negativo"} icon={CircleDollarSign} color={monthTotals.neto >= 0 ? "#3b82f6" : "#f59e0b"} delay={160} />
-            <SnapshotCard label="Ahorro" value={`${savingsRate}%`} subtitle={savingsRate >= 20 ? "Objetivo 20% alcanzado" : savingsRate > 0 ? "Meta recomendada: 20%" : "Cash flow negativo este mes"} icon={Target} color={savingsRate >= 20 ? "#10b981" : "#f59e0b"} delay={240} />
-          </section>
-
-          <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.5fr_1fr]">
-            <div className="space-y-5">
-              <Card className="stagger-fade card-elevated" style={{ animationDelay: "80ms" }}>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><TrendingUp className="h-4 w-4 text-emerald-500" />Patrimonio neto</CardTitle>
-                  <span className="text-xs text-muted-foreground">&Uacute;ltimos 6 meses</span>
-                </CardHeader>
-                <CardContent>
-                  {netWorthTrend.every((item) => item.patrimonio === 0) ? (
-                    <div className="flex h-[260px] flex-col items-center justify-center gap-3 rounded-2xl bg-muted/20 text-center ring-1 ring-border/15">
-                      <BarChart3 className="h-8 w-8 text-muted-foreground/35" />
-                      <p className="text-sm text-muted-foreground">A&ntilde;ade movimientos para ver la tendencia.</p>
-                    </div>
-                  ) : (
-                    <LineChart data={netWorthTrend} index="mes" categories={["patrimonio"]} colors={["emerald"]} valueFormatter={chartFormatter} yAxisWidth={64} className="h-[260px]" showAnimation />
-                  )}
-                </CardContent>
-              </Card>
-
-              <div className="stagger-fade space-y-3" style={{ animationDelay: "160ms" }}>
-                <div className="flex items-center justify-between">
-                  <p className="page-section-label">&Uacute;ltimos movimientos</p>
-                  <Link href="/transactions" className="text-xs font-medium text-primary hover:underline">Ver todo</Link>
-                </div>
-                {recentTransactions.length === 0 ? (
-                  <div className="flex h-[120px] flex-col items-center justify-center gap-2 rounded-2xl bg-muted/20 text-center ring-1 ring-border/15">
-                    <Activity className="h-6 w-6 text-muted-foreground/35" />
-                    <p className="text-sm text-muted-foreground">Sin movimientos en {formatMonth(selectedDate)}.</p>
-                  </div>
+                {netWorthHasData ? (
+                  <LineChart data={netWorthTrend} index="mes" categories={["patrimonio"]} colors={["emerald"]} valueFormatter={chartFormatter} yAxisWidth={56} className="h-[180px]" showAnimation />
                 ) : (
-                  <div className="divide-y divide-border/30 rounded-2xl bg-card/60 ring-1 ring-border/15 backdrop-blur-sm">
-                    {recentTransactions.map((transaction) => {
-                      const account = state.accounts.find((a) => a.id === transaction.cuenta_id)
+                  <div className="flex h-[180px] items-center justify-center rounded-2xl bg-muted/30"><BarChart3 className="h-6 w-6 text-muted-foreground/30" /></div>
+                )}
+              </div>
+
+              {/* My Cards (accounts) */}
+              <div className="rounded-3xl bg-white/70 dark:bg-slate-900/70 p-5 ring-1 ring-black/5 dark:ring-white/10 shadow-sm backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-2"><Wallet className="h-4 w-4 text-muted-foreground" />Mis cuentas</h3>
+                  <button onClick={() => setShowNewAccount(true)} className="text-xs font-medium text-primary hover:underline">+ Nueva</button>
+                </div>
+                {topAccounts.length === 0 ? (
+                  <button onClick={() => setShowNewAccount(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-muted-foreground/25 p-5 text-sm text-muted-foreground transition-all hover:border-muted-foreground/50 hover:text-foreground"><Plus className="h-4 w-4" />Añadir cuenta</button>
+                ) : (
+                  <div className="space-y-2">
+                    {topAccounts.map((account) => {
+                      const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
+                      const I = cfg.icon
                       return (
-                        <div key={transaction.id} className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/20">
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{transaction.descripcion || transaction.categoria}</p>
-                            <p className="truncate text-xs text-muted-foreground">{new Date(transaction.fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} &middot; {account?.nombre ?? "Cuenta"}</p>
-                          </div>
-                          <p className={`shrink-0 text-sm font-bold tabular-nums ${transaction.tipo === "ingreso" ? "text-emerald-500" : "text-red-500"}`}>
-                            <Sensitive>{transaction.tipo === "ingreso" ? "+" : "-"}{transaction.monto.toLocaleString("es-ES")} {currencySymbol(account?.currency ?? "EUR")}</Sensitive>
-                          </p>
-                        </div>
+                        <button key={account.id} onClick={() => router.push(`/cuentas/${account.id}`)} className="flex w-full items-center justify-between gap-3 rounded-2xl bg-muted/20 p-3 text-left transition-all hover:bg-muted/40 hover:-translate-y-0.5">
+                          <span className="flex items-center gap-2.5 min-w-0">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5"><I className="h-4 w-4" style={{ color: cfg.color }} /></span>
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-semibold">{account.nombre}</span>
+                              <span className="block text-[11px] text-muted-foreground">{cfg.label}</span>
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-sm font-bold tabular-nums"><Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive></span>
+                        </button>
                       )
                     })}
                   </div>
@@ -255,65 +255,118 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="space-y-5">
-              <Card className="stagger-fade card-elevated" style={{ animationDelay: "120ms" }}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><Wallet className="h-4 w-4 text-muted-foreground" />Cuentas</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {topAccounts.length === 0 ? (
-                    <button onClick={() => setShowNewAccount(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-muted-foreground/25 p-6 text-sm text-muted-foreground transition-all hover:border-muted-foreground/50 hover:text-foreground hover:-translate-y-0.5"><Plus className="h-4 w-4" />Nueva cuenta</button>
-                  ) : (
-                    topAccounts.map((account, index) => {
-                      const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
-                      const Icon = cfg.icon
-                      return (
-                        <button key={account.id} onClick={() => router.push(`/cuentas/${account.id}`)} className="group flex w-full items-center justify-between gap-3 rounded-2xl bg-muted/25 p-3 text-left ring-1 ring-border/12 transition-all hover:-translate-y-0.5 hover:bg-muted/40 hover:shadow-sm" style={{ animationDelay: `${index * 70}ms` }}>
-                          <span className="flex min-w-0 items-center gap-2.5">
-                            <span className={`rounded-xl bg-gradient-to-br ${cfg.tint} p-2 ring-1 ring-border/12`}><Icon className="h-3.5 w-3.5" style={{ color: cfg.color }} /></span>
-                            <span className="min-w-0">
-                              <span className="block truncate text-sm font-semibold">{account.nombre}</span>
-                              <span className="block truncate text-[11px] text-muted-foreground">{cfg.label}{account.banco ? ` &middot; ${account.banco}` : ""}</span>
-                            </span>
-                          </span>
-                          <span className="shrink-0 text-right text-sm font-bold tabular-nums"><Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive></span>
-                        </button>
-                      )
-                    })
-                  )}
-                  <Button variant="outline" size="sm" className="w-full rounded-2xl" onClick={() => setShowNewAccount(true)}><Plus className="mr-2 h-3.5 w-3.5" />A&ntilde;adir cuenta</Button>
-                </CardContent>
-              </Card>
-
-              {assetDistribution.length > 0 && (
-                <Card className="stagger-fade card-elevated" style={{ animationDelay: "200ms" }}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-base font-semibold"><CircleDollarSign className="h-4 w-4 text-muted-foreground" />Distribuci&oacute;n</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <DonutChart data={assetDistribution} category="value" index="name" variant="donut" className="mx-auto h-44 w-44" showAnimation />
-                    <div className="mt-3 space-y-1.5">
-                      {assetDistribution.map((item) => (
-                        <div key={item.name} className="flex items-center justify-between text-xs">
-                          <span className="flex items-center gap-1.5 truncate">
-                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                            {item.name}
-                          </span>
-                          <Sensitive as="span" className="tabular-nums font-medium">{formatMoney(item.value, displayAccounts.find((a) => a.nombre === item.name)?.currency ?? "EUR")}</Sensitive>
-                        </div>
-                      ))}
+            {/* ── CENTER COLUMN (4/12): Spending + Banner ── */}
+            <div className="lg:col-span-4 space-y-4">
+              {/* Spending chart */}
+              <div className="rounded-3xl bg-white/70 dark:bg-slate-900/70 p-5 ring-1 ring-black/5 dark:ring-white/10 shadow-sm backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-2"><CircleDollarSign className="h-4 w-4 text-blue-500" />Movimiento mensual</h3>
+                  <span className="text-[11px] text-muted-foreground">Ingresos vs Gastos</span>
+                </div>
+                {netWorthHasData ? (
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="rounded-2xl bg-emerald-500/5 p-3 ring-1 ring-emerald-500/10">
+                      <p className="text-[11px] text-emerald-500 font-semibold">+<AnimatedMoney value={monthTotals.ingresos} /></p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Ingresos</p>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </section>
+                    <div className="rounded-2xl bg-red-500/5 p-3 ring-1 ring-red-500/10">
+                      <p className="text-[11px] text-red-500 font-semibold">-<AnimatedMoney value={monthTotals.gastos} /></p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Gastos</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex h-[100px] items-center justify-center rounded-2xl bg-muted/30 mb-4"><BarChart3 className="h-6 w-6 text-muted-foreground/30" /></div>
+                )}
+                {assetDistribution.length > 0 && (
+                  <div className="rounded-2xl bg-muted/20 p-3">
+                    <p className="text-[11px] font-semibold text-muted-foreground mb-2">Distribución</p>
+                    <DonutChart data={assetDistribution} category="value" index="name" variant="donut" className="mx-auto h-28 w-28" showAnimation />
+                    <div className="mt-2 space-y-1">
+                      {assetDistribution.slice(0, 3).map((a) => {
+                        const cur = displayAccounts.find((ac) => ac.nombre === a.name)?.currency ?? "EUR"
+                        return (
+                          <div key={a.name} className="flex items-center justify-between text-[10px]">
+                            <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: a.color }} />{a.name}</span>
+                            <Sensitive as="span" className="tabular-nums font-medium">{formatMoney(a.value, cur)}</Sensitive>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-          <section className="space-y-1">
+              {/* Management banner */}
+              <div className="rounded-3xl bg-gradient-to-br from-blue-500/5 via-indigo-500/5 to-violet-500/5 dark:from-blue-500/10 dark:via-indigo-500/10 dark:to-violet-500/10 p-5 ring-1 ring-black/5 dark:ring-white/10 shadow-sm backdrop-blur-xl">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold">Regla 50/30/20</h3>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Distribuye tus ingresos: 50% necesidades, 30% deseos, 20% ahorro. {savingsRate >= 20 ? "¡Vas por buen camino!" : "Intenta ahorrar al menos el 20%."}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── RIGHT COLUMN (3/12): Transactions + Score ── */}
+            <div className="lg:col-span-3 space-y-4">
+              {/* Recent transactions feed */}
+              <div className="rounded-3xl bg-white/70 dark:bg-slate-900/70 p-5 ring-1 ring-black/5 dark:ring-white/10 shadow-sm backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-2"><Activity className="h-4 w-4 text-muted-foreground" />Últimos</h3>
+                  <Link href="/transactions" className="text-[11px] font-medium text-primary hover:underline">Ver todo</Link>
+                </div>
+                {recentTransactions.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 py-6 text-center">
+                    <Activity className="h-6 w-6 text-muted-foreground/30" />
+                    <p className="text-xs text-muted-foreground">Sin movimientos</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {recentTransactions.map((t) => {
+                      const account = state.accounts.find((a) => a.id === t.cuenta_id)
+                      return (
+                        <div key={t.id} className="flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-muted/20">
+                          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${t.tipo === "ingreso" ? "bg-emerald-500/10" : "bg-red-500/10"}`}>
+                            {t.tipo === "ingreso" ? <ArrowUpRight className="h-4 w-4 text-emerald-500" /> : <ArrowDownRight className="h-4 w-4 text-red-500" />}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{t.descripcion || t.categoria}</p>
+                            <p className="truncate text-[11px] text-muted-foreground">{new Date(t.fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {account?.nombre ?? ""}</p>
+                          </div>
+                          <span className={`shrink-0 text-sm font-bold tabular-nums ${t.tipo === "ingreso" ? "text-emerald-500" : "text-red-500"}`}>
+                            <Sensitive>{t.tipo === "ingreso" ? "+" : "-"}{t.monto.toLocaleString("es-ES")}€</Sensitive>
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Credit Score / Savings Rate */}
+              <div className="rounded-3xl bg-white/70 dark:bg-slate-900/70 p-5 ring-1 ring-black/5 dark:ring-white/10 shadow-sm backdrop-blur-xl text-center">
+                <p className="page-section-label mb-3">Tasa de ahorro</p>
+                <div className="relative mx-auto flex h-28 w-28 items-center justify-center">
+                  <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray={`${2 * Math.PI * 52}`} strokeDashoffset={`${2 * Math.PI * 52 * (1 - Math.min(savingsRate, 100) / 100)}`} className="text-emerald-500 transition-all duration-1000 ease-out" strokeLinecap="round" />
+                  </svg>
+                  <span className="absolute text-2xl font-bold tabular-nums tracking-tight text-emerald-500">{savingsRate}%</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3">{savingsRate >= 20 ? "Objetivo 20% alcanzado 🎯" : `Meta: 20% · ${20 - savingsRate}% restante`}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Bottom: full width tables ── */}
+          <div className="space-y-1">
             <p className="page-section-label">Operativo</p>
             <h2 className="text-xl font-bold tracking-tight">Historial y metas</h2>
-            <p className="max-w-2xl text-sm text-muted-foreground">Transacciones completas y fondos de ahorro con filtros, exportaci&oacute;n y edici&oacute;n.</p>
-          </section>
+            <p className="max-w-2xl text-sm text-muted-foreground">Transacciones completas y fondos de ahorro con filtros, exportación y edición.</p>
+          </div>
 
           <TransactionsTable selectedMonth={selectedMonth} />
           <SinkingFundsGrid />
