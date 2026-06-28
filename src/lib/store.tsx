@@ -220,6 +220,12 @@ function reducer(state: FinanceState, action: Action): FinanceState {
         : { ...state, categories: [...state.categories, { id: generateId(), ...action.payload }] }
     case "DELETE_CATEGORY":
       return { ...state, categories: state.categories.filter((c) => c.id !== action.payload) }
+    case "ADD_BUDGET":
+      return { ...state, budgets: [...state.budgets, { id: generateId(), ...action.payload }] }
+    case "UPDATE_BUDGET":
+      return { ...state, budgets: state.budgets.map((b) => (b.id === action.payload.id ? action.payload : b)) }
+    case "DELETE_BUDGET":
+      return { ...state, budgets: state.budgets.filter((b) => b.id !== action.payload) }
     default:
       return state
   }
@@ -351,7 +357,7 @@ async function loadFromSupabase(): Promise<FinanceState | null> {
   }
 }
 
-const USER_ID = '8c449806-d8b4-498a-98d7-28809bb7c95a'
+export const USER_ID = '8c449806-d8b4-498a-98d7-28809bb7c95a'
 
 async function syncToSupabase(state: FinanceState) {
   const { error: accErr } = await supabase.from("accounts").upsert(
@@ -374,9 +380,17 @@ async function syncToSupabase(state: FinanceState) {
   )
   if (catErr) throw catErr
 
+  // Los presupuestos deben subirse DESPUÉS de las categorías: budgets.category_id
+  // tiene una FK a categories.id, así que la categoría referenciada ya debe existir.
+  const { error: budErr } = await supabase.from("budgets").upsert(
+    state.budgets.map(b => ({ id: b.id, category_id: b.category_id, amount: b.amount, month: b.month, user_id: USER_ID }))
+  )
+  if (budErr) throw budErr
+
   await deleteRemoteMissingRows("transactions", state.transactions.map((t) => t.id))
   await deleteRemoteMissingRows("sinking_funds", state.sinkingFunds.map((s) => s.id))
   await deleteRemoteMissingRows("accounts", state.accounts.map((a) => a.id))
+  await deleteRemoteMissingRows("budgets", state.budgets.map((b) => b.id))
   // NOTA: No borramos categorías automáticamente para evitar borrados accidentales
 }
 
@@ -394,7 +408,7 @@ function loadLocalBackup(): FinanceState | null {
   }
 }
 
-async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sinking_funds", localIds: string[]) {
+async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sinking_funds" | "budgets", localIds: string[]) {
   const { data, error } = await supabase.from(table).select("id")
   if (error) throw error
 
