@@ -100,11 +100,11 @@ export default function DashboardContent() {
   const safeTime = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? 0 : d.getTime() }
 
   const recentTransactions = useMemo(
-    () => analysisTransactions
+    () => state.transactions
       .filter((t) => t.fecha.startsWith(selectedMonth))
       .sort((a, b) => safeTime(b.fecha) - safeTime(a.fecha))
       .slice(0, 5),
-    [analysisTransactions, selectedMonth]
+    [state.transactions, selectedMonth]
   )
 
   const topAccounts = useMemo(() => displayAccounts.slice().sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo)).slice(0, 4), [displayAccounts])
