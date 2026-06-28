@@ -253,9 +253,15 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     loadedRef.current = true
 
     loadFromSupabase().then((remote) => {
+      console.log("[Finance] loadFromSupabase result:", remote?.accounts.length, remote?.transactions.length)
       if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
+        console.log("[Finance] dispatching SET_STATE")
         dispatch({ type: "SET_STATE", payload: remote })
+      } else {
+        console.log("[Finance] no remote data, keeping defaults")
       }
+    }).catch((err) => {
+      console.error("[Finance] load error:", err)
     }).finally(() => {
       setLoading(false)
       setInitialized(true)
