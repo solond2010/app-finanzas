@@ -8,26 +8,7 @@ import { useFinance } from "@/lib/store"
 import { useToast } from "@/components/ui/toast"
 import { Plus, Trash2, Download, Sparkles, Tags, FileDown, Layers } from "lucide-react"
 
-const CATEGORY_COLORS: Record<string, string> = {
-  Salario: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/15",
-  Alquiler: "bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-blue-500/15",
-  Supermercado: "bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/15",
-  Transporte: "bg-violet-500/10 text-violet-600 dark:text-violet-400 ring-violet-500/15",
-  Internet: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 ring-cyan-500/15",
-  Cena: "bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/15",
-  Suscripciones: "bg-pink-500/10 text-pink-600 dark:text-pink-400 ring-pink-500/15",
-  Ropa: "bg-orange-500/10 text-orange-600 dark:text-orange-400 ring-orange-500/15",
-  Transferencia: "bg-purple-500/10 text-purple-600 dark:text-purple-400 ring-purple-500/15",
-  Ocio: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 ring-indigo-500/15",
-  Gym: "bg-lime-500/10 text-lime-600 dark:text-lime-400 ring-lime-500/15",
-  Salud: "bg-teal-500/10 text-teal-600 dark:text-teal-400 ring-teal-500/15",
-  Freelance: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 ring-yellow-500/15",
-  Inversión: "bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/15",
-  Otros: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 ring-zinc-500/15",
-}
-
 export default function ConfiguracionPage() {
-  console.log("--- LA PÁGINA DE CONFIGURACIÓN ESTÁ CARGADA ---")
   const { state, dispatch } = useFinance()
   const { toast } = useToast()
   const [newCat, setNewCat] = useState("")
@@ -39,9 +20,7 @@ export default function ConfiguracionPage() {
       toast("Esa categoría ya existe", "error")
       return
     }
-    const newCatObj = { name, color: "#64748b" }
-    console.log("[Config] Dispatching ADD_CATEGORY:", newCatObj)
-    dispatch({ type: "ADD_CATEGORY", payload: newCatObj })
+    dispatch({ type: "ADD_CATEGORY", payload: { name, color: "#64748b" } })
     setNewCat("")
     toast(`Categoría "${name}" creada`, "success")
   }

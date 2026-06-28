@@ -20,7 +20,6 @@ import { typeConfig, typeLabels } from "@/lib/account-types"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
-import { useFinance as useFinanceActions } from "@/lib/store"
 import { useToast } from "@/components/ui/toast"
 
 export default function CuentasPage() {

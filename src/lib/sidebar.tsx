@@ -13,7 +13,11 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(true)
 
   useEffect(() => {
+    // Restaura la preferencia persistida tras la hidratación. No puede ir en el
+    // inicializador de useState porque provocaría un hydration mismatch (el SSR
+    // no tiene acceso a localStorage).
     const saved = localStorage.getItem("app-finanzas-sidebar")
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved === "false") setOpen(false)
   }, [])
 

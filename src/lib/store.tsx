@@ -91,7 +91,21 @@ type Action =
   | { type: "UPDATE_BUDGET"; payload: Budget }
   | { type: "DELETE_BUDGET"; payload: string }
 
-const DEFAULT_CATEGORIES = ["Salario", "Freelance", "Alquiler", "Supermercado", "Transporte", "Internet", "Suscripciones", "Cena", "Ropa", "Ocio", "Gym", "Salud", "Inversión", "Transferencia", "Spotify", "Otros"]
+const DEFAULT_CATEGORY_NAMES = ["Salario", "Freelance", "Alquiler", "Supermercado", "Transporte", "Internet", "Suscripciones", "Cena", "Ropa", "Ocio", "Gym", "Salud", "Inversión", "Transferencia", "Spotify", "Otros"]
+
+const CATEGORY_PALETTE = ["#3b82f6", "#10b981", "#ef4444", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"]
+
+const DIACRITICS = new RegExp("[\\u0300-\\u036f]", "g")
+
+function slugifyCategory(name: string): string {
+  return "cat_" + name.toLowerCase().normalize("NFD").replace(DIACRITICS, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
+}
+
+const DEFAULT_CATEGORIES: Category[] = DEFAULT_CATEGORY_NAMES.map((name, i) => ({
+  id: slugifyCategory(name),
+  name,
+  color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length],
+}))
 
 type AccountRow = {
   id: string
@@ -138,6 +152,7 @@ const defaultState: FinanceState = {
   transactions: [],
   sinkingFunds: [],
   categories: DEFAULT_CATEGORIES,
+  budgets: [],
 }
 
 function reducer(state: FinanceState, action: Action): FinanceState {
@@ -150,6 +165,7 @@ function reducer(state: FinanceState, action: Action): FinanceState {
         transactions: [...state.transactions, ...action.payload.transactions],
         sinkingFunds: [...state.sinkingFunds, ...action.payload.sinkingFunds],
         categories: state.categories,
+        budgets: state.budgets,
       }
     case "RESET":
       return defaultState
@@ -290,6 +306,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!initialized) return
     let cancelled = false
+    // Refleja en la UI el inicio de la sincronización con Supabase (sistema
+    // externo). Es el uso previsto de un efecto: sincronizar React con un
+    // sistema externo asíncrono.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSyncStatus("syncing")
     syncChainRef.current = syncChainRef.current
       .then(() => syncToSupabase(state))
@@ -299,8 +319,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         if (!cancelled) {
           setSyncStatus("error")
-          console.error("[Finance] SYNC FAILED:", err)
-          alert("ERROR DE SINCRONIZACIÓN: No se pudieron guardar los datos en Supabase. Revisa la consola para más detalles.")
+          console.error("[Finance] Error al sincronizar con Supabase:", err)
         }
       })
     return () => { cancelled = true }
@@ -350,16 +369,10 @@ async function syncToSupabase(state: FinanceState) {
   )
   if (sfErr) throw sfErr
 
-  const categoryPayload = state.categories.map(c => ({ ...c, user_id: USER_ID }))
-  console.log("[Finance] Syncing categories payload:", categoryPayload)
-  const { error: catErr } = await supabase.from("categories").upsert(categoryPayload)
-  
-  if (catErr) {
-    console.error("[Finance] SYNC CATEGORIES FAILED:", catErr)
-    throw catErr
-  } else {
-    console.log("[Finance] Categorías guardadas correctamente:", categoryPayload.length)
-  }
+  const { error: catErr } = await supabase.from("categories").upsert(
+    state.categories.map(c => ({ ...c, user_id: USER_ID }))
+  )
+  if (catErr) throw catErr
 
   await deleteRemoteMissingRows("transactions", state.transactions.map((t) => t.id))
   await deleteRemoteMissingRows("sinking_funds", state.sinkingFunds.map((s) => s.id))
@@ -491,5 +504,5 @@ export function generateSampleData(): FinanceState {
     { id: "s_sf2", nombre: "Viaje Verano 2027", cantidad_objetivo: 8000, fecha_limite: "2027-06-30", ahorrado_actual: 2000, cuenta_id: "s_acc_ahorro" },
   ]
 
-  return { accounts: sampleAccounts, transactions: sampleTransactions, sinkingFunds: sampleFunds, categories: DEFAULT_CATEGORIES }
+  return { accounts: sampleAccounts, transactions: sampleTransactions, sinkingFunds: sampleFunds, categories: DEFAULT_CATEGORIES, budgets: [] }
 }

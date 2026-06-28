@@ -24,7 +24,7 @@ import {
   EyeOff,
   Sparkles,
 } from "lucide-react"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useSidebar } from "@/lib/sidebar"
 
 const navItems = [

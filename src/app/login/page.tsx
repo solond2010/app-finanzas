@@ -2,7 +2,7 @@
 
 import { Suspense, useState, FormEvent } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Loader2, Sparkles, Wallet } from "lucide-react"
+import { Loader2, Wallet } from "lucide-react"
 
 function LoginForm() {
   const [password, setPassword] = useState("")

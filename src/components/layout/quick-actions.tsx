@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useFinance, type Transaction, type Account, generateId } from "@/lib/store"
+import { useFinance, type Transaction, type Account, type Category, generateId } from "@/lib/store"
 import { formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 
@@ -69,7 +69,7 @@ function TransactionQuickForm({
 }: {
   defaultTipo: "ingreso" | "gasto"
   accounts: Account[]
-  categories: string[]
+  categories: Category[]
   onSave: (t: Transaction) => void
   onCancel: () => void
 }) {
@@ -138,7 +138,7 @@ function TransactionQuickForm({
             </SelectTrigger>
             <SelectContent className="p-2">
               {categories.map((c) => (
-                <SelectItem key={c} value={c} className="py-2.5 text-sm">{c}</SelectItem>
+                <SelectItem key={c.id} value={c.name} className="py-2.5 text-sm">{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>

@@ -9,7 +9,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useFinance, type Transaction, generateId } from "@/lib/store"
+import { useFinance, type Transaction, type Category, generateId } from "@/lib/store"
 import { Filter, Plus, Pencil, Trash2, Search, Download } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
@@ -59,7 +58,7 @@ function TransactionForm({
 }: {
   transaction?: Transaction
   accounts: { id: string; nombre: string }[]
-  categories: string[]
+  categories: Category[]
   onSave: (t: Transaction) => void
   onCancel: () => void
 }) {
@@ -136,7 +135,7 @@ function TransactionForm({
             <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
             <SelectContent>
               {categories.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
+                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
