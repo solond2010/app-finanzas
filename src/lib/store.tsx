@@ -254,6 +254,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, defaultState)
   const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle")
+  const [initialized, setInitialized] = useState(false)
   const loadedRef = useRef(false)
   const syncChainRef = useRef(Promise.resolve())
 
@@ -265,15 +266,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
         dispatch({ type: "SET_STATE", payload: remote })
       }
-    }).catch(() => {
-      // fallback: keep defaultState
     }).finally(() => {
       setLoading(false)
+      setInitialized(true)
     })
   }, [])
 
   useEffect(() => {
-    if (!loadedRef.current) return
+    if (!initialized) return
     let cancelled = false
     setSyncStatus("syncing")
     syncChainRef.current = syncChainRef.current
@@ -285,7 +285,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setSyncStatus("error")
       })
     return () => { cancelled = true }
-  }, [state])
+  }, [state, initialized])
 
   return <FinanceContext.Provider value={{ state, dispatch, loading, syncStatus }}>{children}</FinanceContext.Provider>
 }
