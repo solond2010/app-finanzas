@@ -120,16 +120,6 @@ export default function DashboardContent() {
 
   const spendingByCategory = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
 
-  const assetDistribution = useMemo(() => displayAccounts
-    .filter((a) => a.saldo !== 0)
-    .map((a) => {
-      const cfg = typeConfig[a.tipo] ?? typeConfig.efectivo
-      return { name: a.nombre, value: Math.abs(a.saldo), color: cfg.color }
-    })
-    .sort((a, b) => b.value - a.value),
-    [displayAccounts]
-  )
-
   const handleCreateAccount = (account: Account) => {
     dispatch({ type: "ADD_ACCOUNT", payload: account })
     setShowNewAccount(false)
@@ -139,97 +129,66 @@ export default function DashboardContent() {
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
 
   return (
-    <div className="space-y-7">
-      {loading ? (
-        <div className="space-y-7">
-          <Skeleton className="h-56" />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-36" />)}
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 lg:p-8">
+      {/* Navbar Flotante */}
+      <header className="sticky top-4 z-40 mb-8 flex items-center justify-between rounded-full bg-white/80 px-6 py-3 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] ring-1 ring-slate-100 backdrop-blur-md dark:bg-slate-900/80 dark:ring-slate-800">
+        <h1 className="text-lg font-bold text-slate-900 dark:text-white">Mohamed Amin</h1>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 rounded-full bg-slate-100 p-1 dark:bg-slate-800">
+            <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-full p-2 text-slate-600 hover:bg-white hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700"><ChevronLeft className="h-4 w-4" /></button>
+            <span className="w-32 text-center text-sm font-medium capitalize text-slate-900 dark:text-white">{formatMonth(selectedDate)}</span>
+            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-full p-2 text-slate-600 hover:bg-white hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700"><ChevronRight className="h-4 w-4" /></button>
           </div>
-          <Skeleton className="h-80" />
+          <button onClick={togglePrivacy} className="rounded-full p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">
+            {privacy ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+          </button>
+        </div>
+      </header>
+
+      {loading ? (
+        <div className="space-y-6">
+            <Skeleton className="h-32" />
+            <Skeleton className="h-96" />
         </div>
       ) : !hasAnyData ? (
-        <>
-          <section className="hero-gradient relative overflow-hidden rounded-[32px] bg-card/70 p-8 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-14">
-            <div className="relative z-10 mx-auto flex max-w-xl flex-col items-center gap-6 text-center">
-              <div className="rounded-[28px] bg-background/70 p-5 card-elevated">
-                <Wallet className="h-10 w-10 text-muted-foreground/50" />
-              </div>
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Primer paso</p>
-                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-foreground">Construye tu centro financiero.</h2>
-                <p className="max-w-lg text-sm leading-6 text-muted-foreground mx-auto">Crea tu primera cuenta y empieza a registrar movimientos. El dashboard se convertir&aacute; en tu resumen diario de patrimonio, gastos y metas.</p>
-              </div>
-              <Button size="lg" className="gap-2 rounded-full px-6 shadow-lg shadow-primary/25" onClick={() => setShowNewAccount(true)}><Plus className="h-4 w-4" />Crear primera cuenta</Button>
-            </div>
-          </section>
-          <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={handleCreateAccount} />
-        </>
+        <div className="flex flex-col items-center justify-center pt-20 text-center">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Bienvenido, Mohamed</h2>
+          <p className="mt-2 text-slate-500">Comienza configurando tu primera cuenta.</p>
+          <Button onClick={() => setShowNewAccount(true)} className="mt-6 rounded-full px-6">Crear cuenta</Button>
+        </div>
       ) : (
-        <>
-          {/* ── Hero section ── */}
-          <section className="relative overflow-hidden rounded-[32px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.16),transparent_28%),radial-gradient(circle_at_90%_0%,rgba(59,130,246,0.14),transparent_30%)] dark:bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.28),transparent_28%),radial-gradient(circle_at_90%_0%,rgba(59,130,246,0.24),transparent_30%)]" />
-            <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                  Panel de control
-                </div>
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Resumen financiero</p>
-                  <h1 className="max-w-3xl text-[34px] font-bold leading-[0.95] tracking-tight sm:text-[44px] lg:text-[52px] text-foreground">Tu patrimonio, en perspectiva.</h1>
-                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Visión general de tus cuentas, ingresos, gastos y evolución patrimonial mes a mes.</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 rounded-2xl bg-background/70 px-3 py-2 shadow-sm ring-1 ring-border/25 backdrop-blur-xl">
-                <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes anterior">
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <span className="min-w-[165px] text-center text-sm font-bold capitalize tracking-tight text-foreground">{formatMonth(selectedDate)}</span>
-                <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes siguiente">
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-                <span className="mx-1 h-6 w-px bg-border/50" />
-                <button onClick={togglePrivacy} className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90" aria-label={privacy ? "Desactivar modo privacidad" : "Activar modo privacidad"}>
-                  {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
+        <main className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+          {/* Métricas (4 en fila) */}
+          <section className="col-span-1 lg:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <MetricCard label="Balance Total" value={<AnimatedNumber value={netWorth} prefix="€" />} subtitle="Patrimonio neto actual" icon={Wallet} tone="blue" delay={0} />
+            <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix="+" />} subtitle="Este mes" icon={ArrowUpRight} tone="emerald" delay={80} />
+            <MetricCard label="Gastos" value={<AnimatedNumber value={monthTotals.gastos} prefix="-" />} subtitle="Este mes" icon={ArrowDownRight} tone="red" delay={160} />
+            <MetricCard label="Tasa de Ahorro" value={`${savingsRate}%`} subtitle="Objetivo del 20%" icon={Target} tone="blue" delay={240} />
           </section>
-
-          {/* ── Snapshot metrics ── */}
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Ingresos" value={<><AnimatedNumber value={monthTotals.ingresos} prefix="+" /></>} subtitle="Entradas del mes" icon={ArrowUpRight} tone="emerald" delay={0} />
-            <MetricCard label="Gastos" value={<><AnimatedNumber value={monthTotals.gastos} prefix="-" /></>} subtitle={previousTotals.gastos > 0 ? `${expenseDelta >= 0 ? "+" : ""}${expenseDelta}% vs mes anterior` : "Sin comparativa"} icon={ArrowDownRight} tone="red" delay={80} />
-            <MetricCard label="Cash flow" value={<AnimatedNumber value={cashflow} />} subtitle={cashflow >= 0 ? "Flujo de caja positivo" : "Flujo de caja negativo"} icon={CircleDollarSign} tone={cashflow >= 0 ? "blue" : "amber"} delay={160} />
-            <MetricCard label="Ahorro" value={`${savingsRate}%`} subtitle={savingsRate >= 20 ? "Objetivo 20% alcanzado" : savingsRate > 0 ? "Meta: 20%" : "Sin ahorro este mes"} icon={Target} tone={savingsRate >= 20 ? "emerald" : savingsRate > 0 ? "amber" : "red"} delay={240} />
+          
+                  <main className="grid grid-cols-1 gap-8 lg:grid-cols-4">
+          {/* Métricas (4 en fila) */}
+          <section className="col-span-1 lg:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard label="Balance Total" value={<AnimatedNumber value={netWorth} prefix="€" />} subtitle="Patrimonio neto actual" icon={Wallet} tone="blue" delay={0} />
+            <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix="+" />} subtitle="Este mes" icon={ArrowUpRight} tone="emerald" delay={80} />
+            <MetricCard label="Gastos" value={<AnimatedNumber value={monthTotals.gastos} prefix="-" />} subtitle="Este mes" icon={ArrowDownRight} tone="red" delay={160} />
+            <MetricCard label="Tasa de Ahorro" value={`${savingsRate}%`} subtitle="Objetivo del 20%" icon={Target} tone="blue" delay={240} />
           </section>
-
-          {/* ── Patrimonio + evolución ── */}
-          <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-6">
-
-              {/* Net worth + chart */}
-              <div className="glass-card rounded-[24px] p-6 card-glow">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div className="space-y-1">
-                    <p className="page-section-label">Patrimonio neto</p>
-                    <p className="text-[34px] font-bold leading-none tracking-tight tabular-nums text-foreground">
-                      <AnimatedNumber value={netWorth} />
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {netWorthDelta >= 0 ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-500 font-semibold"><ArrowUpRight className="h-3 w-3" /><Sensitive>{Math.abs(netWorthDelta).toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</Sensitive></span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-red-500 font-semibold"><ArrowDownRight className="h-3 w-3" /><Sensitive>{Math.abs(netWorthDelta).toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</Sensitive></span>
-                      )}
-                      <span className="ml-1">vs mes anterior</span>
+          
+          {/* Bento Grid Principal */}
+          <section className="col-span-1 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Net worth + chart (Main Bento) */}
+            <div className="md:col-span-2 rounded-[24px] bg-white p-6 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+               <div className="flex items-start justify-between gap-4 mb-6">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Patrimonio neto</p>
+                    <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900 dark:text-white">
+                      <AnimatedNumber value={netWorth} prefix="€" />
                     </p>
                   </div>
-                  <Link href="/analytics" className="shrink-0 rounded-2xl bg-background/60 p-2.5 ring-1 ring-border/20 hover:ring-border/40 transition-all">
-                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  <Link href="/analytics" className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400">
+                    <BarChart3 className="h-4 w-4" />
                   </Link>
                 </div>
                 {netWorthHasData ? (
@@ -237,71 +196,54 @@ export default function DashboardContent() {
                     data={netWorthTrend}
                     index="mes"
                     categories={["patrimonio"]}
-                    colors={["emerald"]}
+                    colors={["blue"]}
                     valueFormatter={chartFormatter}
                     showLegend={false}
-                    className="h-[220px] -mx-1"
+                    className="h-[220px]"
                     curveType="monotone"
                     showAnimation
                   />
                 ) : (
-                  <div className="flex h-[220px] items-center justify-center rounded-2xl bg-muted/30"><BarChart3 className="h-6 w-6 text-muted-foreground/30" /></div>
+                  <div className="flex h-[220px] items-center justify-center rounded-2xl bg-slate-50 dark:bg-slate-800"><BarChart3 className="h-6 w-6 text-slate-300" /></div>
                 )}
-              </div>
-
-              {/* Cuentas */}
-              <div className="glass-card rounded-[24px] p-6 card-glow">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="page-section-label">Mis cuentas</p>
-                  <button onClick={() => setShowNewAccount(true)} className="text-xs font-medium text-primary hover:underline">+ Nueva</button>
-                </div>
-                {topAccounts.length === 0 ? (
-                  <button onClick={() => setShowNewAccount(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-muted-foreground/25 p-5 text-sm text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:text-foreground"><Plus className="h-4 w-4" />Añadir cuenta</button>
-                ) : (
-                  <div className="space-y-2">
-                    {topAccounts.map((account) => {
-                      const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
-                      const I = cfg.icon
-                      return (
-                        <button key={account.id} onClick={() => router.push(`/cuentas/${account.id}`)} className="flex w-full items-center justify-between gap-3 rounded-2xl bg-muted/20 p-3 text-left transition-all hover:bg-muted/40 hover:-translate-y-0.5">
-                          <span className="flex items-center gap-2.5 min-w-0">
-                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5"><I className="h-4 w-4" style={{ color: cfg.color }} /></span>
-                            <span className="min-w-0">
-                              <span className="block truncate text-sm font-semibold text-foreground">{account.nombre}</span>
-                              <span className="block text-[11px] text-muted-foreground">{cfg.label}</span>
-                            </span>
-                          </span>
-                          <span className="shrink-0 text-sm font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive></span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
             </div>
 
-            {/* ── Right column ── */}
-            <div className="space-y-6">
+            {/* Cuentas */}
+            <div className="md:col-span-2 rounded-[24px] bg-white p-6 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+              <div className="flex items-center justify-between mb-6">
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">Mis cuentas</p>
+                <button onClick={() => setShowNewAccount(true)} className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400">+ Nueva</button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {topAccounts.map((account) => {
+                  const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
+                  const I = cfg.icon
+                  return (
+                    <button key={account.id} onClick={() => router.push(`/cuentas/${account.id}`)} 
+                      className="group flex flex-col gap-4 rounded-[20px] bg-slate-50 p-5 transition-all hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-full bg-white p-2 dark:bg-slate-900 shadow-sm">
+                          <I className="h-4 w-4" style={{ color: cfg.color }} />
+                        </div>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white truncate">{account.nombre}</span>
+                      </div>
+                      <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">
+                        <Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive>
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
 
-              {/* Ingresos vs gastos del mes */}
-              <div className="glass-card rounded-[24px] p-6 card-glow">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="page-section-label">Movimiento mensual</p>
-                  <span className="text-[11px] text-muted-foreground">{formatMonth(selectedDate)}</span>
-                </div>
-                {monthTotals.ingresos > 0 || monthTotals.gastos > 0 ? (
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-2xl bg-emerald-500/5 p-3 ring-1 ring-emerald-500/10">
-                        <p className="page-section-label">Ingresos</p>
-                        <p className="text-lg font-bold tabular-nums text-emerald-500 mt-1">+<AnimatedNumber value={monthTotals.ingresos} /></p>
-                      </div>
-                      <div className="rounded-2xl bg-red-500/5 p-3 ring-1 ring-red-500/10">
-                        <p className="page-section-label">Gastos</p>
-                        <p className="text-lg font-bold tabular-nums text-red-500 mt-1">-<AnimatedNumber value={monthTotals.gastos} /></p>
-                      </div>
-                    </div>
-                    <DonutChart
+          {/* Columna Derecha */}
+          <section className="col-span-1 space-y-6">
+            {/* Movimiento mensual */}
+            <div className="rounded-[24px] bg-white p-6 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+                <p className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Flujo Mensual</p>
+                <DonutChart
                       data={[
                         { name: "Ingresos", value: Math.max(monthTotals.ingresos, 1) },
                         { name: "Gastos", value: Math.max(monthTotals.gastos, 1) },
@@ -309,104 +251,46 @@ export default function DashboardContent() {
                       category="value"
                       index="name"
                       variant="donut"
-                      className="h-28 mx-auto"
+                      className="h-40"
                       showAnimation
                       colors={["emerald", "red"]}
                     />
-                  </div>
-                ) : (
-                  <div className="flex h-[200px] items-center justify-center rounded-2xl bg-muted/30"><BarChart3 className="h-6 w-6 text-muted-foreground/30" /></div>
-                )}
-              </div>
-
-              {/* Top categorías de gasto */}
-              {spendingByCategory.length > 0 && (
-                <div className="glass-card rounded-[24px] p-6 card-glow">
-                  <p className="page-section-label mb-3">Gastos por categoría</p>
-                  <div className="space-y-2.5">
-                    {spendingByCategory.slice(0, 5).map((cat) => (
-                      <div key={cat.categoria} className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{cat.categoria}</span>
-                        <span className="font-semibold tabular-nums text-foreground"><Sensitive>{cat.monto.toLocaleString("es-ES")}€</Sensitive></span>
-                      </div>
-                    ))}
-                    {spendingByCategory.length > 5 && (
-                      <Link href="/analytics" className="block text-center text-xs font-medium text-primary hover:underline pt-1">Ver todas las categorías</Link>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Tasa de ahorro */}
-              <div className="glass-card rounded-[24px] p-6 card-glow text-center">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="page-section-label">Tasa de ahorro</p>
-                  <Link href="/objetivos" className="text-xs font-medium text-primary hover:underline">Objetivos</Link>
-                </div>
+            </div>
+            
+            {/* Tasa de ahorro */}
+            <div className="rounded-[24px] bg-white p-6 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 text-center">
+                <p className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Tasa de ahorro</p>
                 <div className="relative mx-auto flex h-28 w-28 items-center justify-center">
-                  <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 120 120">
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round"
-                      strokeDasharray={`${2 * Math.PI * 52}`}
-                      strokeDashoffset={`${2 * Math.PI * 52 * (1 - Math.min(savingsRate, 100) / 100)}`}
-                      className={savingsRate >= 20 ? "text-emerald-500" : savingsRate > 0 ? "text-amber-500" : "text-red-500"}
-                      style={{ transition: "stroke-dashoffset 1.5s ease-out" }}
-                    />
-                  </svg>
-                  <span className="absolute text-2xl font-bold tabular-nums tracking-tight" style={{ color: savingsRate >= 20 ? "#10b981" : savingsRate > 0 ? "#f59e0b" : "#ef4444" }}>{savingsRate}%</span>
+                    <span className="text-2xl font-bold tabular-nums text-blue-600">{savingsRate}%</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-3">{savingsRate >= 20 ? "Meta de ahorro alcanzada 🎯" : savingsRate > 0 ? "Te recomendamos ahorrar al menos el 20%" : "Sin ahorro este mes"}</p>
-              </div>
             </div>
           </section>
 
-          {/* ── Últimos movimientos ── */}
-          <section className="space-y-4">
-            <SectionTitle label="Actividad reciente" title="Últimos movimientos" text="Tus transacciones más recientes del mes." />
-            {recentTransactions.length === 0 ? (
-              <div className="glass-card rounded-[24px] p-8 card-glow text-center">
-                <div className="flex flex-col items-center gap-3 py-6">
-                  <div className="rounded-2xl bg-background/60 p-3 ring-1 ring-border/20">
-                    <Activity className="h-6 w-6 text-muted-foreground/45" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">Sin movimientos este mes</p>
-                </div>
-              </div>
-            ) : (
-              <div className="glass-card rounded-[24px] card-glow overflow-hidden">
-                <div className="divide-y divide-border/30">
-                  {recentTransactions.map((t) => {
-                    const account = state.accounts.find((a) => a.id === t.cuenta_id)
-                    return (
-                      <div key={t.id} className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-muted/20">
-                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${t.tipo === "ingreso" ? "bg-emerald-500/10" : "bg-red-500/10"}`}>
-                          {t.tipo === "ingreso" ? <ArrowUpRight className="h-4 w-4 text-emerald-500" /> : <ArrowDownRight className="h-4 w-4 text-red-500" />}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-foreground">{t.descripcion || t.categoria}</p>
-                          <p className="truncate text-[11px] text-muted-foreground">{new Date(t.fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })} · {account?.nombre ?? ""}</p>
-                        </div>
-                        <span className={`shrink-0 text-sm font-bold tabular-nums ${t.tipo === "ingreso" ? "text-emerald-500" : "text-foreground"}`}>
-                          <Sensitive>{t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, "EUR")}</Sensitive>
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-                <Link href="/transactions" className="flex items-center justify-center gap-1.5 border-t border-border/30 px-5 py-3 text-xs font-medium text-primary transition-colors hover:bg-muted/20">
-                  Ver todas las transacciones
-                </Link>
-              </div>
-            )}
-          </section>
-
-          {/* ── Full width tables ── */}
-          <TransactionsTable selectedMonth={selectedMonth} />
-          <SinkingFundsGrid />
-
-          <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={handleCreateAccount} />
-        </>
-      )}
+// Actualización del componente MetricCard para la nueva estética institucional
+const MetricCard = memo(function MetricCard({
+  label, value, subtitle, icon: Icon, tone, delay,
+}: {
+  label: string; value: React.ReactNode; subtitle: string; icon: React.ElementType; tone: "emerald" | "red" | "blue" | "amber" | "violet"; delay: number
+}) {
+  const tones = {
+    emerald: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30",
+    red: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30",
+    blue: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30",
+    amber: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30",
+    violet: "text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30",
+  }
+  return (
+    <div className="rounded-[24px] bg-white p-6 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900 dark:text-white">{value}</p>
+        </div>
+        <div className={`rounded-full p-2 ${tones[tone]}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+      <p className="mt-4 text-xs text-slate-500">{subtitle}</p>
     </div>
   )
-}
+})
