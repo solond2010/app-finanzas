@@ -2,14 +2,14 @@
 
 import { useMemo, useState, memo } from "react"
 import { BarChart, DonutChart, LineChart } from "@tremor/react"
-import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, FlaskConical, Gauge, Layers3, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react"
+import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Layers3, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
-import { backupCurrentState, clearBackup, generateSampleData, restoreBackup, useFinance } from "@/lib/store"
+import { useFinance } from "@/lib/store"
 import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
@@ -113,9 +113,6 @@ const RuleCard = memo(function RuleCard({ label, target, actual, value, tone, de
 
 export default function AnalyticsPage() {
   const { state, dispatch } = useFinance()
-  const [hasBackup, setHasBackup] = useState(() =>
-    typeof window !== "undefined" && localStorage.getItem("app-finanzas-backup") !== null
-  )
   const [monthOffset, setMonthOffset] = useState(0)
 
   const today = new Date()
@@ -125,21 +122,6 @@ export default function AnalyticsPage() {
   const hasData = analysisTransactions.length > 0
 
   const [confirmReset, setConfirmReset] = useState(false)
-  const [confirmSample, setConfirmSample] = useState(false)
-
-  const loadSampleData = () => {
-    backupCurrentState(state)
-    dispatch({ type: "MERGE_SAMPLE", payload: generateSampleData() })
-    setHasBackup(true)
-  }
-
-  const restoreMyData = () => {
-    const backup = restoreBackup()
-    if (!backup) return
-    dispatch({ type: "SET_STATE", payload: backup })
-    clearBackup()
-    setHasBackup(false)
-  }
 
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const { necesidades, deseos } = useMemo(() => getNeedsVsWantsForMonth(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
@@ -194,8 +176,6 @@ export default function AnalyticsPage() {
               </button>
             </div>
             <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
-              {hasBackup && <Button variant="outline" size="sm" className="border-emerald-500/30 text-emerald-600" onClick={restoreMyData}>Restaurar mis datos</Button>}
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => setConfirmSample(true)}><FlaskConical className="h-4 w-4" />Datos ejemplo</Button>
               {hasData && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmReset(true)}>Limpiar</Button>}
             </div>
           </div>
@@ -339,14 +319,6 @@ export default function AnalyticsPage() {
         </Card>
       </section>
 
-      <ConfirmDialog
-        open={confirmSample}
-        onOpenChange={setConfirmSample}
-        onConfirm={loadSampleData}
-        title="¿Añadir datos de ejemplo?"
-        description="Se añadirán cuentas, transacciones y metas de ejemplo. Tus datos actuales se conservarán."
-        confirmLabel="Añadir"
-      />
       <ConfirmDialog
         open={confirmReset}
         onOpenChange={setConfirmReset}

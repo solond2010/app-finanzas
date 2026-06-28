@@ -73,8 +73,6 @@ type Action =
   | { type: "ADD_CATEGORY"; payload: string }
   | { type: "DELETE_CATEGORY"; payload: string }
 
-const STORAGE_KEY = "app-finanzas-data"
-
 const DEFAULT_CATEGORIES = ["Salario", "Freelance", "Alquiler", "Supermercado", "Transporte", "Internet", "Suscripciones", "Cena", "Ropa", "Ocio", "Gym", "Salud", "Inversión", "Transferencia", "Spotify", "Otros"]
 
 type AccountRow = {
@@ -132,18 +130,6 @@ const defaultState: FinanceState = {
   transactions: [],
   sinkingFunds: [],
   categories: DEFAULT_CATEGORIES,
-}
-
-function loadState(): FinanceState {
-  if (typeof window === "undefined") return defaultState
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved) as FinanceState
-      return normalizeFinanceState({ ...defaultState, ...parsed, categories: parsed.categories ?? defaultState.categories })
-    }
-  } catch {}
-  return defaultState
 }
 
 function reducer(state: FinanceState, action: Action): FinanceState {
@@ -278,13 +264,9 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     loadFromSupabase().then((remote) => {
       if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
         dispatch({ type: "SET_STATE", payload: remote })
-      } else {
-        const saved = loadState()
-        dispatch({ type: "SET_STATE", payload: saved })
       }
     }).catch(() => {
-      const saved = loadState()
-      dispatch({ type: "SET_STATE", payload: saved })
+      // fallback: keep defaultState
     }).finally(() => {
       setLoading(false)
     })
@@ -292,23 +274,17 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loadedRef.current) return
-    const timer = setTimeout(() => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-      let cancelled = false
-      setSyncStatus("syncing")
-      syncChainRef.current = syncChainRef.current
-        .then(() => syncToSupabase(state))
-        .then(() => {
-          if (!cancelled) setSyncStatus("saved")
-        })
-        .catch(() => {
-          if (!cancelled) setSyncStatus("error")
-        })
-      return () => {
-        cancelled = true
-      }
-    }, 500)
-    return () => clearTimeout(timer)
+    let cancelled = false
+    setSyncStatus("syncing")
+    syncChainRef.current = syncChainRef.current
+      .then(() => syncToSupabase(state))
+      .then(() => {
+        if (!cancelled) setSyncStatus("saved")
+      })
+      .catch(() => {
+        if (!cancelled) setSyncStatus("error")
+      })
+    return () => { cancelled = true }
   }, [state])
 
   return <FinanceContext.Provider value={{ state, dispatch, loading, syncStatus }}>{children}</FinanceContext.Provider>
@@ -422,28 +398,6 @@ export function useFinance() {
 
 export function generateId(): string {
   return crypto.randomUUID?.() ?? (Date.now().toString(36) + Math.random().toString(36).slice(2, 7))
-}
-
-const BACKUP_KEY = "app-finanzas-backup"
-
-export function backupCurrentState(state: FinanceState) {
-  if (typeof window === "undefined") return
-  localStorage.setItem(BACKUP_KEY, JSON.stringify(state))
-}
-
-export function restoreBackup(): FinanceState | null {
-  if (typeof window === "undefined") return null
-  try {
-    const saved = localStorage.getItem(BACKUP_KEY)
-    return saved ? JSON.parse(saved) : null
-  } catch {
-    return null
-  }
-}
-
-export function clearBackup() {
-  if (typeof window === "undefined") return
-  localStorage.removeItem(BACKUP_KEY)
 }
 
 export function generateSampleData(): FinanceState {
