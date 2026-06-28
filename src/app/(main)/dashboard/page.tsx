@@ -42,13 +42,19 @@ const EmptyWelcome = memo(function EmptyWelcome({ onCreateAccount }: { onCreateA
   return (
     <div className="hero-gradient rounded-[34px] bg-card/70 p-8 text-center sm:p-14 card-elevated">
       <div className="relative z-10 mx-auto flex max-w-xl flex-col items-center gap-6">
-        <div className="rounded-[28px] bg-background/70 p-5 card-elevated">
-          <div className="relative">
-            <Wallet className="h-12 w-12 text-muted-foreground/50" />
-            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-lg shadow-primary/30">
-              <Sparkles className="h-3 w-3" />
-            </span>
+        <div className="relative">
+          <div className="rounded-[28px] bg-background/70 p-5 card-elevated">
+            <div className="relative">
+              <Wallet className="h-12 w-12 text-muted-foreground/50" />
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-lg shadow-primary/30">
+                <Sparkles className="h-3 w-3" />
+              </span>
+            </div>
           </div>
+          <span className="absolute -top-2 -left-2 h-3 w-3 rounded-full bg-emerald-500/30 animate-breathe" />
+          <span className="absolute -bottom-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-500/30 animate-breathe" style={{ animationDelay: "1.5s" }} />
+          <span className="absolute top-1/2 -right-6 h-2 w-2 rounded-full bg-blue-500/30 animate-float-slow" />
+          <span className="absolute top-1/3 -left-5 h-1.5 w-1.5 rounded-full bg-violet-500/30 animate-float" />
         </div>
         <div className="space-y-3">
           <p className="page-section-label">Primer paso</p>
@@ -56,7 +62,7 @@ const EmptyWelcome = memo(function EmptyWelcome({ onCreateAccount }: { onCreateA
           <p className="max-w-lg text-sm leading-6 text-muted-foreground mx-auto">Crea tu primera cuenta y empieza a registrar movimientos. El dashboard se convertir&aacute; en tu resumen diario de patrimonio, gastos y metas.</p>
         </div>
         <div className="flex flex-wrap justify-center gap-3">
-          <Button size="lg" className="gap-2 rounded-full px-6 shadow-lg shadow-primary/25" onClick={onCreateAccount}><Plus className="h-4 w-4" />Crear primera cuenta</Button>
+          <Button size="lg" className="gap-2 rounded-full px-6 shadow-lg shadow-primary/25 animate-count-pulse" onClick={onCreateAccount}><Plus className="h-4 w-4" />Crear primera cuenta</Button>
           <Link href="/analytics" className="inline-flex h-10 items-center justify-center rounded-full border border-input bg-background px-5 text-sm font-medium shadow-xs transition-all hover:bg-accent hover:text-accent-foreground hover:-translate-y-0.5 active:scale-[0.97]">Ver anal&iacute;ticas</Link>
         </div>
       </div>

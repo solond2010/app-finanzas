@@ -343,16 +343,21 @@ export function QuickActionsFAB() {
           </div>
         )}
 
-        <button
-          onClick={() => setOpen(!open)}
-          className={`flex h-16 w-16 items-center justify-center rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 ${
-            open
-              ? "bg-rose-500 rotate-45 shadow-rose-500/30"
-              : "bg-gradient-to-br from-primary to-[color-mix(in_oklch,var(--primary),oklch(1_0_0)_15%)] shadow-xl shadow-primary/40 hover:shadow-2xl hover:shadow-primary/50"
-          }`}
-        >
-          <Plus className="h-7 w-7 text-white" />
-        </button>
+        <div className="relative">
+          {!open && (
+            <span className="absolute inset-0 rounded-full animate-spin-slow" style={{ boxShadow: "0 0 0 2px color-mix(in oklch, var(--primary), transparent 70%), 0 0 20px 4px color-mix(in oklch, var(--primary), transparent 75%)" }} />
+          )}
+          <button
+            onClick={() => setOpen(!open)}
+            className={`relative flex h-16 w-16 items-center justify-center rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 ${
+              open
+                ? "bg-rose-500 rotate-45 shadow-rose-500/30"
+                : "bg-gradient-to-br from-primary to-[color-mix(in_oklch,var(--primary),oklch(1_0_0)_15%)] shadow-xl shadow-primary/40 hover:shadow-2xl hover:shadow-primary/50"
+            }`}
+          >
+            <Plus className="h-7 w-7 text-white transition-transform duration-300" />
+          </button>
+        </div>
       </div>
 
       <Dialog open={activeModal === "gasto"} onOpenChange={(o) => { if (!o) setActiveModal(null) }}>

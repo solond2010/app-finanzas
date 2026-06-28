@@ -25,12 +25,27 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast: addToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2 max-w-sm pointer-events-none [&>div]:pointer-events-auto">
-        {toasts.map((t) => (
-          <div key={t.id} className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm shadow-lg data-open:animate-in data-open:fade-in data-open:slide-in-from-right-5 data-closed:animate-out data-closed:fade-out data-closed:slide-out-to-right-5 ${t.type === "success" ? "bg-emerald-950/90 border-emerald-800/60 text-emerald-200 backdrop-blur-sm" : t.type === "error" ? "bg-red-950/90 border-red-800/60 text-red-200 backdrop-blur-sm" : "bg-zinc-900/90 border-zinc-700/60 text-zinc-200 backdrop-blur-sm"}`}>
-            {t.type === "success" ? <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" /> : t.type === "error" ? <AlertCircle className="h-4 w-4 text-red-400 shrink-0" /> : <Info className="h-4 w-4 text-blue-400 shrink-0" />}
-            <span className="flex-1">{t.message}</span>
-            <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} className="shrink-0 rounded-lg p-1 opacity-60 hover:opacity-100 hover:bg-black/20 transition-all"><X className="h-3.5 w-3.5" /></button>
+      <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2.5 max-w-sm pointer-events-none [&>div]:pointer-events-auto">
+        {toasts.map((t, idx) => (
+          <div
+            key={t.id}
+            className={`stagger-fade-fast flex items-center gap-3 rounded-2xl border px-4 py-3.5 text-sm shadow-2xl backdrop-blur-xl ${
+              t.type === "success"
+                ? "bg-emerald-950/90 border-emerald-700/50 text-emerald-100"
+                : t.type === "error"
+                  ? "bg-red-950/90 border-red-700/50 text-red-100"
+                  : "bg-zinc-950/90 border-zinc-700/50 text-zinc-100"
+            }`}
+            style={{ animationDelay: `${idx * 50}ms` }}
+          >
+            {t.type === "success"
+              ? <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20"><CheckCircle className="h-3.5 w-3.5 text-emerald-400" /></span>
+              : t.type === "error"
+                ? <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500/20"><AlertCircle className="h-3.5 w-3.5 text-red-400" /></span>
+                : <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20"><Info className="h-3.5 w-3.5 text-blue-400" /></span>
+            }
+            <span className="flex-1 font-medium">{t.message}</span>
+            <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} className="shrink-0 rounded-xl p-1.5 opacity-50 hover:opacity-100 hover:bg-black/30 transition-all"><X className="h-3 w-3" /></button>
           </div>
         ))}
       </div>

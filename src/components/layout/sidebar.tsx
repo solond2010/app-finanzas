@@ -24,7 +24,7 @@ import {
   EyeOff,
   Sparkles,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useSidebar } from "@/lib/sidebar"
 
 const navItems = [
@@ -35,6 +35,17 @@ const navItems = [
   { href: "/objetivos", label: "Objetivos", icon: Target },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ]
+
+function Tooltip({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="group/tooltip relative">
+      {children}
+      <span className="pointer-events-none absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 rounded-xl bg-foreground px-2.5 py-1.5 text-xs font-medium text-background shadow-lg opacity-0 -translate-x-1 group-hover/tooltip:opacity-100 group-hover/tooltip:translate-x-0 transition-all duration-200 whitespace-nowrap">
+        {label}
+      </span>
+    </div>
+  )
+}
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -69,6 +80,7 @@ export function Sidebar() {
 
   return (
     <>
+      {/* Mobile header */}
       <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b bg-background/80 px-3 py-2.5 backdrop-blur-xl lg:hidden">
         <div className="flex items-center gap-2">
           <button
@@ -93,6 +105,7 @@ export function Sidebar() {
         <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
+      {/* Desktop collapse toggle */}
       <button
         onClick={toggleSidebar}
         className={cn(
@@ -107,23 +120,78 @@ export function Sidebar() {
         </span>
       </button>
 
-      <aside
-        className={cn(
-          "fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r bg-sidebar py-6 shadow-xl shadow-sidebar-border/50 transition-transform duration-300 ease-in-out",
-          "max-lg:top-[var(--mobile-header-h)] max-lg:h-[calc(100vh-var(--mobile-header-h))] max-lg:shadow-2xl",
-          mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full",
-          sidebarOpen ? "lg:translate-x-0" : "lg:-translate-x-full"
-        )}
-      >
-        <div className="flex items-center justify-between mb-8 px-4">
-          <div className="flex items-center gap-3">
+      {/* Desktop icon-only bar (when collapsed) */}
+      {!sidebarOpen && (
+        <aside className="fixed left-0 top-0 z-40 hidden h-full w-16 flex-col items-center border-r bg-sidebar py-5 shadow-xl shadow-sidebar-border/50 lg:flex">
+          <div className="mb-6">
             <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Sparkles className="h-4 w-4" />
             </div>
-            <div>
-              <h1 className="text-base font-bold tracking-tight text-sidebar-foreground">Finanzas</h1>
-              <p className="text-[10px] font-medium text-muted-foreground tracking-wider uppercase">Panel de Control</p>
-            </div>
+          </div>
+          <nav className="flex flex-col gap-1 flex-1">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
+              return (
+                <Tooltip key={item.href} label={item.label}>
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "flex items-center justify-center rounded-xl p-2.5 transition-all duration-200",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:scale-110 active:scale-95"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {isActive && <span className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-1.5 w-1.5 rounded-full bg-primary" />}
+                  </Link>
+                </Tooltip>
+              )
+            })}
+          </nav>
+          <div className="flex flex-col gap-1 mt-auto">
+            <Tooltip label={privacy ? "Mostrar cifras" : "Ocultar cifras"}>
+              <button
+                onClick={togglePrivacy}
+                className="flex items-center justify-center rounded-xl p-2.5 text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all hover:scale-110 active:scale-95"
+              >
+                {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </Tooltip>
+            <Tooltip label={isDark ? "Modo claro" : "Modo oscuro"}>
+              <button
+                onClick={toggleTheme}
+                className="flex items-center justify-center rounded-xl p-2.5 text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all hover:scale-110 active:scale-95"
+              >
+                {isDark ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+              </button>
+            </Tooltip>
+            <Tooltip label={syncMeta.label}>
+              <span className="flex items-center justify-center rounded-xl p-2.5">
+                <span className={syncMeta.className}>{syncMeta.icon}</span>
+              </span>
+            </Tooltip>
+          </div>
+        </aside>
+      )}
+
+      {/* Desktop full sidebar (when open) + mobile sidebar */}
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r bg-sidebar py-6 shadow-xl shadow-sidebar-border/50 transition-all duration-300 ease-in-out",
+          "max-lg:top-[var(--mobile-header-h)] max-lg:h-[calc(100vh-var(--mobile-header-h))] max-lg:shadow-2xl",
+          mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full",
+          sidebarOpen ? "lg:translate-x-0 lg:opacity-100" : "lg:-translate-x-full lg:opacity-0 lg:pointer-events-none"
+        )}
+      >
+        <div className="flex items-center gap-3 mb-8 px-4">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div>
+            <h1 className="text-base font-bold tracking-tight text-sidebar-foreground">Finanzas</h1>
+            <p className="text-[10px] font-medium text-muted-foreground tracking-wider uppercase">Panel de Control</p>
           </div>
         </div>
 

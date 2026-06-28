@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, generateId } from "@/lib/store"
 import { Filter, Plus, Pencil, Trash2, Search, Download } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { formatMoney } from "@/lib/currency"
@@ -351,52 +352,63 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             ) : (
               currentGrouped.map((group) => (
                 <Fragment key={group.date}>
-                  <TableRow className="sticky top-10 z-10">
-                    <TableCell colSpan={8} className="px-2 py-1.5 bg-background/80 backdrop-blur-sm text-[11px] sm:text-xs font-semibold text-muted-foreground capitalize tracking-wide">
+                  <TableRow>
+                    <TableCell colSpan={8} className="px-3 py-2 bg-card/90 backdrop-blur-sm text-[11px] sm:text-xs font-bold text-muted-foreground capitalize tracking-[0.08em] border-b border-border/40">
                       {group.label}
                     </TableCell>
                   </TableRow>
                   {group.transactions.map((t) => {
                     const account = state.accounts.find((a) => a.id === t.cuenta_id)
+                    const catColor = CATEGORY_COLORS[t.categoria]
                     return (
-                      <TableRow key={t.id} className="group">
+                      <TableRow key={t.id} className="group transition-colors hover:bg-muted/20">
                         <TableCell className="tabular-nums text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                           {new Date(t.fecha).toLocaleDateString("es-ES", {
                             day: "2-digit", month: "short",
                           })}
                         </TableCell>
-                        <TableCell className="text-xs sm:text-sm max-w-[100px] sm:max-w-[140px] truncate">{t.descripcion || "—"}</TableCell>
+                        <TableCell className="text-xs sm:text-sm max-w-[100px] sm:max-w-[140px]">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: catColor ? undefined : undefined }} />
+                            <span className="truncate font-medium">{t.descripcion || t.categoria}</span>
+                          </div>
+                        </TableCell>
                         <TableCell className="hidden md:table-cell"><span className="text-xs text-muted-foreground">{account?.nombre}</span></TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          <Badge variant="secondary" className={`font-medium text-[10px] sm:text-xs ${CATEGORY_COLORS[t.categoria] || ""}`}>
+                          <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset", catColor || "bg-muted/60 text-muted-foreground ring-border/20")}>
                             {t.categoria}
-                          </Badge>
+                          </span>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          <span className={`text-xs sm:text-sm font-medium ${t.tipo === "ingreso" ? "text-emerald-500" : "text-red-500"}`}>
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            t.tipo === "ingreso"
+                              ? "bg-emerald-500/8 text-emerald-500"
+                              : "bg-red-500/8 text-red-500"
+                          }`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${t.tipo === "ingreso" ? "bg-emerald-500" : "bg-red-500"}`} />
                             {t.tipo === "ingreso" ? "Ingreso" : "Gasto"}
                           </span>
                         </TableCell>
-                        <TableCell className={`text-right tabular-nums font-medium text-xs sm:text-sm ${t.tipo === "ingreso" ? "text-emerald-500" : ""}`}>
+                        <TableCell className={`text-right tabular-nums font-bold text-xs sm:text-sm ${t.tipo === "ingreso" ? "text-emerald-500" : "text-foreground"}`}>
                           <Sensitive>{t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, account?.currency ?? "EUR")}</Sensitive>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <div className="flex gap-1">
                             {t.tags.slice(0, 2).map((tag) => (
-                              <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">{tag}</Badge>
+                              <span key={tag} className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border/20">{tag}</span>
                             ))}
                             {t.tags.length > 2 && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">+{t.tags.length - 2}</Badge>
+                              <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border/20">+{t.tags.length - 2}</span>
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => setEditingTxn(t)} className="touch-manipulation" aria-label="Editar transacción">
-                              <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                          <div className="flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => setEditingTxn(t)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90" aria-label="Editar transacción">
+                              <Pencil className="h-3.5 w-3.5" />
                             </button>
-                            <button onClick={() => setDeleteConfirm(t)} className="touch-manipulation" aria-label="Eliminar transacción">
-                              <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
+                            <button onClick={() => setDeleteConfirm(t)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-90" aria-label="Eliminar transacción">
+                              <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
                         </TableCell>

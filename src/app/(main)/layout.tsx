@@ -16,7 +16,7 @@ function MainInner({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <main className={cn(
         "min-h-screen flex-1 pt-[var(--mobile-header-h)] lg:pt-8 p-3 sm:p-6 lg:p-8 animate-in fade-in duration-500 transition-all",
-        open ? "lg:ml-64" : "lg:ml-0"
+        open ? "lg:ml-64" : "lg:ml-16"
       )}>
         {children}
       </main>
