@@ -248,7 +248,6 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
     () => {
       const safeTime = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? 0 : d.getTime() }
       return filterTransactionsByMonth(state.transactions, selectedMonth)
-        .filter((t) => !t.id.startsWith("init_"))
         .filter((t) => filterAccount === "all" || t.cuenta_id === filterAccount)
         .filter((t) => !search || t.descripcion.toLowerCase().includes(search.toLowerCase()) || t.categoria.toLowerCase().includes(search.toLowerCase()) || t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())))
         .sort((a, b) => safeTime(b.fecha) - safeTime(a.fecha))
