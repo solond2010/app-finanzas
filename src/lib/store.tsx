@@ -275,22 +275,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     if (loadedRef.current) return
     loadedRef.current = true
 
-    const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null
-    if (saved) {
-      dispatch({ type: "SET_STATE", payload: loadState() })
-      queueMicrotask(() => setLoading(false))
-      loadFromSupabase().catch(() => {})
-      return
-    }
-
     loadFromSupabase().then((remote) => {
       if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
         dispatch({ type: "SET_STATE", payload: remote })
       } else {
-        dispatch({ type: "SET_STATE", payload: defaultState })
+        const saved = loadState()
+        dispatch({ type: "SET_STATE", payload: saved })
       }
     }).catch(() => {
-      dispatch({ type: "SET_STATE", payload: defaultState })
+      const saved = loadState()
+      dispatch({ type: "SET_STATE", payload: saved })
     }).finally(() => {
       setLoading(false)
     })
