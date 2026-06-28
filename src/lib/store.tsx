@@ -255,6 +255,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     loadFromSupabase().then((remote) => {
       if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
         dispatch({ type: "SET_STATE", payload: remote })
+      } else {
+        const local = loadLocalBackup()
+        if (local && (local.accounts.length > 0 || local.transactions.length > 0 || local.sinkingFunds.length > 0)) {
+          dispatch({ type: "SET_STATE", payload: local })
+        }
       }
     }).finally(() => {
       setLoading(false)
@@ -271,8 +276,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       .then(() => {
         if (!cancelled) setSyncStatus("saved")
       })
-      .catch(() => {
-        if (!cancelled) setSyncStatus("error")
+      .catch((err) => {
+        if (!cancelled) {
+          setSyncStatus("error")
+          console.error("[Finance] SYNC FAILED:", err)
+          alert("ERROR DE SINCRONIZACIÓN: No se pudieron guardar los datos en Supabase. Revisa la consola para más detalles.")
+        }
       })
     return () => { cancelled = true }
   }, [state, initialized])
@@ -314,6 +323,20 @@ async function syncToSupabase(state: FinanceState) {
   await deleteRemoteMissingRows("transactions", state.transactions.map((t) => t.id))
   await deleteRemoteMissingRows("sinking_funds", state.sinkingFunds.map((s) => s.id))
   await deleteRemoteMissingRows("accounts", state.accounts.map((a) => a.id))
+}
+
+function loadLocalBackup(): FinanceState | null {
+  if (typeof window === "undefined") return null
+  try {
+    const saved = localStorage.getItem("app-finanzas-data")
+    if (!saved) return null
+    const parsed = JSON.parse(saved) as FinanceState
+    if (!parsed.accounts?.length && !parsed.transactions?.length && !parsed.sinkingFunds?.length) return null
+    console.warn("[Finance] Recuperando datos de localStorage (Supabase no tenía datos)")
+    return { ...parsed, categories: parsed.categories ?? DEFAULT_CATEGORIES }
+  } catch {
+    return null
+  }
 }
 
 async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sinking_funds", localIds: string[]) {
