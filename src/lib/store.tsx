@@ -105,19 +105,9 @@ type SinkingFundRow = {
   objetivo: number | string | null
   ahorrado: number | string | null
   fecha_limite: string | null
-  cuenta_id?: string | null
 }
 
-type AccountPayload = Omit<AccountRow, "saldo"> & { saldo: number }
 type TransactionPayload = Omit<TransactionRow, "monto" | "tags" | "descripcion"> & { monto: number; tags: string[]; descripcion: string }
-type SinkingFundPayload = {
-  id: string
-  nombre: string
-  objetivo: number
-  ahorrado: number
-  fecha_limite: string | null
-  cuenta_id: string
-}
 
 const defaultState: FinanceState = {
   accounts: [
@@ -375,19 +365,19 @@ function formatTransaction(t: TransactionRow): Transaction {
 }
 
 function formatSinkingFund(s: SinkingFundRow): SinkingFund {
-  return { id: s.id, nombre: s.nombre ?? "", cantidad_objetivo: Number(s.objetivo) || 0, fecha_limite: s.fecha_limite ?? "", ahorrado_actual: Number(s.ahorrado) || 0, cuenta_id: s.cuenta_id ?? "" }
+  return { id: s.id, nombre: s.nombre ?? "", cantidad_objetivo: Number(s.objetivo) || 0, fecha_limite: s.fecha_limite ?? "", ahorrado_actual: Number(s.ahorrado) || 0, cuenta_id: "" }
 }
 
-function unformatAccount(a: Account): AccountPayload {
-  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco, saldo: a.saldo, currency: a.currency, objetivo: a.objetivo, limite_mensual: a.limite_mensual, color: a.color }
+function unformatAccount(a: Account) {
+  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco, saldo: a.saldo, objetivo: a.objetivo, limite_mensual: a.limite_mensual, color: a.color }
 }
 
 function unformatTransaction(t: Transaction): TransactionPayload {
   return { id: t.id, cuenta_id: t.cuenta_id, monto: t.monto, fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion, tags: t.tags }
 }
 
-function unformatSinkingFund(s: SinkingFund): SinkingFundPayload {
-  return { id: s.id, nombre: s.nombre, objetivo: s.cantidad_objetivo, ahorrado: s.ahorrado_actual, fecha_limite: s.fecha_limite || null, cuenta_id: s.cuenta_id }
+function unformatSinkingFund(s: SinkingFund) {
+  return { id: s.id, nombre: s.nombre, objetivo: s.cantidad_objetivo, ahorrado: s.ahorrado_actual, fecha_limite: s.fecha_limite || null }
 }
 
 export function useFinance() {
