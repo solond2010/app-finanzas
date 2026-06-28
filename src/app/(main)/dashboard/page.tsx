@@ -153,27 +153,19 @@ export default function DashboardPage() {
         </>
       ) : (
         <>
-          {/* ── Floating Navbar (Bankio Style) ── */}
+          {/* ── Floating Navbar ── */}
           <div className="flex items-center justify-between rounded-full bg-white dark:bg-slate-900 px-6 py-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3b82f6]/10 text-[#3b82f6]">
                 <TrendingUp className="h-5 w-5" />
               </div>
-              <span className="text-lg font-bold text-slate-900 dark:text-white mr-8">Bankio</span>
-              
-              <nav className="hidden md:flex items-center gap-6">
-                {["All", "Transactions", "Analytic", "Expenses", "Spending"].map((tab, i) => (
-                  <span key={tab} className={`text-sm font-medium cursor-pointer transition-colors ${i === 0 ? "text-slate-900 dark:text-white" : "text-slate-400 hover:text-slate-900 dark:hover:text-white"}`}>
-                    {tab}
-                  </span>
-                ))}
-              </nav>
+              <span className="text-lg font-bold text-slate-900 dark:text-white mr-8">Mohamed Amin</span>
             </div>
             
             <div className="flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-2 rounded-full bg-slate-50 dark:bg-slate-800 px-4 py-2">
                 <Search className="h-4 w-4 text-slate-400" />
-                <input type="text" placeholder="Search" className="bg-transparent text-sm outline-none w-24 text-slate-600 dark:text-slate-200" />
+                <input type="text" placeholder="Buscar..." className="bg-transparent text-sm outline-none w-24 text-slate-600 dark:text-slate-200" />
               </div>
               
               <div className="flex items-center gap-1 rounded-full bg-slate-50 dark:bg-slate-800 p-1">
@@ -199,7 +191,7 @@ export default function DashboardPage() {
             <SnapshotCard label="AHORRO" value={`${savingsRate}%`} subtitle={savingsRate >= 20 ? "Objetivo 20% alcanzado" : savingsRate > 0 ? "Meta: 20%" : "Cash flow negativo"} icon={Target} color={savingsRate >= 20 ? "#10b981" : "#f59e0b"} delay={240} />
           </div>
 
-          {/* ── Bento grid: 3 columns (Bankio Layout) ── */}
+          {/* ── Bento grid: 3 columns ── */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             
             {/* ── COLUMNA IZQUIERDA (5/12) ── */}
@@ -207,7 +199,7 @@ export default function DashboardPage() {
               
               {/* Total Balance Card */}
               <div className="rounded-[32px] bg-white dark:bg-slate-900 p-8 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Total Balance</p>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Balance Total</p>
                 <div className="flex items-start justify-between">
                   <p className="text-[44px] font-bold leading-none tracking-tight tabular-nums text-slate-900 dark:text-white">
                     <AnimatedMoney value={netWorth} />
@@ -215,10 +207,10 @@ export default function DashboardPage() {
                 </div>
                 <div className="mt-8 flex gap-4">
                   <button onClick={() => setShowNewAccount(true)} className="flex flex-1 items-center justify-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-transparent py-3.5 text-sm font-semibold text-slate-900 dark:text-white transition-all hover:bg-slate-50 dark:hover:bg-slate-800">
-                    <ArrowUpRight className="h-4 w-4" /> Send
+                    <ArrowUpRight className="h-4 w-4" /> Ingresar
                   </button>
                   <button className="flex flex-1 items-center justify-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-transparent py-3.5 text-sm font-semibold text-slate-900 dark:text-white transition-all hover:bg-slate-50 dark:hover:bg-slate-800">
-                    <ArrowDownRight className="h-4 w-4" /> Receive
+                    <ArrowDownRight className="h-4 w-4" /> Retirar
                   </button>
                 </div>
               </div>
@@ -226,7 +218,7 @@ export default function DashboardPage() {
               {/* My Cards Visuals */}
               <div className="rounded-[32px] bg-white dark:bg-slate-900 p-8 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
                 <div className="flex items-center justify-between mb-5">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">My cards</h3>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Mis cuentas</h3>
                 </div>
                 <div className="flex gap-4 overflow-x-auto pb-2 snap-x">
                   {topAccounts.length === 0 ? (
@@ -270,7 +262,7 @@ export default function DashboardPage() {
               {/* Expenses Area Chart */}
               <div className="rounded-[32px] bg-white dark:bg-slate-900 p-8 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Expenses</h3>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Evolución de Patrimonio</h3>
                   <div className="px-3 py-1 bg-slate-50 dark:bg-slate-800 rounded-full text-xs font-medium text-slate-600 dark:text-slate-300">
                     <Sensitive><AnimatedMoney value={netWorth} /></Sensitive>
                   </div>
@@ -299,7 +291,7 @@ export default function DashboardPage() {
               {/* Spending Box */}
               <div className="rounded-[32px] bg-white dark:bg-slate-900 p-8 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
                 <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Spending</h3>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Distribución</h3>
                   <span className="px-3 py-1 bg-slate-50 dark:bg-slate-800 rounded-full text-xs font-medium text-slate-600 dark:text-slate-300">{formatMonth(selectedDate)}</span>
                 </div>
                 
@@ -325,11 +317,11 @@ export default function DashboardPage() {
                 <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full border border-emerald-500/20" />
                 <div className="absolute right-4 bottom-4 w-16 h-16 rounded-full border border-emerald-500/20" />
                 
-                <h3 className="text-xl font-bold text-emerald-950 dark:text-emerald-100 mb-3 relative z-10 max-w-[200px]">How To Manage Money Well?</h3>
-                <p className="text-sm text-emerald-800 dark:text-emerald-200 mb-6 relative z-10">Regla 50/30/20: {savingsRate >= 20 ? "¡Vas perfecto!" : "Intenta llegar al 20%."}</p>
+                <h3 className="text-xl font-bold text-emerald-950 dark:text-emerald-100 mb-3 relative z-10 max-w-[200px]">¿Cómo gestionar bien tu dinero?</h3>
+                <p className="text-sm text-emerald-800 dark:text-emerald-200 mb-6 relative z-10">Regla 50/30/20: {savingsRate >= 20 ? "¡Vas perfecto!" : "Intenta llegar al 20% de ahorro."}</p>
                 
                 <button className="relative z-10 bg-emerald-500 text-white px-5 py-2 rounded-full text-sm font-semibold shadow-md shadow-emerald-500/30 hover:bg-emerald-600 transition-colors">
-                  Learn More
+                  Saber más
                 </button>
               </div>
             </div>
@@ -340,8 +332,8 @@ export default function DashboardPage() {
               {/* Transactions Feed */}
               <div className="rounded-[32px] bg-white dark:bg-slate-900 p-8 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Transactions</h3>
-                  <Link href="/transactions" className="text-xs font-medium text-slate-400 hover:text-slate-900 dark:hover:text-white">See All</Link>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Últimos movimientos</h3>
+                  <Link href="/transactions" className="text-xs font-medium text-slate-400 hover:text-slate-900 dark:hover:text-white">Ver todo</Link>
                 </div>
                 
                 {recentTransactions.length === 0 ? (
@@ -377,15 +369,15 @@ export default function DashboardPage() {
               {/* Credit Score (Gauge) */}
               <div className="rounded-[32px] bg-white dark:bg-slate-900 p-8 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 text-center">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Credit Score</h3>
-                  <span className="text-xs text-slate-400">See More</span>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Tasa de Ahorro</h3>
+                  <span className="text-xs text-slate-400">Ver más</span>
                 </div>
                 
                 <div className="relative mx-auto mt-6 flex h-28 w-44 items-end justify-center overflow-hidden">
                   <svg viewBox="0 0 100 55" className="absolute bottom-0 w-full">
                     {/* Background Arc */}
                     <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" className="text-slate-100 dark:text-slate-800" />
-                    {/* Color Arc (Yellow-Greenish depending on score) */}
+                    {/* Color Arc */}
                     <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" className={savingsRate >= 20 ? "text-emerald-500" : savingsRate > 0 ? "text-amber-400" : "text-red-400"}
                       strokeDasharray={125.6}
                       strokeDashoffset={125.6 - (125.6 * Math.min(savingsRate, 100) / 100)}
@@ -394,12 +386,12 @@ export default function DashboardPage() {
                   </svg>
                   <div className="flex flex-col items-center mb-1">
                     <span className="text-3xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-white">{savingsRate}%</span>
-                    <span className="text-xs font-medium text-slate-400">{savingsRate >= 20 ? "Excellent" : "Needs Work"}</span>
+                    <span className="text-xs font-medium text-slate-400">{savingsRate >= 20 ? "Excelente" : "A mejorar"}</span>
                   </div>
                 </div>
                 
                 <button className="mt-6 bg-[#3b82f6]/10 text-[#3b82f6] px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-[#3b82f6]/20 transition-colors w-full">
-                  Explore Benefits
+                  Ver recomendaciones
                 </button>
               </div>
             </div>
