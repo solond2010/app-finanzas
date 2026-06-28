@@ -313,7 +313,7 @@ export function QuickActionsFAB() {
 
   return (
     <>
-      <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-3">
+      <div className="fixed right-5 bottom-[calc(var(--bottom-nav-h)+1rem)] z-50 flex flex-col items-end gap-3 lg:right-8 lg:bottom-8">
         {open && (
           <div className="flex flex-col gap-2">
             <button

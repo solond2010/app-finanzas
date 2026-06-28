@@ -63,6 +63,7 @@
 
 :root {
   --mobile-header-h: 52px;
+  --bottom-nav-h: 64px;
   --background: oklch(0.985 0.003 80);
   --foreground: oklch(0.18 0.025 265);
   --card: oklch(0.998 0.002 80);
