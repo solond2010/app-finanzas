@@ -194,7 +194,7 @@ export function PositionDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
         <div className="space-y-1.5">
           <label className="text-xs text-muted-foreground">Cuenta / cartera</label>
-          <Select value={accountId} onValueChange={(v) => v && setAccountId(v)}>
+          <Select value={accountId} onValueChange={(v) => v && setAccountId(v)} items={Object.fromEntries(investAccounts.map((a) => [a.id, a.banco ? `${a.nombre} · ${a.banco}` : a.nombre]))}>
             <SelectTrigger><SelectValue placeholder="Selecciona cartera" /></SelectTrigger>
             <SelectContent>
               {investAccounts.map((a) => (

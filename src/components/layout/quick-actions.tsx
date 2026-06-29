@@ -106,7 +106,7 @@ function TransactionQuickForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-foreground">Cuenta</label>
-        <Select value={cuentaId} onValueChange={(v) => v && setCuentaId(v)}>
+        <Select value={cuentaId} onValueChange={(v) => v && setCuentaId(v)} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
           <SelectTrigger className="h-12 w-full text-sm">
             <SelectValue />
           </SelectTrigger>
@@ -196,7 +196,7 @@ function TransferForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-foreground">Desde (origen)</label>
-        <Select value={origenId} onValueChange={(v) => v && setOrigenId(v)}>
+        <Select value={origenId} onValueChange={(v) => v && setOrigenId(v)} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
           <SelectTrigger className="h-12 w-full text-sm">
             <SelectValue />
           </SelectTrigger>
@@ -218,7 +218,7 @@ function TransferForm({
 
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-foreground">Hacia (destino)</label>
-        <Select value={destinoId} onValueChange={(v) => v && setDestinoId(v)}>
+        <Select value={destinoId} onValueChange={(v) => v && setDestinoId(v)} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
           <SelectTrigger className="h-12 w-full text-sm">
             <SelectValue />
           </SelectTrigger>

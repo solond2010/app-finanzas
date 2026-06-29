@@ -102,7 +102,7 @@ function TransactionForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label className="text-xs text-muted-foreground">Cuenta</label>
-          <Select value={cuentaId} onValueChange={(v) => v && setCuentaId(v)}>
+          <Select value={cuentaId} onValueChange={(v) => v && setCuentaId(v)} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {accounts.map((a) => (
@@ -283,7 +283,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             {!cuentaId && (
               <>
                 <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={filterAccount} onValueChange={handleAccountFilter}>
+              <Select value={filterAccount} onValueChange={handleAccountFilter} items={{ all: "Todas las cuentas", ...Object.fromEntries(state.accounts.map((a) => [a.id, a.nombre])) }}>
                 <SelectTrigger className="w-48" aria-label="Filtrar por cuenta">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
