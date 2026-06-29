@@ -9,6 +9,7 @@ import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
+import { AccountLogo } from "@/components/dashboard/account-logo"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
@@ -291,7 +292,6 @@ export default function DashboardContent() {
 
               {currentAccount && (() => {
                 const cfg = typeConfig[currentAccount.tipo] ?? typeConfig.efectivo
-                const I = cfg.icon
                 const objetivo = currentAccount.objetivo ?? 0
                 const pct = objetivo > 0 ? Math.min((currentAccount.saldo / objetivo) * 100, 100) : 0
                 return (
@@ -301,9 +301,7 @@ export default function DashboardContent() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-card shadow-sm" style={{ color: cfg.color }}>
-                          <I className="h-5 w-5" />
-                        </div>
+                        <AccountLogo account={currentAccount} className="h-11 w-11" />
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-foreground">{currentAccount.nombre}</p>
                           <p className="truncate text-xs text-muted-foreground">{currentAccount.banco || cfg.label}</p>
