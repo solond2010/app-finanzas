@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CURRENCY_OPTIONS, currencySymbol } from "@/lib/currency"
+import { BANKS, matchBank } from "@/components/dashboard/account-logo"
 
 const COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#14b8a6", "#f97316"]
 
@@ -86,9 +87,37 @@ export function AccountDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs text-muted-foreground">Banco</label>
-              <Input value={banco} onChange={(e) => setBanco(e.target.value)} placeholder="Ej: Trade Republic" />
+              <div className="flex flex-wrap gap-2">
+                {BANKS.map((b) => {
+                  const active = matchBank(banco)?.match === b.match
+                  return (
+                    <button
+                      key={b.match}
+                      type="button"
+                      onClick={() => setBanco(b.name)}
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${active ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}
+                    >
+                      <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded bg-white">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={`/banks/${b.file}`} alt={b.name} className="h-full w-full object-contain" />
+                      </span>
+                      {b.name}
+                    </button>
+                  )
+                })}
+                <button
+                  type="button"
+                  onClick={() => setBanco("")}
+                  className={`rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${!matchBank(banco) ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}
+                >
+                  Otro
+                </button>
+              </div>
+              {!matchBank(banco) && (
+                <Input value={banco} onChange={(e) => setBanco(e.target.value)} placeholder="Nombre del banco (opcional)" className="mt-2" />
+              )}
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Saldo ({currencySymbol(currency)})</label>

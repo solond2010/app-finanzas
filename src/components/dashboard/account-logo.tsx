@@ -4,31 +4,36 @@ import { useState } from "react"
 import { type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
 
-const BANK_LOGOS: { match: string; file: string }[] = [
-  { match: "revolut", file: "revolut.png" },
-  { match: "santander", file: "santander.png" },
-  { match: "myinvestor", file: "myinvestor.png" },
-  { match: "traderepublic", file: "trade-republic-seeklogo.png" },
+export interface Bank {
+  name: string
+  match: string
+  file: string
+}
+
+export const BANKS: Bank[] = [
+  { name: "Revolut", match: "revolut", file: "revolut.png" },
+  { name: "Santander", match: "santander", file: "santander.png" },
+  { name: "MyInvestor", match: "myinvestor", file: "myinvestor.png" },
+  { name: "Trade Republic", match: "traderepublic", file: "trade-republic-seeklogo.png" },
 ]
 
-function logoFor(banco: string | undefined): string | null {
+export function matchBank(banco: string | undefined): Bank | null {
   if (!banco) return null
   const slug = banco.toLowerCase().normalize("NFD").replace(new RegExp("[\\u0300-\\u036f]", "g"), "").replace(/[^a-z0-9]+/g, "")
-  const hit = BANK_LOGOS.find((b) => slug.includes(b.match))
-  return hit ? `/banks/${hit.file}` : null
+  return BANKS.find((b) => slug.includes(b.match)) ?? null
 }
 
 export function AccountLogo({ account, className = "h-11 w-11" }: { account: Account; className?: string }) {
   const [failed, setFailed] = useState(false)
-  const src = logoFor(account.banco)
+  const bank = matchBank(account.banco)
   const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
   const Icon = cfg.icon
 
-  if (src && !failed) {
+  if (bank && !failed) {
     return (
       <span className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1.5 ring-1 ring-black/10 ${className}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={account.banco} className="h-full w-full object-contain" onError={() => setFailed(true)} />
+        <img src={`/banks/${bank.file}`} alt={bank.name} className="h-full w-full object-contain" onError={() => setFailed(true)} />
       </span>
     )
   }

@@ -246,10 +246,11 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const sorted = useMemo(
     () => {
       const safeTime = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? 0 : d.getTime() }
+      const orderIndex = new Map(state.transactions.map((t, i) => [t.id, i] as const))
       return filterTransactionsByMonth(state.transactions, selectedMonth)
         .filter((t) => filterAccount === "all" || t.cuenta_id === filterAccount)
         .filter((t) => !search || t.descripcion.toLowerCase().includes(search.toLowerCase()) || t.categoria.toLowerCase().includes(search.toLowerCase()) || t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())))
-        .sort((a, b) => safeTime(b.fecha) - safeTime(a.fecha))
+        .sort((a, b) => safeTime(b.fecha) - safeTime(a.fecha) || (orderIndex.get(b.id) ?? 0) - (orderIndex.get(a.id) ?? 0))
     },
     [state.transactions, filterAccount, search, selectedMonth]
   )
