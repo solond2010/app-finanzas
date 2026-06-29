@@ -28,6 +28,41 @@ function Skeleton({ className }: { className?: string }) {
   return <div className={`skeleton-shimmer rounded-[24px] ${className ?? ""}`} />
 }
 
+function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
+  const max = Math.max(...values.map((v) => Math.abs(v)), 1)
+  return (
+    <div className="flex h-12 items-end gap-1">
+      {values.map((v, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded-sm transition-all duration-500"
+          style={{
+            height: `${Math.max((Math.abs(v) / max) * 100, 6)}%`,
+            backgroundColor: signed ? (v < 0 ? "#ef4444" : "#10b981") : color,
+            opacity: v === 0 ? 0.2 : 1,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function AnnualStat({ label, year, value, accent, children }: { label: string; year: number; value: number; accent: string; children: React.ReactNode }) {
+  return (
+    <div className={`${CARD} min-w-0`}>
+      <div className="flex items-center justify-between">
+        <p className="page-section-label">{label}</p>
+        <span className="text-[11px] font-medium text-muted-foreground">{year}</span>
+      </div>
+      <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums sm:text-[28px]" style={{ color: accent }}>
+        <Sensitive>{formatMoney(value, "EUR")}</Sensitive>
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">Acumulado anual</p>
+      <div className="mt-4">{children}</div>
+    </div>
+  )
+}
+
 export default function DashboardContent() {
   const { state, loading, dispatch } = useFinance()
   const router = useRouter()
@@ -49,6 +84,27 @@ export default function DashboardContent() {
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
 
   const savingsRate = monthTotals.ingresos > 0 ? Math.round((monthTotals.neto / monthTotals.ingresos) * 100) : 0
+
+  const previousMonth = useMemo(() => {
+    const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+  }, [selectedDate])
+  const previousTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, previousMonth), [analysisTransactions, previousMonth])
+  const previousNetWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, previousMonth), [state.accounts, state.transactions, previousMonth])
+
+  const pctDelta = (curr: number, prev: number) => (prev > 0 ? Math.round(((curr - prev) / prev) * 100) : undefined)
+  const balanceDelta = previousNetWorth > 0 ? Math.round(((netWorth - previousNetWorth) / previousNetWorth) * 100) : undefined
+  const ingresosDelta = pctDelta(monthTotals.ingresos, previousTotals.ingresos)
+  const gastosDelta = pctDelta(monthTotals.gastos, previousTotals.gastos)
+
+  const year = selectedDate.getFullYear()
+  const monthlyYear = useMemo(
+    () => Array.from({ length: 12 }, (_, m) => getMonthTotalsByString(analysisTransactions, `${year}-${String(m + 1).padStart(2, "0")}`)),
+    [analysisTransactions, year]
+  )
+  const annualIngresos = monthlyYear.reduce((s, m) => s + m.ingresos, 0)
+  const annualGastos = monthlyYear.reduce((s, m) => s + m.gastos, 0)
+  const annualNeto = annualIngresos - annualGastos
 
   const netWorthTrend = useMemo(
     () => Array.from({ length: rangeMonths }, (_, i) => {
@@ -198,10 +254,23 @@ export default function DashboardContent() {
 
           {/* KPIs */}
           <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <MetricCard label="Balance Total" value={<AnimatedNumber value={netWorth} />} subtitle="Patrimonio neto actual" icon={Wallet} tone="blue" delay={0} />
-            <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix="+" />} subtitle="Este mes" icon={ArrowUpRight} tone="emerald" delay={80} />
-            <MetricCard label="Gastos" value={<AnimatedNumber value={monthTotals.gastos} prefix="-" />} subtitle="Este mes" icon={ArrowDownRight} tone="red" delay={160} />
-            <MetricCard label="Tasa de Ahorro" value={`${savingsRate}%`} subtitle="Objetivo del 20%" icon={Target} tone="blue" delay={240} />
+            <MetricCard label="Balance total" value={<AnimatedNumber value={netWorth} />} subtitle="Patrimonio neto actual" icon={Wallet} tone="blue" delta={balanceDelta} delay={0} />
+            <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix="+" />} subtitle="vs. mes anterior" icon={ArrowUpRight} tone="emerald" delta={ingresosDelta} delay={80} />
+            <MetricCard label="Gastos" value={<AnimatedNumber value={monthTotals.gastos} prefix="-" />} subtitle="vs. mes anterior" icon={ArrowDownRight} tone="red" delta={gastosDelta} deltaGoodWhenUp={false} delay={160} />
+            <MetricCard label="Tasa de ahorro" value={`${savingsRate}%`} subtitle="Objetivo del 20%" icon={Target} tone="blue" delay={240} />
+          </section>
+
+          {/* Acumulado anual */}
+          <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+            <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="#10b981">
+              <MiniBars values={monthlyYear.map((m) => m.ingresos)} color="#10b981" />
+            </AnnualStat>
+            <AnnualStat label="Gastos totales" year={year} value={annualGastos} accent="#ef4444">
+              <MiniBars values={monthlyYear.map((m) => m.gastos)} color="#ef4444" />
+            </AnnualStat>
+            <AnnualStat label="Ahorro neto anual" year={year} value={annualNeto} accent={annualNeto >= 0 ? "#10b981" : "#ef4444"}>
+              <MiniBars values={monthlyYear.map((m) => m.neto)} color="#3b82f6" signed />
+            </AnnualStat>
           </section>
 
           {/* Cuentas (carrusel) + Presupuesto */}
