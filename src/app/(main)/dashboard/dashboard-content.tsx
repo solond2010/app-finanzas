@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AreaChart } from "@tremor/react"
-import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, Gauge, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, Gauge, PiggyBank, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -22,7 +22,7 @@ import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 
-const CARD = "rounded-[24px] border border-border bg-card p-5 sm:p-6"
+const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 const RANGES = [3, 6, 12, 24] as const
 
 function Skeleton({ className }: { className?: string }) {
@@ -32,15 +32,15 @@ function Skeleton({ className }: { className?: string }) {
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
   const max = Math.max(...values.map((v) => Math.abs(v)), 1)
   return (
-    <div className="flex h-12 items-end gap-1">
+    <div className="flex h-14 items-end gap-1 border-b border-border/70 pb-px">
       {values.map((v, i) => (
         <div
           key={i}
-          className="flex-1 rounded-sm transition-all duration-500"
+          className="flex-1 rounded-t-[3px] transition-all duration-500"
           style={{
-            height: `${Math.max((Math.abs(v) / max) * 100, 6)}%`,
+            height: `${Math.max((Math.abs(v) / max) * 100, 8)}%`,
             backgroundColor: signed ? (v < 0 ? "#ef4444" : "#10b981") : color,
-            opacity: v === 0 ? 0.2 : 1,
+            opacity: v === 0 ? 0.16 : 1,
           }}
         />
       ))}
@@ -48,18 +48,22 @@ function MiniBars({ values, color, signed = false }: { values: number[]; color: 
   )
 }
 
-function AnnualStat({ label, year, value, accent, children }: { label: string; year: number; value: number; accent: string; children: React.ReactNode }) {
+function AnnualStat({ label, year, value, accent, icon: Icon, children }: { label: string; year: number; value: number; accent: string; icon: React.ElementType; children: React.ReactNode }) {
   return (
     <div className={`${CARD} min-w-0`}>
-      <div className="flex items-center justify-between">
-        <p className="page-section-label">{label}</p>
-        <span className="text-[11px] font-medium text-muted-foreground">{year}</span>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="page-section-label">{label}</p>
+          <p className="mt-2 truncate text-2xl font-bold tracking-tight tabular-nums sm:text-[28px]" style={{ color: accent }}>
+            <Sensitive>{formatMoney(value, "EUR")}</Sensitive>
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Acumulado {year}</p>
+        </div>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `color-mix(in oklch, ${accent} 14%, transparent)`, color: accent }}>
+          <Icon className="h-4 w-4" />
+        </span>
       </div>
-      <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums sm:text-[28px]" style={{ color: accent }}>
-        <Sensitive>{formatMoney(value, "EUR")}</Sensitive>
-      </p>
-      <p className="mt-1 text-xs text-muted-foreground">Acumulado anual</p>
-      <div className="mt-4">{children}</div>
+      <div className="mt-5">{children}</div>
     </div>
   )
 }
@@ -263,13 +267,13 @@ export default function DashboardContent() {
 
           {/* Acumulado anual */}
           <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-            <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="#10b981">
+            <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="#10b981" icon={ArrowUpRight}>
               <MiniBars values={monthlyYear.map((m) => m.ingresos)} color="#10b981" />
             </AnnualStat>
-            <AnnualStat label="Gastos totales" year={year} value={annualGastos} accent="#ef4444">
+            <AnnualStat label="Gastos totales" year={year} value={annualGastos} accent="#ef4444" icon={ArrowDownRight}>
               <MiniBars values={monthlyYear.map((m) => m.gastos)} color="#ef4444" />
             </AnnualStat>
-            <AnnualStat label="Ahorro neto anual" year={year} value={annualNeto} accent={annualNeto >= 0 ? "#10b981" : "#ef4444"}>
+            <AnnualStat label="Ahorro neto anual" year={year} value={annualNeto} accent={annualNeto >= 0 ? "#10b981" : "#ef4444"} icon={PiggyBank}>
               <MiniBars values={monthlyYear.map((m) => m.neto)} color="#3b82f6" signed />
             </AnnualStat>
           </section>
