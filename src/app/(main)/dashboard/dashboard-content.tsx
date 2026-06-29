@@ -130,7 +130,7 @@ export default function DashboardContent() {
               <div className={`${CARD} min-w-0`}>
                 <div className="mb-6 flex items-center justify-between">
                   <p className="text-sm font-semibold text-slate-900 dark:text-white">Mis cuentas</p>
-                  <button onClick={() => setShowNewAccount(true)} className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400">+ Nueva</button>
+                  <button onClick={() => setShowNewAccount(true)} className="text-sm font-medium text-foreground transition-colors hover:text-muted-foreground">+ Nueva</button>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                   {topAccounts.map((account) => {
@@ -182,7 +182,7 @@ export default function DashboardContent() {
               <div className={`${CARD} text-center`}>
                 <p className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">Tasa de ahorro</p>
                 <div className="relative mx-auto flex h-28 w-28 items-center justify-center">
-                  <span className="text-2xl font-bold tabular-nums text-blue-600">{savingsRate}%</span>
+                  <span className="text-2xl font-bold tabular-nums text-foreground">{savingsRate}%</span>
                 </div>
               </div>
             </div>

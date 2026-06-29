@@ -60,7 +60,7 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
           onClick={() => setOpen(true)}
           className="flex w-full flex-col items-center gap-2 rounded-[20px] border border-dashed border-slate-200 px-4 py-8 text-center transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-foreground">
             <Plus className="h-4 w-4" />
           </span>
           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Define tu primer presupuesto</span>
@@ -70,7 +70,6 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
         <div className="space-y-4">
           {budgetProgress.map((b) => {
             const over = b.percentage >= 100
-            const warn = b.percentage >= 90
             return (
               <div key={b.id} className="space-y-2">
                 <div className="flex items-center justify-between gap-2 text-xs">
@@ -82,7 +81,7 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
                     <Sensitive>{formatMoney(b.spent, "EUR")}</Sensitive> / <Sensitive>{formatMoney(b.amount, "EUR")}</Sensitive>
                   </span>
                 </div>
-                <Progress value={b.percentage} className={`[&_[data-slot=progress-track]]:h-2 ${over ? "[&_[data-slot=progress-indicator]]:bg-red-500" : warn ? "[&_[data-slot=progress-indicator]]:bg-amber-500" : "[&_[data-slot=progress-indicator]]:bg-blue-600"}`} />
+                <Progress value={b.percentage} className={`[&_[data-slot=progress-track]]:h-2 ${over ? "[&_[data-slot=progress-indicator]]:bg-red-500" : "[&_[data-slot=progress-indicator]]:bg-foreground"}`} />
               </div>
             )
           })}
