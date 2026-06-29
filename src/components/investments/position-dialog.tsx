@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useFinance } from "@/lib/store"
-import { useInvestments, type AssetKind } from "@/lib/investments"
+import { useInvestments, type AssetKind, type Position } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 
@@ -23,9 +23,9 @@ const TABS: { kind: AssetKind; label: string; types: string[] }[] = [
 
 const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/
 
-export function PositionDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export function PositionDialog({ open, onOpenChange, editing }: { open: boolean; onOpenChange: (o: boolean) => void; editing?: Position | null }) {
   const { state } = useFinance()
-  const { add } = useInvestments()
+  const { add, update } = useInvestments()
   const { toast } = useToast()
 
   const [kind, setKind] = useState<AssetKind>("stock")
@@ -49,11 +49,24 @@ export function PositionDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   useEffect(() => {
     if (!open) return
     queueMicrotask(() => {
-      setKind("stock"); setQuery(""); setResults([]); setSelected(null); setCustomName("")
-      setCurrency("EUR"); setDate(new Date().toISOString().split("T")[0]); setUnits(""); setBuyPrice("")
-      setDca(false); setAccountId(investAccounts[0]?.id ?? "")
+      setQuery(""); setResults([])
+      if (editing) {
+        setKind(editing.kind)
+        setSelected(editing.kind === "custom" ? null : { symbol: editing.symbol, name: editing.name, isin: editing.isin, currency: editing.currency })
+        setCustomName(editing.kind === "custom" ? editing.name : "")
+        setCurrency(editing.currency)
+        setDate(editing.date)
+        setUnits(String(editing.units))
+        setBuyPrice(String(editing.buyPrice))
+        setDca(editing.dca ?? false)
+        setAccountId(editing.accountId ?? investAccounts[0]?.id ?? "")
+      } else {
+        setKind("stock"); setSelected(null); setCustomName("")
+        setCurrency("EUR"); setDate(new Date().toISOString().split("T")[0]); setUnits(""); setBuyPrice("")
+        setDca(false); setAccountId(investAccounts[0]?.id ?? "")
+      }
     })
-  }, [open, investAccounts])
+  }, [open, editing, investAccounts])
 
   useEffect(() => {
     // Búsqueda con debounce contra una API externa (sistema externo): uso válido
@@ -101,33 +114,43 @@ export function PositionDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     const p = Number(buyPrice)
     if (!u || u <= 0 || !p || p <= 0) { toast("Indica cantidad y precio de compra", "error"); return }
 
+    let payload: Omit<Position, "id">
     if (kind === "custom") {
       if (!customName.trim()) { toast("Pon un nombre al activo", "error"); return }
-      add({ kind, symbol: `custom:${customName.trim().toLowerCase()}`, name: customName.trim(), date, units: u, buyPrice: p, currency, accountId, dca })
+      payload = { kind, symbol: editing?.kind === "custom" ? editing.symbol : `custom:${customName.trim().toLowerCase()}`, name: customName.trim(), date, units: u, buyPrice: p, currency, accountId, dca }
     } else {
       if (!selected) { toast("Busca y selecciona un activo", "error"); return }
-      add({ kind, symbol: selected.symbol, name: selected.name, isin: selected.isin, date, units: u, buyPrice: p, currency: selected.currency, accountId, dca })
+      payload = { kind, symbol: selected.symbol, name: selected.name, isin: selected.isin, date, units: u, buyPrice: p, currency: selected.currency, accountId, dca }
     }
-    toast("Posición añadida", "success")
+
+    if (editing) {
+      update({ ...payload, id: editing.id })
+      toast("Posición actualizada", "success")
+    } else {
+      add(payload)
+      toast("Posición añadida", "success")
+    }
     onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>Nueva posición</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? "Editar posición" : "Nueva posición"}</DialogTitle></DialogHeader>
 
-        <div className="grid grid-cols-4 gap-1 rounded-2xl bg-muted/50 p-1">
-          {TABS.map((t) => (
-            <button
-              key={t.kind}
-              onClick={() => { setKind(t.kind); setSelected(null); setQuery(""); setResults([]) }}
-              className={cn("rounded-xl px-2 py-2 text-xs font-semibold transition-colors", kind === t.kind ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {!editing && (
+          <div className="grid grid-cols-4 gap-1 rounded-2xl bg-muted/50 p-1">
+            {TABS.map((t) => (
+              <button
+                key={t.kind}
+                onClick={() => { setKind(t.kind); setSelected(null); setQuery(""); setResults([]) }}
+                className={cn("rounded-xl px-2 py-2 text-xs font-semibold transition-colors", kind === t.kind ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {kind === "custom" ? (
           <div className="space-y-1.5">
@@ -206,7 +229,7 @@ export function PositionDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="button" size="sm" onClick={handleConfirm}>Confirmar inversión</Button>
+          <Button type="button" size="sm" onClick={handleConfirm}>{editing ? "Guardar" : "Confirmar inversión"}</Button>
         </div>
       </DialogContent>
     </Dialog>

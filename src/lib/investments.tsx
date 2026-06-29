@@ -37,6 +37,7 @@ interface InvestmentRow {
 interface InvestmentsContextValue {
   positions: Position[]
   add: (p: Omit<Position, "id">) => void
+  update: (p: Position) => void
   remove: (id: string) => void
 }
 
@@ -100,12 +101,17 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     supabase.from("investments").upsert([toRow(pos)]).then(() => {}, () => {})
   }
 
+  const update = (pos: Position) => {
+    persistLocal(positions.map((x) => (x.id === pos.id ? pos : x)))
+    supabase.from("investments").upsert([toRow(pos)]).then(() => {}, () => {})
+  }
+
   const remove = (id: string) => {
     persistLocal(positions.filter((x) => x.id !== id))
     supabase.from("investments").delete().eq("id", id).then(() => {}, () => {})
   }
 
-  return <InvestmentsContext.Provider value={{ positions, add, remove }}>{children}</InvestmentsContext.Provider>
+  return <InvestmentsContext.Provider value={{ positions, add, update, remove }}>{children}</InvestmentsContext.Provider>
 }
 
 export function useInvestments() {
@@ -114,7 +120,7 @@ export function useInvestments() {
   return ctx
 }
 
-interface Quote { price: number; currency: string }
+interface Quote { price: number; currency: string; changePct?: number | null }
 
 export function usePortfolioValue() {
   const { positions } = useInvestments()

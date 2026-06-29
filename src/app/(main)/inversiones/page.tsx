@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { AreaChart } from "@tremor/react"
-import { Plus, TrendingUp, TrendingDown, Trash2, LineChart } from "lucide-react"
+import { Plus, TrendingUp, TrendingDown, LineChart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFinance } from "@/lib/store"
-import { useInvestments, usePortfolioValue } from "@/lib/investments"
+import { useInvestments, usePortfolioValue, type Position } from "@/lib/investments"
 import { PositionDialog } from "@/components/investments/position-dialog"
+import { PositionDetailDialog } from "@/components/investments/position-detail-dialog"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { chartFormatter } from "@/lib/format"
 import { Sensitive } from "@/components/shared/sensitive"
@@ -19,7 +20,12 @@ export default function InversionesPage() {
   const { remove } = useInvestments()
   const { positions, quotes, loading, value, invested, pnl, pnlPct } = usePortfolioValue()
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<Position | null>(null)
+  const [detailId, setDetailId] = useState<string | null>(null)
   const [hist, setHist] = useState<Record<string, { t: number; c: number }[]>>({})
+
+  const openNew = () => { setEditing(null); setOpen(true) }
+  const detailPosition = positions.find((p) => p.id === detailId) ?? null
 
   const symbolsKey = useMemo(
     () => [...new Set(positions.filter((p) => p.kind !== "custom").map((p) => p.symbol))].sort().join(","),
@@ -71,7 +77,8 @@ export default function InversionesPage() {
     const pl = value - invested
     const plPct = invested > 0 ? (pl / invested) * 100 : 0
     const live = p.kind !== "custom" && quotes[p.symbol] !== undefined
-    return { p, value, pl, plPct, live }
+    const changePct = p.kind === "custom" ? null : quotes[p.symbol]?.changePct ?? null
+    return { p, value, pl, plPct, live, changePct }
   }), [positions, quotes])
 
   const baseCurrency = (positions[0]?.currency ?? "EUR") as CurrencyCode
@@ -83,7 +90,7 @@ export default function InversionesPage() {
           <p className="page-section-label">Cartera</p>
           <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">Inversiones</h1>
         </div>
-        <Button onClick={() => setOpen(true)} className="gap-1.5 self-start rounded-full sm:self-auto"><Plus className="h-4 w-4" /> Nueva posición</Button>
+        <Button onClick={openNew} className="gap-1.5 self-start rounded-full sm:self-auto"><Plus className="h-4 w-4" /> Nueva posición</Button>
       </header>
 
       {positions.length === 0 ? (
@@ -91,7 +98,7 @@ export default function InversionesPage() {
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><LineChart className="h-7 w-7" /></span>
           <h2 className="text-lg font-semibold text-foreground">Empieza tu cartera</h2>
           <p className="max-w-sm text-sm text-muted-foreground">Añade tus fondos indexados, acciones, ETFs o crypto y sigue tu rentabilidad en € y % automáticamente.</p>
-          <Button onClick={() => setOpen(true)} className="mt-2 gap-1.5 rounded-full"><Plus className="h-4 w-4" /> Añadir posición</Button>
+          <Button onClick={openNew} className="mt-2 gap-1.5 rounded-full"><Plus className="h-4 w-4" /> Añadir posición</Button>
         </div>
       ) : (
         <>
@@ -129,10 +136,14 @@ export default function InversionesPage() {
 
           {/* Posiciones */}
           <section className="space-y-3">
-            {rows.map(({ p, value, pl, plPct, live }) => {
+            {rows.map(({ p, value, pl, plPct, live, changePct }) => {
               const account = state.accounts.find((a) => a.id === p.accountId)
               return (
-                <div key={p.id} className={`${CARD} flex items-center gap-3 sm:gap-4`}>
+                <button
+                  key={p.id}
+                  onClick={() => setDetailId(p.id)}
+                  className={`${CARD} flex w-full items-center gap-3 text-left transition-colors hover:border-foreground/15 sm:gap-4`}
+                >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-sm font-bold text-primary">{p.symbol.replace("custom:", "").slice(0, 2).toUpperCase()}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-foreground">{p.name}</p>
@@ -144,19 +155,28 @@ export default function InversionesPage() {
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(value, p.currency as CurrencyCode)}</Sensitive></p>
-                    <p className={cn("text-xs font-semibold tabular-nums", pl >= 0 ? "text-emerald-500" : "text-red-500")}>
-                      {pl >= 0 ? "+" : "−"}{formatMoney(Math.abs(pl), p.currency as CurrencyCode)} ({plPct >= 0 ? "+" : ""}{plPct.toFixed(1)}%)
+                    <p className="flex items-center justify-end gap-1.5 text-xs font-semibold tabular-nums">
+                      {changePct != null && (
+                        <span className={changePct >= 0 ? "text-emerald-500" : "text-red-500"}>{changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%</span>
+                      )}
+                      <span className={pl >= 0 ? "text-emerald-500" : "text-red-500"}>({plPct >= 0 ? "+" : ""}{plPct.toFixed(1)}%)</span>
                     </p>
                   </div>
-                  <button onClick={() => remove(p.id)} aria-label="Eliminar posición" className="shrink-0 text-muted-foreground transition-colors hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
-                </div>
+                </button>
               )
             })}
           </section>
         </>
       )}
 
-      <PositionDialog open={open} onOpenChange={setOpen} />
+      <PositionDetailDialog
+        position={detailPosition}
+        quote={detailPosition && detailPosition.kind !== "custom" ? quotes[detailPosition.symbol] : undefined}
+        onOpenChange={(o) => { if (!o) setDetailId(null) }}
+        onEdit={(p) => { setDetailId(null); setEditing(p); setOpen(true) }}
+        onDelete={(id) => { remove(id); setDetailId(null) }}
+      />
+      <PositionDialog open={open} onOpenChange={setOpen} editing={editing} />
     </div>
   )
 }

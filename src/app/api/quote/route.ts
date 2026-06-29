@@ -8,6 +8,8 @@ interface ChartMeta {
   shortName?: string
   longName?: string
   regularMarketTime?: number
+  previousClose?: number
+  chartPreviousClose?: number
 }
 
 interface Quote {
@@ -15,6 +17,7 @@ interface Quote {
   currency: string
   name: string
   time: number | null
+  changePct: number | null
 }
 
 async function fetchQuote(symbol: string): Promise<Quote | null> {
@@ -27,11 +30,14 @@ async function fetchQuote(symbol: string): Promise<Quote | null> {
     const data = (await res.json()) as { chart?: { result?: { meta?: ChartMeta }[] } }
     const meta = data.chart?.result?.[0]?.meta
     if (!meta || typeof meta.regularMarketPrice !== "number") return null
+    const prev = typeof meta.previousClose === "number" ? meta.previousClose : meta.chartPreviousClose
+    const changePct = typeof prev === "number" && prev !== 0 ? (meta.regularMarketPrice / prev - 1) * 100 : null
     return {
       price: meta.regularMarketPrice,
       currency: meta.currency ?? "EUR",
       name: meta.shortName || meta.longName || symbol,
       time: meta.regularMarketTime ?? null,
+      changePct,
     }
   } catch {
     return null
