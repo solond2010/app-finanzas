@@ -109,8 +109,8 @@ export function Sidebar() {
       <button
         onClick={toggleSidebar}
         className={cn(
-          "fixed top-[72px] z-50 hidden lg:flex items-center justify-center transition-all duration-300 active:scale-90 press-effect",
-          sidebarOpen ? "left-64" : "left-3"
+          "fixed top-[72px] z-50 hidden -translate-x-1/2 lg:flex items-center justify-center transition-all duration-300 active:scale-90 press-effect",
+          sidebarOpen ? "left-64" : "left-16"
         )}
         style={{ transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}
         aria-label={sidebarOpen ? "Colapsar menú" : "Expandir menú"}
