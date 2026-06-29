@@ -10,6 +10,7 @@ import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { AccountLogo } from "@/components/dashboard/account-logo"
+import { usePortfolioValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
@@ -87,6 +88,8 @@ export default function DashboardContent() {
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
+  const { value: portfolioValue, pnl: portfolioPnl } = usePortfolioValue()
+  const netWorthDisplay = netWorth + portfolioValue
 
   const savingsRate = monthTotals.ingresos > 0 ? Math.round((monthTotals.neto / monthTotals.ingresos) * 100) : 0
 
@@ -116,13 +119,13 @@ export default function DashboardContent() {
       const offset = rangeMonths - 1 - i
       const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-      return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonth(state.accounts, state.transactions, key) }
+      return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonth(state.accounts, state.transactions, key) + portfolioValue }
     }),
-    [rangeMonths, selectedDate, state.accounts, state.transactions]
+    [rangeMonths, selectedDate, state.accounts, state.transactions, portfolioValue]
   )
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
-  const rangeDelta = netWorth - rangeStart
+  const rangeDelta = netWorthDisplay - rangeStart
   const showPct = Math.abs(rangeStart) >= 100
   const rangePct = showPct ? Math.round((rangeDelta / Math.abs(rangeStart)) * 100) : 0
 
@@ -136,10 +139,10 @@ export default function DashboardContent() {
     let s = 0
     s += (Math.max(0, Math.min(savingsRate, 30)) / 30) * 40
     if (monthTotals.neto > 0) s += 20
-    if (netWorth > rangeStart) s += 20
+    if (netWorthDisplay > rangeStart) s += 20
     if (displayAccounts.some((a) => a.tipo === "emergencia" && a.saldo > 0)) s += 20
     return Math.round(Math.max(0, Math.min(100, s)))
-  }, [savingsRate, monthTotals.neto, netWorth, rangeStart, displayAccounts])
+  }, [savingsRate, monthTotals.neto, netWorthDisplay, rangeStart, displayAccounts])
 
   const scoreTier =
     score >= 80 ? { label: "Excelente", color: "#10b981" }
@@ -150,7 +153,7 @@ export default function DashboardContent() {
   const scoreFactors = [
     { label: "Tasa de ahorro ≥ 20%", ok: savingsRate >= 20 },
     { label: "Flujo del mes positivo", ok: monthTotals.neto > 0 },
-    { label: "Patrimonio en crecimiento", ok: netWorth > rangeStart },
+    { label: "Patrimonio en crecimiento", ok: netWorthDisplay > rangeStart },
     { label: "Fondo de emergencia activo", ok: displayAccounts.some((a) => a.tipo === "emergencia" && a.saldo > 0) },
   ]
 
@@ -200,13 +203,19 @@ export default function DashboardContent() {
                 <div>
                   <p className="page-section-label">Evolución del patrimonio</p>
                   <p className="mt-2 text-3xl font-bold tracking-tight tabular-nums text-foreground sm:text-4xl">
-                    <AnimatedNumber value={netWorth} />
+                    <AnimatedNumber value={netWorthDisplay} />
                   </p>
                   <p className={cn("mt-1 inline-flex flex-wrap items-center gap-x-1.5 text-sm font-medium", rangeDelta >= 0 ? "text-emerald-500" : "text-red-500")}>
                     {rangeDelta >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                     <Sensitive>{rangeDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(rangeDelta), "EUR")}</Sensitive>
                     <span className="text-muted-foreground">{showPct ? `· ${rangePct >= 0 ? "+" : ""}${rangePct}% ` : ""}en {rangeMonths}M</span>
                   </p>
+                  {portfolioValue > 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Incluye <Sensitive>{formatMoney(portfolioValue, "EUR")}</Sensitive> en inversiones
+                      <span className={cn("ml-1 font-semibold", portfolioPnl >= 0 ? "text-emerald-500" : "text-red-500")}>({portfolioPnl >= 0 ? "+" : "−"}{formatMoney(Math.abs(portfolioPnl), "EUR")})</span>
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
                   {RANGES.map((r) => (
@@ -259,7 +268,7 @@ export default function DashboardContent() {
 
           {/* KPIs */}
           <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <MetricCard label="Balance total" value={<AnimatedNumber value={netWorth} />} subtitle="Patrimonio neto actual" icon={Wallet} tone="blue" delta={balanceDelta} delay={0} />
+            <MetricCard label="Balance total" value={<AnimatedNumber value={netWorthDisplay} />} subtitle={portfolioValue > 0 ? "Cuentas + inversiones" : "Patrimonio neto actual"} icon={Wallet} tone="blue" delta={balanceDelta} delay={0} />
             <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix="+" />} subtitle="vs. mes anterior" icon={ArrowUpRight} tone="emerald" delta={ingresosDelta} delay={80} />
             <MetricCard label="Gastos" value={<AnimatedNumber value={monthTotals.gastos} prefix="-" />} subtitle="vs. mes anterior" icon={ArrowDownRight} tone="red" delta={gastosDelta} deltaGoodWhenUp={false} delay={160} />
             <MetricCard label="Tasa de ahorro" value={`${savingsRate}%`} subtitle="Objetivo del 20%" icon={Target} tone="blue" delay={240} />

@@ -1,62 +1,80 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { AreaChart } from "@tremor/react"
 import { Plus, TrendingUp, TrendingDown, Trash2, LineChart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFinance } from "@/lib/store"
-import { useInvestments } from "@/lib/investments"
+import { useInvestments, usePortfolioValue } from "@/lib/investments"
 import { PositionDialog } from "@/components/investments/position-dialog"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
+import { chartFormatter } from "@/lib/format"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 
 const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 
-interface Quote { price: number; currency: string }
-
 export default function InversionesPage() {
   const { state } = useFinance()
-  const { positions, remove } = useInvestments()
-  const [quotes, setQuotes] = useState<Record<string, Quote>>({})
-  const [loading, setLoading] = useState(false)
+  const { remove } = useInvestments()
+  const { positions, quotes, loading, value, invested, pnl, pnlPct } = usePortfolioValue()
   const [open, setOpen] = useState(false)
+  const [hist, setHist] = useState<Record<string, { t: number; c: number }[]>>({})
 
-  const symbols = useMemo(
-    () => [...new Set(positions.filter((p) => p.kind !== "custom").map((p) => p.symbol))],
+  const symbolsKey = useMemo(
+    () => [...new Set(positions.filter((p) => p.kind !== "custom").map((p) => p.symbol))].sort().join(","),
     [positions]
   )
 
   useEffect(() => {
-    // Sincroniza la UI con un sistema externo (precios de mercado). Uso previsto
-    // de un efecto: fetch de datos remotos al cambiar las posiciones.
-    /* eslint-disable react-hooks/set-state-in-effect */
-    if (symbols.length === 0) { setQuotes({}); return }
+    const syms = symbolsKey ? symbolsKey.split(",") : []
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (syms.length === 0) { setHist({}); return }
     let cancelled = false
-    setLoading(true)
-    /* eslint-enable react-hooks/set-state-in-effect */
-    fetch(`/api/quote?symbols=${encodeURIComponent(symbols.join(","))}`)
+    fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}`)
       .then((r) => r.json())
-      .then((d: { quotes?: Record<string, Quote> }) => { if (!cancelled) setQuotes(d.quotes ?? {}) })
+      .then((d: { history?: Record<string, { t: number; c: number }[]> }) => { if (!cancelled) setHist(d.history ?? {}) })
       .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [symbols])
+  }, [symbolsKey])
+
+  const series = useMemo(() => {
+    const now = new Date()
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1)
+      return { key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }) }
+    })
+    const maps: Record<string, Record<string, number>> = {}
+    for (const [sym, arr] of Object.entries(hist)) {
+      const m: Record<string, number> = {}
+      for (const pt of arr) {
+        const d = new Date(pt.t * 1000)
+        m[`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`] = pt.c
+      }
+      maps[sym] = m
+    }
+    return months.map(({ key, label }) => {
+      let v = 0
+      for (const p of positions) {
+        if (p.kind === "custom") { v += p.units * p.buyPrice; continue }
+        v += p.units * (maps[p.symbol]?.[key] ?? p.buyPrice)
+      }
+      return { mes: label, Cartera: Math.round(v) }
+    })
+  }, [hist, positions])
+  const seriesHasData = series.some((s) => s.Cartera > 0)
 
   const rows = useMemo(() => positions.map((p) => {
     const current = p.kind === "custom" ? p.buyPrice : (quotes[p.symbol]?.price ?? p.buyPrice)
     const invested = p.units * p.buyPrice
     const value = p.units * current
-    const pnl = value - invested
-    const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0
+    const pl = value - invested
+    const plPct = invested > 0 ? (pl / invested) * 100 : 0
     const live = p.kind !== "custom" && quotes[p.symbol] !== undefined
-    return { p, current, invested, value, pnl, pnlPct, live }
+    return { p, value, pl, plPct, live }
   }), [positions, quotes])
 
-  const totalInvested = rows.reduce((s, r) => s + r.invested, 0)
-  const totalValue = rows.reduce((s, r) => s + r.value, 0)
-  const totalPnl = totalValue - totalInvested
-  const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0
-  const baseCurrency = (rows[0]?.p.currency as CurrencyCode ?? "EUR") as CurrencyCode
+  const baseCurrency = (positions[0]?.currency ?? "EUR") as CurrencyCode
 
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-hidden sm:space-y-6">
@@ -77,21 +95,30 @@ export default function InversionesPage() {
         </div>
       ) : (
         <>
-          {/* Resumen de cartera */}
+          {/* Resumen + evolución */}
           <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-            <div className={`${CARD} lg:col-span-2`}>
-              <p className="page-section-label">Valor de la cartera</p>
-              <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-foreground sm:text-4xl">
-                <Sensitive>{formatMoney(totalValue, baseCurrency)}</Sensitive>
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                <span className={cn("inline-flex items-center gap-1 font-semibold", totalPnl >= 0 ? "text-emerald-500" : "text-red-500")}>
-                  {totalPnl >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                  <Sensitive>{totalPnl >= 0 ? "+" : "−"}{formatMoney(Math.abs(totalPnl), baseCurrency)}</Sensitive>
-                  <span>({totalPnlPct >= 0 ? "+" : ""}{totalPnlPct.toFixed(2)}%)</span>
-                </span>
-                <span className="text-muted-foreground">Invertido: <Sensitive>{formatMoney(totalInvested, baseCurrency)}</Sensitive></span>
+            <div className={`${CARD} min-w-0 lg:col-span-2`}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="page-section-label">Valor de la cartera</p>
+                  <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-foreground sm:text-4xl">
+                    <Sensitive>{formatMoney(value, baseCurrency)}</Sensitive>
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                    <span className={cn("inline-flex items-center gap-1 font-semibold", pnl >= 0 ? "text-emerald-500" : "text-red-500")}>
+                      {pnl >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                      <Sensitive>{pnl >= 0 ? "+" : "−"}{formatMoney(Math.abs(pnl), baseCurrency)}</Sensitive>
+                      <span>({pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%)</span>
+                    </span>
+                    <span className="text-muted-foreground">Invertido: <Sensitive>{formatMoney(invested, baseCurrency)}</Sensitive></span>
+                  </div>
+                </div>
               </div>
+              {seriesHasData ? (
+                <AreaChart data={series} index="mes" categories={["Cartera"]} colors={["blue"]} valueFormatter={chartFormatter} showLegend={false} showGridLines={false} showYAxis={false} className="mt-4 h-52 sm:h-56" curveType="monotone" showAnimation />
+              ) : (
+                <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-56">Cargando evolución…</div>
+              )}
             </div>
             <div className={`${CARD} flex flex-col justify-center`}>
               <p className="page-section-label">Posiciones</p>
@@ -102,7 +129,7 @@ export default function InversionesPage() {
 
           {/* Posiciones */}
           <section className="space-y-3">
-            {rows.map(({ p, value, pnl, pnlPct, live }) => {
+            {rows.map(({ p, value, pl, plPct, live }) => {
               const account = state.accounts.find((a) => a.id === p.accountId)
               return (
                 <div key={p.id} className={`${CARD} flex items-center gap-3 sm:gap-4`}>
@@ -117,8 +144,8 @@ export default function InversionesPage() {
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(value, p.currency as CurrencyCode)}</Sensitive></p>
-                    <p className={cn("text-xs font-semibold tabular-nums", pnl >= 0 ? "text-emerald-500" : "text-red-500")}>
-                      {pnl >= 0 ? "+" : "−"}{formatMoney(Math.abs(pnl), p.currency as CurrencyCode)} ({pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%)
+                    <p className={cn("text-xs font-semibold tabular-nums", pl >= 0 ? "text-emerald-500" : "text-red-500")}>
+                      {pl >= 0 ? "+" : "−"}{formatMoney(Math.abs(pl), p.currency as CurrencyCode)} ({plPct >= 0 ? "+" : ""}{plPct.toFixed(1)}%)
                     </p>
                   </div>
                   <button onClick={() => remove(p.id)} aria-label="Eliminar posición" className="shrink-0 text-muted-foreground transition-colors hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
