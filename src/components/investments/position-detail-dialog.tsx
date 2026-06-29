@@ -47,15 +47,12 @@ export function PositionDetailDialog({
     <Dialog open={!!position} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between gap-2">
-            <span className="flex min-w-0 items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">{position.symbol.replace("custom:", "").slice(0, 2).toUpperCase()}</span>
-              <span className="min-w-0">
-                <span className="block truncate text-base">{position.name}</span>
-                <span className="block truncate text-xs font-normal text-muted-foreground">{position.isin ?? position.symbol}</span>
-              </span>
+          <DialogTitle className="flex items-center gap-3 pr-8">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">{position.symbol.replace("custom:", "").slice(0, 2).toUpperCase()}</span>
+            <span className="min-w-0">
+              <span className="block truncate text-base">{position.name}</span>
+              <span className="block truncate text-xs font-normal text-muted-foreground">{position.isin ?? position.symbol}</span>
             </span>
-            <button onClick={() => onEdit(position)} aria-label="Editar posición" className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><Pencil className="h-4 w-4" /></button>
           </DialogTitle>
         </DialogHeader>
 
@@ -86,9 +83,14 @@ export function PositionDetailDialog({
           <Metric label="Rent. total" value={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`} tone={pnlPct >= 0 ? "up" : "down"} />
         </div>
 
-        <Button type="button" variant="destructive" size="sm" className="mt-1 w-full gap-1.5" onClick={() => onDelete(position.id)}>
-          <Trash2 className="h-4 w-4" /> Eliminar posición
-        </Button>
+        <div className="mt-1 flex gap-2">
+          <Button type="button" variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => onEdit(position)}>
+            <Pencil className="h-4 w-4" /> Editar
+          </Button>
+          <Button type="button" variant="destructive" size="sm" className="flex-1 gap-1.5" onClick={() => onDelete(position.id)}>
+            <Trash2 className="h-4 w-4" /> Eliminar
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )
