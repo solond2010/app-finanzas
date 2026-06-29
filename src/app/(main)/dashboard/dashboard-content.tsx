@@ -12,7 +12,7 @@ import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { getAccountsAtMonth, getMonthTotalsByString, getNetWorthAtMonth } from "@/lib/calculations"
+import { getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -62,7 +62,14 @@ export default function DashboardContent() {
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
   const rangeDelta = netWorth - rangeStart
-  const rangePct = rangeStart !== 0 ? Math.round((rangeDelta / Math.abs(rangeStart)) * 100) : 0
+  const showPct = Math.abs(rangeStart) >= 100
+  const rangePct = showPct ? Math.round((rangeDelta / Math.abs(rangeStart)) * 100) : 0
+
+  const spending = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const spendTotal = spending.reduce((s, c) => s + c.monto, 0)
+  const topSpending = spending.slice(0, 6)
+  const maxSpend = topSpending[0]?.monto ?? 1
+  const catColor = (name: string) => state.categories.find((c) => c.name === name)?.color ?? "#3b82f6"
 
   const score = useMemo(() => {
     let s = 0
@@ -132,12 +139,12 @@ export default function DashboardContent() {
                 <div>
                   <p className="page-section-label">Evolución del patrimonio</p>
                   <p className="mt-2 text-3xl font-bold tracking-tight tabular-nums text-foreground sm:text-4xl">
-                    <Sensitive><AnimatedNumber value={netWorth} prefix="€" /></Sensitive>
+                    <AnimatedNumber value={netWorth} />
                   </p>
-                  <p className={cn("mt-1 inline-flex items-center gap-1 text-sm font-medium", rangeDelta >= 0 ? "text-emerald-500" : "text-red-500")}>
+                  <p className={cn("mt-1 inline-flex flex-wrap items-center gap-x-1.5 text-sm font-medium", rangeDelta >= 0 ? "text-emerald-500" : "text-red-500")}>
                     {rangeDelta >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                     <Sensitive>{rangeDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(rangeDelta), "EUR")}</Sensitive>
-                    <span className="text-muted-foreground">· {rangePct >= 0 ? "+" : ""}{rangePct}% en {rangeMonths}M</span>
+                    <span className="text-muted-foreground">{showPct ? `· ${rangePct >= 0 ? "+" : ""}${rangePct}% ` : ""}en {rangeMonths}M</span>
                   </p>
                 </div>
                 <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
@@ -156,7 +163,7 @@ export default function DashboardContent() {
                 </div>
               </div>
               {netWorthHasData ? (
-                <AreaChart data={netWorthTrend} index="mes" categories={["patrimonio"]} colors={["blue"]} valueFormatter={chartFormatter} showLegend={false} showGridLines={false} className="mt-4 h-52 sm:h-64" curveType="monotone" showAnimation />
+                <AreaChart data={netWorthTrend} index="mes" categories={["patrimonio"]} colors={["blue"]} valueFormatter={chartFormatter} showLegend={false} showGridLines={false} showYAxis={false} className="mt-4 h-52 sm:h-64" curveType="monotone" showAnimation />
               ) : (
                 <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-64">Sin datos de patrimonio todavía</div>
               )}
@@ -191,9 +198,9 @@ export default function DashboardContent() {
 
           {/* KPIs */}
           <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <MetricCard label="Balance Total" value={<Sensitive><AnimatedNumber value={netWorth} prefix="€" /></Sensitive>} subtitle="Patrimonio neto actual" icon={Wallet} tone="blue" delay={0} />
-            <MetricCard label="Ingresos" value={<Sensitive><AnimatedNumber value={monthTotals.ingresos} prefix="+" /></Sensitive>} subtitle="Este mes" icon={ArrowUpRight} tone="emerald" delay={80} />
-            <MetricCard label="Gastos" value={<Sensitive><AnimatedNumber value={monthTotals.gastos} prefix="-" /></Sensitive>} subtitle="Este mes" icon={ArrowDownRight} tone="red" delay={160} />
+            <MetricCard label="Balance Total" value={<AnimatedNumber value={netWorth} />} subtitle="Patrimonio neto actual" icon={Wallet} tone="blue" delay={0} />
+            <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix="+" />} subtitle="Este mes" icon={ArrowUpRight} tone="emerald" delay={80} />
+            <MetricCard label="Gastos" value={<AnimatedNumber value={monthTotals.gastos} prefix="-" />} subtitle="Este mes" icon={ArrowDownRight} tone="red" delay={160} />
             <MetricCard label="Tasa de Ahorro" value={`${savingsRate}%`} subtitle="Objetivo del 20%" icon={Target} tone="blue" delay={240} />
           </section>
 
@@ -269,6 +276,33 @@ export default function DashboardContent() {
 
             <MonthlyBudget budgets={state.budgets} transactions={analysisTransactions} categories={state.categories} selectedMonth={selectedMonth} />
           </section>
+
+          {topSpending.length > 0 && (
+            <div className={`${CARD} min-w-0`}>
+              <div className="mb-5 flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-foreground">Distribución de gastos</p>
+                <p className="text-sm tabular-nums text-muted-foreground"><Sensitive>{formatMoney(spendTotal, "EUR")}</Sensitive></p>
+              </div>
+              <div className="grid grid-cols-1 gap-x-8 gap-y-3.5 sm:grid-cols-2">
+                {topSpending.map((c) => (
+                  <div key={c.categoria} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="flex min-w-0 items-center gap-2 font-medium text-foreground">
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: catColor(c.categoria) }} />
+                        <span className="truncate">{c.categoria}</span>
+                      </span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">
+                        <Sensitive>{formatMoney(c.monto, "EUR")}</Sensitive> · {Math.round((c.monto / spendTotal) * 100)}%
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(c.monto / maxSpend) * 100}%`, backgroundColor: catColor(c.categoria) }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <TransactionsTable selectedMonth={selectedMonth} />
           <SinkingFundsGrid />
