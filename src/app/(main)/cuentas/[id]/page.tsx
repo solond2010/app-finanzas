@@ -72,7 +72,7 @@ export default function AccountDetailPage() {
             </div>
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{account.banco || "Sin banco"} · {account.currency}</p>
-              <h1 className="max-w-3xl text-[34px] font-bold leading-[0.95] tracking-tight sm:text-[44px] lg:text-[52px]">{account.nombre}</h1>
+              <h1 className="max-w-3xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl">{account.nombre}</h1>
             </div>
 
             <div>

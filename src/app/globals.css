@@ -443,7 +443,7 @@ html {
 .fill-red-500 { fill: #ef4444; }
 .fill-violet-500 { fill: #8b5cf6; }
 .fill-amber-500 { fill: #f59e0b; }
-.fill-blue-500 { fill: #3b82f6; }
+.fill-blue-500 { fill: #6b7280; }
 .fill-indigo-500 { fill: #6366f1; }
 .fill-gray-500 { fill: #6b7280; }
 .fill-gray-400 { fill: #9ca3af; }
@@ -452,7 +452,7 @@ html {
 .stroke-red-500 { stroke: #ef4444; }
 .stroke-violet-500 { stroke: #8b5cf6; }
 .stroke-amber-500 { stroke: #f59e0b; }
-.stroke-blue-500 { stroke: #3b82f6; }
+.stroke-blue-500 { stroke: #6b7280; }
 .stroke-indigo-500 { stroke: #6366f1; }
 .stroke-gray-500 { stroke: #6b7280; }
 .stroke-tremor-background { stroke: var(--tremor-background); }
@@ -463,7 +463,7 @@ html {
 .text-red-500 { color: #ef4444; fill: #ef4444; }
 .text-violet-500 { color: #8b5cf6; fill: #8b5cf6; }
 .text-amber-500 { color: #f59e0b; fill: #f59e0b; }
-.text-blue-500 { color: #3b82f6; fill: #3b82f6; }
+.text-blue-500 { color: #6b7280; fill: #6b7280; }
 .text-indigo-500 { color: #6366f1; fill: #6366f1; }
 .text-gray-500 { color: #6b7280; fill: #6b7280; }
 

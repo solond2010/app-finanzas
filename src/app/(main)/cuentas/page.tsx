@@ -37,12 +37,12 @@ export default function CuentasPage() {
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
               Tus cuentas
             </div>
             <div className="space-y-2">
               <p className="page-section-label">Patrimonio</p>
-              <h1 className="max-w-3xl text-[34px] font-bold leading-[0.95] tracking-tight sm:text-[44px] lg:text-[52px]">Todo tu dinero, centralizado.</h1>
+              <h1 className="max-w-3xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl">Todo tu dinero, centralizado.</h1>
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Saldos, bancos y progreso de objetivos financieros en un solo vistazo.</p>
             </div>
           </div>
