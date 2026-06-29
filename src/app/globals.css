@@ -70,7 +70,7 @@
   --card-foreground: oklch(0.205 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.205 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.52 0.17 264);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.95 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -81,7 +81,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.915 0 0);
   --input: oklch(0.915 0 0);
-  --ring: oklch(0.45 0 0);
+  --ring: oklch(0.52 0.17 264);
   --chart-1: oklch(0.45 0 0);
   --chart-2: oklch(0.6 0.15 160);
   --chart-3: oklch(0.6 0.14 50);
@@ -90,7 +90,7 @@
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.205 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.52 0.17 264);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.95 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
@@ -101,8 +101,8 @@
   --tremor-content-emphasis: #0a0a0a;
   --tremor-border: #ececec;
   --tremor-label: #9ca3af;
-  --tremor-brand: #0a0a0a;
-  --tremor-brand-emphasis: #000000;
+  --tremor-brand: #2563eb;
+  --tremor-brand-emphasis: #1d4ed8;
   --tremor-ring: #d4d4d8;
   --brand-purple: oklch(0.55 0.18 295);
   --brand-teal: oklch(0.6 0.15 185);
@@ -110,7 +110,7 @@
   --accent-green: oklch(0.55 0.14 160);
   --accent-red: oklch(0.55 0.18 27);
   --accent-amber: oklch(0.6 0.15 85);
-  --accent-blue: oklch(0.45 0 0);
+  --accent-blue: oklch(0.52 0.17 264);
   --accent-violet: oklch(0.55 0.18 295);
   --card-glow: oklch(0 0 0 / 0.05);
 }
@@ -122,8 +122,8 @@
   --card-foreground: oklch(0.97 0 0);
   --popover: oklch(0.15 0 0);
   --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.97 0 0);
-  --primary-foreground: oklch(0.18 0 0);
+  --primary: oklch(0.65 0.17 264);
+  --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.19 0 0);
   --secondary-foreground: oklch(0.97 0 0);
   --muted: oklch(0.17 0 0);
@@ -133,7 +133,7 @@
   --destructive: oklch(0.69 0.19 22.216);
   --border: oklch(1 0 0 / 9%);
   --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.65 0 0);
+  --ring: oklch(0.65 0.17 264);
   --chart-1: oklch(0.85 0 0);
   --chart-2: oklch(0.6 0.15 160);
   --chart-3: oklch(0.6 0.14 50);
@@ -141,8 +141,8 @@
   --chart-5: oklch(0.55 0.12 190);
   --sidebar: oklch(0.12 0 0);
   --sidebar-foreground: oklch(0.97 0 0);
-  --sidebar-primary: oklch(0.97 0 0);
-  --sidebar-primary-foreground: oklch(0.18 0 0);
+  --sidebar-primary: oklch(0.65 0.17 264);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-accent: oklch(0.19 0 0);
   --sidebar-accent-foreground: oklch(0.97 0 0);
   --sidebar-border: oklch(1 0 0 / 8%);
@@ -152,8 +152,8 @@
   --tremor-content-emphasis: #fafafa;
   --tremor-border: #262626;
   --tremor-label: #71717a;
-  --tremor-brand: #fafafa;
-  --tremor-brand-emphasis: #ffffff;
+  --tremor-brand: #3b82f6;
+  --tremor-brand-emphasis: #60a5fa;
   --tremor-ring: #2f2f2f;
   --brand-purple: oklch(0.6 0.18 295);
   --brand-teal: oklch(0.65 0.15 185);
@@ -161,7 +161,7 @@
   --accent-green: oklch(0.65 0.15 160);
   --accent-red: oklch(0.62 0.2 25);
   --accent-amber: oklch(0.6 0.15 85);
-  --accent-blue: oklch(0.85 0 0);
+  --accent-blue: oklch(0.65 0.17 264);
   --accent-violet: oklch(0.55 0.18 295);
   --card-glow: oklch(1 0 0 / 0.06);
 }
@@ -443,18 +443,18 @@ html {
 .fill-red-500 { fill: #ef4444; }
 .fill-violet-500 { fill: #8b5cf6; }
 .fill-amber-500 { fill: #f59e0b; }
-.fill-blue-500 { fill: #6b7280; }
+.fill-blue-500 { fill: #3b82f6; }
 .fill-indigo-500 { fill: #6366f1; }
-.fill-gray-500 { fill: #6b7280; }
+.fill-gray-500 { fill: #3b82f6; }
 .fill-gray-400 { fill: #9ca3af; }
 
 .stroke-emerald-500 { stroke: #10b981; }
 .stroke-red-500 { stroke: #ef4444; }
 .stroke-violet-500 { stroke: #8b5cf6; }
 .stroke-amber-500 { stroke: #f59e0b; }
-.stroke-blue-500 { stroke: #6b7280; }
+.stroke-blue-500 { stroke: #3b82f6; }
 .stroke-indigo-500 { stroke: #6366f1; }
-.stroke-gray-500 { stroke: #6b7280; }
+.stroke-gray-500 { stroke: #3b82f6; }
 .stroke-tremor-background { stroke: var(--tremor-background); }
 .stroke-tremor-border { stroke: var(--tremor-border); }
 .stroke-tremor-ring { stroke: var(--tremor-ring); }
@@ -463,9 +463,9 @@ html {
 .text-red-500 { color: #ef4444; fill: #ef4444; }
 .text-violet-500 { color: #8b5cf6; fill: #8b5cf6; }
 .text-amber-500 { color: #f59e0b; fill: #f59e0b; }
-.text-blue-500 { color: #6b7280; fill: #6b7280; }
+.text-blue-500 { color: #3b82f6; fill: #3b82f6; }
 .text-indigo-500 { color: #6366f1; fill: #6366f1; }
-.text-gray-500 { color: #6b7280; fill: #6b7280; }
+.text-gray-500 { color: #3b82f6; fill: #3b82f6; }
 
 svg .text-tremor-content, .text-tremor-content { color: var(--tremor-content); fill: var(--tremor-content); }
 svg .text-tremor-content-emphasis, .text-tremor-content-emphasis { color: var(--tremor-content-emphasis); fill: var(--tremor-content-emphasis); }
