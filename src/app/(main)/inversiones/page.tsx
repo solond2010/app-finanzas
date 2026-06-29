@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { AreaChart } from "@tremor/react"
+import { AreaChart, DonutChart } from "@tremor/react"
 import { Plus, TrendingUp, TrendingDown, LineChart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFinance } from "@/lib/store"
@@ -14,6 +14,10 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 
 const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+const DONUT_COLORS = ["blue", "cyan", "indigo", "violet", "sky", "slate", "emerald", "amber"]
+const KIND_LABEL: Record<string, string> = { stock: "Bolsa", crypto: "Crypto", fund: "Fondos", custom: "Otros" }
+const EVO_TABS = [{ id: "rendimiento", label: "Rendimiento" }, { id: "activos", label: "Activos" }, { id: "tipologia", label: "Tipología" }] as const
+const POS_FILTERS = [{ id: "all", label: "Todos" }, { id: "stock", label: "Bolsa" }, { id: "crypto", label: "Crypto" }, { id: "fund", label: "Fondos" }, { id: "custom", label: "Otros" }] as const
 
 export default function InversionesPage() {
   const { state } = useFinance()
@@ -22,6 +26,8 @@ export default function InversionesPage() {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Position | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [evoTab, setEvoTab] = useState<"rendimiento" | "activos" | "tipologia">("rendimiento")
+  const [posFilter, setPosFilter] = useState<"all" | "stock" | "crypto" | "fund" | "custom">("all")
   const [hist, setHist] = useState<Record<string, { t: number; c: number }[]>>({})
 
   const openNew = () => { setEditing(null); setOpen(true) }
@@ -83,6 +89,18 @@ export default function InversionesPage() {
 
   const baseCurrency = (positions[0]?.currency ?? "EUR") as CurrencyCode
 
+  const activosData = useMemo(
+    () => rows.map((r) => ({ name: r.p.name, value: Math.round(r.value) })).filter((d) => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 8),
+    [rows]
+  )
+  const tipologiaData = useMemo(() => {
+    const m: Record<string, number> = {}
+    for (const r of rows) { const k = KIND_LABEL[r.p.kind]; m[k] = (m[k] ?? 0) + r.value }
+    return Object.entries(m).map(([name, v]) => ({ name, value: Math.round(v) })).filter((d) => d.value > 0)
+  }, [rows])
+  const filteredRows = useMemo(() => (posFilter === "all" ? rows : rows.filter((r) => r.p.kind === posFilter)), [rows, posFilter])
+  const donutFormatter = (v: number) => formatMoney(v, baseCurrency)
+
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-hidden sm:space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -107,7 +125,7 @@ export default function InversionesPage() {
             <div className={`${CARD} min-w-0 lg:col-span-2`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="page-section-label">Valor de la cartera</p>
+                  <p className="page-section-label">Evolución cartera</p>
                   <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-foreground sm:text-4xl">
                     <Sensitive>{formatMoney(value, baseCurrency)}</Sensitive>
                   </p>
@@ -120,11 +138,24 @@ export default function InversionesPage() {
                     <span className="text-muted-foreground">Invertido: <Sensitive>{formatMoney(invested, baseCurrency)}</Sensitive></span>
                   </div>
                 </div>
+                <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+                  {EVO_TABS.map((t) => (
+                    <button key={t.id} onClick={() => setEvoTab(t.id)} className={cn("rounded-full px-2.5 py-1 text-xs font-semibold transition-colors", evoTab === t.id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>{t.label}</button>
+                  ))}
+                </div>
               </div>
-              {seriesHasData ? (
-                <AreaChart data={series} index="mes" categories={["Cartera"]} colors={["blue"]} valueFormatter={chartFormatter} showLegend={false} showGridLines={false} showYAxis={false} className="mt-4 h-52 sm:h-56" curveType="monotone" showAnimation />
-              ) : (
-                <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-56">Cargando evolución…</div>
+              {evoTab === "rendimiento" && (
+                seriesHasData ? (
+                  <AreaChart data={series} index="mes" categories={["Cartera"]} colors={["blue"]} valueFormatter={chartFormatter} showLegend={false} showGridLines={false} showYAxis={false} className="mt-4 h-52 sm:h-56" curveType="monotone" showAnimation />
+                ) : (
+                  <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-56">Cargando evolución…</div>
+                )
+              )}
+              {evoTab === "activos" && (
+                <DonutChart data={activosData} category="value" index="name" colors={DONUT_COLORS} valueFormatter={donutFormatter} variant="donut" className="mt-4 h-52 sm:h-56" showAnimation />
+              )}
+              {evoTab === "tipologia" && (
+                <DonutChart data={tipologiaData} category="value" index="name" colors={DONUT_COLORS} valueFormatter={donutFormatter} variant="donut" className="mt-4 h-52 sm:h-56" showAnimation />
               )}
             </div>
             <div className={`${CARD} flex flex-col justify-center`}>
@@ -136,7 +167,18 @@ export default function InversionesPage() {
 
           {/* Posiciones */}
           <section className="space-y-3">
-            {rows.map(({ p, value, pl, plPct, live, changePct }) => {
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-foreground">Posiciones</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {POS_FILTERS.map((f) => (
+                  <button key={f.id} onClick={() => setPosFilter(f.id)} className={cn("rounded-full border px-3 py-1 text-xs font-semibold transition-colors", posFilter === f.id ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>{f.label}</button>
+                ))}
+              </div>
+            </div>
+            {filteredRows.length === 0 && (
+              <p className="rounded-[24px] border border-dashed border-border py-8 text-center text-sm text-muted-foreground">Sin posiciones en esta categoría.</p>
+            )}
+            {filteredRows.map(({ p, value, pl, plPct, live, changePct }) => {
               const account = state.accounts.find((a) => a.id === p.accountId)
               return (
                 <button
