@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/layout/sidebar"
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav"
 import { QuickActionsFAB } from "@/components/layout/quick-actions"
 import { FinanceProvider } from "@/lib/store"
+import { InvestmentsProvider } from "@/lib/investments"
 import { ToastProvider } from "@/components/ui/toast"
 import { PrivacyProvider } from "@/lib/privacy"
 import { SidebarProvider, useSidebar } from "@/lib/sidebar"
@@ -29,16 +30,18 @@ function MainInner({ children }: { children: React.ReactNode }) {
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <FinanceProvider>
-      <ToastProvider>
-        <PrivacyProvider>
-          <SidebarProvider>
-            <MainInner>
-              {children}
-            </MainInner>
-          </SidebarProvider>
-          <QuickActionsFAB />
-        </PrivacyProvider>
-      </ToastProvider>
+      <InvestmentsProvider>
+        <ToastProvider>
+          <PrivacyProvider>
+            <SidebarProvider>
+              <MainInner>
+                {children}
+              </MainInner>
+            </SidebarProvider>
+            <QuickActionsFAB />
+          </PrivacyProvider>
+        </ToastProvider>
+      </InvestmentsProvider>
     </FinanceProvider>
   )
 }
