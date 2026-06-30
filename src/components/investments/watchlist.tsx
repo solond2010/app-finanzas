@@ -104,7 +104,7 @@ function WatchlistAddDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   )
 }
 
-export function WatchlistRow() {
+export function WatchlistRow({ leading }: { leading?: React.ReactNode }) {
   const { watchlist, removeWatch } = useInvestments()
   const [quotes, setQuotes] = useState<Record<string, Quote>>({})
   const [hist, setHist] = useState<Record<string, { t: number; c: number }[]>>({})
@@ -124,10 +124,13 @@ export function WatchlistRow() {
 
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-semibold text-foreground">Seguimiento</p>
-      </div>
+      {!leading && (
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold text-foreground">Seguimiento</p>
+        </div>
+      )}
       <div className="flex gap-3 overflow-x-auto pb-1">
+        {leading}
         {watchlist.map((w) => (
           <WatchCard key={w.symbol} item={w} quote={quotes[w.symbol]} hist={hist[w.symbol]} onRemove={() => removeWatch(w.symbol)} />
         ))}
