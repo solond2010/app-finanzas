@@ -89,7 +89,10 @@ export default function DashboardContent() {
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const { value: portfolioValue, pnl: portfolioPnl } = usePortfolioValue()
-  const netWorthDisplay = netWorth + portfolioValue
+  // El saldo manual de las cuentas de inversión se sustituye por el valor de
+  // mercado de la cartera (si no, se contaría dos veces).
+  const investmentSaldo = useMemo(() => displayAccounts.filter((a) => a.tipo === "inversion").reduce((s, a) => s + a.saldo, 0), [displayAccounts])
+  const netWorthDisplay = netWorth - investmentSaldo + portfolioValue
 
   const savingsRate = monthTotals.ingresos > 0 ? Math.round((monthTotals.neto / monthTotals.ingresos) * 100) : 0
 
@@ -119,9 +122,9 @@ export default function DashboardContent() {
       const offset = rangeMonths - 1 - i
       const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-      return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonth(state.accounts, state.transactions, key) + portfolioValue }
+      return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonth(state.accounts, state.transactions, key) - investmentSaldo + portfolioValue }
     }),
-    [rangeMonths, selectedDate, state.accounts, state.transactions, portfolioValue]
+    [rangeMonths, selectedDate, state.accounts, state.transactions, portfolioValue, investmentSaldo]
   )
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0

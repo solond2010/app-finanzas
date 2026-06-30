@@ -172,5 +172,10 @@ export function usePortfolioValue() {
   const invested = positions.reduce((s, p) => s + p.units * p.buyPrice, 0)
   const pnl = value - invested
 
-  return { positions, quotes, loading, value, invested, pnl, pnlPct: invested > 0 ? (pnl / invested) * 100 : 0 }
+  const valueByAccount = positions.reduce<Record<string, number>>((m, p) => {
+    if (p.accountId) m[p.accountId] = (m[p.accountId] ?? 0) + p.units * priceOf(p)
+    return m
+  }, {})
+
+  return { positions, quotes, loading, value, invested, pnl, pnlPct: invested > 0 ? (pnl / invested) * 100 : 0, valueByAccount }
 }

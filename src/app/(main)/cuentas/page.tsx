@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useFinance } from "@/lib/store"
-import { getNetWorth } from "@/lib/calculations"
+import { useFinance, type Account } from "@/lib/store"
+import { usePortfolioValue } from "@/lib/investments"
 import {
   Table,
   TableBody,
@@ -26,10 +26,13 @@ export default function CuentasPage() {
   const { state, dispatch } = useFinance()
   const router = useRouter()
   const { toast } = useToast()
-  const netWorth = getNetWorth(state.accounts)
+  const { valueByAccount } = usePortfolioValue()
   const [showNewAccount, setShowNewAccount] = useState(false)
 
-  const totalBalance = state.accounts.reduce((s, a) => s + a.saldo, 0)
+  // Para cuentas de inversión, el "saldo" real es el valor de mercado de sus
+  // posiciones (no el saldo manual, que queda obsoleto al registrar inversiones).
+  const accountValue = (a: Account) => (a.tipo === "inversion" && valueByAccount[a.id] != null ? valueByAccount[a.id] : a.saldo)
+  const netWorth = state.accounts.reduce((s, a) => s + accountValue(a), 0)
 
   return (
     <div className="space-y-7">
@@ -99,7 +102,7 @@ export default function CuentasPage() {
 
                     <div>
                       <p className="text-3xl font-bold tabular-nums tracking-tight">
-                        <Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive>
+                        <Sensitive>{formatMoney(accountValue(account), account.currency)}</Sensitive>
                       </p>
                     </div>
 
@@ -107,13 +110,13 @@ export default function CuentasPage() {
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-xs text-muted-foreground">
                           <span>Objetivo: <Sensitive>{account.objetivo.toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive></span>
-                          <span>{Math.round((account.saldo / account.objetivo) * 100)}%</span>
+                          <span>{Math.round((accountValue(account) / account.objetivo) * 100)}%</span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-muted/50">
                           <div
                             className="h-full rounded-full transition-all duration-700 ease-out"
                             style={{
-                              width: `${Math.min((account.saldo / account.objetivo) * 100, 100)}%`,
+                              width: `${Math.min((accountValue(account) / account.objetivo) * 100, 100)}%`,
                               backgroundColor: cfg.color,
                             }}
                           />
@@ -155,14 +158,14 @@ export default function CuentasPage() {
                 </TableHeader>
                 <TableBody>
                   {state.accounts.map((a) => {
-                    const progress = a.objetivo && a.objetivo > 0 ? Math.min(Math.round((a.saldo / a.objetivo) * 100), 100) : null
+                    const progress = a.objetivo && a.objetivo > 0 ? Math.min(Math.round((accountValue(a) / a.objetivo) * 100), 100) : null
                     return (
                       <TableRow key={a.id} className="cursor-pointer group transition-colors hover:bg-muted/20" onClick={() => router.push(`/cuentas/${a.id}`)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && router.push(`/cuentas/${a.id}`)} role="button">
                         <TableCell className="font-medium">{a.nombre}</TableCell>
                         <TableCell className="text-muted-foreground">{typeLabels[a.tipo]}</TableCell>
                         <TableCell className="text-muted-foreground">{a.banco || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums font-semibold">
-                          <Sensitive>{formatMoney(a.saldo, a.currency)}</Sensitive>
+                          <Sensitive>{formatMoney(accountValue(a), a.currency)}</Sensitive>
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-muted-foreground">
                           {a.objetivo ? <Sensitive>{a.objetivo.toLocaleString("es-ES")} {currencySymbol(a.currency)}</Sensitive> : "—"}
@@ -180,7 +183,7 @@ export default function CuentasPage() {
                   <TableRow>
                     <TableCell colSpan={3} className="font-semibold">Total</TableCell>
                     <TableCell className="text-right tabular-nums font-bold text-lg">
-                      <Sensitive>{totalBalance.toLocaleString("es-ES")}€</Sensitive>
+                      <Sensitive>{Math.round(netWorth).toLocaleString("es-ES")}€</Sensitive>
                     </TableCell>
                     <TableCell colSpan={2} />
                   </TableRow>
