@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { AreaChart, DonutChart } from "@tremor/react"
-import { Plus, TrendingUp, TrendingDown, LineChart } from "lucide-react"
+import { Plus, TrendingUp, TrendingDown, LineChart, FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFinance } from "@/lib/store"
 import { useInvestments, usePortfolioValue, type Position } from "@/lib/investments"
@@ -35,6 +35,7 @@ export default function InversionesPage() {
 
   const openNew = () => { setEditing(null); setOpen(true) }
   const detailPosition = positions.find((p) => p.id === detailId) ?? null
+  const [exporting, setExporting] = useState(false)
 
   const symbolsKey = useMemo(
     () => [...new Set(positions.filter((p) => p.kind !== "custom").map((p) => p.symbol))].sort().join(","),
@@ -105,6 +106,32 @@ export default function InversionesPage() {
   const filteredRows = useMemo(() => (posFilter === "all" ? rows : rows.filter((r) => r.p.kind === posFilter)), [rows, posFilter])
   const donutFormatter = (v: number) => formatMoney(v, baseCurrency)
 
+  const exportXray = async () => {
+    setExporting(true)
+    try {
+      const { generateXrayPdf } = await import("@/lib/xray-pdf")
+      generateXrayPdf({
+        owner: "Mohamed",
+        currency: baseCurrency,
+        value, invested, pnl, pnlPct,
+        byType: tipologiaData,
+        positions: rows.map((r) => ({
+          name: r.p.name,
+          kind: KIND_LABEL[r.p.kind] ?? "Otros",
+          account: state.accounts.find((a) => a.id === r.p.accountId)?.nombre ?? "—",
+          units: r.p.units,
+          buyPrice: r.p.buyPrice,
+          current: r.p.units ? r.value / r.p.units : r.p.buyPrice,
+          value: r.value,
+          pl: r.pl,
+          plPct: r.plPct,
+        })),
+      })
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="w-full max-w-full space-y-5 overflow-x-hidden sm:space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -112,7 +139,14 @@ export default function InversionesPage() {
           <p className="page-section-label">Cartera</p>
           <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">Inversiones</h1>
         </div>
-        <Button onClick={openNew} className="gap-1.5 self-start rounded-full sm:self-auto"><Plus className="h-4 w-4" /> Nueva posición</Button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {positions.length > 0 && (
+            <Button onClick={exportXray} disabled={exporting} variant="outline" className="gap-1.5 rounded-full">
+              <FileDown className="h-4 w-4" /> {exporting ? "Generando…" : "X-Ray PDF"}
+            </Button>
+          )}
+          <Button onClick={openNew} className="gap-1.5 rounded-full"><Plus className="h-4 w-4" /> Nueva posición</Button>
+        </div>
       </header>
 
       <AssetAnalysis />
