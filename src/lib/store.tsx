@@ -417,6 +417,14 @@ async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sin
   const missing = remoteIds.filter((id) => !localSet.has(id))
   if (missing.length === 0) return
 
+  // Salvaguarda anti-pérdida de datos: si "faltan" muchas filas a la vez, casi
+  // seguro el estado local está desincronizado/parcial (otra pestaña, carga
+  // antigua, etc.), NO un borrado real del usuario. No borramos en masa.
+  if (missing.length > 5 && missing.length > remoteIds.length * 0.4) {
+    console.warn(`[Finance] Borrado masivo evitado en "${table}": ${missing.length}/${remoteIds.length} filas no estaban en el estado local. Estado probablemente parcial; no se borra nada.`)
+    return
+  }
+
   const { error: deleteErr } = await supabase.from(table).delete().in("id", missing)
   if (deleteErr) throw deleteErr
 }

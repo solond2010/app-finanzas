@@ -90,7 +90,7 @@ export default function InversionesPage() {
   }), [positions, quotes])
 
   const baseCurrency = (positions[0]?.currency ?? "EUR") as CurrencyCode
-  const ahorros0 = state.accounts.filter((a) => a.tipo !== "inversion").reduce((s, a) => s + a.saldo, 0)
+  const ahorros0 = state.accounts.filter((a) => a.tipo === "ahorro").reduce((s, a) => s + a.saldo, 0)
 
   const activosData = useMemo(
     () => rows.map((r) => ({ name: r.p.name, value: Math.round(r.value) })).filter((d) => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 8),
