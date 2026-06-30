@@ -10,6 +10,7 @@ import { PositionDialog } from "@/components/investments/position-dialog"
 import { PositionDetailDialog } from "@/components/investments/position-detail-dialog"
 import { WatchlistRow } from "@/components/investments/watchlist"
 import { ProjectionSimulator } from "@/components/investments/projection"
+import { AssetAnalysis } from "@/components/investments/asset-analysis"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { chartFormatter } from "@/lib/format"
 import { Sensitive } from "@/components/shared/sensitive"
@@ -113,6 +114,8 @@ export default function InversionesPage() {
         </div>
         <Button onClick={openNew} className="gap-1.5 self-start rounded-full sm:self-auto"><Plus className="h-4 w-4" /> Nueva posición</Button>
       </header>
+
+      <AssetAnalysis />
 
       {positions.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">

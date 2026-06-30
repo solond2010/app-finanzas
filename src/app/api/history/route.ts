@@ -7,10 +7,13 @@ interface ChartResult {
   indicators?: { quote?: { close?: (number | null)[] }[] }
 }
 
-async function fetchHistory(symbol: string): Promise<{ t: number; c: number }[]> {
+const ALLOWED_INTERVAL = new Set(["1d", "1wk", "1mo"])
+const ALLOWED_RANGE = new Set(["1mo", "3mo", "6mo", "1y", "2y", "5y", "max"])
+
+async function fetchHistory(symbol: string, interval: string, range: string): Promise<{ t: number; c: number }[]> {
   try {
     const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1mo&range=1y`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`,
       { headers: { "User-Agent": UA }, next: { revalidate: 3600 } }
     )
     if (!res.ok) return []
@@ -37,7 +40,12 @@ export async function GET(request: Request) {
     .filter(Boolean)
     .slice(0, 40)
 
-  const entries = await Promise.all(symbols.map(async (s) => [s, await fetchHistory(s)] as const))
+  const intervalParam = searchParams.get("interval") ?? "1mo"
+  const rangeParam = searchParams.get("range") ?? "1y"
+  const interval = ALLOWED_INTERVAL.has(intervalParam) ? intervalParam : "1mo"
+  const range = ALLOWED_RANGE.has(rangeParam) ? rangeParam : "1y"
+
+  const entries = await Promise.all(symbols.map(async (s) => [s, await fetchHistory(s, interval, range)] as const))
   const history: Record<string, { t: number; c: number }[]> = {}
   for (const [s, h] of entries) history[s] = h
   return NextResponse.json({ history })
