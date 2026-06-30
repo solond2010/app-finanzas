@@ -36,6 +36,7 @@ export default function IngresosGastosPage() {
   const [monthOffset, setMonthOffset] = useState(0)
   const [rangeM, setRangeM] = useState(6)
   const [target, setTarget] = useState(2000)
+  const [accIdx, setAccIdx] = useState(0)
 
   useEffect(() => {
     queueMicrotask(async () => {
@@ -43,6 +44,7 @@ export default function IngresosGastosPage() {
       if (local > 0) setTarget(local)
       const remote = Number(await getSetting("income-target"))
       if (remote > 0) { setTarget(remote); try { localStorage.setItem("income-target", String(remote)) } catch {} }
+      else if (local > 0) { setSetting("income-target", String(local)) } // migra local → nube
     })
   }, [])
 
@@ -64,7 +66,9 @@ export default function IngresosGastosPage() {
   const savingsRate = monthTotals.ingresos > 0 ? Math.round((monthTotals.neto / monthTotals.ingresos) * 100) : 0
 
   const totalBalance = state.accounts.reduce((s, a) => s + a.saldo, 0)
-  const mainAccount = state.accounts.find((a) => a.tipo === "efectivo") ?? state.accounts[0]
+  const accCount = state.accounts.length
+  const safeAccIdx = accCount > 0 ? ((accIdx % accCount) + accCount) % accCount : 0
+  const currentAccount = state.accounts[safeAccIdx]
 
   const cashflow = useMemo(
     () => Array.from({ length: rangeM }, (_, i) => {
@@ -98,24 +102,38 @@ export default function IngresosGastosPage() {
 
       {/* Fila 1: Cuenta principal · Objetivo ingresos · Próximos pagos */}
       <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-        {/* Cuenta principal */}
+        {/* Cuenta (carrusel) */}
         <div className="relative min-w-0 overflow-hidden rounded-[24px] bg-gradient-to-br from-primary to-[color-mix(in_oklch,var(--primary),#000_22%)] p-5 text-white shadow-[0_14px_34px_-20px_var(--primary)] sm:p-6">
           <div className="flex items-center justify-between text-xs font-medium text-white/70">
-            <span className="uppercase tracking-wider">Cuenta principal</span>
+            <div className="flex items-center gap-1">
+              {accCount > 1 && (
+                <>
+                  <button onClick={() => setAccIdx((p) => p - 1)} aria-label="Cuenta anterior" className="rounded-full border border-white/25 p-1.5 text-white/80 transition-colors hover:bg-white/10 active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
+                  <button onClick={() => setAccIdx((p) => p + 1)} aria-label="Cuenta siguiente" className="rounded-full border border-white/25 p-1.5 text-white/80 transition-colors hover:bg-white/10 active:scale-90"><ChevronRight className="h-4 w-4" /></button>
+                </>
+              )}
+            </div>
             <span>Todas: <Sensitive>{formatMoney(totalBalance, "EUR")}</Sensitive></span>
           </div>
-          {mainAccount ? (
+          {currentAccount ? (
             <>
               <div className="mt-5 flex items-center gap-3">
-                <AccountLogo account={mainAccount} className="h-11 w-11" />
+                <AccountLogo account={currentAccount} className="h-11 w-11" />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{mainAccount.nombre}</p>
-                  <p className="truncate text-xs text-white/70">{mainAccount.banco || "Cuenta corriente"}</p>
+                  <p className="truncate text-sm font-semibold">{currentAccount.nombre}</p>
+                  <p className="truncate text-xs text-white/70">{currentAccount.banco || "Cuenta corriente"}</p>
                 </div>
               </div>
               <p className="mt-4 text-3xl font-bold tabular-nums tracking-tight">
-                <Sensitive>{formatMoney(mainAccount.saldo, mainAccount.currency)}</Sensitive>
+                <Sensitive>{formatMoney(currentAccount.saldo, currentAccount.currency)}</Sensitive>
               </p>
+              {accCount > 1 && (
+                <div className="mt-4 flex items-center gap-1.5">
+                  {state.accounts.map((a, i) => (
+                    <button key={a.id} onClick={() => setAccIdx(i)} aria-label={`Ver ${a.nombre}`} className={cn("h-1.5 rounded-full transition-all", i === safeAccIdx ? "w-5 bg-white" : "w-1.5 bg-white/30 hover:bg-white/50")} />
+                  ))}
+                </div>
+              )}
             </>
           ) : (
             <p className="mt-8 text-sm text-white/80">Aún no tienes cuentas. Créalas en la sección Cuentas.</p>
