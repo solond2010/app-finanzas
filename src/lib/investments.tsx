@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { addMonths, addWeeks, format, parseISO } from "date-fns"
 import { supabase } from "./supabase"
 import { USER_ID } from "./store"
 
@@ -36,19 +37,44 @@ interface InvestmentRow {
 
 export interface WatchItem { symbol: string; name: string }
 
+export type DcaFreq = "monthly" | "weekly"
+export interface DcaPlan { amount: number; freq: DcaFreq; last: string }
+
+/** Devuelve las fechas de aportes vencidos (programados <= hoy) desde la última aportación. */
+export function dcaPendingDates(plan: DcaPlan, today: Date = new Date()): Date[] {
+  const out: Date[] = []
+  let cursor = parseISO(plan.last)
+  while (out.length < 600) {
+    cursor = plan.freq === "weekly" ? addWeeks(cursor, 1) : addMonths(cursor, 1)
+    if (cursor.getTime() > today.getTime()) break
+    out.push(new Date(cursor))
+  }
+  return out
+}
+
+/** Próxima fecha de aporte programada (futura). */
+export function dcaNextDate(plan: DcaPlan): Date {
+  const last = parseISO(plan.last)
+  return plan.freq === "weekly" ? addWeeks(last, 1) : addMonths(last, 1)
+}
+
 interface InvestmentsContextValue {
   positions: Position[]
-  add: (p: Omit<Position, "id">) => void
+  add: (p: Omit<Position, "id">) => string
   update: (p: Position) => void
   remove: (id: string) => void
   watchlist: WatchItem[]
   addWatch: (w: WatchItem) => void
   removeWatch: (symbol: string) => void
+  dcaPlans: Record<string, DcaPlan>
+  setDcaPlan: (positionId: string, plan: DcaPlan | null) => void
+  applyDca: (positionId: string, price: number) => number
 }
 
 const InvestmentsContext = createContext<InvestmentsContextValue | null>(null)
 const STORAGE_KEY = "app-finanzas-investments"
 const WATCH_KEY = "app-finanzas-watchlist"
+const DCA_KEY = "app-finanzas-dca"
 
 function toRow(p: Position): InvestmentRow & { user_id: string } {
   return {
@@ -69,6 +95,17 @@ function fromRow(r: InvestmentRow): Position {
 export function InvestmentsProvider({ children }: { children: ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([])
   const [watchlist, setWatchlist] = useState<WatchItem[]>([])
+  const [dcaPlans, setDcaPlans] = useState<Record<string, DcaPlan>>({})
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DCA_KEY)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (raw) setDcaPlans(JSON.parse(raw) as Record<string, DcaPlan>)
+    } catch {
+      // ignore corrupt storage
+    }
+  }, [])
 
   useEffect(() => {
     queueMicrotask(async () => {
@@ -127,6 +164,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     const pos: Position = { ...p, id }
     persistLocal([...positions, pos])
     supabase.from("investments").upsert([toRow(pos)]).then(() => {}, () => {})
+    return id
   }
 
   const update = (pos: Position) => {
@@ -153,7 +191,35 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     supabase.from("watchlist").delete().eq("symbol", symbol).then(() => {}, () => {})
   }
 
-  return <InvestmentsContext.Provider value={{ positions, add, update, remove, watchlist, addWatch, removeWatch }}>{children}</InvestmentsContext.Provider>
+  const persistDca = (next: Record<string, DcaPlan>) => {
+    setDcaPlans(next)
+    try { localStorage.setItem(DCA_KEY, JSON.stringify(next)) } catch {}
+  }
+  const setDcaPlan = (positionId: string, plan: DcaPlan | null) => {
+    const next = { ...dcaPlans }
+    if (plan) next[positionId] = plan
+    else delete next[positionId]
+    persistDca(next)
+  }
+  // Aplica los aportes vencidos al precio actual: suma participaciones y recalcula
+  // el precio medio ponderado. Devuelve el nº de aportes aplicados.
+  const applyDca = (positionId: string, price: number): number => {
+    const plan = dcaPlans[positionId]
+    const pos = positions.find((p) => p.id === positionId)
+    if (!plan || !pos || !price || price <= 0) return 0
+    const due = dcaPendingDates(plan)
+    if (due.length === 0) return 0
+    const totalAmount = due.length * plan.amount
+    const unitsAdded = totalAmount / price
+    const newUnits = pos.units + unitsAdded
+    const newBuyPrice = newUnits > 0 ? (pos.units * pos.buyPrice + totalAmount) / newUnits : pos.buyPrice
+    update({ ...pos, units: newUnits, buyPrice: newBuyPrice })
+    const lastDate = due[due.length - 1]
+    setDcaPlan(positionId, { ...plan, last: format(lastDate, "yyyy-MM-dd") })
+    return due.length
+  }
+
+  return <InvestmentsContext.Provider value={{ positions, add, update, remove, watchlist, addWatch, removeWatch, dcaPlans, setDcaPlan, applyDca }}>{children}</InvestmentsContext.Provider>
 }
 
 export function useInvestments() {

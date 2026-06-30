@@ -11,6 +11,7 @@ import { PositionDetailDialog } from "@/components/investments/position-detail-d
 import { WatchlistRow } from "@/components/investments/watchlist"
 import { ProjectionSimulator } from "@/components/investments/projection"
 import { AssetAnalysis } from "@/components/investments/asset-analysis"
+import { DcaPanel } from "@/components/investments/dca-panel"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { chartFormatter } from "@/lib/format"
 import { Sensitive } from "@/components/shared/sensitive"
@@ -250,6 +251,8 @@ export default function InversionesPage() {
               )
             })}
           </section>
+
+          <DcaPanel quotes={quotes} />
 
           <ProjectionSimulator ahorros0={ahorros0} inversiones0={value} />
         </>

@@ -1,0 +1,77 @@
+"use client"
+
+import { CalendarClock, Repeat } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useInvestments, dcaPendingDates, dcaNextDate } from "@/lib/investments"
+import { useToast } from "@/components/ui/toast"
+import { formatMoney, type CurrencyCode } from "@/lib/currency"
+
+interface Quote { price: number; currency: string; changePct?: number | null }
+
+const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+
+export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
+  const { positions, dcaPlans, applyDca } = useInvestments()
+  const { toast } = useToast()
+
+  const plans = positions
+    .filter((p) => dcaPlans[p.id])
+    .map((p) => {
+      const plan = dcaPlans[p.id]
+      const pending = dcaPendingDates(plan)
+      const next = dcaNextDate(plan)
+      const price = p.kind === "custom" ? p.buyPrice : quotes[p.symbol]?.price ?? p.buyPrice
+      return { p, plan, pending, next, price }
+    })
+
+  if (plans.length === 0) return null
+
+  const fmtDate = (d: Date) => d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })
+
+  const handleApply = (positionId: string, price: number) => {
+    const n = applyDca(positionId, price)
+    if (n > 0) toast(`${n} aporte${n > 1 ? "s" : ""} aplicado${n > 1 ? "s" : ""}`, "success")
+  }
+
+  return (
+    <section className={CARD}>
+      <div className="flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary"><Repeat className="h-4 w-4" /></span>
+        <div>
+          <p className="page-section-label">Aportes programados (DCA)</p>
+          <p className="text-xs text-muted-foreground">Tus compras periódicas. Aplica los vencidos al precio de mercado.</p>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {plans.map(({ p, plan, pending, next, price }) => {
+          const cur = p.currency as CurrencyCode
+          const hasPending = pending.length > 0
+          return (
+            <div key={p.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/20 p-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">{p.symbol.replace("custom:", "").slice(0, 2).toUpperCase()}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">{p.name}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {formatMoney(plan.amount, cur)} · {plan.freq === "monthly" ? "mensual" : "semanal"}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                {hasPending ? (
+                  <p className="text-xs font-semibold text-amber-600 dark:text-amber-500">{pending.length} pendiente{pending.length > 1 ? "s" : ""}</p>
+                ) : (
+                  <p className="inline-flex items-center gap-1 text-xs text-muted-foreground"><CalendarClock className="h-3.5 w-3.5" /> {fmtDate(next)}</p>
+                )}
+              </div>
+              {hasPending && (
+                <Button size="sm" className="shrink-0 rounded-full" onClick={() => handleApply(p.id, price)}>
+                  Aplicar {formatMoney(pending.length * plan.amount, cur)}
+                </Button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}

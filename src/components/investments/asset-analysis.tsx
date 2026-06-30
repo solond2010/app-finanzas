@@ -96,7 +96,7 @@ export function AssetAnalysis() {
 
   const up = (asset?.changePct ?? 0) >= 0
   const chartData = hist.map((h) => ({
-    fecha: new Date(h.t * 1000).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: range === "5y" ? "2-digit" : undefined }),
+    fecha: new Date(h.t * 1000).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "2-digit" }),
     Precio: Number(h.c.toFixed(2)),
   }))
   const cur = asset?.currency ?? "USD"

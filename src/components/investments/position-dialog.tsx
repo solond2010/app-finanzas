@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useFinance } from "@/lib/store"
-import { useInvestments, type AssetKind, type Position } from "@/lib/investments"
+import { useInvestments, type AssetKind, type DcaFreq, type Position } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 
@@ -25,7 +25,7 @@ const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/
 
 export function PositionDialog({ open, onOpenChange, editing }: { open: boolean; onOpenChange: (o: boolean) => void; editing?: Position | null }) {
   const { state } = useFinance()
-  const { add, update } = useInvestments()
+  const { add, update, dcaPlans, setDcaPlan } = useInvestments()
   const { toast } = useToast()
 
   const [kind, setKind] = useState<AssetKind>("stock")
@@ -39,6 +39,8 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
   const [units, setUnits] = useState("")
   const [buyPrice, setBuyPrice] = useState("")
   const [dca, setDca] = useState(false)
+  const [dcaAmount, setDcaAmount] = useState("")
+  const [dcaFreq, setDcaFreq] = useState<DcaFreq>("monthly")
   const [accountId, setAccountId] = useState("")
 
   const investAccounts = useMemo(() => {
@@ -59,14 +61,17 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
         setUnits(String(editing.units))
         setBuyPrice(String(editing.buyPrice))
         setDca(editing.dca ?? false)
+        const plan = dcaPlans[editing.id]
+        setDcaAmount(plan ? String(plan.amount) : "")
+        setDcaFreq(plan?.freq ?? "monthly")
         setAccountId(editing.accountId ?? investAccounts[0]?.id ?? "")
       } else {
         setKind("stock"); setSelected(null); setCustomName("")
         setCurrency("EUR"); setDate(new Date().toISOString().split("T")[0]); setUnits(""); setBuyPrice("")
-        setDca(false); setAccountId(investAccounts[0]?.id ?? "")
+        setDca(false); setDcaAmount(""); setDcaFreq("monthly"); setAccountId(investAccounts[0]?.id ?? "")
       }
     })
-  }, [open, editing, investAccounts])
+  }, [open, editing, investAccounts, dcaPlans])
 
   useEffect(() => {
     // Búsqueda con debounce contra una API externa (sistema externo): uso válido
@@ -123,12 +128,19 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
       payload = { kind, symbol: selected.symbol, name: selected.name, isin: selected.isin, date, units: u, buyPrice: p, currency: selected.currency, accountId, dca }
     }
 
+    const id = editing ? editing.id : add(payload)
     if (editing) {
       update({ ...payload, id: editing.id })
       toast("Posición actualizada", "success")
     } else {
-      add(payload)
       toast("Posición añadida", "success")
+    }
+
+    if (dca && Number(dcaAmount) > 0) {
+      const existing = dcaPlans[id]
+      setDcaPlan(id, { amount: Number(dcaAmount), freq: dcaFreq, last: existing?.last ?? date })
+    } else {
+      setDcaPlan(id, null)
     }
     onOpenChange(false)
   }
@@ -210,10 +222,36 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
           </div>
         </div>
 
-        <label className="flex cursor-pointer items-center gap-2">
-          <input type="checkbox" checked={dca} onChange={(e) => setDca(e.target.checked)} className="rounded border-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Programar aportes (DCA)</span>
-        </label>
+        <div className="space-y-2 rounded-2xl border border-border bg-muted/30 p-3">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input type="checkbox" checked={dca} onChange={(e) => setDca(e.target.checked)} className="rounded border-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">Programar aportes (DCA)</span>
+          </label>
+          {dca && (
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Aporte ({currency})</label>
+                <Input type="number" inputMode="decimal" value={dcaAmount} onChange={(e) => setDcaAmount(e.target.value)} placeholder="Ej: 100" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Frecuencia</label>
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1">
+                  {(["monthly", "weekly"] as DcaFreq[]).map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setDcaFreq(f)}
+                      className={cn("rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors", dcaFreq === f ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                    >
+                      {f === "monthly" ? "Mensual" : "Semanal"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="col-span-2 text-[11px] text-muted-foreground">Registra tus compras periódicas. Desde Inversiones podrás aplicar los aportes vencidos al precio de mercado y se recalculará tu precio medio.</p>
+            </div>
+          )}
+        </div>
 
         <div className="space-y-1.5">
           <label className="text-xs text-muted-foreground">Cuenta / cartera</label>
