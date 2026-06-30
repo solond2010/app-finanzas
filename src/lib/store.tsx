@@ -311,6 +311,9 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!initialized) return
+    // Copia de seguridad local en cada cambio (red de seguridad ante pérdidas en
+    // Supabase). La app la usa como fallback si Supabase está vacío/caído.
+    try { localStorage.setItem("app-finanzas-data", JSON.stringify(state)) } catch {}
     let cancelled = false
     // Refleja en la UI el inicio de la sincronización con Supabase (sistema
     // externo). Es el uso previsto de un efecto: sincronizar React con un
