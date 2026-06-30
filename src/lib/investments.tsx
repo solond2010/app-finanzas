@@ -34,15 +34,21 @@ interface InvestmentRow {
   dca: boolean | null
 }
 
+export interface WatchItem { symbol: string; name: string }
+
 interface InvestmentsContextValue {
   positions: Position[]
   add: (p: Omit<Position, "id">) => void
   update: (p: Position) => void
   remove: (id: string) => void
+  watchlist: WatchItem[]
+  addWatch: (w: WatchItem) => void
+  removeWatch: (symbol: string) => void
 }
 
 const InvestmentsContext = createContext<InvestmentsContextValue | null>(null)
 const STORAGE_KEY = "app-finanzas-investments"
+const WATCH_KEY = "app-finanzas-watchlist"
 
 function toRow(p: Position): InvestmentRow & { user_id: string } {
   return {
@@ -62,9 +68,16 @@ function fromRow(r: InvestmentRow): Position {
 
 export function InvestmentsProvider({ children }: { children: ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([])
+  const [watchlist, setWatchlist] = useState<WatchItem[]>([])
 
   useEffect(() => {
     queueMicrotask(async () => {
+      try {
+        const wraw = localStorage.getItem(WATCH_KEY)
+        if (wraw) setWatchlist(JSON.parse(wraw) as WatchItem[])
+      } catch {
+        // ignore
+      }
       let local: Position[] = []
       try {
         const raw = localStorage.getItem(STORAGE_KEY)
@@ -111,7 +124,14 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     supabase.from("investments").delete().eq("id", id).then(() => {}, () => {})
   }
 
-  return <InvestmentsContext.Provider value={{ positions, add, update, remove }}>{children}</InvestmentsContext.Provider>
+  const persistWatch = (next: WatchItem[]) => {
+    setWatchlist(next)
+    try { localStorage.setItem(WATCH_KEY, JSON.stringify(next)) } catch {}
+  }
+  const addWatch = (w: WatchItem) => { if (!watchlist.some((x) => x.symbol === w.symbol)) persistWatch([...watchlist, w]) }
+  const removeWatch = (symbol: string) => persistWatch(watchlist.filter((x) => x.symbol !== symbol))
+
+  return <InvestmentsContext.Provider value={{ positions, add, update, remove, watchlist, addWatch, removeWatch }}>{children}</InvestmentsContext.Provider>
 }
 
 export function useInvestments() {

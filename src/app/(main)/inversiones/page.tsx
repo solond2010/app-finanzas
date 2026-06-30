@@ -8,6 +8,7 @@ import { useFinance } from "@/lib/store"
 import { useInvestments, usePortfolioValue, type Position } from "@/lib/investments"
 import { PositionDialog } from "@/components/investments/position-dialog"
 import { PositionDetailDialog } from "@/components/investments/position-detail-dialog"
+import { WatchlistRow } from "@/components/investments/watchlist"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { chartFormatter } from "@/lib/format"
 import { Sensitive } from "@/components/shared/sensitive"
@@ -120,6 +121,8 @@ export default function InversionesPage() {
         </div>
       ) : (
         <>
+          <WatchlistRow />
+
           {/* Resumen + evolución */}
           <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
             <div className={`${CARD} min-w-0 lg:col-span-2`}>
