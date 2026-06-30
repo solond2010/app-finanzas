@@ -5,6 +5,7 @@ import { AreaChart } from "@tremor/react"
 import { ArrowDownRight, ArrowUpRight, CalendarClock, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp } from "lucide-react"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { ImportCsvButton } from "@/components/dashboard/import-csv-button"
+import { getSetting, setSetting } from "@/lib/settings"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { useFinance } from "@/lib/store"
@@ -37,9 +38,11 @@ export default function IngresosGastosPage() {
   const [target, setTarget] = useState(2000)
 
   useEffect(() => {
-    queueMicrotask(() => {
-      const v = Number(localStorage.getItem("income-target"))
-      if (v > 0) setTarget(v)
+    queueMicrotask(async () => {
+      const local = Number(localStorage.getItem("income-target"))
+      if (local > 0) setTarget(local)
+      const remote = Number(await getSetting("income-target"))
+      if (remote > 0) { setTarget(remote); try { localStorage.setItem("income-target", String(remote)) } catch {} }
     })
   }, [])
 
@@ -47,7 +50,11 @@ export default function IngresosGastosPage() {
     const v = window.prompt("Objetivo de ingresos mensual (€)", String(target))
     if (v == null) return
     const n = Number(v)
-    if (n > 0) { setTarget(n); localStorage.setItem("income-target", String(n)) }
+    if (n > 0) {
+      setTarget(n)
+      try { localStorage.setItem("income-target", String(n)) } catch {}
+      setSetting("income-target", String(n))
+    }
   }
 
   const selectedDate = useMemo(() => new Date(today.getFullYear(), today.getMonth() - monthOffset, 1), [today, monthOffset])

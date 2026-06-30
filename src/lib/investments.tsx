@@ -72,11 +72,26 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     queueMicrotask(async () => {
+      let localWatch: WatchItem[] = []
       try {
         const wraw = localStorage.getItem(WATCH_KEY)
-        if (wraw) setWatchlist(JSON.parse(wraw) as WatchItem[])
+        if (wraw) { localWatch = JSON.parse(wraw) as WatchItem[]; setWatchlist(localWatch) }
       } catch {
         // ignore
+      }
+      try {
+        const { data, error } = await supabase.from("watchlist").select("*")
+        if (!error && data) {
+          if (data.length === 0 && localWatch.length > 0) {
+            await supabase.from("watchlist").upsert(localWatch.map((w) => ({ symbol: w.symbol, name: w.name, user_id: USER_ID })))
+          } else {
+            const remote = (data as { symbol: string; name: string }[]).map((w) => ({ symbol: w.symbol, name: w.name }))
+            setWatchlist(remote)
+            try { localStorage.setItem(WATCH_KEY, JSON.stringify(remote)) } catch {}
+          }
+        }
+      } catch {
+        // sin tabla / sin red → seguimos solo con localStorage
       }
       let local: Position[] = []
       try {
@@ -128,8 +143,15 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     setWatchlist(next)
     try { localStorage.setItem(WATCH_KEY, JSON.stringify(next)) } catch {}
   }
-  const addWatch = (w: WatchItem) => { if (!watchlist.some((x) => x.symbol === w.symbol)) persistWatch([...watchlist, w]) }
-  const removeWatch = (symbol: string) => persistWatch(watchlist.filter((x) => x.symbol !== symbol))
+  const addWatch = (w: WatchItem) => {
+    if (watchlist.some((x) => x.symbol === w.symbol)) return
+    persistWatch([...watchlist, w])
+    supabase.from("watchlist").upsert([{ symbol: w.symbol, name: w.name, user_id: USER_ID }]).then(() => {}, () => {})
+  }
+  const removeWatch = (symbol: string) => {
+    persistWatch(watchlist.filter((x) => x.symbol !== symbol))
+    supabase.from("watchlist").delete().eq("symbol", symbol).then(() => {}, () => {})
+  }
 
   return <InvestmentsContext.Provider value={{ positions, add, update, remove, watchlist, addWatch, removeWatch }}>{children}</InvestmentsContext.Provider>
 }
