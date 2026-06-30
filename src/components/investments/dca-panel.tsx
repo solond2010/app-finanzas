@@ -2,7 +2,7 @@
 
 import { CalendarClock, Repeat } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useInvestments, dcaPendingDates, dcaNextDate } from "@/lib/investments"
+import { useInvestments, dcaPendingDates, dcaNextDate, planOf } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 
@@ -11,13 +11,13 @@ interface Quote { price: number; currency: string; changePct?: number | null }
 const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 
 export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
-  const { positions, dcaPlans, applyDca } = useInvestments()
+  const { positions, applyDca } = useInvestments()
   const { toast } = useToast()
 
   const plans = positions
-    .filter((p) => dcaPlans[p.id])
-    .map((p) => {
-      const plan = dcaPlans[p.id]
+    .map((p) => ({ p, plan: planOf(p) }))
+    .filter((x): x is { p: typeof x.p; plan: NonNullable<typeof x.plan> } => x.plan !== null)
+    .map(({ p, plan }) => {
       const pending = dcaPendingDates(plan)
       const next = dcaNextDate(plan)
       const price = p.kind === "custom" ? p.buyPrice : quotes[p.symbol]?.price ?? p.buyPrice

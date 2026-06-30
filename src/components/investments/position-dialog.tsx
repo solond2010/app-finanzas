@@ -25,7 +25,7 @@ const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/
 
 export function PositionDialog({ open, onOpenChange, editing }: { open: boolean; onOpenChange: (o: boolean) => void; editing?: Position | null }) {
   const { state } = useFinance()
-  const { add, update, dcaPlans, setDcaPlan } = useInvestments()
+  const { add, update } = useInvestments()
   const { toast } = useToast()
 
   const [kind, setKind] = useState<AssetKind>("stock")
@@ -61,9 +61,8 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
         setUnits(String(editing.units))
         setBuyPrice(String(editing.buyPrice))
         setDca(editing.dca ?? false)
-        const plan = dcaPlans[editing.id]
-        setDcaAmount(plan ? String(plan.amount) : "")
-        setDcaFreq(plan?.freq ?? "monthly")
+        setDcaAmount(editing.dcaAmount ? String(editing.dcaAmount) : "")
+        setDcaFreq(editing.dcaFreq ?? "monthly")
         setAccountId(editing.accountId ?? investAccounts[0]?.id ?? "")
       } else {
         setKind("stock"); setSelected(null); setCustomName("")
@@ -71,7 +70,7 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
         setDca(false); setDcaAmount(""); setDcaFreq("monthly"); setAccountId(investAccounts[0]?.id ?? "")
       }
     })
-  }, [open, editing, investAccounts, dcaPlans])
+  }, [open, editing, investAccounts])
 
   useEffect(() => {
     // Búsqueda con debounce contra una API externa (sistema externo): uso válido
@@ -119,28 +118,25 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
     const p = Number(buyPrice)
     if (!u || u <= 0 || !p || p <= 0) { toast("Indica cantidad y precio de compra", "error"); return }
 
+    const dcaFields = dca && Number(dcaAmount) > 0
+      ? { dca: true, dcaAmount: Number(dcaAmount), dcaFreq, dcaLast: editing?.dcaLast ?? date }
+      : { dca: false, dcaAmount: undefined, dcaFreq: undefined, dcaLast: undefined }
+
     let payload: Omit<Position, "id">
     if (kind === "custom") {
       if (!customName.trim()) { toast("Pon un nombre al activo", "error"); return }
-      payload = { kind, symbol: editing?.kind === "custom" ? editing.symbol : `custom:${customName.trim().toLowerCase()}`, name: customName.trim(), date, units: u, buyPrice: p, currency, accountId, dca }
+      payload = { kind, symbol: editing?.kind === "custom" ? editing.symbol : `custom:${customName.trim().toLowerCase()}`, name: customName.trim(), date, units: u, buyPrice: p, currency, accountId, ...dcaFields }
     } else {
       if (!selected) { toast("Busca y selecciona un activo", "error"); return }
-      payload = { kind, symbol: selected.symbol, name: selected.name, isin: selected.isin, date, units: u, buyPrice: p, currency: selected.currency, accountId, dca }
+      payload = { kind, symbol: selected.symbol, name: selected.name, isin: selected.isin, date, units: u, buyPrice: p, currency: selected.currency, accountId, ...dcaFields }
     }
 
-    const id = editing ? editing.id : add(payload)
     if (editing) {
       update({ ...payload, id: editing.id })
       toast("Posición actualizada", "success")
     } else {
+      add(payload)
       toast("Posición añadida", "success")
-    }
-
-    if (dca && Number(dcaAmount) > 0) {
-      const existing = dcaPlans[id]
-      setDcaPlan(id, { amount: Number(dcaAmount), freq: dcaFreq, last: existing?.last ?? date })
-    } else {
-      setDcaPlan(id, null)
     }
     onOpenChange(false)
   }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Star } from "lucide-react"
 import { type Account } from "@/lib/store"
+import { getSetting, setSetting } from "@/lib/settings"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
@@ -14,12 +15,20 @@ export function AccountCards({ accounts, valueByAccount }: { accounts: Account[]
   const [fav, setFav] = useState<string | null>(null)
 
   useEffect(() => {
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setFav(localStorage.getItem(FAV_KEY))
-    } catch {
-      // ignore
-    }
+    queueMicrotask(async () => {
+      try {
+        const local = localStorage.getItem(FAV_KEY)
+        if (local) setFav(local)
+      } catch {
+        // ignore
+      }
+      // Fuente de verdad: Supabase (tabla settings). La caché local solo acelera.
+      const remote = await getSetting(FAV_KEY)
+      if (remote) {
+        setFav(remote)
+        try { localStorage.setItem(FAV_KEY, remote) } catch {}
+      }
+    })
   }, [])
 
   const toggleFav = (id: string) => {
@@ -29,6 +38,7 @@ export function AccountCards({ accounts, valueByAccount }: { accounts: Account[]
       if (next) localStorage.setItem(FAV_KEY, next)
       else localStorage.removeItem(FAV_KEY)
     } catch {}
+    setSetting(FAV_KEY, next ?? "")
   }
 
   const ordered = [...accounts].sort((a, b) => (a.id === fav ? -1 : b.id === fav ? 1 : 0))

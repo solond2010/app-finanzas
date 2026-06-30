@@ -19,6 +19,9 @@ export interface Position {
   currency: string
   accountId?: string
   dca?: boolean
+  dcaAmount?: number
+  dcaFreq?: DcaFreq
+  dcaLast?: string
 }
 
 interface InvestmentRow {
@@ -33,6 +36,9 @@ interface InvestmentRow {
   currency: string
   account_id: string | null
   dca: boolean | null
+  dca_amount: number | string | null
+  dca_freq: string | null
+  dca_last: string | null
 }
 
 export interface WatchItem { symbol: string; name: string }
@@ -58,6 +64,12 @@ export function dcaNextDate(plan: DcaPlan): Date {
   return plan.freq === "weekly" ? addWeeks(last, 1) : addMonths(last, 1)
 }
 
+/** Plan DCA de una posición (o null si no tiene aportes programados). */
+export function planOf(p: Position): DcaPlan | null {
+  if (!p.dca || !p.dcaAmount || p.dcaAmount <= 0) return null
+  return { amount: p.dcaAmount, freq: p.dcaFreq ?? "monthly", last: p.dcaLast ?? p.date }
+}
+
 interface InvestmentsContextValue {
   positions: Position[]
   add: (p: Omit<Position, "id">) => string
@@ -66,22 +78,30 @@ interface InvestmentsContextValue {
   watchlist: WatchItem[]
   addWatch: (w: WatchItem) => void
   removeWatch: (symbol: string) => void
-  dcaPlans: Record<string, DcaPlan>
-  setDcaPlan: (positionId: string, plan: DcaPlan | null) => void
   applyDca: (positionId: string, price: number) => number
 }
 
 const InvestmentsContext = createContext<InvestmentsContextValue | null>(null)
 const STORAGE_KEY = "app-finanzas-investments"
 const WATCH_KEY = "app-finanzas-watchlist"
-const DCA_KEY = "app-finanzas-dca"
 
-function toRow(p: Position): InvestmentRow & { user_id: string } {
-  return {
+function toRow(p: Position): Record<string, unknown> {
+  const base: Record<string, unknown> = {
     id: p.id, kind: p.kind, symbol: p.symbol, name: p.name, isin: p.isin ?? null,
     date: p.date, units: p.units, buy_price: p.buyPrice, currency: p.currency,
-    account_id: p.accountId ?? null, dca: p.dca ?? false, user_id: USER_ID,
+    account_id: p.accountId ?? null, dca: p.dca ?? false,
+    user_id: USER_ID,
   }
+  // Las columnas DCA solo se envían cuando hay plan, para que las posiciones
+  // normales sigan sincronizando aunque la migración SQL (supabase-dca.sql) no
+  // se haya ejecutado todavía. planOf() filtra por el flag `dca`, así que un plan
+  // desactivado se ignora aunque queden valores antiguos en la fila.
+  if (p.dcaAmount != null) {
+    base.dca_amount = p.dcaAmount
+    base.dca_freq = p.dcaFreq ?? null
+    base.dca_last = p.dcaLast ?? null
+  }
+  return base
 }
 
 function fromRow(r: InvestmentRow): Position {
@@ -89,23 +109,15 @@ function fromRow(r: InvestmentRow): Position {
     id: r.id, kind: r.kind, symbol: r.symbol, name: r.name, isin: r.isin ?? undefined,
     date: r.date, units: Number(r.units), buyPrice: Number(r.buy_price), currency: r.currency,
     accountId: r.account_id ?? undefined, dca: r.dca ?? false,
+    dcaAmount: r.dca_amount != null ? Number(r.dca_amount) : undefined,
+    dcaFreq: (r.dca_freq as DcaFreq | null) ?? undefined,
+    dcaLast: r.dca_last ?? undefined,
   }
 }
 
 export function InvestmentsProvider({ children }: { children: ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([])
   const [watchlist, setWatchlist] = useState<WatchItem[]>([])
-  const [dcaPlans, setDcaPlans] = useState<Record<string, DcaPlan>>({})
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DCA_KEY)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (raw) setDcaPlans(JSON.parse(raw) as Record<string, DcaPlan>)
-    } catch {
-      // ignore corrupt storage
-    }
-  }, [])
 
   useEffect(() => {
     queueMicrotask(async () => {
@@ -191,35 +203,25 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     supabase.from("watchlist").delete().eq("symbol", symbol).then(() => {}, () => {})
   }
 
-  const persistDca = (next: Record<string, DcaPlan>) => {
-    setDcaPlans(next)
-    try { localStorage.setItem(DCA_KEY, JSON.stringify(next)) } catch {}
-  }
-  const setDcaPlan = (positionId: string, plan: DcaPlan | null) => {
-    const next = { ...dcaPlans }
-    if (plan) next[positionId] = plan
-    else delete next[positionId]
-    persistDca(next)
-  }
-  // Aplica los aportes vencidos al precio actual: suma participaciones y recalcula
-  // el precio medio ponderado. Devuelve el nº de aportes aplicados.
+  // Aplica los aportes vencidos al precio actual: suma participaciones, recalcula
+  // el precio medio ponderado y avanza la fecha de la última aportación. Todo se
+  // guarda en la posición (tabla `investments`). Devuelve el nº de aportes aplicados.
   const applyDca = (positionId: string, price: number): number => {
-    const plan = dcaPlans[positionId]
     const pos = positions.find((p) => p.id === positionId)
-    if (!plan || !pos || !price || price <= 0) return 0
+    const plan = pos ? planOf(pos) : null
+    if (!pos || !plan || !price || price <= 0) return 0
     const due = dcaPendingDates(plan)
     if (due.length === 0) return 0
     const totalAmount = due.length * plan.amount
     const unitsAdded = totalAmount / price
     const newUnits = pos.units + unitsAdded
     const newBuyPrice = newUnits > 0 ? (pos.units * pos.buyPrice + totalAmount) / newUnits : pos.buyPrice
-    update({ ...pos, units: newUnits, buyPrice: newBuyPrice })
-    const lastDate = due[due.length - 1]
-    setDcaPlan(positionId, { ...plan, last: format(lastDate, "yyyy-MM-dd") })
+    const lastDate = format(due[due.length - 1], "yyyy-MM-dd")
+    update({ ...pos, units: newUnits, buyPrice: newBuyPrice, dcaLast: lastDate })
     return due.length
   }
 
-  return <InvestmentsContext.Provider value={{ positions, add, update, remove, watchlist, addWatch, removeWatch, dcaPlans, setDcaPlan, applyDca }}>{children}</InvestmentsContext.Provider>
+  return <InvestmentsContext.Provider value={{ positions, add, update, remove, watchlist, addWatch, removeWatch, applyDca }}>{children}</InvestmentsContext.Provider>
 }
 
 export function useInvestments() {
