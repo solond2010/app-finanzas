@@ -58,15 +58,17 @@ function WatchlistAddDialog({ open, onOpenChange }: { open: boolean; onOpenChang
 
   useEffect(() => {
     if (!open) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    /* eslint-disable react-hooks/set-state-in-effect */
     setQuery("")
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setResults([])
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [open])
 
   useEffect(() => {
     const q = query.trim()
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (q.length < 2) { setResults([]); return }
+    /* eslint-enable react-hooks/set-state-in-effect */
     const id = setTimeout(() => {
       fetch(`/api/asset-search?q=${encodeURIComponent(q)}`)
         .then((r) => r.json())
