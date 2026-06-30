@@ -9,6 +9,7 @@ import { useInvestments, usePortfolioValue, type Position } from "@/lib/investme
 import { PositionDialog } from "@/components/investments/position-dialog"
 import { PositionDetailDialog } from "@/components/investments/position-detail-dialog"
 import { WatchlistRow } from "@/components/investments/watchlist"
+import { ProjectionSimulator } from "@/components/investments/projection"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { chartFormatter } from "@/lib/format"
 import { Sensitive } from "@/components/shared/sensitive"
@@ -89,6 +90,7 @@ export default function InversionesPage() {
   }), [positions, quotes])
 
   const baseCurrency = (positions[0]?.currency ?? "EUR") as CurrencyCode
+  const ahorros0 = state.accounts.filter((a) => a.tipo !== "inversion").reduce((s, a) => s + a.saldo, 0)
 
   const activosData = useMemo(
     () => rows.map((r) => ({ name: r.p.name, value: Math.round(r.value) })).filter((d) => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 8),
@@ -211,6 +213,8 @@ export default function InversionesPage() {
               )
             })}
           </section>
+
+          <ProjectionSimulator ahorros0={ahorros0} inversiones0={value} />
         </>
       )}
 
