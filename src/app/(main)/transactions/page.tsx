@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { AreaChart } from "@tremor/react"
 import { ArrowDownRight, ArrowUpRight, CalendarClock, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp } from "lucide-react"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
+import { ImportCsvButton } from "@/components/dashboard/import-csv-button"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { useFinance } from "@/lib/store"
@@ -78,10 +79,13 @@ export default function IngresosGastosPage() {
           <p className="page-section-label">Control financiero</p>
           <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">Ingresos y Gastos</h1>
         </div>
-        <div className="flex items-center gap-1 self-start rounded-full border border-border bg-card p-1 sm:self-auto">
-          <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-          <span className="w-28 text-center text-sm font-medium capitalize text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
-          <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <ImportCsvButton />
+          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+            <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
+            <span className="w-28 text-center text-sm font-medium capitalize text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
+            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
+          </div>
         </div>
       </header>
 
