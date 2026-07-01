@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { AreaChart } from "@tremor/react"
-import { ArrowDownRight, ArrowUpRight, CalendarClock, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp } from "lucide-react"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { ImportCsvButton } from "@/components/dashboard/import-csv-button"
 import { getSetting, setSetting } from "@/lib/settings"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountLogo } from "@/components/dashboard/account-logo"
-import { useFinance } from "@/lib/store"
-import { getMonthTotalsByString, getSavingsRate } from "@/lib/calculations"
+import { useFinance, generateId } from "@/lib/store"
+import { getMonthTotalsByString, getSavingsRate, getUpcomingRecurring } from "@/lib/calculations"
+import { useToast } from "@/components/ui/toast"
 import { formatMonth, isInitialBalanceTransaction, chartFormatter } from "@/lib/format"
 import { formatMoney } from "@/lib/currency"
 import { AnimatedNumber } from "@/components/shared/animated-number"
@@ -31,7 +32,8 @@ function Gauge({ value, max, color = "#3b82f6" }: { value: number; max: number; 
 }
 
 export default function IngresosGastosPage() {
-  const { state } = useFinance()
+  const { state, dispatch } = useFinance()
+  const { toast } = useToast()
   const today = useMemo(() => new Date(), [])
   const [monthOffset, setMonthOffset] = useState(0)
   const [rangeM, setRangeM] = useState(6)
@@ -64,6 +66,33 @@ export default function IngresosGastosPage() {
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
+
+  // Próximos pagos: se calculan a partir de transacciones marcadas como
+  // recurrentes (tag "recurrente"), no dependen del mes seleccionado en el
+  // resto de la página — siempre miran hacia el próximo vencimiento real.
+  const upcomingRecurring = useMemo(() => getUpcomingRecurring(state.transactions).slice(0, 4), [state.transactions])
+  const registerRecurring = (item: ReturnType<typeof getUpcomingRecurring>[number]) => {
+    dispatch({
+      type: "ADD_TRANSACTION",
+      payload: {
+        id: generateId(),
+        cuenta_id: item.cuenta_id,
+        monto: item.monto,
+        fecha: item.nextDate,
+        tipo: item.tipo,
+        categoria: item.categoria,
+        es_necesidad: item.es_necesidad,
+        descripcion: item.descripcion,
+        tags: item.tags,
+      },
+    })
+    toast("Pago registrado", "success")
+  }
+  const recurringDateLabel = (item: ReturnType<typeof getUpcomingRecurring>[number]) => {
+    if (item.overdueDays > 0) return `Atrasado ${item.overdueDays}d`
+    if (item.overdueDays === 0) return "Hoy"
+    return new Date(item.nextDate).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
+  }
 
   const totalBalance = state.accounts.reduce((s, a) => s + a.saldo, 0)
   const accCount = state.accounts.length
@@ -159,11 +188,30 @@ export default function IngresosGastosPage() {
         {/* Próximos pagos */}
         <div className={`${CARD} flex min-w-0 flex-col`}>
           <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><CalendarClock className="h-4 w-4 text-primary" /> Próximos pagos</p>
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground"><CalendarClock className="h-5 w-5" /></span>
-            <p className="text-sm font-medium text-foreground">Sin pagos programados</p>
-            <p className="max-w-[220px] text-xs text-muted-foreground">Marca transacciones como recurrentes para verlas aquí.</p>
-          </div>
+          {upcomingRecurring.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground"><CalendarClock className="h-5 w-5" /></span>
+              <p className="text-sm font-medium text-foreground">Sin pagos programados</p>
+              <p className="max-w-[220px] text-xs text-muted-foreground">Marca transacciones como recurrentes para verlas aquí.</p>
+            </div>
+          ) : (
+            <div className="mt-3 flex-1 space-y-2">
+              {upcomingRecurring.map((item) => (
+                <div key={item.key} className="flex items-center gap-2 rounded-xl border border-border p-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold text-foreground">{item.descripcion || item.categoria}</p>
+                    <p className={cn("text-[11px] font-medium", item.overdueDays > 0 ? "text-red-500" : "text-muted-foreground")}>{recurringDateLabel(item)}</p>
+                  </div>
+                  <span className={cn("shrink-0 text-xs font-bold tabular-nums", item.tipo === "ingreso" ? "text-emerald-500" : "text-foreground")}>
+                    <Sensitive>{item.tipo === "ingreso" ? "+" : "-"}{formatMoney(item.monto, "EUR")}</Sensitive>
+                  </span>
+                  <button onClick={() => registerRecurring(item)} aria-label="Registrar pago" title="Registrar pago" className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-emerald-500/10 hover:text-emerald-500">
+                    <Check className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

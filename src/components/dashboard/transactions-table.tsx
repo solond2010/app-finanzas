@@ -166,6 +166,15 @@ function TransactionForm({
           />
           <span className="text-sm text-muted-foreground">Es necesidad</span>
         </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={tags.includes("recurrente")}
+            onChange={(e) => setTags(e.target.checked ? [...tags, "recurrente"] : tags.filter((t) => t !== "recurrente"))}
+            className="rounded border-muted-foreground"
+          />
+          <span className="text-sm text-muted-foreground">Es recurrente (mensual)</span>
+        </label>
       </div>
 
       <div className="space-y-1.5">
@@ -175,7 +184,7 @@ function TransactionForm({
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag() } }}
-            placeholder="Ej: recurrente"
+            placeholder="Ej: suscripción"
             className="flex-1"
           />
           <Button type="button" variant="outline" size="sm" onClick={addTag}>+</Button>

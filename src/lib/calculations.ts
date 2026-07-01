@@ -204,3 +204,54 @@ export function getGastosBudgetProgress(accounts: Account[], transactions: Trans
     progreso: Math.min(Math.round((gastado / gastosAccount.limite_mensual) * 100), 100),
   }
 }
+
+export interface UpcomingRecurring {
+  key: string
+  cuenta_id: string
+  categoria: string
+  descripcion: string
+  monto: number
+  tipo: "ingreso" | "gasto"
+  es_necesidad: boolean
+  tags: string[]
+  nextDate: string
+  overdueDays: number
+}
+
+// Una transacción "recurrente" (tag `recurrente`) se agrupa con las demás de
+// la misma cuenta+categoría+descripción+tipo; la más reciente del grupo marca
+// el ritmo. Se asume cadencia mensual (el caso de uso habitual: nómina,
+// alquiler, suscripciones) y el próximo vencimiento es esa fecha + 1 mes.
+export function getUpcomingRecurring(transactions: Transaction[]): UpcomingRecurring[] {
+  const groups = new Map<string, Transaction[]>()
+  for (const t of transactions) {
+    if (!t.tags?.includes("recurrente") || isTransfer(t)) continue
+    const key = `${t.cuenta_id}|${t.categoria}|${t.descripcion}|${t.tipo}`
+    const arr = groups.get(key)
+    if (arr) arr.push(t)
+    else groups.set(key, [t])
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const out: UpcomingRecurring[] = []
+  for (const [key, txns] of groups) {
+    const last = txns.reduce((a, b) => (new Date(a.fecha) > new Date(b.fecha) ? a : b))
+    const next = new Date(last.fecha)
+    next.setMonth(next.getMonth() + 1)
+    const overdueDays = Math.round((today.getTime() - next.getTime()) / 86400000)
+    out.push({
+      key,
+      cuenta_id: last.cuenta_id,
+      categoria: last.categoria,
+      descripcion: last.descripcion,
+      monto: last.monto,
+      tipo: last.tipo,
+      es_necesidad: last.es_necesidad,
+      tags: last.tags,
+      nextDate: next.toISOString().split("T")[0],
+      overdueDays,
+    })
+  }
+  return out.sort((a, b) => a.nextDate.localeCompare(b.nextDate))
+}
