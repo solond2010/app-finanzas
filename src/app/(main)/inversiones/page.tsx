@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { AreaChart, DonutChart } from "@tremor/react"
-import { Plus, TrendingUp, TrendingDown, LineChart, FileDown, Target, Pencil } from "lucide-react"
+import { Plus, TrendingUp, TrendingDown, LineChart, FileDown, Target, Pencil, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFinance } from "@/lib/store"
 import { useInvestments, usePortfolioValue, assetClassOf, ASSET_CLASS_LABELS, type Position } from "@/lib/investments"
@@ -70,6 +70,7 @@ export default function InversionesPage() {
   const [hist, setHist] = useState<HistMap>({})
   const [exporting, setExporting] = useState(false)
   const [netWorthTarget, setNetWorthTarget] = useState(0)
+  const [xrayMonthOffset, setXrayMonthOffset] = useState(0)
 
   useEffect(() => {
     queueMicrotask(async () => {
@@ -161,11 +162,15 @@ export default function InversionesPage() {
     return Object.entries(m).map(([name, v]) => ({ name, value: Math.round(v) })).filter((d) => d.value > 0)
   }, [tipologiaData, liquidezCuentas])
 
-  const monthKey = useMemo(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` }, [])
-  const monthLabel = useMemo(() => new Date().toLocaleDateString("es-ES", { month: "long", year: "numeric" }), [])
+  // El informe puede exportarse para cualquiera de los últimos 6 meses (mismo
+  // rango que el gráfico de evolución), no solo el mes en curso.
+  const MAX_XRAY_MONTH_OFFSET = 5
+  const xraySelectedDate = useMemo(() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - xrayMonthOffset); return d }, [xrayMonthOffset])
+  const xrayMonthKey = useMemo(() => `${xraySelectedDate.getFullYear()}-${String(xraySelectedDate.getMonth() + 1).padStart(2, "0")}`, [xraySelectedDate])
+  const xrayMonthLabel = useMemo(() => xraySelectedDate.toLocaleDateString("es-ES", { month: "long", year: "numeric" }), [xraySelectedDate])
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
-  const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, monthKey), [analysisTransactions, monthKey])
-  const investmentInflow = useMemo(() => getMonthlyInvestmentInflow(analysisTransactions, state.accounts, monthKey), [analysisTransactions, state.accounts, monthKey])
+  const xrayMonthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, xrayMonthKey), [analysisTransactions, xrayMonthKey])
+  const xrayInvestmentInflow = useMemo(() => getMonthlyInvestmentInflow(analysisTransactions, state.accounts, xrayMonthKey), [analysisTransactions, state.accounts, xrayMonthKey])
 
   // Evolución del patrimonio (6 meses) para el gráfico del informe: mismo cálculo
   // que el Dashboard (cuentas históricas - saldo manual de inversión + valor de
@@ -180,6 +185,12 @@ export default function InversionesPage() {
     const label = d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" })
     return { label, value: Math.round(getNetWorthAtMonth(state.accounts, state.transactions, key) - investmentAccountSaldo + value) }
   }), [state.accounts, state.transactions, investmentAccountSaldo, value])
+  // Patrimonio a cierre del mes elegido para el informe: mismo cálculo que el
+  // histórico de arriba (para el mes actual coincide con `netWorth`).
+  const xrayNetWorth = useMemo(
+    () => xrayMonthOffset === 0 ? netWorth : Math.round(getNetWorthAtMonth(state.accounts, state.transactions, xrayMonthKey) - investmentAccountSaldo + value),
+    [xrayMonthOffset, netWorth, state.accounts, state.transactions, xrayMonthKey, investmentAccountSaldo, value]
+  )
 
   const exportXray = async () => {
     setExporting(true)
@@ -188,9 +199,9 @@ export default function InversionesPage() {
       generateXrayPdf({
         owner: "Mohamed",
         currency: baseCurrency,
-        month: monthLabel,
-        netWorth, netWorthTarget,
-        ingresos: monthTotals.ingresos, gastos: monthTotals.gastos, investmentInflow,
+        month: xrayMonthLabel,
+        netWorth: xrayNetWorth, netWorthTarget,
+        ingresos: xrayMonthTotals.ingresos, gastos: xrayMonthTotals.gastos, investmentInflow: xrayInvestmentInflow,
         value, invested, pnl, pnlPct,
         byType: byTypeForReport,
         netWorthTrend,
@@ -227,9 +238,20 @@ export default function InversionesPage() {
           </button>
           <Button onClick={openNew} className="gap-1.5 rounded-full"><Plus className="h-4 w-4" /> Añadir inversión</Button>
           {positions.length > 0 && (
-            <Button onClick={exportXray} disabled={exporting} variant="outline" className="gap-1.5 rounded-full">
-              <FileDown className="h-4 w-4" /> {exporting ? "Generando…" : "Descargar X-Ray PDF"}
-            </Button>
+            <>
+              <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1" title="Mes del informe X-Ray">
+                <button onClick={() => setXrayMonthOffset((o) => Math.min(MAX_XRAY_MONTH_OFFSET, o + 1))} disabled={xrayMonthOffset >= MAX_XRAY_MONTH_OFFSET} aria-label="Mes anterior del informe" className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none">
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <span className="w-24 text-center text-xs font-medium capitalize text-foreground">{xrayMonthLabel}</span>
+                <button onClick={() => setXrayMonthOffset((o) => Math.max(0, o - 1))} disabled={xrayMonthOffset <= 0} aria-label="Mes siguiente del informe" className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none">
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <Button onClick={exportXray} disabled={exporting} variant="outline" className="gap-1.5 rounded-full">
+                <FileDown className="h-4 w-4" /> {exporting ? "Generando…" : "Descargar X-Ray PDF"}
+              </Button>
+            </>
           )}
         </div>
       </header>

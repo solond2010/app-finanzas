@@ -38,13 +38,14 @@ export interface XrayData {
   positions: XrayPosition[]
 }
 
-const BRAND: [number, number, number] = [59, 91, 219]
+// Azul cobalto real de la app (oklch(0.52 0.17 264), el mismo --primary de globals.css).
+const BRAND: [number, number, number] = [52, 97, 201]
 const INK: [number, number, number] = [17, 24, 39]
 const MUTED: [number, number, number] = [107, 114, 128]
 const GREEN: [number, number, number] = [16, 185, 129]
 const RED: [number, number, number] = [239, 68, 68]
 const TRACK: [number, number, number] = [229, 231, 235]
-const PIE_COLORS = ["#3b5bdb", "#0ea5e9", "#6366f1", "#8b5cf6", "#0891b2", "#64748b", "#10b981", "#f59e0b"]
+const PIE_COLORS = ["rgb(52,97,201)", "#0ea5e9", "#6366f1", "#8b5cf6", "#0891b2", "#64748b", "#10b981", "#f59e0b"]
 
 interface Tile { label: string; value: string; color?: [number, number, number] }
 
@@ -79,7 +80,7 @@ function renderBarChart(data: { label: string; value: number }[], w: number, h: 
     const barH = Math.max(2, (d.value / max) * chartH)
     const x = i * (barW + gap)
     const y = padTop + (chartH - barH)
-    ctx.fillStyle = "rgb(59,91,219)"
+    ctx.fillStyle = "rgb(52,97,201)"
     roundRectPath(ctx, x, y, barW, barH, 3)
     ctx.fill()
     ctx.fillStyle = "#6b7280"
