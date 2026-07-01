@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AreaChart } from "@tremor/react"
-import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, Gauge, PiggyBank, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Gauge, PiggyBank, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -14,7 +14,7 @@ import { usePortfolioValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getSavingsRate } from "@/lib/calculations"
+import { filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getSavingsRate } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -171,6 +171,58 @@ export default function DashboardContent() {
     toast("Cuenta creada", "success")
   }
 
+  // Presupuesto del mes seleccionado, mismo cálculo que MonthlyBudget, para
+  // incluirlo también en el PDF exportado.
+  const budgetRows = useMemo(() => {
+    return state.budgets
+      .filter((b) => b.month === selectedMonth)
+      .map((budget) => {
+        const category = state.categories.find((c) => c.id === budget.category_id)
+        const gastado = analysisTransactions
+          .filter((t) => t.categoria === category?.name && t.fecha.startsWith(selectedMonth) && t.tipo === "gasto")
+          .reduce((s, t) => s + t.monto, 0)
+        return { categoria: category?.name ?? "Sin categoría", gastado, limite: budget.amount }
+      })
+      .filter((b) => b.limite > 0)
+  }, [state.budgets, state.categories, analysisTransactions, selectedMonth])
+
+  const [exportingPdf, setExportingPdf] = useState(false)
+  const handleExportDashboard = async () => {
+    setExportingPdf(true)
+    try {
+      const { generateDashboardPdf } = await import("@/lib/dashboard-pdf")
+      generateDashboardPdf({
+        owner: "Mohamed",
+        month: formatMonth(selectedDate),
+        netWorth: netWorthDisplay,
+        netWorthTrend: netWorthTrend.map((d) => ({ label: d.mes, value: Math.round(d.patrimonio) })),
+        rangeMonths,
+        score,
+        scoreLabel: scoreTier.label,
+        scoreFactors,
+        ingresos: monthTotals.ingresos,
+        gastos: monthTotals.gastos,
+        savingsRate,
+        annualIngresos,
+        annualGastos,
+        annualNeto,
+        year,
+        accounts: sortedAccounts.map((a) => ({ nombre: a.nombre, tipo: typeConfig[a.tipo]?.label ?? a.tipo, banco: a.banco, saldo: a.saldo })),
+        budgets: budgetRows,
+        spending: topSpending.map((c) => ({ categoria: c.categoria, monto: c.monto })),
+        transactions: filterTransactionsByMonth(analysisTransactions, selectedMonth).map((t) => ({
+          fecha: t.fecha,
+          descripcion: t.descripcion,
+          categoria: t.categoria,
+          tipo: t.tipo,
+          monto: t.monto,
+        })),
+      })
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
   return (
     <div className="content-fade w-full max-w-full space-y-6 overflow-x-hidden sm:space-y-7">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -178,10 +230,17 @@ export default function DashboardContent() {
           <p className="page-section-label">Resumen general</p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Hola, Mohamed</h1>
         </div>
-        <div className="flex items-center gap-1 self-start rounded-full border border-border bg-card p-1 sm:self-auto">
-          <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-          <span className="w-28 text-center text-sm font-medium capitalize text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
-          <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+            <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
+            <span className="w-28 text-center text-sm font-medium capitalize text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
+            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
+          </div>
+          {hasAnyData && (
+            <Button onClick={handleExportDashboard} disabled={exportingPdf} variant="outline" className="gap-1.5 rounded-full">
+              <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Descargar PDF"}
+            </Button>
+          )}
         </div>
       </header>
 
