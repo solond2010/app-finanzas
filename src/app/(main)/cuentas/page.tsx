@@ -17,6 +17,7 @@ import { Wallet as WalletIcon, Sparkles, Plus } from "lucide-react"
 import { formatMoney, currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig, typeLabels } from "@/lib/account-types"
+import { AccountLogo } from "@/components/dashboard/account-logo"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
@@ -75,7 +76,6 @@ export default function CuentasPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {state.accounts.map((account, index) => {
               const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
-              const Icon = cfg.icon
               return (
                 <button
                   key={account.id}
@@ -87,9 +87,7 @@ export default function CuentasPage() {
                   <div className="relative z-10 space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`rounded-2xl bg-background/60 p-2.5 ring-1 ring-border/15`}>
-                          <Icon className="h-5 w-5" style={{ color: cfg.color }} />
-                        </div>
+                        <AccountLogo account={account} className="h-11 w-11" />
                         <div>
                           <h3 className="font-semibold text-base">{account.nombre}</h3>
                           <p className="text-xs text-muted-foreground">{account.banco || "Sin banco"}</p>
