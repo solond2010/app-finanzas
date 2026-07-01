@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
-import Script from "next/script"
+import { cookies } from "next/headers"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -18,24 +18,23 @@ export const metadata: Metadata = {
   description: "Dashboard financiero personal",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // El tema se lee de una cookie en el servidor para renderizar la clase "dark"
+  // directamente en el HTML. Así no hay flash ni desincronización: React hidrata
+  // con la misma clase que ya trae el <html>, sin necesidad de un script previo
+  // (que además generaba avisos de "script tag" y podía ser borrado al hidratar).
+  const isDark = (await cookies()).get("app-finanzas-theme")?.value === "dark"
+
   return (
-    <html lang="es" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
-      <head>
-        <Script id="theme-init" strategy="beforeInteractive">
-          {`(() => {
-            try {
-              const stored = localStorage.getItem('app-finanzas-theme');
-              const theme = stored === 'dark' ? 'dark' : 'light';
-              document.documentElement.classList.toggle('dark', theme === 'dark');
-            } catch (e) {}
-          })()`}
-        </Script>
-      </head>
+    <html
+      lang="es"
+      className={`${geistSans.variable} ${geistMono.variable}${isDark ? " dark" : ""}`}
+      suppressHydrationWarning
+    >
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
       </body>

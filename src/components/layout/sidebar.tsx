@@ -64,10 +64,33 @@ export function Sidebar() {
     return () => { document.body.style.overflow = "" }
   }, [mobileOpen])
 
+  // El servidor ya renderiza la clase "dark" según la cookie, así que al montar
+  // solo sincronizamos el estado con la clase real del <html>. Además migramos a
+  // usuarios antiguos que solo tuvieran el tema en localStorage: si falta la
+  // cookie, la reponemos desde localStorage y aplicamos la clase.
+  useEffect(() => {
+    const hasCookie = document.cookie.includes("app-finanzas-theme=")
+    if (!hasCookie) {
+      const stored = localStorage.getItem("app-finanzas-theme")
+      if (stored) {
+        const dark = stored === "dark"
+        document.documentElement.classList.toggle("dark", dark)
+        document.cookie = `app-finanzas-theme=${dark ? "dark" : "light"};path=/;max-age=31536000;samesite=lax`
+      }
+    }
+    setIsDark(document.documentElement.classList.contains("dark"))
+  }, [])
+
   const toggleTheme = () => {
-    const next = !isDark
+    // Calculamos el siguiente estado a partir de la clase REAL del DOM, no del
+    // estado de React (que podría ir desfasado). Así el primer clic siempre
+    // alterna el tema de forma fiable. Persistimos en cookie (para el SSR sin
+    // flash) y en localStorage (compatibilidad).
+    const next = !document.documentElement.classList.contains("dark")
     document.documentElement.classList.toggle("dark", next)
-    localStorage.setItem("app-finanzas-theme", next ? "dark" : "light")
+    const value = next ? "dark" : "light"
+    localStorage.setItem("app-finanzas-theme", value)
+    document.cookie = `app-finanzas-theme=${value};path=/;max-age=31536000;samesite=lax`
     setIsDark(next)
   }
 
