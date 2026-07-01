@@ -351,10 +351,18 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
           <TableBody>
             {sorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
-                  <div className="flex flex-col items-center gap-2">
-                    <Search className="h-6 w-6 text-muted-foreground/40" />
-                    <span className="text-sm text-muted-foreground">No hay transacciones aquí</span>
+                <TableCell colSpan={8} className="py-10">
+                  <div className="flex flex-col items-center gap-3 text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+                      <Search className="h-6 w-6 text-muted-foreground/60" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-semibold text-foreground">No hay transacciones</p>
+                      <p className="text-xs text-muted-foreground">Registra tu primer movimiento para verlo aquí.</p>
+                    </div>
+                    <Button size="sm" className="gap-1" onClick={() => setShowNew(true)}>
+                      <Plus className="h-3.5 w-3.5" /> Nueva transacción
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>

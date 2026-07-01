@@ -179,11 +179,17 @@ export function SinkingFundsGrid() {
       </CardHeader>
       <CardContent>
         {state.sinkingFunds.length === 0 ? (
-          <div className="text-center text-sm text-muted-foreground py-8">
-            <div className="flex flex-col items-center gap-2 py-6">
-              <Target className="h-8 w-8 text-muted-foreground/40" />
-              <span className="text-sm text-muted-foreground">No hay metas de ahorro. ¡Crea la primera!</span>
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10">
+              <Target className="h-6 w-6 text-amber-500" />
             </div>
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold text-foreground">Aún no tienes metas de ahorro</p>
+              <p className="text-xs text-muted-foreground">Define un objetivo y sigue tu progreso mes a mes.</p>
+            </div>
+            <Button size="sm" className="gap-1" onClick={() => setShowNew(true)}>
+              <Plus className="h-3.5 w-3.5" /> Crear primera meta
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

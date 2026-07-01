@@ -64,7 +64,7 @@
 :root {
   --mobile-header-h: 52px;
   --bottom-nav-h: 64px;
-  --background: oklch(0.975 0 0);
+  --background: oklch(0.967 0.002 264);
   --foreground: oklch(0.205 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.205 0 0);
@@ -375,6 +375,33 @@
   border: 1px solid var(--border);
 }
 
+/* Subtle elevation for real card surfaces. The compound selector targets
+   elements that are both bordered and card-backgrounded (actual cards),
+   leaving chips, pills and progress bars untouched. */
+.border-border.bg-card {
+  box-shadow:
+    0 1px 2px -1px oklch(0 0 0 / 0.05),
+    0 8px 20px -16px oklch(0 0 0 / 0.10);
+  transition:
+    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s ease;
+}
+
+.border-border.bg-card:hover {
+  box-shadow:
+    0 2px 4px -1px oklch(0 0 0 / 0.06),
+    0 12px 30px -18px oklch(0 0 0 / 0.16);
+}
+
+.dark .border-border.bg-card {
+  box-shadow: 0 1px 2px -1px oklch(0 0 0 / 0.35);
+}
+
+.dark .border-border.bg-card:hover {
+  box-shadow: 0 6px 20px -12px oklch(0 0 0 / 0.5);
+  border-color: color-mix(in oklch, var(--foreground), transparent 82%);
+}
+
 .glass-card-hover {
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
 }
@@ -490,6 +517,15 @@ svg .text-tremor-label, .text-tremor-label { color: var(--tremor-label); fill: v
 .dark .dark\:ring-dark-tremor-ring { --tw-ring-color: var(--tremor-ring); }
 .border-tremor-border { border-color: var(--tremor-border); }
 .dark .dark\:border-dark-tremor-border { border-color: var(--tremor-border); }
+
+/* First/last x-axis labels anchor inward so they don't clip against the
+   recharts <svg> edge (which has overflow:hidden). */
+.recharts-cartesian-axis-ticks .recharts-cartesian-axis-tick:first-child text {
+  text-anchor: start;
+}
+.recharts-cartesian-axis-ticks .recharts-cartesian-axis-tick:last-child text {
+  text-anchor: end;
+}
 
 /* ── Tremor chart tooltip ── */
 
