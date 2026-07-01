@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { MetricCard } from "@/components/dashboard/metric-card"
 import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
@@ -23,48 +24,6 @@ const EmptyPanel = memo(function EmptyPanel({ icon: Icon, title, text }: { icon:
       <div className="space-y-1">
         <p className="text-sm font-semibold">{title}</p>
         <p className="mx-auto max-w-xs text-xs text-muted-foreground">{text}</p>
-      </div>
-    </div>
-  )
-})
-
-const MetricCard = memo(function MetricCard({
-  label,
-  value,
-  subtitle,
-  icon: Icon,
-  tone,
-  delay,
-}: {
-  label: string
-  value: React.ReactNode
-  subtitle: React.ReactNode
-  icon: React.ElementType
-  tone: "emerald" | "red" | "blue" | "amber" | "violet"
-  delay: number
-}) {
-  const tones = {
-    emerald: "from-emerald-500/12 to-emerald-500/[0.02] text-emerald-500 ring-emerald-500/15",
-    red: "from-red-500/12 to-red-500/[0.02] text-red-500 ring-red-500/15",
-    blue: "from-blue-500/12 to-blue-500/[0.02] text-blue-500 ring-blue-500/15",
-    amber: "from-amber-500/12 to-amber-500/[0.02] text-amber-500 ring-amber-500/15",
-    violet: "from-violet-500/12 to-violet-500/[0.02] text-violet-500 ring-violet-500/15",
-  }
-
-  return (
-    <div className="stagger-fade glass-card rounded-[24px] p-5 card-glow glass-card-hover" style={{ animationDelay: `${delay}ms` }}>
-      <div className={`absolute inset-0 bg-gradient-to-br ${tones[tone]} opacity-75 rounded-[24px]`} />
-      <div className="relative z-10 space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="page-section-label">{label}</p>
-          <div className={`rounded-2xl bg-background/60 p-2.5 ring-1 ${tones[tone]}`}>
-            <Icon className="h-4 w-4" />
-          </div>
-        </div>
-        <div>
-          <p className="text-[30px] font-bold leading-none tracking-tight tabular-nums sm:text-[32px]">{value}</p>
-          <p className="mt-2 text-xs text-muted-foreground">{subtitle}</p>
-        </div>
       </div>
     </div>
   )

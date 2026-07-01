@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Plus, ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, Send } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button"
@@ -268,6 +268,25 @@ export function QuickActionsFAB() {
   const [activeModal, setActiveModal] = useState<"gasto" | "ingreso" | "traspaso" | null>(null)
   const { toast } = useToast()
 
+  // En móvil el FAB flota fijo sobre el contenido con scroll y puede acabar
+  // tapando cifras justo debajo (ej. la puntuación financiera o una tarjeta
+  // de resumen). Al detectar scroll activo lo encogemos y atenuamos, y
+  // recupera su tamaño normal en cuanto el usuario deja de desplazarse.
+  const [isScrolling, setIsScrolling] = useState(false)
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>
+    const onScroll = () => {
+      setIsScrolling(true)
+      clearTimeout(timeout)
+      timeout = setTimeout(() => setIsScrolling(false), 350)
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      clearTimeout(timeout)
+    }
+  }, [])
+
   const handleAddTransaction = (t: Transaction) => {
     dispatch({ type: "ADD_TRANSACTION", payload: t })
     setActiveModal(null)
@@ -317,7 +336,11 @@ export function QuickActionsFAB() {
 
   return (
     <>
-      <div className="fixed right-5 bottom-[calc(var(--bottom-nav-h)+1rem)] z-50 flex flex-col items-end gap-3 lg:right-8 lg:bottom-8">
+      <div
+        className={`fixed right-5 bottom-[calc(var(--bottom-nav-h)+1rem)] z-50 flex flex-col items-end gap-3 transition-all duration-300 lg:right-8 lg:bottom-8 ${
+          isScrolling && !open ? "scale-90 opacity-60" : "scale-100 opacity-100"
+        }`}
+      >
         {open && (
           <div className="flex flex-col gap-2">
             <button

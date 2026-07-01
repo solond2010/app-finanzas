@@ -6,7 +6,7 @@ export type MetricTone = "emerald" | "red" | "blue" | "amber" | "violet"
 interface MetricCardProps {
   label: string
   value: React.ReactNode
-  subtitle: string
+  subtitle: React.ReactNode
   icon: React.ElementType
   tone: MetricTone
   delta?: number
