@@ -52,8 +52,8 @@ export function AccountCards({ accounts, valueByAccount }: { accounts: Account[]
           <div
             key={a.id}
             className={cn(
-              "relative flex w-[240px] shrink-0 flex-col justify-between rounded-[20px] border p-4",
-              isFav ? "border-transparent bg-primary text-primary-foreground" : "border-border bg-card"
+              "relative flex w-[240px] shrink-0 flex-col justify-between rounded-[20px] border p-4 transition-all duration-300 hover:-translate-y-0.5",
+              isFav ? "border-transparent bg-primary text-primary-foreground shadow-[0_14px_34px_-20px_var(--primary)]" : "border-border bg-card hover:border-foreground/15"
             )}
           >
             <button

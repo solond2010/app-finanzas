@@ -9,11 +9,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { MetricCard } from "@/components/dashboard/metric-card"
+import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
+
+const NetWorthTooltip = createChartTooltip(["patrimonio"], ["blue"])
+const SummaryTooltip = createChartTooltip(["ingresos", "gastos"], ["emerald", "red"])
+const CategoryTooltip = createChartTooltip(["monto"], ["violet"])
 
 const EmptyPanel = memo(function EmptyPanel({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
   return (
@@ -158,7 +163,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {state.accounts.length === 0 ? <EmptyPanel icon={Wallet} title="Sin patrimonio registrado" text="Crea cuentas para ver la evolución de tu riqueza neta." /> : (
-              <LineChart data={netWorthHistory} index="mes" categories={["patrimonio"]} colors={["blue"]} valueFormatter={chartFormatter} yAxisWidth={72} className="h-[310px]" showAnimation />
+              <LineChart data={netWorthHistory} index="mes" categories={["patrimonio"]} colors={["blue"]} valueFormatter={chartFormatter} yAxisWidth={72} customTooltip={NetWorthTooltip} className="h-[310px]" showAnimation />
             )}
           </CardContent>
         </Card>
@@ -169,7 +174,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {!hasData ? <EmptyPanel icon={BarChart3} title="Aún no hay movimientos" text="Añade ingresos y gastos para comparar tu ritmo mensual." /> : (
-              <BarChart data={summaries} index="mes" categories={["ingresos", "gastos"]} colors={["emerald", "red"]} valueFormatter={chartFormatter} yAxisWidth={64} className="h-[310px]" showAnimation />
+              <BarChart data={summaries} index="mes" categories={["ingresos", "gastos"]} colors={["emerald", "red"]} valueFormatter={chartFormatter} yAxisWidth={64} customTooltip={SummaryTooltip} className="h-[310px]" showAnimation />
             )}
           </CardContent>
         </Card>
@@ -183,7 +188,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {categoryBreakdown.length === 0 ? <EmptyPanel icon={Layers3} title="Sin gasto categorizado" text="Cuando registres gastos, aquí verás las categorías que más pesan." /> : (
-              <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={72} className="h-[340px]" showAnimation layout="vertical" />
+              <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={72} customTooltip={CategoryTooltip} className="h-[340px]" showAnimation layout="vertical" />
             )}
           </CardContent>
         </Card>

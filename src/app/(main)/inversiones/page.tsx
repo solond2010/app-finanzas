@@ -13,6 +13,8 @@ import { AccountCards } from "@/components/investments/account-cards"
 import { ProjectionSimulator } from "@/components/investments/projection"
 import { AssetAnalysis } from "@/components/investments/asset-analysis"
 import { DcaPanel } from "@/components/investments/dca-panel"
+import { createChartTooltip } from "@/components/shared/chart-tooltip"
+import { TickerTile } from "@/components/shared/ticker-tile"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { chartFormatter, isInitialBalanceTransaction } from "@/lib/format"
 import { getMonthTotalsByString, getMonthlyInvestmentInflow, getNetWorthAtMonth } from "@/lib/calculations"
@@ -24,7 +26,12 @@ const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_
 // Card de evolución de cartera: la cifra más importante de la página, con el
 // mismo tinte azul-marino que el hero de patrimonio del Dashboard.
 const CARD_HERO = "rounded-[24px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+const CarteraTooltip = createChartTooltip(["Cartera"], ["blue"])
 const DONUT_COLORS = ["blue", "cyan", "indigo", "violet", "sky", "slate", "emerald", "amber"]
+// Mismos colores que DONUT_COLORS pero en hex, para la barra segmentada de
+// "Por clase de activo" (no usa un componente de Tremor, así que no puede
+// resolver los nombres de color por clase CSS).
+const CLASS_HEX = ["#3f6bff", "#06b6d4", "#6366f1", "#8b5cf6", "#0ea5e9", "#64748b", "#10b981", "#f59e0b"]
 const EVO_TABS = [{ id: "rendimiento", label: "Rendimiento" }, { id: "activos", label: "Activos" }, { id: "tipologia", label: "Tipología" }] as const
 const POS_FILTERS = [{ id: "all", label: "Todos" }, { id: "stock", label: "Bolsa" }, { id: "crypto", label: "Crypto" }, { id: "fund", label: "Fondos" }, { id: "custom", label: "Otros" }] as const
 const RANGES = [
@@ -153,6 +160,11 @@ export default function InversionesPage() {
   const filteredRows = useMemo(() => (posFilter === "all" ? rows : rows.filter((r) => r.p.kind === posFilter)), [rows, posFilter])
   const donutFormatter = (v: number) => formatMoney(v, baseCurrency)
 
+  // Mejor posición en cartera (mayor % de rentabilidad), para el ticker superior.
+  const bestPosition = useMemo(() => (rows.length === 0 ? null : rows.slice().sort((a, b) => b.plPct - a.plPct)[0]), [rows])
+
+  const tipologiaTotal = tipologiaData.reduce((s, d) => s + d.value, 0) || 1
+
   // Patrimonio completo del informe: cuentas (liquidez) + cartera de inversión.
   // El donut "Tipología" de la página se queda solo con la cartera; el informe
   // X-Ray añade la liquidez de las cuentas no-inversión como clase aparte.
@@ -268,6 +280,14 @@ export default function InversionesPage() {
         </div>
       ) : (
         <>
+          {/* Ticker: pulso de la cartera */}
+          <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <TickerTile label="Valor cartera" value={formatMoney(value, baseCurrency)} />
+            <TickerTile label="Rentabilidad" value={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`} valueColor={pnlPct >= 0 ? "#10b981" : "#ef4444"} />
+            <TickerTile label="Invertido" value={formatMoney(invested, baseCurrency)} />
+            <TickerTile label="Mejor posición" value={bestPosition ? `${bestPosition.p.name.slice(0, 12)} ${bestPosition.plPct >= 0 ? "+" : ""}${bestPosition.plPct.toFixed(2)}%` : "—"} valueColor="var(--gold)" />
+          </section>
+
           {/* Fila superior: cuentas + seguimiento */}
           <WatchlistRow leading={<AccountCards accounts={investAccounts} valueByAccount={valueByAccount} />} />
 
@@ -308,7 +328,7 @@ export default function InversionesPage() {
 
               {evoTab === "rendimiento" && (
                 seriesHasData ? (
-                  <AreaChart data={shownSeries} index="mes" categories={["Cartera"]} colors={["blue"]} valueFormatter={chartFormatter} showLegend={false} showGridLines={false} showYAxis={false} className="mt-4 h-52 sm:h-56" curveType="monotone" showAnimation />
+                  <AreaChart data={shownSeries} index="mes" categories={["Cartera"]} colors={["blue"]} valueFormatter={chartFormatter} showLegend={false} showGridLines={false} showYAxis={false} customTooltip={CarteraTooltip} className="mt-4 h-52 sm:h-56" curveType="monotone" showAnimation />
                 ) : (
                   <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-center text-sm text-muted-foreground sm:h-56">Sin histórico suficiente para mostrar la evolución.</div>
                 )
@@ -375,6 +395,29 @@ export default function InversionesPage() {
               )}
             </div>
           </section>
+
+          {/* Por clase de activo: mismo patrón que "Composición del patrimonio"
+              del Dashboard, siempre visible (la pestaña "Tipología" de arriba
+              se queda igual para quien prefiera el donut). */}
+          {tipologiaData.length > 0 && (
+            <div className={`${CARD} min-w-0`}>
+              <p className="text-sm font-semibold text-foreground">Por clase de activo</p>
+              <div className="mt-5 flex h-2.5 w-full overflow-hidden rounded-full">
+                {tipologiaData.map((d, i) => (
+                  <div key={d.name} style={{ width: `${(d.value / tipologiaTotal) * 100}%`, backgroundColor: CLASS_HEX[i % CLASS_HEX.length] }} title={d.name} />
+                ))}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+                {tipologiaData.map((d, i) => (
+                  <div key={d.name} className="flex items-center gap-2 text-xs">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: CLASS_HEX[i % CLASS_HEX.length] }} />
+                    <span className="text-foreground">{d.name}</span>
+                    <span className="tabular-nums text-muted-foreground">{Math.round((d.value / tipologiaTotal) * 100)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <DcaPanel quotes={quotes} />
         </>

@@ -2,12 +2,14 @@
 
 import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AreaChart, SparkLineChart } from "@tremor/react"
+import { AreaChart } from "@tremor/react"
 import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, PiggyBank, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { AccountLogo } from "@/components/dashboard/account-logo"
+import { createChartTooltip } from "@/components/shared/chart-tooltip"
+import { TickerTile } from "@/components/shared/ticker-tile"
 import { usePortfolioValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
@@ -26,6 +28,7 @@ const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_
 // para las dos cifras más importantes de la página (patrimonio y puntuación).
 const CARD_HERO = "rounded-[24px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 const RANGES = [3, 6, 12, 24] as const
+const PatrimonioTooltip = createChartTooltip(["patrimonio"], ["blue"])
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`skeleton-shimmer rounded-[24px] ${className ?? ""}`} />
@@ -66,24 +69,6 @@ function AnnualStat({ label, year, value, accent, icon: Icon, children }: { labe
         </span>
       </div>
       <div className="mt-5">{children}</div>
-    </div>
-  )
-}
-
-// Tarjeta compacta estilo "ticker" con un mini-gráfico de tendencia opcional
-// (si no hay serie histórica disponible, como en la cartera, se omite y solo
-// se ve la cifra).
-function TickerTile({ label, value, valueColor, trend, trendColor }: { label: string; value: string; valueColor?: string; trend?: number[]; trendColor?: string }) {
-  const data = trend?.map((v, i) => ({ i, v }))
-  return (
-    <div className="min-w-0 rounded-2xl border border-border bg-card p-3.5">
-      <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <div className="mt-1.5 flex items-end justify-between gap-2">
-        <span className="truncate text-lg font-bold tabular-nums" style={{ color: valueColor }}>{value}</span>
-        {data && data.length > 1 && (
-          <SparkLineChart data={data} index="i" categories={["v"]} colors={[trendColor ?? "blue"]} className="h-5 w-12 shrink-0" />
-        )}
-      </div>
     </div>
   )
 }
@@ -375,7 +360,7 @@ export default function DashboardContent() {
                 </div>
               </div>
               {netWorthHasData ? (
-                <AreaChart data={netWorthTrend} index="mes" categories={["patrimonio"]} colors={["blue"]} valueFormatter={chartFormatter} showLegend={false} showGridLines={false} showYAxis={false} className="mt-4 h-52 sm:h-64" curveType="monotone" showAnimation />
+                <AreaChart data={netWorthTrend} index="mes" categories={["patrimonio"]} colors={["blue"]} valueFormatter={chartFormatter} showLegend={false} showGridLines={false} showYAxis={false} customTooltip={PatrimonioTooltip} className="mt-4 h-52 sm:h-64" curveType="monotone" showAnimation />
               ) : (
                 <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-64">Sin datos de patrimonio todavía</div>
               )}

@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { AreaChart } from "@tremor/react"
 import { Search, TrendingDown, TrendingUp, X, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { cn } from "@/lib/utils"
 
 const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
@@ -100,6 +101,7 @@ export function AssetAnalysis() {
     Precio: Number(h.c.toFixed(2)),
   }))
   const cur = asset?.currency ?? "USD"
+  const PriceTooltip = useMemo(() => createChartTooltip(["Precio"], [up ? "emerald" : "red"], (v) => fmtPrice(v, cur)), [up, cur])
 
   const stats: { label: string; value: string }[] = asset
     ? [
@@ -185,7 +187,7 @@ export function AssetAnalysis() {
           </div>
 
           {chartData.length > 1 ? (
-            <AreaChart data={chartData} index="fecha" categories={["Precio"]} colors={[up ? "emerald" : "red"]} valueFormatter={(v) => fmtPrice(v, cur)} showLegend={false} showGridLines={false} showYAxis={false} startEndOnly className="h-56" curveType="monotone" showAnimation />
+            <AreaChart data={chartData} index="fecha" categories={["Precio"]} colors={[up ? "emerald" : "red"]} valueFormatter={(v) => fmtPrice(v, cur)} showLegend={false} showGridLines={false} showYAxis={false} startEndOnly customTooltip={PriceTooltip} className="h-56" curveType="monotone" showAnimation />
           ) : (
             <div className="flex h-56 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground">Sin datos de gráfico</div>
           )}

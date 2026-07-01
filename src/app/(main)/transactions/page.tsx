@@ -8,6 +8,7 @@ import { ImportCsvButton } from "@/components/dashboard/import-csv-button"
 import { getSetting, setSetting } from "@/lib/settings"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountLogo } from "@/components/dashboard/account-logo"
+import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { useFinance, generateId } from "@/lib/store"
 import { getMonthTotalsByString, getSavingsRate, getUpcomingRecurring } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
@@ -22,6 +23,7 @@ const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_
 // de la página, con el mismo tinte azul-marino que las demás "hero cards".
 const CARD_HERO = "rounded-[24px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 const RANGES = [{ label: "1M", m: 1 }, { label: "3M", m: 3 }, { label: "6M", m: 6 }, { label: "1 año", m: 12 }]
+const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["blue", "red"])
 
 function Gauge({ value, max, color = "#3b82f6" }: { value: number; max: number; color?: string }) {
   const pct = max > 0 ? Math.max(0, Math.min(value / max, 1)) : 0
@@ -230,7 +232,7 @@ export default function IngresosGastosPage() {
             </div>
           </div>
           {cashflowHasData ? (
-            <AreaChart data={cashflow} index="mes" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} showLegend showGridLines={false} className="mt-2 h-64 sm:h-72" curveType="monotone" showAnimation />
+            <AreaChart data={cashflow} index="mes" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="mt-2 h-64 sm:h-72" curveType="monotone" showAnimation />
           ) : (
             <div className="mt-2 flex h-64 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-72">Sin movimientos en este periodo</div>
           )}

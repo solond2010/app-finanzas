@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input"
 import { formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { chartFormatter } from "@/lib/format"
+import { createChartTooltip } from "@/components/shared/chart-tooltip"
 
 const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+const ProjectionTooltip = createChartTooltip(["Ahorros", "Inversiones"], ["blue", "emerald"])
 
 interface Row {
   year: number
@@ -108,7 +110,7 @@ export function ProjectionSimulator({ ahorros0, inversiones0 }: { ahorros0: numb
                 </div>
               </div>
 
-              <BarChart data={rows} index="year" categories={["Ahorros", "Inversiones"]} colors={["blue", "emerald"]} stack valueFormatter={chartFormatter} showLegend showYAxis={false} className="h-60" showAnimation />
+              <BarChart data={rows} index="year" categories={["Ahorros", "Inversiones"]} colors={["blue", "emerald"]} stack valueFormatter={chartFormatter} showLegend showYAxis={false} customTooltip={ProjectionTooltip} className="h-60" showAnimation />
 
               <div className="overflow-x-auto rounded-2xl border border-border">
                 <table className="w-full min-w-[640px] text-right text-xs tabular-nums">
