@@ -158,7 +158,7 @@ export default function InversionesPage() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="page-section-label">Cartera</p>
-          <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">Inversiones</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Inversiones</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">Portfolio y análisis de activos</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">

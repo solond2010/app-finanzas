@@ -176,7 +176,7 @@ export default function DashboardContent() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="page-section-label">Resumen general</p>
-          <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">Hola, Mohamed</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Hola, Mohamed</h1>
         </div>
         <div className="flex items-center gap-1 self-start rounded-full border border-border bg-card p-1 sm:self-auto">
           <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>

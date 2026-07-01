@@ -2,7 +2,7 @@ export default function CuentaDetailLoading() {
   return (
     <div className="space-y-6">
       <div className="skeleton-shimmer rounded-[12px] h-5 w-20" />
-      <div className="skeleton-shimmer rounded-[32px] h-56 p-6 sm:p-8 space-y-4">
+      <div className="skeleton-shimmer rounded-[24px] h-56 p-6 sm:p-8 space-y-4">
         <div className="rounded-full h-5 w-32" />
         <div className="rounded-[12px] h-10 w-72" />
         <div className="rounded-full h-4 w-28" />

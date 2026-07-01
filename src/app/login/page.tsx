@@ -76,7 +76,7 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(59,130,246,0.12),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(139,92,246,0.10),transparent_35%)] dark:bg-[radial-gradient(circle_at_20%_30%,rgba(59,130,246,0.20),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(139,92,246,0.18),transparent_35%)]" />
-      <div className="relative z-10 w-full max-w-sm rounded-[32px] bg-card/70 p-8 shadow-2xl ring-1 ring-border/25 backdrop-blur-xl card-glow">
+      <div className="relative z-10 w-full max-w-sm rounded-[24px] bg-card/70 p-8 shadow-2xl ring-1 ring-border/25 backdrop-blur-xl card-glow">
         <Suspense fallback={<div className="text-sm text-muted-foreground text-center py-8">Cargando...</div>}>
           <LoginForm />
         </Suspense>

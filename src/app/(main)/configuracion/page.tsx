@@ -62,14 +62,14 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-[32px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
+      <section className="relative overflow-hidden rounded-[24px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
         <div className="relative z-10 space-y-4">
           <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
             <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
             Configuración
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Ajustes</p>
+            <p className="page-section-label">Ajustes</p>
             <h1 className="max-w-3xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl">Personaliza tu espacio financiero.</h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Gestiona categorías, exporta tus datos y mantén el control de toda tu información.</p>
           </div>

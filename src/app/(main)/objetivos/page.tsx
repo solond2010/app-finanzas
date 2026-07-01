@@ -21,7 +21,7 @@ export default function ObjetivosPage() {
 
   return (
     <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-[32px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
+      <section className="relative overflow-hidden rounded-[24px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
@@ -29,7 +29,7 @@ export default function ObjetivosPage() {
               Metas de ahorro
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Objetivos</p>
+              <p className="page-section-label">Objetivos</p>
               <h1 className="max-w-3xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl">Convierte metas en logros.</h1>
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Define objetivos, vincula cuentas y sigue tu progreso automáticamente mes a mes.</p>
             </div>
@@ -39,10 +39,10 @@ export default function ObjetivosPage() {
             <div className="flex flex-col gap-2 rounded-[22px] bg-background/60 px-6 py-4 shadow-sm ring-1 ring-border/25 backdrop-blur-xl">
               <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Progreso global</p>
               <p className="text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[38px]">
-                <AnimatedNumber value={stats.overallProgress} />%
+                <AnimatedNumber value={stats.overallProgress} suffix="%" />
               </p>
               <p className="text-xs text-muted-foreground">
-                <AnimatedNumber value={Math.round(stats.totalAhorrado)} />€ de <AnimatedNumber value={Math.round(stats.totalObjetivo)} />€
+                <AnimatedNumber value={Math.round(stats.totalAhorrado)} /> de <AnimatedNumber value={Math.round(stats.totalObjetivo)} />
               </p>
             </div>
           )}
@@ -74,7 +74,7 @@ export default function ObjetivosPage() {
                 </div>
               </div>
               <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums">
-                <AnimatedNumber value={Math.round(stats.totalAhorrado)} />€
+                <AnimatedNumber value={Math.round(stats.totalAhorrado)} />
               </p>
             </div>
           </Card>
@@ -89,7 +89,7 @@ export default function ObjetivosPage() {
                 </div>
               </div>
               <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums">
-                <AnimatedNumber value={Math.round(stats.totalObjetivo)} />€
+                <AnimatedNumber value={Math.round(stats.totalObjetivo)} />
               </p>
             </div>
           </Card>
