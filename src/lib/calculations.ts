@@ -31,6 +31,14 @@ function transactionDelta(t: Transaction) {
   return t.tipo === "ingreso" ? t.monto : -t.monto
 }
 
+// Un traspaso entre cuentas propias se registra como gasto en la cuenta origen
+// e ingreso en la destino (para que cuadren los saldos), pero NO es un ingreso
+// ni un gasto real, así que se excluye de los totales de reporte. En patrimonio
+// ya netea a cero (–50 origen + 50 destino).
+export function isTransfer(t: Transaction) {
+  return t.tags?.includes("traspaso") ?? false
+}
+
 export function filterTransactionsByMonth(transactions: Transaction[], monthKey?: string) {
   if (!monthKey) return transactions
   return transactions.filter((t) => isInMonth(t.fecha, monthKey))
@@ -64,8 +72,8 @@ export function getCurrentMonthTotals(transactions: Transaction[]) {
 
 export function getMonthTotalsByString(transactions: Transaction[], month: string) {
   const monthTxns = filterTransactionsByMonth(transactions, month)
-  const ingresos = monthTxns.filter((t) => t.tipo === "ingreso").reduce((s, t) => s + t.monto, 0)
-  const gastos = monthTxns.filter((t) => t.tipo === "gasto").reduce((s, t) => s + t.monto, 0)
+  const ingresos = monthTxns.filter((t) => t.tipo === "ingreso" && !isTransfer(t)).reduce((s, t) => s + t.monto, 0)
+  const gastos = monthTxns.filter((t) => t.tipo === "gasto" && !isTransfer(t)).reduce((s, t) => s + t.monto, 0)
   return { ingresos, gastos, neto: ingresos - gastos }
 }
 
@@ -80,8 +88,8 @@ export function getMonthTotals(transactions: Transaction[], monthsAgo: number) {
     return td.getMonth() === month && td.getFullYear() === year
   })
 
-  const ingresos = monthTxns.filter((t) => t.tipo === "ingreso").reduce((s, t) => s + t.monto, 0)
-  const gastos = monthTxns.filter((t) => t.tipo === "gasto").reduce((s, t) => s + t.monto, 0)
+  const ingresos = monthTxns.filter((t) => t.tipo === "ingreso" && !isTransfer(t)).reduce((s, t) => s + t.monto, 0)
+  const gastos = monthTxns.filter((t) => t.tipo === "gasto" && !isTransfer(t)).reduce((s, t) => s + t.monto, 0)
 
   return { ingresos, gastos, neto: ingresos - gastos, label: formatMonth(d) }
 }
@@ -95,7 +103,7 @@ export function getCurrentMonthNeedsVsWants(transactions: Transaction[]) {
 }
 
 export function getNeedsVsWantsForMonth(transactions: Transaction[], monthKey?: string) {
-  const monthTransactions = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto")
+  const monthTransactions = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto" && !isTransfer(t))
   const necesidades = monthTransactions.filter((t) => t.es_necesidad).reduce((s, t) => s + t.monto, 0)
   const deseos = monthTransactions.filter((t) => !t.es_necesidad).reduce((s, t) => s + t.monto, 0)
   return { necesidades, deseos }
@@ -119,7 +127,7 @@ export function getNetWorthAtMonth(accounts: Account[], transactions: Transactio
 }
 
 export function getCategoryBreakdown(transactions: Transaction[], monthKey?: string) {
-  const gastos = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto")
+  const gastos = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto" && !isTransfer(t))
 
   const breakdown: Record<string, number> = {}
   for (const t of gastos) {
