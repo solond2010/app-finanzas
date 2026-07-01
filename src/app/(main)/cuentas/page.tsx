@@ -51,7 +51,7 @@ export default function CuentasPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 rounded-[22px] bg-background/60 px-6 py-4 card-glow">
+          <div className="flex flex-col gap-2 rounded-[22px] hero-panel px-6 py-4">
             <p className="page-section-label">Patrimonio neto total</p>
             <p className="text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[38px]">
               <Sensitive as="span"><AnimatedNumber value={netWorth} /></Sensitive>

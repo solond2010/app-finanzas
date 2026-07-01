@@ -52,6 +52,10 @@
   --color-accent-amber: var(--accent-amber);
   --color-accent-blue: var(--accent-blue);
   --color-accent-violet: var(--accent-violet);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-hero: var(--hero-bg);
+  --color-hero-border: var(--hero-border);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -113,57 +117,65 @@
   --accent-blue: oklch(0.52 0.17 264);
   --accent-violet: oklch(0.55 0.18 295);
   --card-glow: oklch(0 0 0 / 0.05);
+  --gold: oklch(0.7 0.15 85);
+  --gold-foreground: oklch(0.32 0.09 70);
+  --hero-bg: oklch(0.945 0.02 264);
+  --hero-border: oklch(0.82 0.05 264);
 }
 
 .dark {
-  --background: oklch(0.10 0 0);
+  --background: oklch(0.045 0.016 264);
   --foreground: oklch(0.97 0 0);
-  --card: oklch(0.15 0 0);
+  --card: oklch(0.085 0.022 264);
   --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.15 0 0);
+  --popover: oklch(0.10 0.022 264);
   --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.65 0.17 264);
+  --primary: oklch(0.58 0.21 264);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.19 0 0);
+  --secondary: oklch(0.12 0.02 264);
   --secondary-foreground: oklch(0.97 0 0);
-  --muted: oklch(0.17 0 0);
-  --muted-foreground: oklch(0.66 0 0);
-  --accent: oklch(0.21 0 0);
+  --muted: oklch(0.11 0.016 264);
+  --muted-foreground: oklch(0.62 0.02 264);
+  --accent: oklch(0.14 0.026 264);
   --accent-foreground: oklch(0.97 0 0);
   --destructive: oklch(0.69 0.19 22.216);
   --border: oklch(1 0 0 / 9%);
   --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.65 0.17 264);
+  --ring: oklch(0.58 0.21 264);
   --chart-1: oklch(0.85 0 0);
   --chart-2: oklch(0.6 0.15 160);
   --chart-3: oklch(0.6 0.14 50);
   --chart-4: oklch(0.55 0.13 310);
   --chart-5: oklch(0.55 0.12 190);
-  --sidebar: oklch(0.12 0 0);
+  --sidebar: oklch(0.055 0.018 264);
   --sidebar-foreground: oklch(0.97 0 0);
-  --sidebar-primary: oklch(0.65 0.17 264);
+  --sidebar-primary: oklch(0.58 0.21 264);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.19 0 0);
+  --sidebar-accent: oklch(0.15 0.03 264);
   --sidebar-accent-foreground: oklch(0.97 0 0);
-  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-border: oklch(1 0 0 / 7%);
   --sidebar-ring: oklch(0.65 0 0);
-  --tremor-background: #0a0a0a;
-  --tremor-content: #a1a1aa;
+  --tremor-background: #070a12;
+  --tremor-content: #97a0b8;
   --tremor-content-emphasis: #fafafa;
-  --tremor-border: #262626;
-  --tremor-label: #71717a;
-  --tremor-brand: #3b82f6;
-  --tremor-brand-emphasis: #60a5fa;
-  --tremor-ring: #2f2f2f;
+  --tremor-border: #1c2440;
+  --tremor-label: #6b7387;
+  --tremor-brand: #3f6bff;
+  --tremor-brand-emphasis: #6f9bff;
+  --tremor-ring: #22305e;
   --brand-purple: oklch(0.6 0.18 295);
   --brand-teal: oklch(0.65 0.15 185);
   --brand-rose: oklch(0.65 0.14 10);
-  --accent-green: oklch(0.65 0.15 160);
+  --accent-green: oklch(0.68 0.16 160);
   --accent-red: oklch(0.62 0.2 25);
   --accent-amber: oklch(0.6 0.15 85);
-  --accent-blue: oklch(0.65 0.17 264);
+  --accent-blue: oklch(0.58 0.21 264);
   --accent-violet: oklch(0.55 0.18 295);
   --card-glow: oklch(1 0 0 / 0.06);
+  --gold: oklch(0.78 0.14 85);
+  --gold-foreground: oklch(0.28 0.07 70);
+  --hero-bg: oklch(0.11 0.05 264);
+  --hero-border: oklch(0.28 0.09 264);
 }
 
 @layer base {
@@ -424,6 +436,26 @@
 .hero-gradient {
   position: relative;
   overflow: hidden;
+}
+
+/* Tarjeta destacada para las cifras "de riqueza" (patrimonio, puntuación,
+   evolución de cartera): mismo radio/padding que una card normal pero con
+   un tinte azul-marino propio en vez del `--card` neutro, para que la cifra
+   más importante de cada página se distinga a simple vista del resto. */
+.hero-panel {
+  background: var(--hero-bg);
+  border: 1px solid var(--hero-border);
+}
+
+/* Insignia dorada para señalar crecimiento / hitos positivos de patrimonio. */
+.gold-badge {
+  background: color-mix(in oklch, var(--gold), transparent 82%);
+  color: var(--gold-foreground);
+  border: 1px solid color-mix(in oklch, var(--gold), transparent 65%);
+}
+
+.dark .gold-badge {
+  color: var(--gold);
 }
 
 /* ── Typography helpers ── */

@@ -24,6 +24,9 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 
 const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+// Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
+// para las dos cifras más importantes de la página (patrimonio y puntuación).
+const CARD_HERO = "rounded-[24px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 const RANGES = [3, 6, 12, 24] as const
 
 function Skeleton({ className }: { className?: string }) {
@@ -260,7 +263,7 @@ export default function DashboardContent() {
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
           <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
             {/* Patrimonio + rango */}
-            <div className={`${CARD} min-w-0 lg:col-span-2`}>
+            <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="page-section-label">Evolución del patrimonio</p>
@@ -302,7 +305,7 @@ export default function DashboardContent() {
             </div>
 
             {/* Puntuación financiera */}
-            <div className={`${CARD} flex min-w-0 flex-col`}>
+            <div className={`${CARD_HERO} flex min-w-0 flex-col`}>
               <div className="flex items-center gap-2">
                 <Gauge className="h-4 w-4 text-primary" />
                 <p className="text-sm font-semibold text-foreground">Puntuación financiera</p>

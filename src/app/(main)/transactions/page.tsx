@@ -18,6 +18,9 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 
 const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+// Card del gráfico de evolución del cash flow: la vista analítica principal
+// de la página, con el mismo tinte azul-marino que las demás "hero cards".
+const CARD_HERO = "rounded-[24px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 const RANGES = [{ label: "1M", m: 1 }, { label: "3M", m: 3 }, { label: "6M", m: 6 }, { label: "1 año", m: 12 }]
 
 function Gauge({ value, max, color = "#3b82f6" }: { value: number; max: number; color?: string }) {
@@ -217,7 +220,7 @@ export default function IngresosGastosPage() {
 
       {/* Fila 2: Cash flow + balance */}
       <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-        <div className={`${CARD} min-w-0 lg:col-span-2`}>
+        <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
             <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><TrendingUp className="h-4 w-4 text-primary" /> Evolución del cash flow</p>
             <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">

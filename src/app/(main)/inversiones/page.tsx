@@ -21,6 +21,9 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 
 const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+// Card de evolución de cartera: la cifra más importante de la página, con el
+// mismo tinte azul-marino que el hero de patrimonio del Dashboard.
+const CARD_HERO = "rounded-[24px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 const DONUT_COLORS = ["blue", "cyan", "indigo", "violet", "sky", "slate", "emerald", "amber"]
 const EVO_TABS = [{ id: "rendimiento", label: "Rendimiento" }, { id: "activos", label: "Activos" }, { id: "tipologia", label: "Tipología" }] as const
 const POS_FILTERS = [{ id: "all", label: "Todos" }, { id: "stock", label: "Bolsa" }, { id: "crypto", label: "Crypto" }, { id: "fund", label: "Fondos" }, { id: "custom", label: "Otros" }] as const
@@ -270,7 +273,7 @@ export default function InversionesPage() {
 
           {/* Evolución (izq) + Posiciones / Detalle (der) */}
           <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-            <div className={`${CARD} min-w-0 lg:col-span-2`}>
+            <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="page-section-label">{detailPosition ? `Rendimiento · ${detailPosition.name}` : "Evolución cartera"}</p>
