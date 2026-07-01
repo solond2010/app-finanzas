@@ -48,10 +48,13 @@ export interface NetWorthSnapshot {
   patrimonio: number
 }
 
+export type CategoryKind = "ingreso" | "gasto" | "both"
+
 export interface Category {
   id: string
   name: string
   color: string
+  kind?: CategoryKind
 }
 
 export interface Budget {
@@ -91,7 +94,50 @@ type Action =
   | { type: "UPDATE_BUDGET"; payload: Budget }
   | { type: "DELETE_BUDGET"; payload: string }
 
-const DEFAULT_CATEGORY_NAMES = ["Salario", "Freelance", "Alquiler", "Supermercado", "Transporte", "Internet", "Suscripciones", "Cena", "Ropa", "Ocio", "Gym", "Salud", "Inversión", "Transferencia", "Spotify", "Otros"]
+// Categorías predeterminadas, separadas por tipo (ingreso / gasto / ambos).
+const DEFAULT_CATEGORY_DEFS: { name: string; kind: CategoryKind }[] = [
+  // Ingresos
+  { name: "Salario", kind: "ingreso" },
+  { name: "Freelance", kind: "ingreso" },
+  { name: "Negocio", kind: "ingreso" },
+  { name: "Inversión", kind: "ingreso" },
+  { name: "Dividendos", kind: "ingreso" },
+  { name: "Intereses", kind: "ingreso" },
+  { name: "Rentas", kind: "ingreso" },
+  { name: "Reembolso", kind: "ingreso" },
+  { name: "Regalo", kind: "ingreso" },
+  { name: "Venta", kind: "ingreso" },
+  { name: "Bonus", kind: "ingreso" },
+  { name: "Otros ingresos", kind: "ingreso" },
+  // Gastos
+  { name: "Supermercado", kind: "gasto" },
+  { name: "Restaurantes", kind: "gasto" },
+  { name: "Cena", kind: "gasto" },
+  { name: "Transporte", kind: "gasto" },
+  { name: "Coche", kind: "gasto" },
+  { name: "Vivienda", kind: "gasto" },
+  { name: "Alquiler", kind: "gasto" },
+  { name: "Suministros", kind: "gasto" },
+  { name: "Internet", kind: "gasto" },
+  { name: "Móvil", kind: "gasto" },
+  { name: "Suscripciones", kind: "gasto" },
+  { name: "Spotify", kind: "gasto" },
+  { name: "Ocio", kind: "gasto" },
+  { name: "Ropa", kind: "gasto" },
+  { name: "Salud", kind: "gasto" },
+  { name: "Gym", kind: "gasto" },
+  { name: "Educación", kind: "gasto" },
+  { name: "Viajes", kind: "gasto" },
+  { name: "Mascotas", kind: "gasto" },
+  { name: "Regalos", kind: "gasto" },
+  { name: "Impuestos", kind: "gasto" },
+  { name: "Hogar", kind: "gasto" },
+  { name: "Tecnología", kind: "gasto" },
+  { name: "Otros gastos", kind: "gasto" },
+  // Ambos
+  { name: "Transferencia", kind: "both" },
+  { name: "Otros", kind: "both" },
+]
 
 const CATEGORY_PALETTE = ["#3b82f6", "#10b981", "#ef4444", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"]
 
@@ -101,11 +147,26 @@ function slugifyCategory(name: string): string {
   return "cat_" + name.toLowerCase().normalize("NFD").replace(DIACRITICS, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
 }
 
-const DEFAULT_CATEGORIES: Category[] = DEFAULT_CATEGORY_NAMES.map((name, i) => ({
-  id: slugifyCategory(name),
-  name,
+const DEFAULT_CATEGORIES: Category[] = DEFAULT_CATEGORY_DEFS.map((d, i) => ({
+  id: slugifyCategory(d.name),
+  name: d.name,
   color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length],
+  kind: d.kind,
 }))
+
+// Garantiza que existan todas las categorías predeterminadas y que cada categoría
+// tenga `kind`. Rellena el tipo de las antiguas (por id) y deja las personalizadas
+// sin tipo conocido como "both" para que sigan apareciendo en ambos formularios.
+export function mergeDefaultCategories(loaded: Category[]): Category[] {
+  const existing = new Set(loaded.map((c) => c.id))
+  const result: Category[] = loaded.map((c) => {
+    if (c.kind) return c
+    const def = DEFAULT_CATEGORIES.find((d) => d.id === c.id)
+    return { ...c, kind: def?.kind ?? "both" }
+  })
+  for (const d of DEFAULT_CATEGORIES) if (!existing.has(d.id)) result.push(d)
+  return result
+}
 
 type AccountRow = {
   id: string
@@ -296,11 +357,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
     loadFromSupabase().then((remote) => {
       if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
-        dispatch({ type: "SET_STATE", payload: remote })
+        dispatch({ type: "SET_STATE", payload: { ...remote, categories: mergeDefaultCategories(remote.categories) } })
       } else {
         const local = loadLocalBackup()
         if (local && (local.accounts.length > 0 || local.transactions.length > 0 || local.sinkingFunds.length > 0)) {
-          dispatch({ type: "SET_STATE", payload: local })
+          dispatch({ type: "SET_STATE", payload: { ...local, categories: mergeDefaultCategories(local.categories) } })
         }
       }
     }).finally(() => {

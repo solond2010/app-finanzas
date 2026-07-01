@@ -4,14 +4,16 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useFinance } from "@/lib/store"
+import { useFinance, type CategoryKind } from "@/lib/store"
 import { useToast } from "@/components/ui/toast"
+import { cn } from "@/lib/utils"
 import { Plus, Trash2, Download, Sparkles, Tags, FileDown, Layers } from "lucide-react"
 
 export default function ConfiguracionPage() {
   const { state, dispatch } = useFinance()
   const { toast } = useToast()
   const [newCat, setNewCat] = useState("")
+  const [newCatKind, setNewCatKind] = useState<"ingreso" | "gasto">("gasto")
 
   const addCategory = () => {
     const name = newCat.trim()
@@ -20,10 +22,16 @@ export default function ConfiguracionPage() {
       toast("Esa categoría ya existe", "error")
       return
     }
-    dispatch({ type: "ADD_CATEGORY", payload: { name, color: "#64748b" } })
+    dispatch({ type: "ADD_CATEGORY", payload: { name, color: "#64748b", kind: newCatKind } })
     setNewCat("")
     toast(`Categoría "${name}" creada`, "success")
   }
+
+  const catGroups: { key: CategoryKind; label: string }[] = [
+    { key: "ingreso", label: "Ingresos" },
+    { key: "gasto", label: "Gastos" },
+    { key: "both", label: "Ambos" },
+  ]
 
   const deleteCategory = (id: string, name: string) => {
     const inUse = state.transactions.some((t) => t.categoria === name)
@@ -79,30 +87,45 @@ export default function ConfiguracionPage() {
             <p className="text-sm text-muted-foreground font-normal">{state.categories.length} categorías configuradas</p>
           </CardHeader>
           <CardContent className="relative z-10 space-y-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Tags className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  value={newCat}
-                  onChange={(e) => setNewCat(e.target.value)}
-                  placeholder="Nueva categoría"
-                  className="pl-8"
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory() } }}
-                />
+            <div className="space-y-2">
+              <div className="inline-flex rounded-full bg-muted/60 p-0.5 text-xs font-semibold">
+                <button onClick={() => setNewCatKind("gasto")} className={cn("rounded-full px-3 py-1 transition-colors", newCatKind === "gasto" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Gasto</button>
+                <button onClick={() => setNewCatKind("ingreso")} className={cn("rounded-full px-3 py-1 transition-colors", newCatKind === "ingreso" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Ingreso</button>
               </div>
-              <Button size="sm" className="gap-1 shrink-0" onClick={addCategory}>
-                <Plus className="h-3.5 w-3.5" /> Añadir
-              </Button>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Tags className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <Input
+                    value={newCat}
+                    onChange={(e) => setNewCat(e.target.value)}
+                    placeholder={`Nueva categoría de ${newCatKind}`}
+                    className="pl-8"
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory() } }}
+                  />
+                </div>
+                <Button size="sm" className="gap-1 shrink-0" onClick={addCategory}>
+                  <Plus className="h-3.5 w-3.5" /> Añadir
+                </Button>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {state.categories.map((cat) => {
+            <div className="space-y-4">
+              {catGroups.map(({ key, label }) => {
+                const cats = state.categories.filter((c) => (c.kind ?? "both") === key)
+                if (cats.length === 0) return null
                 return (
-                  <div key={cat.id} className="stagger-fade group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 bg-slate-100 text-slate-800 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: cat.color }} />
-                    {cat.name}
-                    <button onClick={() => deleteCategory(cat.id, cat.name)} className="opacity-40 group-hover:opacity-100 transition-opacity hover:opacity-100 cursor-pointer" aria-label={`Eliminar categoría ${cat.name}`}>
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                  <div key={key} className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {cats.map((cat) => (
+                        <div key={cat.id} className="stagger-fade group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 bg-slate-100 text-slate-800 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                          {cat.name}
+                          <button onClick={() => deleteCategory(cat.id, cat.name)} className="opacity-40 group-hover:opacity-100 transition-opacity hover:opacity-100 cursor-pointer" aria-label={`Eliminar categoría ${cat.name}`}>
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )
               })}

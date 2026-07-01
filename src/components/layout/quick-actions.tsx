@@ -86,6 +86,10 @@ function TransactionQuickForm({
   const [esNecesidad, setEsNecesidad] = useState(defaultTipo === "gasto")
   const [descripcion, setDescripcion] = useState("")
 
+  const visibleCategories = categories
+    .filter((c) => !c.kind || c.kind === defaultTipo || c.kind === "both")
+    .sort((a, b) => a.name.localeCompare(b.name, "es"))
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!cuentaId || !monto || !categoria) return
@@ -137,7 +141,7 @@ function TransactionQuickForm({
               <SelectValue placeholder="Seleccionar categoría" />
             </SelectTrigger>
             <SelectContent className="p-2">
-              {categories.map((c) => (
+              {visibleCategories.map((c) => (
                 <SelectItem key={c.id} value={c.name} className="py-2.5 text-sm">{c.name}</SelectItem>
               ))}
             </SelectContent>

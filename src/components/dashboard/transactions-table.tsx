@@ -73,6 +73,16 @@ function TransactionForm({
   const [tagInput, setTagInput] = useState("")
   const [tags, setTags] = useState<string[]>(transaction?.tags ?? [])
 
+  const visibleCategories = categories
+    .filter((c) => !c.kind || c.kind === tipo || c.kind === "both")
+    .sort((a, b) => a.name.localeCompare(b.name, "es"))
+
+  const changeTipo = (next: "ingreso" | "gasto") => {
+    setTipo(next)
+    const stillValid = categories.some((c) => c.name === categoria && (!c.kind || c.kind === next || c.kind === "both"))
+    if (!stillValid) setCategoria("")
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!cuentaId || !monto || !fecha || !categoria) return
@@ -113,7 +123,7 @@ function TransactionForm({
         </div>
         <div className="space-y-1.5">
           <label className="text-xs text-muted-foreground">Tipo</label>
-          <Select value={tipo} onValueChange={(v) => setTipo(v as "ingreso" | "gasto")}>
+          <Select value={tipo} onValueChange={(v) => changeTipo(v as "ingreso" | "gasto")}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="ingreso">Ingreso</SelectItem>
@@ -134,7 +144,7 @@ function TransactionForm({
           <Select value={categoria} onValueChange={(v) => v && setCategoria(v)}>
             <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
             <SelectContent>
-              {categories.map((c) => (
+              {visibleCategories.map((c) => (
                 <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
               ))}
             </SelectContent>
