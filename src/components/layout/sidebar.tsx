@@ -83,6 +83,10 @@ export function Sidebar() {
     // estado de React (que podría ir desfasado). Así el primer clic siempre
     // alterna el tema de forma fiable. Persistimos en cookie (para el SSR sin
     // flash) y en localStorage (compatibilidad).
+    // "theme-transition" difumina el cambio de colores (ver globals.css) en vez
+    // de un cambio brusco; se retira sola cuando termina la transición.
+    document.documentElement.classList.add("theme-transition")
+    window.setTimeout(() => document.documentElement.classList.remove("theme-transition"), 250)
     const next = !document.documentElement.classList.contains("dark")
     document.documentElement.classList.toggle("dark", next)
     const value = next ? "dark" : "light"

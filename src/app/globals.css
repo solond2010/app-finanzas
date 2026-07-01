@@ -180,6 +180,14 @@
     @apply font-sans;
   }
 
+  /* Al alternar tema, se añade esta clase brevemente (ver toggleTheme en
+     sidebar.tsx) para que colores de fondo/texto/borde se difuminen entre
+     claro y oscuro en vez de cambiar de golpe. Fuera de ese instante no
+     existe transición alguna, así que no afecta al resto de animaciones. */
+  .theme-transition, .theme-transition * {
+    transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease, fill 200ms ease !important;
+  }
+
   ::-webkit-scrollbar {
     width: 5px;
     height: 5px;
