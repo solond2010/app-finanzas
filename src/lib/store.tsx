@@ -248,8 +248,39 @@ function reducer(state: FinanceState, action: Action): FinanceState {
       }
       return { ...state, accounts: [...state.accounts, newAccount], transactions: newTransactions }
     }
-    case "UPDATE_ACCOUNT":
-      return { ...state, accounts: state.accounts.map((a) => (a.id === action.payload.id ? action.payload : a)) }
+    case "UPDATE_ACCOUNT": {
+      // Si se edita el saldo de una cuenta ya existente, generamos una transacción
+      // de ajuste por la diferencia en vez de sobrescribir el campo a secas.
+      // Si no, el saldo mostrado (dato persistido) se desincroniza silenciosamente
+      // del historial de transacciones real (que es lo que usa el detalle de cuenta
+      // para calcular ingresos/gastos/neto), como pasó con la cuenta "Papel".
+      const prevAccount = state.accounts.find((a) => a.id === action.payload.id)
+      const delta = prevAccount ? action.payload.saldo - prevAccount.saldo : 0
+      const newTransactions =
+        delta !== 0
+          ? [
+              ...state.transactions,
+              {
+                // Prefijo "adj_" para que isInitialBalanceTransaction() la excluya
+                // de los totales de ingresos/gastos (no es actividad real del mes).
+                id: `adj_${generateId()}`,
+                cuenta_id: action.payload.id,
+                monto: delta,
+                fecha: new Date().toISOString().split("T")[0],
+                tipo: "ingreso" as const,
+                categoria: "Ajuste de saldo",
+                es_necesidad: false,
+                descripcion: `Ajuste de saldo de ${action.payload.nombre}`,
+                tags: [],
+              },
+            ]
+          : state.transactions
+      return {
+        ...state,
+        accounts: state.accounts.map((a) => (a.id === action.payload.id ? action.payload : a)),
+        transactions: newTransactions,
+      }
+    }
     case "DELETE_ACCOUNT":
       return {
         ...state,
