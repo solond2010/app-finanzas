@@ -130,12 +130,13 @@ function toRow(p: Position): Record<string, unknown> {
     base.dca_freq = p.dcaFreq ?? null
     base.dca_last = p.dcaLast ?? null
   }
-  // Igual que con DCA: `asset_class` solo se envía cuando difiere del valor por
-  // defecto de su `kind`, para que la sincronización no se rompa en cuentas que
-  // no hayan corrido la migración SQL (supabase-assetclass.sql) todavía.
-  if (p.assetClass && p.assetClass !== defaultAssetClass(p.kind)) {
-    base.asset_class = p.assetClass
-  }
+  // A diferencia de DCA, `asset_class` SIEMPRE se envía (aunque coincida con el
+  // valor por defecto de su `kind`, o sea null): si solo se enviara cuando
+  // difiere del default, reclasificar una posición de vuelta a su clase por
+  // defecto no se guardaba y la fila en Supabase se quedaba con el valor
+  // anterior, que volvía a aparecer en el próximo `fromRow`. Requiere haber
+  // corrido supabase-assetclass.sql (si no, el upsert entero fallaría).
+  base.asset_class = p.assetClass ?? null
   return base
 }
 
