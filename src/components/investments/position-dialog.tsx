@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useFinance } from "@/lib/store"
-import { useInvestments, type AssetKind, type DcaFreq, type Position } from "@/lib/investments"
+import { useInvestments, defaultAssetClass, ASSET_CLASS_LABELS, type AssetClass, type AssetKind, type DcaFreq, type Position } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +42,7 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
   const [dcaAmount, setDcaAmount] = useState("")
   const [dcaFreq, setDcaFreq] = useState<DcaFreq>("monthly")
   const [accountId, setAccountId] = useState("")
+  const [assetClass, setAssetClass] = useState<AssetClass>("acciones")
 
   const investAccounts = useMemo(() => {
     const inv = state.accounts.filter((a) => a.tipo === "inversion")
@@ -64,10 +65,12 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
         setDcaAmount(editing.dcaAmount ? String(editing.dcaAmount) : "")
         setDcaFreq(editing.dcaFreq ?? "monthly")
         setAccountId(editing.accountId ?? investAccounts[0]?.id ?? "")
+        setAssetClass(editing.assetClass ?? defaultAssetClass(editing.kind))
       } else {
         setKind("stock"); setSelected(null); setCustomName("")
         setCurrency("EUR"); setDate(new Date().toISOString().split("T")[0]); setUnits(""); setBuyPrice("")
         setDca(false); setDcaAmount(""); setDcaFreq("monthly"); setAccountId(investAccounts[0]?.id ?? "")
+        setAssetClass(defaultAssetClass("stock"))
       }
     })
   }, [open, editing, investAccounts])
@@ -125,10 +128,10 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
     let payload: Omit<Position, "id">
     if (kind === "custom") {
       if (!customName.trim()) { toast("Pon un nombre al activo", "error"); return }
-      payload = { kind, symbol: editing?.kind === "custom" ? editing.symbol : `custom:${customName.trim().toLowerCase()}`, name: customName.trim(), date, units: u, buyPrice: p, currency, accountId, ...dcaFields }
+      payload = { kind, symbol: editing?.kind === "custom" ? editing.symbol : `custom:${customName.trim().toLowerCase()}`, name: customName.trim(), date, units: u, buyPrice: p, currency, accountId, assetClass, ...dcaFields }
     } else {
       if (!selected) { toast("Busca y selecciona un activo", "error"); return }
-      payload = { kind, symbol: selected.symbol, name: selected.name, isin: selected.isin, date, units: u, buyPrice: p, currency: selected.currency, accountId, ...dcaFields }
+      payload = { kind, symbol: selected.symbol, name: selected.name, isin: selected.isin, date, units: u, buyPrice: p, currency: selected.currency, accountId, assetClass, ...dcaFields }
     }
 
     if (editing) {
@@ -151,7 +154,7 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
             {TABS.map((t) => (
               <button
                 key={t.kind}
-                onClick={() => { setKind(t.kind); setSelected(null); setQuery(""); setResults([]) }}
+                onClick={() => { setKind(t.kind); setSelected(null); setQuery(""); setResults([]); setAssetClass(defaultAssetClass(t.kind)) }}
                 className={cn("rounded-xl px-2 py-2 text-xs font-semibold transition-colors", kind === t.kind ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
               >
                 {t.label}
@@ -247,6 +250,18 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
               <p className="col-span-2 text-[11px] text-muted-foreground">Registra tus compras periódicas. Desde Inversiones podrás aplicar los aportes vencidos al precio de mercado y se recalculará tu precio medio.</p>
             </div>
           )}
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">Clase de activo</label>
+          <Select value={assetClass} onValueChange={(v) => v && setAssetClass(v as AssetClass)} items={ASSET_CLASS_LABELS}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(Object.entries(ASSET_CLASS_LABELS) as [AssetClass, string][]).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1.5">

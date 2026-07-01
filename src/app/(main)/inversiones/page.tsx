@@ -5,7 +5,7 @@ import { AreaChart, DonutChart } from "@tremor/react"
 import { Plus, TrendingUp, TrendingDown, LineChart, FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFinance } from "@/lib/store"
-import { useInvestments, usePortfolioValue, type Position } from "@/lib/investments"
+import { useInvestments, usePortfolioValue, assetClassOf, ASSET_CLASS_LABELS, type Position } from "@/lib/investments"
 import { PositionDialog } from "@/components/investments/position-dialog"
 import { PositionDetailPanel } from "@/components/investments/position-detail-panel"
 import { WatchlistRow } from "@/components/investments/watchlist"
@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils"
 
 const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 const DONUT_COLORS = ["blue", "cyan", "indigo", "violet", "sky", "slate", "emerald", "amber"]
-const KIND_LABEL: Record<string, string> = { stock: "Bolsa", crypto: "Crypto", fund: "Fondos", custom: "Otros" }
 const EVO_TABS = [{ id: "rendimiento", label: "Rendimiento" }, { id: "activos", label: "Activos" }, { id: "tipologia", label: "Tipología" }] as const
 const POS_FILTERS = [{ id: "all", label: "Todos" }, { id: "stock", label: "Bolsa" }, { id: "crypto", label: "Crypto" }, { id: "fund", label: "Fondos" }, { id: "custom", label: "Otros" }] as const
 const RANGES = [
@@ -121,7 +120,7 @@ export default function InversionesPage() {
   )
   const tipologiaData = useMemo(() => {
     const m: Record<string, number> = {}
-    for (const r of rows) { const k = KIND_LABEL[r.p.kind]; m[k] = (m[k] ?? 0) + r.value }
+    for (const r of rows) { const k = ASSET_CLASS_LABELS[assetClassOf(r.p)]; m[k] = (m[k] ?? 0) + r.value }
     return Object.entries(m).map(([name, v]) => ({ name, value: Math.round(v) })).filter((d) => d.value > 0)
   }, [rows])
   const filteredRows = useMemo(() => (posFilter === "all" ? rows : rows.filter((r) => r.p.kind === posFilter)), [rows, posFilter])
@@ -138,7 +137,7 @@ export default function InversionesPage() {
         byType: tipologiaData,
         positions: rows.map((r) => ({
           name: r.p.name,
-          kind: KIND_LABEL[r.p.kind] ?? "Otros",
+          kind: ASSET_CLASS_LABELS[assetClassOf(r.p)],
           account: state.accounts.find((a) => a.id === r.p.accountId)?.nombre ?? "—",
           units: r.p.units,
           buyPrice: r.p.buyPrice,

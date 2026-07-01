@@ -7,6 +7,33 @@ import { USER_ID } from "./store"
 
 export type AssetKind = "stock" | "fund" | "crypto" | "custom"
 
+// Clase de activo para el desglose de asignación (Tipología / informe X-Ray),
+// más granular que el `kind` técnico usado para la búsqueda de precios.
+export type AssetClass = "acciones" | "fondos_indexados" | "cripto" | "renta_fija" | "roboadvisor" | "oro" | "liquidez" | "otros"
+
+export const ASSET_CLASS_LABELS: Record<AssetClass, string> = {
+  acciones: "Acciones",
+  fondos_indexados: "Fondos Indexados",
+  cripto: "Criptomonedas",
+  renta_fija: "Renta Fija",
+  roboadvisor: "Roboadvisor",
+  oro: "Oro",
+  liquidez: "Liquidez",
+  otros: "Otros",
+}
+
+export function defaultAssetClass(kind: AssetKind): AssetClass {
+  if (kind === "stock") return "acciones"
+  if (kind === "fund") return "fondos_indexados"
+  if (kind === "crypto") return "cripto"
+  return "otros"
+}
+
+/** Clase de activo efectiva: la elegida por el usuario, o la que corresponde por defecto a su `kind`. */
+export function assetClassOf(p: Position): AssetClass {
+  return p.assetClass ?? defaultAssetClass(p.kind)
+}
+
 export interface Position {
   id: string
   kind: AssetKind
@@ -18,6 +45,7 @@ export interface Position {
   buyPrice: number
   currency: string
   accountId?: string
+  assetClass?: AssetClass
   dca?: boolean
   dcaAmount?: number
   dcaFreq?: DcaFreq
@@ -35,6 +63,7 @@ interface InvestmentRow {
   buy_price: number | string
   currency: string
   account_id: string | null
+  asset_class: string | null
   dca: boolean | null
   dca_amount: number | string | null
   dca_freq: string | null
@@ -101,6 +130,12 @@ function toRow(p: Position): Record<string, unknown> {
     base.dca_freq = p.dcaFreq ?? null
     base.dca_last = p.dcaLast ?? null
   }
+  // Igual que con DCA: `asset_class` solo se envía cuando difiere del valor por
+  // defecto de su `kind`, para que la sincronización no se rompa en cuentas que
+  // no hayan corrido la migración SQL (supabase-assetclass.sql) todavía.
+  if (p.assetClass && p.assetClass !== defaultAssetClass(p.kind)) {
+    base.asset_class = p.assetClass
+  }
   return base
 }
 
@@ -109,6 +144,7 @@ function fromRow(r: InvestmentRow): Position {
     id: r.id, kind: r.kind, symbol: r.symbol, name: r.name, isin: r.isin ?? undefined,
     date: r.date, units: Number(r.units), buyPrice: Number(r.buy_price), currency: r.currency,
     accountId: r.account_id ?? undefined, dca: r.dca ?? false,
+    assetClass: (r.asset_class as AssetClass | null) ?? undefined,
     dcaAmount: r.dca_amount != null ? Number(r.dca_amount) : undefined,
     dcaFreq: (r.dca_freq as DcaFreq | null) ?? undefined,
     dcaLast: r.dca_last ?? undefined,
