@@ -172,7 +172,7 @@ export default function DashboardContent() {
   }
 
   return (
-    <div className="w-full max-w-full space-y-5 overflow-x-hidden sm:space-y-6">
+    <div className="content-fade w-full max-w-full space-y-6 overflow-x-hidden sm:space-y-7">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="page-section-label">Resumen general</p>

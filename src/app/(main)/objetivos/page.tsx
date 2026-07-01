@@ -20,7 +20,7 @@ export default function ObjetivosPage() {
   const hasMetas = state.sinkingFunds.length > 0
 
   return (
-    <div className="space-y-7">
+    <div className="content-fade space-y-6 sm:space-y-7">
       <section className="relative overflow-hidden rounded-[24px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">
