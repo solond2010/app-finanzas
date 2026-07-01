@@ -280,7 +280,14 @@ function reducer(state: FinanceState, action: Action): FinanceState {
         ? state 
         : { ...state, categories: [...state.categories, { id: generateId(), ...action.payload }] }
     case "DELETE_CATEGORY":
-      return { ...state, categories: state.categories.filter((c) => c.id !== action.payload) }
+      // Al borrar una categoría también eliminamos sus presupuestos dependientes
+      // (budgets.category_id → categories.id) para no dejar filas huérfanas ni
+      // violar la FK al sincronizar el borrado con Supabase.
+      return {
+        ...state,
+        categories: state.categories.filter((c) => c.id !== action.payload),
+        budgets: state.budgets.filter((b) => b.category_id !== action.payload),
+      }
     case "ADD_BUDGET":
       return { ...state, budgets: [...state.budgets, { id: generateId(), ...action.payload }] }
     case "UPDATE_BUDGET":
@@ -455,7 +462,12 @@ async function syncToSupabase(state: FinanceState) {
   await deleteRemoteMissingRows("sinking_funds", state.sinkingFunds.map((s) => s.id))
   await deleteRemoteMissingRows("accounts", state.accounts.map((a) => a.id))
   await deleteRemoteMissingRows("budgets", state.budgets.map((b) => b.id))
-  // NOTA: No borramos categorías automáticamente para evitar borrados accidentales
+  // Las categorías se borran DESPUÉS de los presupuestos: como budgets.category_id
+  // tiene una FK a categories.id, primero deben desaparecer los presupuestos que
+  // referencian la categoría eliminada (ya los quitamos en DELETE_CATEGORY). La
+  // salvaguarda anti-borrado-masivo de deleteRemoteMissingRows evita perder datos
+  // si el estado local llega parcial.
+  await deleteRemoteMissingRows("categories", state.categories.map((c) => c.id))
 }
 
 function loadLocalBackup(): FinanceState | null {
@@ -472,7 +484,7 @@ function loadLocalBackup(): FinanceState | null {
   }
 }
 
-async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sinking_funds" | "budgets", localIds: string[]) {
+async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sinking_funds" | "budgets" | "categories", localIds: string[]) {
   const { data, error } = await supabase.from(table).select("id")
   if (error) throw error
 
