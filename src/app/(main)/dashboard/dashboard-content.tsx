@@ -2,12 +2,10 @@
 
 import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AreaChart } from "@tremor/react"
-import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Gauge, PiggyBank, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react"
-import { MetricCard } from "@/components/dashboard/metric-card"
+import { AreaChart, SparkLineChart } from "@tremor/react"
+import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, PiggyBank, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
-import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { usePortfolioValue } from "@/lib/investments"
@@ -72,6 +70,24 @@ function AnnualStat({ label, year, value, accent, icon: Icon, children }: { labe
   )
 }
 
+// Tarjeta compacta estilo "ticker" con un mini-gráfico de tendencia opcional
+// (si no hay serie histórica disponible, como en la cartera, se omite y solo
+// se ve la cifra).
+function TickerTile({ label, value, valueColor, trend, trendColor }: { label: string; value: string; valueColor?: string; trend?: number[]; trendColor?: string }) {
+  const data = trend?.map((v, i) => ({ i, v }))
+  return (
+    <div className="min-w-0 rounded-2xl border border-border bg-card p-3.5">
+      <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <div className="mt-1.5 flex items-end justify-between gap-2">
+        <span className="truncate text-lg font-bold tabular-nums" style={{ color: valueColor }}>{value}</span>
+        {data && data.length > 1 && (
+          <SparkLineChart data={data} index="i" categories={["v"]} colors={[trendColor ?? "blue"]} className="h-5 w-12 shrink-0" />
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardContent() {
   const { state, loading, dispatch } = useFinance()
   const router = useRouter()
@@ -91,7 +107,7 @@ export default function DashboardContent() {
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
-  const { value: portfolioValue, pnl: portfolioPnl } = usePortfolioValue()
+  const { value: portfolioValue, pnl: portfolioPnl, pnlPct: portfolioPnlPct } = usePortfolioValue()
   // El saldo manual de las cuentas de inversión se sustituye por el valor de
   // mercado de la cartera (si no, se contaría dos veces).
   const investmentSaldo = useMemo(() => displayAccounts.filter((a) => a.tipo === "inversion").reduce((s, a) => s + a.saldo, 0), [displayAccounts])
@@ -99,17 +115,18 @@ export default function DashboardContent() {
 
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
 
-  const previousMonth = useMemo(() => {
-    const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-  }, [selectedDate])
-  const previousTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, previousMonth), [analysisTransactions, previousMonth])
-  const previousNetWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, previousMonth), [state.accounts, state.transactions, previousMonth])
-
-  const pctDelta = (curr: number, prev: number) => (prev > 0 ? Math.round(((curr - prev) / prev) * 100) : undefined)
-  const balanceDelta = previousNetWorth > 0 ? Math.round(((netWorth - previousNetWorth) / previousNetWorth) * 100) : undefined
-  const ingresosDelta = pctDelta(monthTotals.ingresos, previousTotals.ingresos)
-  const gastosDelta = pctDelta(monthTotals.gastos, previousTotals.gastos)
+  // Últimos 6 meses de ingresos/gastos/tasa de ahorro, para los mini-gráficos
+  // de tendencia del ticker superior (independiente del año natural).
+  const sparkTrend = useMemo(
+    () => Array.from({ length: 6 }, (_, i) => {
+      const offset = 5 - i
+      const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      const t = getMonthTotalsByString(analysisTransactions, key)
+      return { ingresos: t.ingresos, gastos: t.gastos, tasa: getSavingsRate(t.ingresos, t.neto) }
+    }),
+    [selectedDate, analysisTransactions]
+  )
 
   const year = selectedDate.getFullYear()
   const monthlyYear = useMemo(
@@ -140,6 +157,66 @@ export default function DashboardContent() {
   const topSpending = spending.slice(0, 6)
   const maxSpend = topSpending[0]?.monto ?? 1
   const catColor = (name: string) => state.categories.find((c) => c.name === name)?.color ?? "#3b82f6"
+
+  // Composición del patrimonio por tipo de cuenta. Las cuentas de inversión
+  // se colapsan en un único bloque con el valor de mercado de la cartera
+  // (no la suma de saldos manuales, que quedan obsoletos), igual que en el
+  // resto del Dashboard.
+  const composicion = useMemo(() => {
+    const groups: Record<string, number> = {}
+    for (const a of displayAccounts) {
+      if (a.tipo === "inversion") continue
+      groups[a.tipo] = (groups[a.tipo] ?? 0) + a.saldo
+    }
+    if (portfolioValue > 0) groups.inversion = portfolioValue
+    const total = Object.values(groups).reduce((s, v) => s + Math.max(v, 0), 0) || 1
+    return Object.entries(groups)
+      .filter(([, v]) => v > 0)
+      .map(([tipo, v]) => ({
+        tipo,
+        label: typeConfig[tipo as Account["tipo"]]?.label ?? tipo,
+        value: v,
+        pct: (v / total) * 100,
+        color: typeConfig[tipo as Account["tipo"]]?.color ?? "#6b7387",
+      }))
+      .sort((a, b) => b.value - a.value)
+  }, [displayAccounts, portfolioValue])
+
+  // Racha de meses consecutivos con flujo de caja positivo, contando hacia
+  // atrás desde el mes anterior al seleccionado (el mes en curso se excluye
+  // porque suele estar incompleto y falsearía la racha).
+  const streak = useMemo(() => {
+    let count = 0
+    for (let offset = 1; offset <= 24; offset++) {
+      const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      const t = getMonthTotalsByString(analysisTransactions, key)
+      if (t.ingresos === 0 && t.gastos === 0) break
+      if (t.neto <= 0) break
+      count++
+    }
+    return count
+  }, [selectedDate, analysisTransactions])
+
+  const bestMonth = useMemo(() => {
+    let best = { idx: -1, neto: 0 }
+    monthlyYear.forEach((m, i) => { if (m.neto > best.neto) best = { idx: i, neto: m.neto } })
+    if (best.idx < 0) return null
+    return { label: new Date(year, best.idx, 1).toLocaleDateString("es-ES", { month: "long" }), value: best.neto }
+  }, [monthlyYear, year])
+
+  const nextGoal = useMemo(() => {
+    return state.sinkingFunds
+      .map((f) => ({ nombre: f.nombre, pct: f.cantidad_objetivo > 0 ? (f.ahorrado_actual / f.cantidad_objetivo) * 100 : 0, objetivo: f.cantidad_objetivo }))
+      .filter((f) => f.pct < 100)
+      .sort((a, b) => b.pct - a.pct)[0] ?? null
+  }, [state.sinkingFunds])
+
+  const recentTransactions = useMemo(
+    () => analysisTransactions.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5),
+    [analysisTransactions]
+  )
+  const accountName = (id: string) => state.accounts.find((a) => a.id === id)?.nombre ?? "—"
 
   const score = useMemo(() => {
     let s = 0
@@ -331,12 +408,54 @@ export default function DashboardContent() {
             </div>
           </section>
 
-          {/* KPIs */}
+          {/* Ticker: pulso del mes con mini-tendencia de 6 meses */}
           <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <MetricCard label="Balance total" value={<AnimatedNumber value={netWorthDisplay} />} subtitle={portfolioValue > 0 ? "Cuentas + inversiones" : "Patrimonio neto actual"} icon={Wallet} tone="blue" delta={balanceDelta} delay={0} />
-            <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix="+" />} subtitle="vs. mes anterior" icon={ArrowUpRight} tone="emerald" delta={ingresosDelta} delay={80} />
-            <MetricCard label="Gastos" value={<AnimatedNumber value={monthTotals.gastos} prefix="-" />} subtitle="vs. mes anterior" icon={ArrowDownRight} tone="red" delta={gastosDelta} deltaGoodWhenUp={false} delay={160} />
-            <MetricCard label="Tasa de ahorro" value={`${savingsRate}%`} subtitle="Objetivo del 20%" icon={Target} tone="blue" delay={240} />
+            <TickerTile label="Ingresos" value={`+${formatMoney(monthTotals.ingresos, "EUR")}`} valueColor="#10b981" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" />
+            <TickerTile label="Gastos" value={`-${formatMoney(monthTotals.gastos, "EUR")}`} valueColor="#ef4444" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" />
+            <TickerTile label="Cartera" value={portfolioValue > 0 ? `${portfolioPnlPct >= 0 ? "+" : ""}${portfolioPnlPct.toFixed(2)}%` : "—"} valueColor="var(--gold)" />
+            <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" />
+          </section>
+
+          {/* Composición del patrimonio + racha de ahorro */}
+          <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+            <div className={`${CARD} min-w-0 lg:col-span-2`}>
+              <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Layers3 className="h-4 w-4 text-primary" /> Composición del patrimonio</p>
+              {composicion.length === 0 ? (
+                <p className="mt-4 text-sm text-muted-foreground">Sin datos todavía.</p>
+              ) : (
+                <>
+                  <div className="mt-5 flex h-2.5 w-full overflow-hidden rounded-full">
+                    {composicion.map((c) => (
+                      <div key={c.tipo} style={{ width: `${c.pct}%`, backgroundColor: c.color }} title={c.label} />
+                    ))}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+                    {composicion.map((c) => (
+                      <div key={c.tipo} className="flex items-center gap-2 text-xs">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
+                        <span className="text-foreground">{c.label}</span>
+                        <span className="tabular-nums text-muted-foreground">{Math.round(c.pct)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className={`${CARD} flex min-w-0 flex-col justify-center gap-3.5`}>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-xs text-muted-foreground"><Flame className="h-3.5 w-3.5 text-amber-500" /> Racha de ahorro</span>
+                <span className="text-sm font-semibold tabular-nums text-foreground">{streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-xs text-muted-foreground"><TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> Mejor mes</span>
+                <span className="text-sm font-semibold tabular-nums text-emerald-500">{bestMonth ? <Sensitive>{formatMoney(bestMonth.value, "EUR")}</Sensitive> : "—"}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-xs text-muted-foreground"><Target className="h-3.5 w-3.5 text-primary" /> Próximo objetivo</span>
+                <span className="truncate text-sm font-semibold tabular-nums text-foreground">{nextGoal ? <Sensitive>{formatMoney(nextGoal.objetivo, "EUR")}</Sensitive> : "—"}</span>
+              </div>
+            </div>
           </section>
 
           {/* Acumulado anual */}
@@ -449,7 +568,38 @@ export default function DashboardContent() {
             </div>
           )}
 
-          <TransactionsTable selectedMonth={selectedMonth} />
+          {/* Últimos movimientos: vista rápida de los 5 más recientes. El
+              historial completo vive en Ingresos y Gastos. */}
+          <div className={`${CARD} min-w-0`}>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Receipt className="h-4 w-4 text-primary" /> Últimos movimientos</p>
+              <button onClick={() => router.push("/transactions")} className="text-xs font-medium text-primary transition-colors hover:opacity-70">Ver todos</button>
+            </div>
+            {recentTransactions.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Sin movimientos todavía.</p>
+            ) : (
+              <div className="divide-y divide-border/70">
+                {recentTransactions.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span
+                        className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold", t.tipo === "ingreso" ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500")}
+                      >
+                        {accountName(t.cuenta_id).slice(0, 2).toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{t.descripcion || t.categoria}</p>
+                        <p className="truncate text-xs text-muted-foreground">{accountName(t.cuenta_id)}</p>
+                      </div>
+                    </div>
+                    <span className={cn("shrink-0 text-sm font-semibold tabular-nums", t.tipo === "ingreso" ? "text-emerald-500" : "text-red-500")}>
+                      <Sensitive>{t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, "EUR")}</Sensitive>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <SinkingFundsGrid />
         </div>
       )}
