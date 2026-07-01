@@ -1,12 +1,17 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { SlidersHorizontal, Plus } from "lucide-react"
+import { SlidersHorizontal, Plus, AlertTriangle } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Sensitive } from "@/components/shared/sensitive"
 import { formatMoney } from "@/lib/currency"
 import { type Budget, type Transaction, type Category } from "@/lib/store"
 import { BudgetDialog } from "@/components/dashboard/budget-dialog"
+import { cn } from "@/lib/utils"
+
+// A partir de este % de un presupuesto se avisa (ámbar); a partir de 100% ya
+// está superado (rojo).
+const WARNING_THRESHOLD = 80
 
 interface MonthlyBudgetProps {
   budgets: Budget[]
@@ -41,10 +46,26 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
       .sort((a, b) => b.percentage - a.percentage)
   }, [budgets, transactions, categories, selectedMonth])
 
+  const overCount = budgetProgress.filter((b) => b.percentage >= 100).length
+  const warningCount = budgetProgress.filter((b) => b.percentage >= WARNING_THRESHOLD && b.percentage < 100).length
+
   return (
     <div className={CARD}>
-      <div className="mb-6 flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-slate-900 dark:text-white">Presupuesto Mensual</p>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">Presupuesto Mensual</p>
+          {(overCount > 0 || warningCount > 0) && (
+            <span className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+              overCount > 0 ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
+            )}>
+              <AlertTriangle className="h-3 w-3" />
+              {overCount > 0
+                ? `${overCount} superado${overCount > 1 ? "s" : ""}`
+                : `${warningCount} cerca del límite`}
+            </span>
+          )}
+        </div>
         <button
           onClick={() => setOpen(true)}
           aria-label="Gestionar presupuestos"
@@ -70,18 +91,26 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
         <div className="space-y-4">
           {budgetProgress.map((b) => {
             const over = b.percentage >= 100
+            const warning = !over && b.percentage >= WARNING_THRESHOLD
             return (
               <div key={b.id} className="space-y-2">
                 <div className="flex items-center justify-between gap-2 text-xs">
                   <span className="flex min-w-0 items-center gap-2 font-medium text-slate-600 dark:text-slate-400">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: b.categoryColor }} />
                     <span className="truncate">{b.categoryName}</span>
+                    {(over || warning) && <AlertTriangle className={cn("h-3 w-3 shrink-0", over ? "text-red-500" : "text-amber-500")} />}
                   </span>
-                  <span className={`shrink-0 font-semibold tabular-nums ${over ? "text-red-500" : "text-slate-900 dark:text-white"}`}>
+                  <span className={cn(
+                    "shrink-0 font-semibold tabular-nums",
+                    over ? "text-red-500" : warning ? "text-amber-500" : "text-slate-900 dark:text-white"
+                  )}>
                     <Sensitive>{formatMoney(b.spent, "EUR")}</Sensitive> / <Sensitive>{formatMoney(b.amount, "EUR")}</Sensitive>
                   </span>
                 </div>
-                <Progress value={b.percentage} className={`[&_[data-slot=progress-track]]:h-2 ${over ? "[&_[data-slot=progress-indicator]]:bg-red-500" : "[&_[data-slot=progress-indicator]]:bg-foreground"}`} />
+                <Progress value={b.percentage} className={cn(
+                  "[&_[data-slot=progress-track]]:h-2",
+                  over ? "[&_[data-slot=progress-indicator]]:bg-red-500" : warning ? "[&_[data-slot=progress-indicator]]:bg-amber-500" : "[&_[data-slot=progress-indicator]]:bg-foreground"
+                )} />
               </div>
             )
           })}
