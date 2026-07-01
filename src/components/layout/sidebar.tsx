@@ -54,9 +54,6 @@ export function Sidebar() {
   const { syncStatus } = useFinance()
   const { privacy, toggle: togglePrivacy } = usePrivacy()
   const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar()
-  const [isDark, setIsDark] = useState(() =>
-    typeof document !== "undefined" && document.documentElement.classList.contains("dark")
-  )
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
@@ -65,9 +62,10 @@ export function Sidebar() {
   }, [mobileOpen])
 
   // El servidor ya renderiza la clase "dark" según la cookie, así que al montar
-  // solo sincronizamos el estado con la clase real del <html>. Además migramos a
-  // usuarios antiguos que solo tuvieran el tema en localStorage: si falta la
-  // cookie, la reponemos desde localStorage y aplicamos la clase.
+  // solo migramos a usuarios antiguos que solo tuvieran el tema en localStorage:
+  // si falta la cookie, la reponemos desde localStorage y aplicamos la clase.
+  // Nota: el icono/texto de tema se resuelven con CSS (`dark:`), no con estado
+  // de React, para evitar un hydration mismatch entre servidor y cliente.
   useEffect(() => {
     const hasCookie = document.cookie.includes("app-finanzas-theme=")
     if (!hasCookie) {
@@ -78,7 +76,6 @@ export function Sidebar() {
         document.cookie = `app-finanzas-theme=${dark ? "dark" : "light"};path=/;max-age=31536000;samesite=lax`
       }
     }
-    setIsDark(document.documentElement.classList.contains("dark"))
   }, [])
 
   const toggleTheme = () => {
@@ -91,7 +88,6 @@ export function Sidebar() {
     const value = next ? "dark" : "light"
     localStorage.setItem("app-finanzas-theme", value)
     document.cookie = `app-finanzas-theme=${value};path=/;max-age=31536000;samesite=lax`
-    setIsDark(next)
   }
 
   const syncMeta =
@@ -184,12 +180,13 @@ export function Sidebar() {
                 {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </Tooltip>
-            <Tooltip label={isDark ? "Modo claro" : "Modo oscuro"}>
+            <Tooltip label="Cambiar tema">
               <button
                 onClick={toggleTheme}
                 className="flex items-center justify-center rounded-xl p-2.5 text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all hover:scale-110 active:scale-95"
               >
-                {isDark ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+                <SunMedium className="hidden h-4 w-4 dark:block" />
+                <MoonStar className="h-4 w-4 dark:hidden" />
               </button>
             </Tooltip>
             <Tooltip label={syncMeta.label}>
@@ -258,12 +255,14 @@ export function Sidebar() {
           <button
             onClick={toggleTheme}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-            aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+            aria-label="Cambiar tema"
           >
             <div className="flex size-4 items-center justify-center">
-              {isDark ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+              <SunMedium className="hidden h-4 w-4 dark:block" />
+              <MoonStar className="h-4 w-4 dark:hidden" />
             </div>
-            {isDark ? "Modo claro" : "Modo oscuro"}
+            <span className="hidden dark:inline">Modo claro</span>
+            <span className="dark:hidden">Modo oscuro</span>
           </button>
           <div className={cn("flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium", syncMeta.className)}>
             {syncMeta.icon}
