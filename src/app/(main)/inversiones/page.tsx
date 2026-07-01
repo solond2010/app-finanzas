@@ -15,7 +15,7 @@ import { AssetAnalysis } from "@/components/investments/asset-analysis"
 import { DcaPanel } from "@/components/investments/dca-panel"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { chartFormatter, isInitialBalanceTransaction } from "@/lib/format"
-import { getMonthTotalsByString, getMonthlyInvestmentInflow } from "@/lib/calculations"
+import { getMonthTotalsByString, getMonthlyInvestmentInflow, getNetWorthAtMonth } from "@/lib/calculations"
 import { getSetting, setSetting } from "@/lib/settings"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
@@ -167,6 +167,20 @@ export default function InversionesPage() {
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, monthKey), [analysisTransactions, monthKey])
   const investmentInflow = useMemo(() => getMonthlyInvestmentInflow(analysisTransactions, state.accounts, monthKey), [analysisTransactions, state.accounts, monthKey])
 
+  // Evolución del patrimonio (6 meses) para el gráfico del informe: mismo cálculo
+  // que el Dashboard (cuentas históricas - saldo manual de inversión + valor de
+  // mercado actual de la cartera, que no se reconstruye retroactivamente).
+  const investmentAccountSaldo = useMemo(() => state.accounts.filter((a) => a.tipo === "inversion").reduce((s, a) => s + a.saldo, 0), [state.accounts])
+  const netWorthTrend = useMemo(() => Array.from({ length: 6 }, (_, i) => {
+    const offset = 5 - i
+    const d = new Date()
+    d.setDate(1)
+    d.setMonth(d.getMonth() - offset)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+    const label = d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" })
+    return { label, value: Math.round(getNetWorthAtMonth(state.accounts, state.transactions, key) - investmentAccountSaldo + value) }
+  }), [state.accounts, state.transactions, investmentAccountSaldo, value])
+
   const exportXray = async () => {
     setExporting(true)
     try {
@@ -179,6 +193,7 @@ export default function InversionesPage() {
         ingresos: monthTotals.ingresos, gastos: monthTotals.gastos, investmentInflow,
         value, invested, pnl, pnlPct,
         byType: byTypeForReport,
+        netWorthTrend,
         positions: rows.map((r) => ({
           name: r.p.name,
           kind: ASSET_CLASS_LABELS[assetClassOf(r.p)],
