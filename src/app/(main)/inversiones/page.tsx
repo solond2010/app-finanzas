@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { AreaChart, DonutChart } from "@tremor/react"
-import { Plus, TrendingUp, TrendingDown, LineChart, FileDown } from "lucide-react"
+import { Plus, TrendingUp, TrendingDown, LineChart, FileDown, Target, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFinance } from "@/lib/store"
 import { useInvestments, usePortfolioValue, assetClassOf, ASSET_CLASS_LABELS, type Position } from "@/lib/investments"
@@ -14,7 +14,9 @@ import { ProjectionSimulator } from "@/components/investments/projection"
 import { AssetAnalysis } from "@/components/investments/asset-analysis"
 import { DcaPanel } from "@/components/investments/dca-panel"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
-import { chartFormatter } from "@/lib/format"
+import { chartFormatter, isInitialBalanceTransaction } from "@/lib/format"
+import { getMonthTotalsByString, getMonthlyInvestmentInflow } from "@/lib/calculations"
+import { getSetting, setSetting } from "@/lib/settings"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 
@@ -67,6 +69,27 @@ export default function InversionesPage() {
   const [posView, setPosView] = useState<"daily" | "total">("daily")
   const [hist, setHist] = useState<HistMap>({})
   const [exporting, setExporting] = useState(false)
+  const [netWorthTarget, setNetWorthTarget] = useState(0)
+
+  useEffect(() => {
+    queueMicrotask(async () => {
+      const local = Number(localStorage.getItem("networth-target"))
+      if (local > 0) setNetWorthTarget(local)
+      const remote = Number(await getSetting("networth-target"))
+      if (remote > 0) { setNetWorthTarget(remote); try { localStorage.setItem("networth-target", String(remote)) } catch {} }
+    })
+  }, [])
+
+  const editNetWorthTarget = () => {
+    const v = window.prompt("Objetivo de patrimonio total (€)", String(netWorthTarget || ""))
+    if (v == null) return
+    const n = Number(v)
+    if (n >= 0) {
+      setNetWorthTarget(n)
+      try { localStorage.setItem("networth-target", String(n)) } catch {}
+      setSetting("networth-target", String(n))
+    }
+  }
 
   const openNew = () => { setEditing(null); setOpen(true) }
   const detailPosition = positions.find((p) => p.id === detailId) ?? null
@@ -126,6 +149,24 @@ export default function InversionesPage() {
   const filteredRows = useMemo(() => (posFilter === "all" ? rows : rows.filter((r) => r.p.kind === posFilter)), [rows, posFilter])
   const donutFormatter = (v: number) => formatMoney(v, baseCurrency)
 
+  // Patrimonio completo del informe: cuentas (liquidez) + cartera de inversión.
+  // El donut "Tipología" de la página se queda solo con la cartera; el informe
+  // X-Ray añade la liquidez de las cuentas no-inversión como clase aparte.
+  const liquidezCuentas = useMemo(() => state.accounts.filter((a) => a.tipo !== "inversion").reduce((s, a) => s + a.saldo, 0), [state.accounts])
+  const netWorth = liquidezCuentas + value
+  const byTypeForReport = useMemo(() => {
+    const m: Record<string, number> = {}
+    for (const d of tipologiaData) m[d.name] = d.value
+    if (liquidezCuentas > 0) m["Liquidez"] = (m["Liquidez"] ?? 0) + liquidezCuentas
+    return Object.entries(m).map(([name, v]) => ({ name, value: Math.round(v) })).filter((d) => d.value > 0)
+  }, [tipologiaData, liquidezCuentas])
+
+  const monthKey = useMemo(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` }, [])
+  const monthLabel = useMemo(() => new Date().toLocaleDateString("es-ES", { month: "long", year: "numeric" }), [])
+  const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
+  const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, monthKey), [analysisTransactions, monthKey])
+  const investmentInflow = useMemo(() => getMonthlyInvestmentInflow(analysisTransactions, state.accounts, monthKey), [analysisTransactions, state.accounts, monthKey])
+
   const exportXray = async () => {
     setExporting(true)
     try {
@@ -133,8 +174,11 @@ export default function InversionesPage() {
       generateXrayPdf({
         owner: "Mohamed",
         currency: baseCurrency,
+        month: monthLabel,
+        netWorth, netWorthTarget,
+        ingresos: monthTotals.ingresos, gastos: monthTotals.gastos, investmentInflow,
         value, invested, pnl, pnlPct,
-        byType: tipologiaData,
+        byType: byTypeForReport,
         positions: rows.map((r) => ({
           name: r.p.name,
           kind: ASSET_CLASS_LABELS[assetClassOf(r.p)],
@@ -161,6 +205,11 @@ export default function InversionesPage() {
           <p className="mt-0.5 text-sm text-muted-foreground">Portfolio y análisis de activos</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <button onClick={editNetWorthTarget} className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
+            <Target className="h-3.5 w-3.5 text-primary" />
+            {netWorthTarget > 0 ? <>Objetivo: <Sensitive>{formatMoney(netWorthTarget, "EUR")}</Sensitive></> : "Definir objetivo de patrimonio"}
+            <Pencil className="h-3 w-3" />
+          </button>
           <Button onClick={openNew} className="gap-1.5 rounded-full"><Plus className="h-4 w-4" /> Añadir inversión</Button>
           {positions.length > 0 && (
             <Button onClick={exportXray} disabled={exporting} variant="outline" className="gap-1.5 rounded-full">

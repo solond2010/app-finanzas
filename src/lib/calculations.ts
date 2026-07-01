@@ -84,6 +84,16 @@ export function getSavingsRate(ingresos: number, neto: number): number {
   return Math.max(-100, Math.round((neto / ingresos) * 100))
 }
 
+// Dinero movido este mes desde otras cuentas hacia cuentas de tipo "inversion"
+// (traspasos, no aportes registrados posición a posición). Sirve como proxy de
+// "cuánto has invertido este mes" para el informe X-Ray.
+export function getMonthlyInvestmentInflow(transactions: Transaction[], accounts: Account[], monthKey: string): number {
+  const investAccountIds = new Set(accounts.filter((a) => a.tipo === "inversion").map((a) => a.id))
+  return filterTransactionsByMonth(transactions, monthKey)
+    .filter((t) => t.tipo === "ingreso" && isTransfer(t) && investAccountIds.has(t.cuenta_id))
+    .reduce((s, t) => s + t.monto, 0)
+}
+
 export function getMonthTotals(transactions: Transaction[], monthsAgo: number) {
   const now = new Date()
   const d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
