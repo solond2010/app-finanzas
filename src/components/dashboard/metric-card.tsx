@@ -22,12 +22,19 @@ const ICON_TONES: Record<MetricTone, string> = {
   violet: "bg-violet-500/10 text-violet-500",
 }
 
+// Un delta calculado contra una base casi nula (p.ej. el mes anterior con 5€ de gasto)
+// puede dispararse a miles de %. Por encima de este umbral dejamos de mostrar la cifra
+// exacta (falsa precisión) y usamos ">CAP%" para indicar "cambio extremo" sin alarmar.
+const DELTA_CAP = 500
+
 export const MetricCard = memo(function MetricCard({
   label, value, subtitle, icon: Icon, tone, delta, deltaGoodWhenUp = true, delay = 0,
 }: MetricCardProps) {
   const hasDelta = delta !== undefined && Number.isFinite(delta)
   const up = (delta ?? 0) >= 0
   const good = up === deltaGoodWhenUp
+  const deltaMagnitude = Math.abs(Math.round(delta ?? 0))
+  const deltaLabel = deltaMagnitude > DELTA_CAP ? `>${DELTA_CAP}%` : `${deltaMagnitude}%`
 
   return (
     <div
@@ -41,7 +48,7 @@ export const MetricCard = memo(function MetricCard({
         {hasDelta && (
           <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${good ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
             {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {Math.abs(Math.round(delta as number))}%
+            {deltaLabel}
           </span>
         )}
       </div>
