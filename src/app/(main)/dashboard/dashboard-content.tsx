@@ -14,7 +14,7 @@ import { usePortfolioValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth } from "@/lib/calculations"
+import { getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getSavingsRate } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -94,7 +94,7 @@ export default function DashboardContent() {
   const investmentSaldo = useMemo(() => displayAccounts.filter((a) => a.tipo === "inversion").reduce((s, a) => s + a.saldo, 0), [displayAccounts])
   const netWorthDisplay = netWorth - investmentSaldo + portfolioValue
 
-  const savingsRate = monthTotals.ingresos > 0 ? Math.round((monthTotals.neto / monthTotals.ingresos) * 100) : 0
+  const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
 
   const previousMonth = useMemo(() => {
     const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1)

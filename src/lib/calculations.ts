@@ -77,6 +77,13 @@ export function getMonthTotalsByString(transactions: Transaction[], month: strin
   return { ingresos, gastos, neto: ingresos - gastos }
 }
 
+// neto/ingresos no tiene techo por abajo (gastos puede disparar la ratio), así
+// que se acota en -100% para evitar cifras absurdas cuando los ingresos del mes son bajos.
+export function getSavingsRate(ingresos: number, neto: number): number {
+  if (ingresos <= 0) return 0
+  return Math.max(-100, Math.round((neto / ingresos) * 100))
+}
+
 export function getMonthTotals(transactions: Transaction[], monthsAgo: number) {
   const now = new Date()
   const d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)

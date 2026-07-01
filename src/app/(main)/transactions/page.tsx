@@ -9,7 +9,7 @@ import { getSetting, setSetting } from "@/lib/settings"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { useFinance } from "@/lib/store"
-import { getMonthTotalsByString } from "@/lib/calculations"
+import { getMonthTotalsByString, getSavingsRate } from "@/lib/calculations"
 import { formatMonth, isInitialBalanceTransaction, chartFormatter } from "@/lib/format"
 import { formatMoney } from "@/lib/currency"
 import { AnimatedNumber } from "@/components/shared/animated-number"
@@ -63,7 +63,7 @@ export default function IngresosGastosPage() {
   const selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
-  const savingsRate = monthTotals.ingresos > 0 ? Math.round((monthTotals.neto / monthTotals.ingresos) * 100) : 0
+  const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
 
   const totalBalance = state.accounts.reduce((s, a) => s + a.saldo, 0)
   const accCount = state.accounts.length
@@ -192,7 +192,7 @@ export default function IngresosGastosPage() {
             <p className={cn("mt-1 text-3xl font-bold tabular-nums tracking-tight", monthTotals.neto >= 0 ? "text-foreground" : "text-red-500")}>
               <Sensitive><AnimatedNumber value={monthTotals.neto} prefix={monthTotals.neto >= 0 ? "+" : ""} /></Sensitive>
             </p>
-            <p className="mt-1 text-xs"><span className="font-semibold text-emerald-500">{savingsRate}%</span> <span className="text-muted-foreground">de ahorro este mes</span></p>
+            <p className="mt-1 text-xs"><span className={cn("font-semibold", savingsRate >= 0 ? "text-emerald-500" : "text-red-500")}>{savingsRate}%</span> <span className="text-muted-foreground">de ahorro este mes</span></p>
           </div>
           <div className="rounded-2xl border border-border p-4">
             <div className="flex items-center justify-between">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, Fragment } from "react"
+import { useState, useMemo, useRef, Fragment } from "react"
 import {
   Table,
   TableBody,
@@ -200,6 +200,63 @@ function TransactionForm({
   )
 }
 
+type EditField = "fecha" | "descripcion" | "categoria" | "monto"
+
+// Enter guarda y desenfoca; Escape desenfoca sin guardar. El blur real
+// (click fuera, o el que dispara el .blur() de Enter/Escape) es el único
+// punto que llama a onDone, evitando doble commit.
+function InlineEditInput({
+  defaultValue,
+  type = "text",
+  onDone,
+}: {
+  defaultValue: string
+  type?: "text" | "number" | "date"
+  onDone: (committed: boolean, value: string) => void
+}) {
+  const shouldCommit = useRef(true)
+  return (
+    <input
+      autoFocus
+      type={type}
+      step={type === "number" ? "0.01" : undefined}
+      min={type === "number" ? "0" : undefined}
+      defaultValue={defaultValue}
+      className="w-full min-w-0 rounded-md border border-primary/40 bg-background px-1.5 py-0.5 text-xs outline-none ring-2 ring-primary/15 sm:text-sm"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") { shouldCommit.current = true; e.currentTarget.blur() }
+        else if (e.key === "Escape") { shouldCommit.current = false; e.currentTarget.blur() }
+      }}
+      onBlur={(e) => onDone(shouldCommit.current, e.currentTarget.value)}
+    />
+  )
+}
+
+function InlineEditSelect({
+  defaultValue,
+  options,
+  onDone,
+}: {
+  defaultValue: string
+  options: { value: string; label: string }[]
+  onDone: (committed: boolean, value: string) => void
+}) {
+  return (
+    <select
+      autoFocus
+      defaultValue={defaultValue}
+      className="w-full min-w-0 rounded-md border border-primary/40 bg-background px-1.5 py-0.5 text-xs outline-none ring-2 ring-primary/15"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => { if (e.key === "Escape") { e.currentTarget.blur(); onDone(false, defaultValue) } }}
+      onChange={(e) => onDone(true, e.target.value)}
+      onBlur={() => onDone(false, defaultValue)}
+    >
+      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  )
+}
+
 export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: string; selectedMonth?: string }) {
   const { state, dispatch } = useFinance()
   const { toast } = useToast()
@@ -207,6 +264,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(0)
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null)
+  const [editingCell, setEditingCell] = useState<{ id: string; field: EditField } | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<Transaction | null>(null)
   const PAGE_SIZE = 25
@@ -241,6 +299,25 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
     a.click()
     URL.revokeObjectURL(url)
     toast("CSV exportado", "success")
+  }
+
+  const handleInlineDone = (t: Transaction, field: EditField, committed: boolean, rawValue: string) => {
+    setEditingCell(null)
+    if (!committed) return
+    if (field === "descripcion") {
+      dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, descripcion: rawValue } })
+    } else if (field === "categoria") {
+      if (!rawValue || rawValue === t.categoria) return
+      dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, categoria: rawValue } })
+    } else if (field === "fecha") {
+      if (!rawValue) return
+      dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, fecha: rawValue } })
+    } else if (field === "monto") {
+      const monto = Number(rawValue)
+      if (!Number.isFinite(monto) || monto <= 0) return
+      dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, monto } })
+    }
+    toast("Transacción actualizada", "success")
   }
 
   const dateLabel = (dateStr: string) => {
@@ -377,24 +454,41 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                   {group.transactions.map((t) => {
                     const account = state.accounts.find((a) => a.id === t.cuenta_id)
                     const catColor = CATEGORY_COLORS[t.categoria]
+                    const isEditing = (field: EditField) => editingCell?.id === t.id && editingCell.field === field
+                    const categoryOptions = state.categories
+                      .filter((c) => !c.kind || c.kind === t.tipo || c.kind === "both")
+                      .sort((a, b) => a.name.localeCompare(b.name, "es"))
+                      .map((c) => ({ value: c.name, label: c.name }))
                     return (
                       <TableRow key={t.id} className="group transition-colors hover:bg-muted/20">
                         <TableCell className="tabular-nums text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-                          {new Date(t.fecha).toLocaleDateString("es-ES", {
-                            day: "2-digit", month: "short",
-                          })}
+                          {isEditing("fecha") ? (
+                            <InlineEditInput type="date" defaultValue={t.fecha} onDone={(ok, v) => handleInlineDone(t, "fecha", ok, v)} />
+                          ) : (
+                            <button onClick={() => setEditingCell({ id: t.id, field: "fecha" })} className="cursor-text rounded px-1 py-0.5 -mx-1 hover:bg-muted/60" aria-label="Editar fecha">
+                              {new Date(t.fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
+                            </button>
+                          )}
                         </TableCell>
                         <TableCell className="text-xs sm:text-sm max-w-[100px] sm:max-w-[140px]">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: catColor ? undefined : undefined }} />
-                            <span className="truncate font-medium">{t.descripcion || t.categoria}</span>
-                          </div>
+                          {isEditing("descripcion") ? (
+                            <InlineEditInput defaultValue={t.descripcion} onDone={(ok, v) => handleInlineDone(t, "descripcion", ok, v)} />
+                          ) : (
+                            <button onClick={() => setEditingCell({ id: t.id, field: "descripcion" })} className="flex w-full items-center gap-2 rounded px-1 py-0.5 -mx-1 text-left hover:bg-muted/60" aria-label="Editar descripción">
+                              <span className="inline-flex h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: catColor ? undefined : undefined }} />
+                              <span className="truncate font-medium">{t.descripcion || t.categoria}</span>
+                            </button>
+                          )}
                         </TableCell>
                         <TableCell className="hidden md:table-cell"><span className="text-xs text-muted-foreground">{account?.nombre}</span></TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset", catColor || "bg-muted/60 text-muted-foreground ring-border/20")}>
-                            {t.categoria}
-                          </span>
+                          {isEditing("categoria") ? (
+                            <InlineEditSelect defaultValue={t.categoria} options={categoryOptions} onDone={(ok, v) => handleInlineDone(t, "categoria", ok, v)} />
+                          ) : (
+                            <button onClick={() => setEditingCell({ id: t.id, field: "categoria" })} className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset", catColor || "bg-muted/60 text-muted-foreground ring-border/20")} aria-label="Editar categoría">
+                              {t.categoria}
+                            </button>
+                          )}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
@@ -407,7 +501,13 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                           </span>
                         </TableCell>
                         <TableCell className={`text-right tabular-nums font-bold text-xs sm:text-sm ${t.tipo === "ingreso" ? "text-emerald-500" : "text-foreground"}`}>
-                          <Sensitive>{t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, account?.currency ?? "EUR")}</Sensitive>
+                          {isEditing("monto") ? (
+                            <InlineEditInput type="number" defaultValue={String(t.monto)} onDone={(ok, v) => handleInlineDone(t, "monto", ok, v)} />
+                          ) : (
+                            <button onClick={() => setEditingCell({ id: t.id, field: "monto" })} className="rounded px-1 py-0.5 -mx-1 hover:bg-muted/60" aria-label="Editar monto">
+                              <Sensitive>{t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, account?.currency ?? "EUR")}</Sensitive>
+                            </button>
+                          )}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <div className="flex gap-1">
