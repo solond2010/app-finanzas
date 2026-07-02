@@ -27,5 +27,5 @@ export function convertToEur(amount: number, currency: CurrencyCode) {
 }
 
 export function formatMoney(amount: number, currency: CurrencyCode) {
-  return `${amount.toLocaleString("es-ES")} ${currencySymbol(currency)}`
+  return `${amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currencySymbol(currency)}`
 }
