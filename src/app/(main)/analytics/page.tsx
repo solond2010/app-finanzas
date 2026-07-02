@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { MountainChart } from "@/components/shared/mountain-chart"
+import { EmptyState } from "@/components/shared/empty-state"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
@@ -21,20 +22,6 @@ import { Sensitive } from "@/components/shared/sensitive"
 const SummaryTooltip = createChartTooltip(["ingresos", "gastos"], ["emerald", "red"])
 const CategoryTooltip = createChartTooltip(["monto"], ["violet"])
 const NeedsWantsTooltip = createChartTooltip(["Necesidades", "Deseos"], ["emerald", "amber"])
-
-const EmptyPanel = memo(function EmptyPanel({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
-  return (
-    <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl bg-muted/20 text-center ring-1 ring-border/20">
-      <div className="rounded-2xl bg-background/70 p-3 ring-1 ring-border/20">
-        <Icon className="h-6 w-6 text-muted-foreground/45" />
-      </div>
-      <div className="space-y-1">
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="mx-auto max-w-xs text-xs text-muted-foreground">{text}</p>
-      </div>
-    </div>
-  )
-})
 
 const SectionTitle = memo(function SectionTitle({ label, title, text }: { label: string; title: string; text?: string }) {
   return (
@@ -170,8 +157,8 @@ export default function AnalyticsPage() {
 
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <TickerTile label="Tasa de ahorro" value={`${Math.round(savingsActual)}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
-        <TickerTile label="Racha positiva" value={streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"} valueColor="#f59e0b" />
-        <TickerTile label="Cash flow medio" value={signedMoney(averageMonthlyNet)} valueColor={averageMonthlyNet >= 0 ? "#10b981" : "#ef4444"} />
+        <TickerTile label="Racha positiva" value={streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"} valueColor="var(--accent-amber)" />
+        <TickerTile label="Cash flow medio" value={signedMoney(averageMonthlyNet)} valueColor={averageMonthlyNet >= 0 ? "var(--accent-green)" : "var(--accent-red)"} />
         <TickerTile label="Categoría top" value={topCategory ? `${topCategory.categoria} · ${topCategoryPct}%` : "—"} valueColor="var(--gold)" />
       </section>
 
@@ -187,7 +174,7 @@ export default function AnalyticsPage() {
             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${netWorthTrendPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}><Sensitive>{signedMoney(netWorthChange)}</Sensitive></span>
           </CardHeader>
           <CardContent>
-            {state.accounts.length === 0 ? <EmptyPanel icon={Wallet} title="Sin patrimonio registrado" text="Crea cuentas para ver la evolución de tu riqueza neta." /> : (
+            {state.accounts.length === 0 ? <EmptyState icon={Wallet} title="Sin patrimonio registrado" description="Crea cuentas para ver la evolución de tu riqueza neta." bordered className="h-full" /> : (
               <MountainChart data={netWorthHistory} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-[310px]" />
             )}
           </CardContent>
@@ -198,7 +185,7 @@ export default function AnalyticsPage() {
             <CardTitle className="flex items-center gap-2 text-base font-semibold"><BarChart3 className="h-4 w-4 text-muted-foreground" />Ingresos vs gastos</CardTitle>
           </CardHeader>
           <CardContent>
-            {!hasData ? <EmptyPanel icon={BarChart3} title="Aún no hay movimientos" text="Añade ingresos y gastos para comparar tu ritmo mensual." /> : (
+            {!hasData ? <EmptyState icon={BarChart3} title="Aún no hay movimientos" description="Añade ingresos y gastos para comparar tu ritmo mensual." bordered className="h-full" /> : (
               <BarChart data={summaries} index="mes" categories={["ingresos", "gastos"]} colors={["emerald", "red"]} valueFormatter={chartFormatter} yAxisWidth={64} customTooltip={SummaryTooltip} className="h-[310px]" showAnimation />
             )}
           </CardContent>
@@ -212,7 +199,7 @@ export default function AnalyticsPage() {
             {topCategory && <span className="text-xs text-muted-foreground">Top: <strong className="text-foreground">{topCategory.categoria}</strong></span>}
           </CardHeader>
           <CardContent>
-            {categoryBreakdown.length === 0 ? <EmptyPanel icon={Layers3} title="Sin gasto categorizado" text="Cuando registres gastos, aquí verás las categorías que más pesan." /> : (
+            {categoryBreakdown.length === 0 ? <EmptyState icon={Layers3} title="Sin gasto categorizado" description="Cuando registres gastos, aquí verás las categorías que más pesan." bordered className="h-full" /> : (
               <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={72} customTooltip={CategoryTooltip} className="h-[340px]" showAnimation layout="vertical" />
             )}
           </CardContent>
@@ -224,7 +211,7 @@ export default function AnalyticsPage() {
               <CardTitle className="flex items-center gap-2 text-base font-semibold"><Gauge className="h-4 w-4 text-amber-500" />Necesidades vs deseos</CardTitle>
             </CardHeader>
             <CardContent>
-              {totalSpending === 0 ? <EmptyPanel icon={Gauge} title="Sin gastos este mes" text="La distribución aparecerá al registrar necesidades y deseos." /> : (
+              {totalSpending === 0 ? <EmptyState icon={Gauge} title="Sin gastos este mes" description="La distribución aparecerá al registrar necesidades y deseos." bordered className="h-full" /> : (
                 <div className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center lg:grid-cols-1 xl:grid-cols-[180px_1fr]">
                   <DonutChart data={needsWantsData} category="value" index="name" colors={["emerald", "amber"]} variant="donut" customTooltip={NeedsWantsTooltip} className="mx-auto h-44 w-44" showAnimation />
                   <div className="space-y-3">
@@ -262,9 +249,9 @@ export default function AnalyticsPage() {
         <SectionTitle label="Sistema" title="Regla 50/30/20" text="No es una ley, es un mapa rápido para saber si el mes está equilibrado." />
 
         <div className="col-span-full grid grid-cols-1 gap-4 md:grid-cols-3">
-          <RuleCard label="50% Necesidades" target={50} actual={needsPct} value={necesidades} tone="#10b981" delay={100} />
-          <RuleCard label="30% Deseos" target={30} actual={wantsPct} value={deseos} tone="#f59e0b" delay={170} />
-          <RuleCard label="20% Ahorro" target={20} actual={savingsActual} value={monthTotals.neto} tone="#3b82f6" delay={240} />
+          <RuleCard label="50% Necesidades" target={50} actual={needsPct} value={necesidades} tone="var(--accent-green)" delay={100} />
+          <RuleCard label="30% Deseos" target={30} actual={wantsPct} value={deseos} tone="var(--accent-amber)" delay={170} />
+          <RuleCard label="20% Ahorro" target={20} actual={savingsActual} value={monthTotals.neto} tone="var(--accent-blue)" delay={240} />
         </div>
 
         <SectionTitle label="Detalle" title="Cash flow mensual" text="La tabla compacta para confirmar si la historia que cuentan los gráficos es real." />
@@ -284,7 +271,7 @@ export default function AnalyticsPage() {
               <TableBody>
                 {!hasData ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-14"><EmptyPanel icon={CircleDollarSign} title="Sin cash flow" text="Registra movimientos para construir tu histórico mensual." /></TableCell>
+                    <TableCell colSpan={5} className="py-14"><EmptyState icon={CircleDollarSign} title="Sin cash flow" description="Registra movimientos para construir tu histórico mensual." bordered className="h-full" /></TableCell>
                   </TableRow>
                 ) : (
                   cashFlow.slice().reverse().map((month) => (

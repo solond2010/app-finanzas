@@ -25,6 +25,7 @@ import { CircularProgress } from "@/components/ui/circular-progress"
 import { PiggyBank, Plus, Pencil, Trash2, Target, TrendingUp, Clock } from "lucide-react"
 import { currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
+import { EmptyState } from "@/components/shared/empty-state"
 
 function SinkingFundForm({
   fund,
@@ -179,18 +180,14 @@ export function SinkingFundsGrid() {
       </CardHeader>
       <CardContent>
         {state.sinkingFunds.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-10 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10">
-              <Target className="h-6 w-6 text-amber-500" />
-            </div>
-            <div className="space-y-0.5">
-              <p className="text-sm font-semibold text-foreground">Aún no tienes metas de ahorro</p>
-              <p className="text-xs text-muted-foreground">Define un objetivo y sigue tu progreso mes a mes.</p>
-            </div>
-            <Button size="sm" className="gap-1" onClick={() => setShowNew(true)}>
-              <Plus className="h-3.5 w-3.5" /> Crear primera meta
-            </Button>
-          </div>
+          <EmptyState
+            className="py-10"
+            icon={Target}
+            tone="amber"
+            title="Aún no tienes metas de ahorro"
+            description="Define un objetivo y sigue tu progreso mes a mes."
+            action={{ label: "Crear primera meta", icon: Plus, onClick: () => setShowNew(true) }}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {state.sinkingFunds.map((fund) => {
@@ -199,7 +196,7 @@ export function SinkingFundsGrid() {
               const account = state.accounts.find((a) => a.id === fund.cuenta_id)
               const symbol = currencySymbol(account?.currency ?? "EUR")
               const remaining = fund.cantidad_objetivo - fund.ahorrado_actual
-              const circleColor = progress >= 100 ? "#10b981" : progress >= 50 ? "#f59e0b" : "#3b82f6"
+              const circleColor = progress >= 100 ? "var(--accent-green)" : progress >= 50 ? "var(--accent-amber)" : "var(--accent-blue)"
 
               return (
                 <div key={fund.id} className="group relative rounded-2xl border border-border/60 bg-background/70 p-5 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5">

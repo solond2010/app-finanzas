@@ -10,6 +10,7 @@ import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { TickerTile } from "@/components/shared/ticker-tile"
+import { EmptyState, EmptyPlaceholder } from "@/components/shared/empty-state"
 import { useFinance, generateId } from "@/lib/store"
 import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, getUpcomingRecurring } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
@@ -26,7 +27,7 @@ const CARD_HERO = "rounded-[24px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0
 const RANGES = [{ label: "1M", m: 1 }, { label: "3M", m: 3 }, { label: "6M", m: 6 }, { label: "1 año", m: 12 }]
 const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["blue", "red"])
 
-function Gauge({ value, max, color = "#3b82f6" }: { value: number; max: number; color?: string }) {
+function Gauge({ value, max, color = "var(--accent-blue)" }: { value: number; max: number; color?: string }) {
   const pct = max > 0 ? Math.max(0, Math.min(value / max, 1)) : 0
   const len = Math.PI * 70
   return (
@@ -150,8 +151,8 @@ export default function IngresosGastosPage() {
       {/* Ticker: pulso del mes */}
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
-        <TickerTile label="Pagos pendientes" value={upcomingRecurring.length > 0 ? String(upcomingRecurring.length) : "Al día"} valueColor="#f59e0b" />
-        <TickerTile label="Mayor gasto" value={biggestExpense > 0 ? formatMoney(biggestExpense, "EUR") : "—"} valueColor="#ef4444" />
+        <TickerTile label="Pagos pendientes" value={upcomingRecurring.length > 0 ? String(upcomingRecurring.length) : "Al día"} valueColor="var(--accent-amber)" />
+        <TickerTile label="Mayor gasto" value={biggestExpense > 0 ? formatMoney(biggestExpense, "EUR") : "—"} valueColor="var(--accent-red)" />
         <TickerTile label="Categoría top" value={topCategory ? `${topCategory.categoria} · ${topCategoryPct}%` : "—"} valueColor="var(--gold)" />
       </section>
 
@@ -215,11 +216,7 @@ export default function IngresosGastosPage() {
         <div className={`${CARD} flex min-w-0 flex-col`}>
           <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><CalendarClock className="h-4 w-4 text-primary" /> Próximos pagos</p>
           {upcomingRecurring.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground"><CalendarClock className="h-5 w-5" /></span>
-              <p className="text-sm font-medium text-foreground">Sin pagos programados</p>
-              <p className="max-w-[220px] text-xs text-muted-foreground">Marca transacciones como recurrentes para verlas aquí.</p>
-            </div>
+            <EmptyState className="flex-1 py-8" icon={CalendarClock} title="Sin pagos programados" description="Marca transacciones como recurrentes para verlas aquí." />
           ) : (
             <div className="mt-3 flex-1 space-y-2">
               {upcomingRecurring.map((item) => (
@@ -255,7 +252,7 @@ export default function IngresosGastosPage() {
           {cashflowHasData ? (
             <AreaChart data={cashflow} index="mes" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="mt-2 h-64 sm:h-72" curveType="monotone" showAnimation />
           ) : (
-            <div className="mt-2 flex h-64 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-72">Sin movimientos en este periodo</div>
+            <EmptyPlaceholder text="Sin movimientos en este periodo" className="mt-2 h-64 sm:h-72" />
           )}
         </div>
 

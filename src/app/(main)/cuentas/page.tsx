@@ -18,11 +18,11 @@ import { formatMoney, currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig, typeLabels } from "@/lib/account-types"
 import { AccountLogo } from "@/components/dashboard/account-logo"
-import { Button } from "@/components/ui/button"
 import { useMemo, useState } from "react"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { useToast } from "@/components/ui/toast"
 import { TickerTile } from "@/components/shared/ticker-tile"
+import { EmptyState } from "@/components/shared/empty-state"
 
 export default function CuentasPage() {
   const { state, dispatch } = useFinance()
@@ -74,23 +74,20 @@ export default function CuentasPage() {
       </section>
 
       {state.accounts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-6 py-24 text-center">
-          <div className="rounded-full bg-muted/50 p-6 ring-1 ring-border/30">
-            <WalletIcon className="h-10 w-10 text-muted-foreground/40" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold tracking-tight">Sin cuentas aún</h2>
-            <p className="text-sm text-muted-foreground max-w-sm">Añade tu primera cuenta bancaria para empezar a gestionar tus finanzas.</p>
-          </div>
-          <Button className="gap-2 rounded-full" onClick={() => setShowNewAccount(true)}><Plus className="h-4 w-4" />Crear primera cuenta</Button>
-        </div>
+        <EmptyState
+          className="py-24"
+          icon={WalletIcon}
+          title="Sin cuentas aún"
+          description="Añade tu primera cuenta bancaria para empezar a gestionar tus finanzas."
+          action={{ label: "Crear primera cuenta", icon: Plus, onClick: () => setShowNewAccount(true) }}
+        />
       ) : (
         <>
           <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <TickerTile label="Cuentas" value={String(state.accounts.length)} valueColor="var(--primary)" />
             <TickerTile label="Cuenta líder" value={topAccount ? `${topAccount.nombre.slice(0, 14)} · ${formatMoney(accountValue(topAccount), topAccount.currency)}` : "—"} valueColor="var(--gold)" />
-            <TickerTile label="Objetivo más cerca" value={nearestGoal ? `${nearestGoal.account.nombre.slice(0, 14)} · ${Math.round(nearestGoal.pct)}%` : "—"} valueColor="#10b981" />
-            <TickerTile label="Liquidez" value={`${liquidPct}%`} valueColor="#3f6bff" />
+            <TickerTile label="Objetivo más cerca" value={nearestGoal ? `${nearestGoal.account.nombre.slice(0, 14)} · ${Math.round(nearestGoal.pct)}%` : "—"} valueColor="var(--accent-green)" />
+            <TickerTile label="Liquidez" value={`${liquidPct}%`} valueColor="var(--accent-blue)" />
           </section>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

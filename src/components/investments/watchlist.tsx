@@ -19,7 +19,7 @@ function Sparkline({ closes, up }: { closes: number[]; up: boolean }) {
   const pts = closes.map((c, i) => `${(i / (closes.length - 1)) * w},${h - ((c - min) / range) * h}`).join(" ")
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="h-9 w-full" preserveAspectRatio="none" aria-hidden="true">
-      <polyline points={pts} fill="none" stroke={up ? "#10b981" : "#ef4444"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      <polyline points={pts} fill="none" stroke={up ? "var(--accent-green)" : "var(--accent-red)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
     </svg>
   )
 }

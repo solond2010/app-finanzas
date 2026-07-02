@@ -15,6 +15,7 @@ import { AssetAnalysis } from "@/components/investments/asset-analysis"
 import { DcaPanel } from "@/components/investments/dca-panel"
 import { MountainChart } from "@/components/shared/mountain-chart"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
+import { EmptyState } from "@/components/shared/empty-state"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { chartFormatter, isInitialBalanceTransaction } from "@/lib/format"
@@ -31,7 +32,7 @@ const DONUT_COLORS = ["blue", "cyan", "indigo", "violet", "sky", "slate", "emera
 // Mismos colores que DONUT_COLORS pero en hex, para la barra segmentada de
 // "Por clase de activo" (no usa un componente de Tremor, así que no puede
 // resolver los nombres de color por clase CSS).
-const CLASS_HEX = ["#3f6bff", "#06b6d4", "#6366f1", "#8b5cf6", "#0ea5e9", "#64748b", "#10b981", "#f59e0b"]
+const CLASS_HEX = ["var(--accent-blue)", "#06b6d4", "#6366f1", "var(--accent-violet)", "#0ea5e9", "var(--muted-foreground)", "var(--accent-green)", "var(--accent-amber)"]
 const EVO_TABS = [{ id: "rendimiento", label: "Rendimiento" }, { id: "activos", label: "Activos" }, { id: "tipologia", label: "Tipología" }] as const
 const POS_FILTERS = [{ id: "all", label: "Todos" }, { id: "stock", label: "Bolsa" }, { id: "crypto", label: "Crypto" }, { id: "fund", label: "Fondos" }, { id: "custom", label: "Otros" }] as const
 const RANGES = [
@@ -277,18 +278,20 @@ export default function InversionesPage() {
       </header>
 
       {positions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><LineChart className="h-7 w-7" /></span>
-          <h2 className="text-lg font-semibold text-foreground">Empieza tu cartera</h2>
-          <p className="max-w-sm text-sm text-muted-foreground">Añade tus fondos indexados, acciones, ETFs o crypto y sigue tu rentabilidad en € y % automáticamente.</p>
-          <Button onClick={openNew} className="mt-2 gap-1.5 rounded-full"><Plus className="h-4 w-4" /> Añadir posición</Button>
-        </div>
+        <EmptyState
+          className="py-20"
+          icon={LineChart}
+          tone="primary"
+          title="Empieza tu cartera"
+          description="Añade tus fondos indexados, acciones, ETFs o crypto y sigue tu rentabilidad en € y % automáticamente."
+          action={{ label: "Añadir posición", icon: Plus, onClick: openNew }}
+        />
       ) : (
         <>
           {/* Ticker: pulso de la cartera */}
           <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <TickerTile label="Valor cartera" value={formatMoney(value, baseCurrency)} />
-            <TickerTile label="Rentabilidad" value={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`} valueColor={pnlPct >= 0 ? "#10b981" : "#ef4444"} />
+            <TickerTile label="Rentabilidad" value={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`} valueColor={pnlPct >= 0 ? "var(--accent-green)" : "var(--accent-red)"} />
             <TickerTile label="Invertido" value={formatMoney(invested, baseCurrency)} />
             <TickerTile label="Mejor posición" value={bestPosition ? `${bestPosition.p.name.slice(0, 12)} ${bestPosition.plPct >= 0 ? "+" : ""}${bestPosition.plPct.toFixed(2)}%` : "—"} valueColor="var(--gold)" />
           </section>

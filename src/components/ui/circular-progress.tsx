@@ -1,6 +1,6 @@
 "use client"
 
-export function CircularProgress({ value, size = 80, strokeWidth = 6, color = "#10b981" }: { value: number; size?: number; strokeWidth?: number; color?: string }) {
+export function CircularProgress({ value, size = 80, strokeWidth = 6, color = "var(--accent-green)" }: { value: number; size?: number; strokeWidth?: number; color?: string }) {
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (Math.min(value, 100) / 100) * circumference

@@ -8,6 +8,7 @@ import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { MountainChart } from "@/components/shared/mountain-chart"
+import { EmptyPlaceholder } from "@/components/shared/empty-state"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { usePortfolioValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
@@ -53,7 +54,7 @@ function MiniBars({ values, color, signed = false }: { values: number[]; color: 
           className="flex-1 rounded-t-[3px] transition-all duration-500"
           style={{
             height: `${Math.max((Math.abs(v) / max) * 100, 8)}%`,
-            backgroundColor: signed ? (v < 0 ? "#ef4444" : "#10b981") : color,
+            backgroundColor: signed ? (v < 0 ? "var(--accent-red)" : "var(--accent-green)") : color,
             opacity: v === 0 ? 0.16 : 1,
           }}
         />
@@ -164,7 +165,7 @@ export default function DashboardContent() {
   const spendTotal = spending.reduce((s, c) => s + c.monto, 0)
   const topSpending = spending.slice(0, 6)
   const maxSpend = topSpending[0]?.monto ?? 1
-  const catColor = (name: string) => state.categories.find((c) => c.name === name)?.color ?? "#3b82f6"
+  const catColor = (name: string) => state.categories.find((c) => c.name === name)?.color ?? "var(--accent-blue)"
 
   // Composición del patrimonio por tipo de cuenta. Las cuentas de inversión
   // se colapsan en un único bloque con el valor de mercado de la cartera
@@ -185,7 +186,7 @@ export default function DashboardContent() {
         label: typeConfig[tipo as Account["tipo"]]?.label ?? tipo,
         value: v,
         pct: (v / total) * 100,
-        color: typeConfig[tipo as Account["tipo"]]?.color ?? "#6b7387",
+        color: typeConfig[tipo as Account["tipo"]]?.color ?? "var(--muted-foreground)",
       }))
       .sort((a, b) => b.value - a.value)
   }, [displayAccounts, portfolioValue])
@@ -236,10 +237,10 @@ export default function DashboardContent() {
   }, [savingsRate, monthTotals.neto, netWorthDisplay, rangeStart, displayAccounts])
 
   const scoreTier =
-    score >= 80 ? { label: "Excelente", color: "#10b981" }
-    : score >= 60 ? { label: "Sólido", color: "#3b82f6" }
-    : score >= 40 ? { label: "Mejorable", color: "#f59e0b" }
-    : { label: "Frágil", color: "#ef4444" }
+    score >= 80 ? { label: "Excelente", color: "var(--accent-green)" }
+    : score >= 60 ? { label: "Sólido", color: "var(--accent-blue)" }
+    : score >= 40 ? { label: "Mejorable", color: "var(--accent-amber)" }
+    : { label: "Frágil", color: "var(--accent-red)" }
 
   const scoreFactors = [
     { label: "Tasa de ahorro ≥ 20%", ok: savingsRate >= 20 },
@@ -379,11 +380,11 @@ export default function DashboardContent() {
                 </div>
               </div>
               {activeRange.unit === "today" && netWorthTrend.length <= 1 ? (
-                <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-64">Sin movimientos registrados hoy todavía</div>
+                <EmptyPlaceholder text="Sin movimientos registrados hoy todavía" className="mt-4 h-52 sm:h-64" />
               ) : netWorthHasData ? (
                 <MountainChart data={netWorthTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="mt-4 h-52 sm:h-64" />
               ) : (
-                <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-64">Sin datos de patrimonio todavía</div>
+                <EmptyPlaceholder text="Sin datos de patrimonio todavía" className="mt-4 h-52 sm:h-64" />
               )}
             </div>
 
@@ -416,8 +417,8 @@ export default function DashboardContent() {
 
           {/* Ticker: pulso del mes con mini-tendencia de 6 meses */}
           <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <TickerTile label="Ingresos" value={`+${formatMoney(monthTotals.ingresos, "EUR")}`} valueColor="#10b981" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" />
-            <TickerTile label="Gastos" value={`-${formatMoney(monthTotals.gastos, "EUR")}`} valueColor="#ef4444" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" />
+            <TickerTile label="Ingresos" value={`+${formatMoney(monthTotals.ingresos, "EUR")}`} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" />
+            <TickerTile label="Gastos" value={`-${formatMoney(monthTotals.gastos, "EUR")}`} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" />
             <TickerTile label="Cartera" value={portfolioValue > 0 ? `${portfolioPnlPct >= 0 ? "+" : ""}${portfolioPnlPct.toFixed(2)}%` : "—"} valueColor="var(--gold)" />
             <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" />
           </section>
@@ -466,14 +467,14 @@ export default function DashboardContent() {
 
           {/* Acumulado anual */}
           <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-            <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="#10b981" icon={ArrowUpRight}>
-              <MiniBars values={monthlyYear.map((m) => m.ingresos)} color="#10b981" />
+            <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="var(--accent-green)" icon={ArrowUpRight}>
+              <MiniBars values={monthlyYear.map((m) => m.ingresos)} color="var(--accent-green)" />
             </AnnualStat>
-            <AnnualStat label="Gastos totales" year={year} value={annualGastos} accent="#ef4444" icon={ArrowDownRight}>
-              <MiniBars values={monthlyYear.map((m) => m.gastos)} color="#ef4444" />
+            <AnnualStat label="Gastos totales" year={year} value={annualGastos} accent="var(--accent-red)" icon={ArrowDownRight}>
+              <MiniBars values={monthlyYear.map((m) => m.gastos)} color="var(--accent-red)" />
             </AnnualStat>
-            <AnnualStat label="Ahorro neto anual" year={year} value={annualNeto} accent={annualNeto >= 0 ? "#10b981" : "#ef4444"} icon={PiggyBank}>
-              <MiniBars values={monthlyYear.map((m) => m.neto)} color="#3b82f6" signed />
+            <AnnualStat label="Ahorro neto anual" year={year} value={annualNeto} accent={annualNeto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} icon={PiggyBank}>
+              <MiniBars values={monthlyYear.map((m) => m.neto)} color="var(--accent-blue)" signed />
             </AnnualStat>
           </section>
 

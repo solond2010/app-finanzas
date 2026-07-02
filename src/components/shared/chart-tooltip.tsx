@@ -1,17 +1,20 @@
 import type { CustomTooltipProps } from "@tremor/react"
 
+// Los que tienen equivalente semántico en globals.css usan el token (así
+// siguen el tema si cambia); el resto son colores de Tremor sin token propio
+// y se quedan en hex fijo.
 const TREMOR_HEX: Record<string, string> = {
-  blue: "#3f6bff",
-  emerald: "#10b981",
-  red: "#ef4444",
-  amber: "#f59e0b",
-  violet: "#8b5cf6",
+  blue: "var(--accent-blue)",
+  emerald: "var(--accent-green)",
+  red: "var(--accent-red)",
+  amber: "var(--accent-amber)",
+  violet: "var(--accent-violet)",
   cyan: "#06b6d4",
   rose: "#f43f5e",
-  gray: "#6b7387",
+  gray: "var(--muted-foreground)",
   indigo: "#6366f1",
   sky: "#0ea5e9",
-  slate: "#64748b",
+  slate: "var(--muted-foreground)",
 }
 
 function defaultFormatter(v: number) {

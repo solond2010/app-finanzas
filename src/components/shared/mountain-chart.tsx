@@ -75,13 +75,13 @@ export function MountainChart<T extends object>({
       <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="h-full w-full overflow-visible">
         <defs>
           <linearGradient id="mountain-back" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3f6bff" stopOpacity="0.16" />
-            <stop offset="100%" stopColor="#3f6bff" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--accent-blue)" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="var(--accent-blue)" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="mountain-front" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#e8b64a" stopOpacity="0.45" />
-            <stop offset="45%" stopColor="#3f6bff" stopOpacity="0.32" />
-            <stop offset="100%" stopColor="#3f6bff" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.45" />
+            <stop offset="45%" stopColor="var(--accent-blue)" stopOpacity="0.32" />
+            <stop offset="100%" stopColor="var(--accent-blue)" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -94,7 +94,7 @@ export function MountainChart<T extends object>({
         )}
 
         {peakIdx >= 0 && points[peakIdx] && (
-          <circle cx={points[peakIdx].x} cy={points[peakIdx].y} r="4.5" fill="var(--hero-bg)" stroke="#e8b64a" strokeWidth="2.5" />
+          <circle cx={points[peakIdx].x} cy={points[peakIdx].y} r="4.5" fill="var(--hero-bg)" stroke="var(--gold)" strokeWidth="2.5" />
         )}
 
         {hovered && (

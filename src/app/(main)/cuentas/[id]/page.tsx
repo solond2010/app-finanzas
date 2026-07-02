@@ -78,7 +78,7 @@ export default function AccountDetailPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Saldo actual</p>
               <p className="text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[48px] lg:text-[56px]"
-                style={{ color: account.saldo >= 0 ? cfg.color : "#ef4444" }}>
+                style={{ color: account.saldo >= 0 ? cfg.color : "var(--accent-red)" }}>
                 <Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive>
               </p>
             </div>

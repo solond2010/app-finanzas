@@ -7,6 +7,7 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { formatMoney } from "@/lib/currency"
 import { type Budget, type Transaction, type Category } from "@/lib/store"
 import { BudgetDialog } from "@/components/dashboard/budget-dialog"
+import { EmptyState } from "@/components/shared/empty-state"
 import { cn } from "@/lib/utils"
 
 // A partir de este % de un presupuesto se avisa (ámbar); a partir de 100% ya
@@ -20,7 +21,7 @@ interface MonthlyBudgetProps {
   selectedMonth: string
 }
 
-const CARD = "rounded-[24px] bg-white p-4 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 sm:p-6"
+const CARD = "rounded-[24px] border border-border bg-card p-4 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 
 export function MonthlyBudget({ budgets, transactions, categories, selectedMonth }: MonthlyBudgetProps) {
   const [open, setOpen] = useState(false)
@@ -37,7 +38,7 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
         return {
           ...budget,
           categoryName: category?.name ?? "Sin categoría",
-          categoryColor: category?.color ?? "#64748b",
+          categoryColor: category?.color ?? "var(--muted-foreground)",
           spent,
           remaining: budget.amount - spent,
           percentage: budget.amount > 0 ? Math.min((spent / budget.amount) * 100, 100) : 0,
@@ -53,7 +54,7 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
     <div className={CARD}>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-slate-900 dark:text-white">Presupuesto Mensual</p>
+          <p className="text-sm font-semibold text-foreground">Presupuesto Mensual</p>
           {(overCount > 0 || warningCount > 0) && (
             <span className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
@@ -69,7 +70,7 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
         <button
           onClick={() => setOpen(true)}
           aria-label="Gestionar presupuestos"
-          className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200 active:scale-95 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+          className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground active:scale-95"
         >
           <SlidersHorizontal className="h-3.5 w-3.5" />
           Gestionar
@@ -77,16 +78,13 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
       </div>
 
       {budgetProgress.length === 0 ? (
-        <button
-          onClick={() => setOpen(true)}
-          className="flex w-full flex-col items-center gap-2 rounded-[20px] border border-dashed border-slate-200 px-4 py-8 text-center transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50"
-        >
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-foreground">
-            <Plus className="h-4 w-4" />
-          </span>
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Define tu primer presupuesto</span>
-          <span className="text-xs text-slate-400">Asigna límites de gasto por categoría este mes</span>
-        </button>
+        <EmptyState
+          className="py-8"
+          icon={SlidersHorizontal}
+          title="Define tu primer presupuesto"
+          description="Asigna límites de gasto por categoría este mes."
+          action={{ label: "Definir presupuesto", icon: Plus, onClick: () => setOpen(true) }}
+        />
       ) : (
         <div className="space-y-4">
           {budgetProgress.map((b) => {
@@ -95,14 +93,14 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
             return (
               <div key={b.id} className="space-y-2">
                 <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="flex min-w-0 items-center gap-2 font-medium text-slate-600 dark:text-slate-400">
+                  <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: b.categoryColor }} />
                     <span className="truncate">{b.categoryName}</span>
                     {(over || warning) && <AlertTriangle className={cn("h-3 w-3 shrink-0", over ? "text-red-500" : "text-amber-500")} />}
                   </span>
                   <span className={cn(
                     "shrink-0 font-semibold tabular-nums",
-                    over ? "text-red-500" : warning ? "text-amber-500" : "text-slate-900 dark:text-white"
+                    over ? "text-red-500" : warning ? "text-amber-500" : "text-foreground"
                   )}>
                     <Sensitive>{formatMoney(b.spent, "EUR")}</Sensitive> / <Sensitive>{formatMoney(b.amount, "EUR")}</Sensitive>
                   </span>

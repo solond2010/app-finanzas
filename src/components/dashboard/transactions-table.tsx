@@ -33,6 +33,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { filterTransactionsByMonth } from "@/lib/calculations"
+import { EmptyState } from "@/components/shared/empty-state"
 
 const CATEGORY_COLORS: Record<string, string> = {
   Salario: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
@@ -438,18 +439,12 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             {sorted.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="py-10">
-                  <div className="flex flex-col items-center gap-3 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
-                      <Search className="h-6 w-6 text-muted-foreground/60" />
-                    </div>
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-semibold text-foreground">No hay transacciones</p>
-                      <p className="text-xs text-muted-foreground">Registra tu primer movimiento para verlo aquí.</p>
-                    </div>
-                    <Button size="sm" className="gap-1" onClick={() => setShowNew(true)}>
-                      <Plus className="h-3.5 w-3.5" /> Nueva transacción
-                    </Button>
-                  </div>
+                  <EmptyState
+                    icon={Search}
+                    title="No hay transacciones"
+                    description="Registra tu primer movimiento para verlo aquí."
+                    action={{ label: "Nueva transacción", icon: Plus, onClick: () => setShowNew(true) }}
+                  />
                 </TableCell>
               </TableRow>
             ) : (
