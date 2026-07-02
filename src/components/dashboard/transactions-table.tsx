@@ -458,6 +458,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                   {group.transactions.map((t) => {
                     const account = state.accounts.find((a) => a.id === t.cuenta_id)
                     const catColor = CATEGORY_COLORS[t.categoria]
+                    const catHex = state.categories.find((c) => c.name === t.categoria)?.color
                     const isEditing = (field: EditField) => editingCell?.id === t.id && editingCell.field === field
                     const categoryOptions = state.categories
                       .filter((c) => !c.kind || c.kind === t.tipo || c.kind === "both")
@@ -479,7 +480,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                             <InlineEditInput defaultValue={t.descripcion} onDone={(ok, v) => handleInlineDone(t, "descripcion", ok, v)} />
                           ) : (
                             <button onClick={() => setEditingCell({ id: t.id, field: "descripcion" })} className="flex w-full items-center gap-2 rounded px-1 py-0.5 -mx-1 text-left hover:bg-muted/60" aria-label="Editar descripción">
-                              <span className="inline-flex h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: catColor ? undefined : undefined }} />
+                              <span className="inline-flex h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: catHex ?? "var(--muted-foreground)" }} />
                               <span className="truncate font-medium">{t.descripcion || t.categoria}</span>
                             </button>
                           )}

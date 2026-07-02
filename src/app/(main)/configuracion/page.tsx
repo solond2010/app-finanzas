@@ -61,7 +61,7 @@ export default function ConfiguracionPage() {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-7">
+    <div className="content-fade space-y-6 sm:space-y-7">
       <section className="relative overflow-hidden rounded-[24px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
         <div className="relative z-10 space-y-4">
           <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">

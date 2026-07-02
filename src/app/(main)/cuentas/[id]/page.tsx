@@ -57,7 +57,7 @@ export default function AccountDetailPage() {
     .reduce((s, t) => s + t.monto, 0)
 
   return (
-    <div className="space-y-6">
+    <div className="content-fade space-y-6">
       <button onClick={() => router.push("/cuentas")} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-all">
         <ArrowLeft className="h-4 w-4" /> Volver
       </button>

@@ -116,7 +116,7 @@ export default function AnalyticsPage() {
   ]
 
   return (
-    <div className="space-y-6 sm:space-y-7">
+    <div className="content-fade space-y-6 sm:space-y-7">
       <section className="hero-gradient rounded-[24px] bg-card/70 p-6 sm:p-8 card-glow">
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">
