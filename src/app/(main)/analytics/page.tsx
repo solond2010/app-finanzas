@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
+import { TickerTile } from "@/components/shared/ticker-tile"
 import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
@@ -108,6 +109,18 @@ export default function AnalyticsPage() {
   const positiveMonths = cashFlow.filter((item) => item.neto >= 0).length
   const netWorthTrendPositive = netWorthChange >= 0
 
+  // Racha de meses consecutivos con flujo de caja positivo, contando hacia
+  // atrás desde el mes seleccionado dentro de la ventana de 6 meses visible.
+  const streak = useMemo(() => {
+    let count = 0
+    for (let i = cashFlow.length - 1; i >= 0; i--) {
+      if (cashFlow[i].neto < 0) break
+      count++
+    }
+    return count
+  }, [cashFlow])
+  const savingsRateTrend = useMemo(() => cashFlow.map((c) => (c.ingresos > 0 ? Math.max((c.neto / c.ingresos) * 100, 0) : 0)), [cashFlow])
+
   const needsWantsData = [
     { name: "Necesidades", value: necesidades },
     { name: "Deseos", value: deseos },
@@ -153,10 +166,17 @@ export default function AnalyticsPage() {
         <MetricCard label="Neto" value={<AnimatedNumber value={monthTotals.neto} />} subtitle={`${positiveMonths}/6 meses con cash flow positivo`} icon={Activity} tone={monthTotals.neto >= 0 ? "blue" : "amber"} delay={210} />
       </section>
 
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <TickerTile label="Tasa de ahorro" value={`${Math.round(savingsActual)}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
+        <TickerTile label="Racha positiva" value={streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"} valueColor="#f59e0b" />
+        <TickerTile label="Cash flow medio" value={signedMoney(averageMonthlyNet)} valueColor={averageMonthlyNet >= 0 ? "#10b981" : "#ef4444"} />
+        <TickerTile label="Categoría top" value={topCategory ? `${topCategory.categoria} · ${topCategoryPct}%` : "—"} valueColor="var(--gold)" />
+      </section>
+
       <section className="grid grid-cols-12 gap-6">
         <SectionTitle label="Tendencia" title="El pulso de los últimos 6 meses" text="Patrimonio histórico y evolución mensual para detectar si estás acumulando o drenando capital." />
 
-        <Card className="stagger-fade col-span-full xl:col-span-7" style={{ animationDelay: "80ms" }}>
+        <Card className="stagger-fade hero-panel col-span-full xl:col-span-7" style={{ animationDelay: "80ms" }}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold"><TrendingUp className="h-4 w-4 text-emerald-500" />Patrimonio neto</CardTitle>
             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${netWorthTrendPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}><Sensitive>{signedMoney(netWorthChange)}</Sensitive></span>
