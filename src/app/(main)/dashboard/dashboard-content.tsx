@@ -2,13 +2,12 @@
 
 import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AreaChart } from "@tremor/react"
 import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, PiggyBank, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { AccountLogo } from "@/components/dashboard/account-logo"
-import { createChartTooltip } from "@/components/shared/chart-tooltip"
+import { MountainChart } from "@/components/shared/mountain-chart"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { usePortfolioValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
@@ -39,7 +38,6 @@ const RANGES = [
   { id: "12M", count: 12, unit: "months" as const },
   { id: "24M", count: 24, unit: "months" as const },
 ]
-const PatrimonioTooltip = createChartTooltip(["patrimonio"], ["blue"])
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`skeleton-shimmer rounded-[24px] ${className ?? ""}`} />
@@ -383,7 +381,7 @@ export default function DashboardContent() {
               {activeRange.unit === "today" && netWorthTrend.length <= 1 ? (
                 <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-64">Sin movimientos registrados hoy todavía</div>
               ) : netWorthHasData ? (
-                <AreaChart data={netWorthTrend} index="mes" categories={["patrimonio"]} colors={["blue"]} valueFormatter={chartFormatter} showLegend={false} showGridLines={false} showYAxis={false} customTooltip={PatrimonioTooltip} className="mt-4 h-52 sm:h-64" curveType="monotone" showAnimation />
+                <MountainChart data={netWorthTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="mt-4 h-52 sm:h-64" />
               ) : (
                 <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-64">Sin datos de patrimonio todavía</div>
               )}
