@@ -4,8 +4,10 @@ import { useMemo } from "react"
 import { Sparkles, Target, TrendingUp, Wallet } from "lucide-react"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
+import { TickerTile } from "@/components/shared/ticker-tile"
 import { useFinance } from "@/lib/store"
 import { AnimatedNumber } from "@/components/shared/animated-number"
+import { money } from "@/lib/format"
 
 export default function ObjetivosPage() {
   const { state } = useFinance()
@@ -16,6 +18,17 @@ export default function ObjetivosPage() {
     const overallProgress = totalObjetivo > 0 ? Math.round((totalAhorrado / totalObjetivo) * 100) : 0
     return { totalObjetivo, totalAhorrado, overallProgress, count: state.sinkingFunds.length }
   }, [state.sinkingFunds])
+
+  // Meta más cerca de completarse, meta con mayor esfuerzo pendiente y nº de
+  // metas ya completadas, para el ticker superior.
+  const fundsWithProgress = useMemo(
+    () => state.sinkingFunds.map((f) => ({ ...f, pct: f.cantidad_objetivo > 0 ? (f.ahorrado_actual / f.cantidad_objetivo) * 100 : 0, restante: Math.max(f.cantidad_objetivo - f.ahorrado_actual, 0) })),
+    [state.sinkingFunds]
+  )
+  const completedCount = fundsWithProgress.filter((f) => f.pct >= 100).length
+  const nearestFund = fundsWithProgress.filter((f) => f.pct < 100).sort((a, b) => b.pct - a.pct)[0] ?? null
+  const biggestEffortFund = fundsWithProgress.filter((f) => f.pct < 100).sort((a, b) => b.restante - a.restante)[0] ?? null
+  const totalRestante = Math.max(stats.totalObjetivo - stats.totalAhorrado, 0)
 
   const hasMetas = state.sinkingFunds.length > 0
 
@@ -48,6 +61,15 @@ export default function ObjetivosPage() {
           )}
         </div>
       </section>
+
+      {hasMetas && (
+        <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          <TickerTile label="Restante total" value={money(totalRestante)} valueColor="#f59e0b" />
+          <TickerTile label="Meta más cerca" value={nearestFund ? `${nearestFund.nombre.slice(0, 14)} · ${Math.round(nearestFund.pct)}%` : "—"} valueColor="#10b981" />
+          <TickerTile label="Mayor esfuerzo" value={biggestEffortFund ? `${biggestEffortFund.nombre.slice(0, 14)} · ${money(biggestEffortFund.restante)}` : "—"} valueColor="var(--gold)" />
+          <TickerTile label="Completadas" value={`${completedCount}/${stats.count}`} valueColor="var(--primary)" />
+        </section>
+      )}
 
       {hasMetas && (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
