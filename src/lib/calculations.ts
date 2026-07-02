@@ -169,14 +169,33 @@ export function getNetWorthAtDate(accounts: Account[], transactions: Transaction
 // Histórico día a día de los últimos `days` días (incluye hoy), para rangos
 // cortos donde el detalle mensual esconde subidas/bajadas reales de la
 // semana (cuentas nuevas con pocos días de historial, gasto puntual grande...).
+//
+// Si un día tiene ingresos Y gastos a la vez (típico cuando las transacciones
+// son de antes de tener `created_at` real, o cuando simplemente varias cosas
+// pasan el mismo día), un único punto de cierre esconde el pico intermedio:
+// "cobré esto, luego gasté aquello" se ve como una línea plana. Sin saber el
+// orden real, el punto más alto defendible es "todos los ingresos del día
+// contados antes que los gastos" — no asume una hora concreta, solo que el
+// día tuvo ese máximo alcanzable. Se añade como punto extra antes del cierre.
 export function buildNetWorthHistoryDaily(accounts: Account[], transactions: Transaction[], days: number, endDate = new Date()): NetWorthSnapshot[] {
-  return Array.from({ length: days }, (_, i) => {
+  const currencyByAccount = new Map(accounts.map((a) => [a.id, a.currency]))
+  const points: NetWorthSnapshot[] = []
+  for (let i = 0; i < days; i++) {
     const d = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() - (days - 1 - i))
-    return {
-      mes: d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" }),
-      patrimonio: getNetWorthAtDate(accounts, transactions, toDateKey(d)),
+    const dateKey = toDateKey(d)
+    const dayLabel = d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
+    const dayEnd = getNetWorthAtDate(accounts, transactions, dateKey)
+    const todaysTransactions = transactions.filter((t) => toDateKey(new Date(t.fecha)) === dateKey)
+    const outflow = todaysTransactions
+      .filter((t) => t.tipo === "gasto")
+      .reduce((sum, t) => sum + convertToEur(t.monto, currencyByAccount.get(t.cuenta_id) ?? "EUR"), 0)
+    const hasInflow = todaysTransactions.some((t) => t.tipo === "ingreso")
+    if (hasInflow && outflow > 0) {
+      points.push({ mes: `${dayLabel} · pico`, patrimonio: dayEnd + outflow })
     }
-  })
+    points.push({ mes: dayLabel, patrimonio: dayEnd })
+  }
+  return points
 }
 
 // Una transacción es "futura" respecto al instante (dateKey, createdAt) si es
