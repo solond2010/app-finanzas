@@ -9,6 +9,9 @@ const TREMOR_HEX: Record<string, string> = {
   cyan: "#06b6d4",
   rose: "#f43f5e",
   gray: "#6b7387",
+  indigo: "#6366f1",
+  sky: "#0ea5e9",
+  slate: "#64748b",
 }
 
 function defaultFormatter(v: number) {
@@ -30,7 +33,11 @@ export function createChartTooltip(categories: string[], colors: string[], forma
     if (!active || !payload || payload.length === 0) return null
     return (
       <div className="min-w-[130px] rounded-xl border border-border bg-popover p-3 shadow-lg">
-        {label !== undefined && <p className="mb-2 text-[11px] capitalize text-muted-foreground">{String(label)}</p>}
+        {/* En un donut, label y el único item del payload son el mismo nombre de
+            segmento — omitir la cabecera para no repetirlo dos veces. */}
+        {label !== undefined && !payload.every((p) => String(p.name ?? p.dataKey ?? "") === String(label)) && (
+          <p className="mb-2 text-[11px] capitalize text-muted-foreground">{String(label)}</p>
+        )}
         <div className="space-y-1.5">
           {payload.map((item, i) => {
             const name = String(item.name ?? item.dataKey ?? "")

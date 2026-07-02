@@ -9,16 +9,16 @@ import { useMemo, useRef, useState } from "react"
 // Sustituye al AreaChart de Tremor solo donde se quiere este tratamiento
 // premium — el resto de gráficos de la app se quedan con Tremor + su tooltip
 // compartido (createChartTooltip).
-export function MountainChart({
+export function MountainChart<T extends object>({
   data,
   index,
   category,
   valueFormatter,
   className,
 }: {
-  data: Record<string, string | number>[]
-  index: string
-  category: string
+  data: T[]
+  index: keyof T & string
+  category: keyof T & string
   valueFormatter: (v: number) => string
   className?: string
 }) {

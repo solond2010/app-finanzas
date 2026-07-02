@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { AreaChart, DonutChart } from "@tremor/react"
+import { DonutChart } from "@tremor/react"
 import { Plus, TrendingUp, TrendingDown, LineChart, FileDown, Target, Pencil, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFinance } from "@/lib/store"
@@ -13,6 +13,7 @@ import { AccountCards } from "@/components/investments/account-cards"
 import { ProjectionSimulator } from "@/components/investments/projection"
 import { AssetAnalysis } from "@/components/investments/asset-analysis"
 import { DcaPanel } from "@/components/investments/dca-panel"
+import { MountainChart } from "@/components/shared/mountain-chart"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
@@ -26,7 +27,6 @@ const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_
 // Card de evolución de cartera: la cifra más importante de la página, con el
 // mismo tinte azul-marino que el hero de patrimonio del Dashboard.
 const CARD_HERO = "rounded-[24px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
-const CarteraTooltip = createChartTooltip(["Cartera"], ["blue"])
 const DONUT_COLORS = ["blue", "cyan", "indigo", "violet", "sky", "slate", "emerald", "amber"]
 // Mismos colores que DONUT_COLORS pero en hex, para la barra segmentada de
 // "Por clase de activo" (no usa un componente de Tremor, así que no puede
@@ -159,6 +159,11 @@ export default function InversionesPage() {
   }, [rows])
   const filteredRows = useMemo(() => (posFilter === "all" ? rows : rows.filter((r) => r.p.kind === posFilter)), [rows, posFilter])
   const donutFormatter = (v: number) => formatMoney(v, baseCurrency)
+  // Los nombres de cada donut son dinámicos (posiciones/clases de activo reales),
+  // así que el tooltip oscuro se construye aquí en vez de como constante de
+  // módulo — igual que ya se hace en Analíticas para el donut necesidades/deseos.
+  const activosTooltip = useMemo(() => createChartTooltip(activosData.map((d) => d.name), DONUT_COLORS, donutFormatter), [activosData]) // eslint-disable-line react-hooks/exhaustive-deps
+  const tipologiaTooltip = useMemo(() => createChartTooltip(tipologiaData.map((d) => d.name), DONUT_COLORS, donutFormatter), [tipologiaData]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mejor posición en cartera (mayor % de rentabilidad), para el ticker superior.
   const bestPosition = useMemo(() => (rows.length === 0 ? null : rows.slice().sort((a, b) => b.plPct - a.plPct)[0]), [rows])
@@ -328,16 +333,16 @@ export default function InversionesPage() {
 
               {evoTab === "rendimiento" && (
                 seriesHasData ? (
-                  <AreaChart data={shownSeries} index="mes" categories={["Cartera"]} colors={["blue"]} valueFormatter={chartFormatter} showLegend={false} showGridLines={false} showYAxis={false} customTooltip={CarteraTooltip} className="mt-4 h-52 sm:h-56" curveType="monotone" showAnimation />
+                  <MountainChart data={shownSeries} index="mes" category="Cartera" valueFormatter={chartFormatter} className="mt-4 h-52 sm:h-56" />
                 ) : (
                   <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-center text-sm text-muted-foreground sm:h-56">Sin histórico suficiente para mostrar la evolución.</div>
                 )
               )}
               {evoTab === "activos" && (
-                <DonutChart data={activosData} category="value" index="name" colors={DONUT_COLORS} valueFormatter={donutFormatter} variant="donut" className="mt-4 h-52 sm:h-56" showAnimation />
+                <DonutChart data={activosData} category="value" index="name" colors={DONUT_COLORS} valueFormatter={donutFormatter} variant="donut" customTooltip={activosTooltip} className="mt-4 h-52 sm:h-56" showAnimation />
               )}
               {evoTab === "tipologia" && (
-                <DonutChart data={tipologiaData} category="value" index="name" colors={DONUT_COLORS} valueFormatter={donutFormatter} variant="donut" className="mt-4 h-52 sm:h-56" showAnimation />
+                <DonutChart data={tipologiaData} category="value" index="name" colors={DONUT_COLORS} valueFormatter={donutFormatter} variant="donut" customTooltip={tipologiaTooltip} className="mt-4 h-52 sm:h-56" showAnimation />
               )}
             </div>
 

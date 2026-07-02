@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState, memo } from "react"
-import { BarChart, DonutChart, LineChart } from "@tremor/react"
+import { BarChart, DonutChart } from "@tremor/react"
 import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Layers3, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
+import { MountainChart } from "@/components/shared/mountain-chart"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
@@ -17,9 +18,9 @@ import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransa
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 
-const NetWorthTooltip = createChartTooltip(["patrimonio"], ["blue"])
 const SummaryTooltip = createChartTooltip(["ingresos", "gastos"], ["emerald", "red"])
 const CategoryTooltip = createChartTooltip(["monto"], ["violet"])
+const NeedsWantsTooltip = createChartTooltip(["Necesidades", "Deseos"], ["emerald", "amber"])
 
 const EmptyPanel = memo(function EmptyPanel({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
   return (
@@ -187,7 +188,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {state.accounts.length === 0 ? <EmptyPanel icon={Wallet} title="Sin patrimonio registrado" text="Crea cuentas para ver la evolución de tu riqueza neta." /> : (
-              <LineChart data={netWorthHistory} index="mes" categories={["patrimonio"]} colors={["blue"]} valueFormatter={chartFormatter} yAxisWidth={72} customTooltip={NetWorthTooltip} className="h-[310px]" showAnimation />
+              <MountainChart data={netWorthHistory} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-[310px]" />
             )}
           </CardContent>
         </Card>
@@ -225,7 +226,7 @@ export default function AnalyticsPage() {
             <CardContent>
               {totalSpending === 0 ? <EmptyPanel icon={Gauge} title="Sin gastos este mes" text="La distribución aparecerá al registrar necesidades y deseos." /> : (
                 <div className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center lg:grid-cols-1 xl:grid-cols-[180px_1fr]">
-                  <DonutChart data={needsWantsData} category="value" index="name" colors={["emerald", "amber"]} variant="donut" className="mx-auto h-44 w-44" showAnimation />
+                  <DonutChart data={needsWantsData} category="value" index="name" colors={["emerald", "amber"]} variant="donut" customTooltip={NeedsWantsTooltip} className="mx-auto h-44 w-44" showAnimation />
                   <div className="space-y-3">
                     <div className="rounded-2xl bg-emerald-500/[0.05] p-3 ring-1 ring-emerald-500/10">
                       <div className="flex items-center justify-between text-sm"><span>Necesidades</span><strong className="text-emerald-500 tabular-nums">{Math.round(needsPct)}%</strong></div>
