@@ -9,8 +9,9 @@ import { getSetting, setSetting } from "@/lib/settings"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
+import { TickerTile } from "@/components/shared/ticker-tile"
 import { useFinance, generateId } from "@/lib/store"
-import { getMonthTotalsByString, getSavingsRate, getUpcomingRecurring } from "@/lib/calculations"
+import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, getUpcomingRecurring } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
 import { formatMonth, isInitialBalanceTransaction, chartFormatter } from "@/lib/format"
 import { formatMoney } from "@/lib/currency"
@@ -115,6 +116,18 @@ export default function IngresosGastosPage() {
     [rangeM, selectedDate, analysisTransactions]
   )
   const cashflowHasData = cashflow.some((c) => c.Ingresos > 0 || c.Gastos > 0)
+  const savingsRateTrend = useMemo(() => cashflow.map((c) => (c.Ingresos > 0 ? Math.max(((c.Ingresos - c.Gastos) / c.Ingresos) * 100, 0) : 0)), [cashflow])
+
+  const categoryBreakdown = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const topCategory = categoryBreakdown[0]
+  const categoryTotal = categoryBreakdown.reduce((sum, item) => sum + item.monto, 0)
+  const topCategoryPct = topCategory && categoryTotal > 0 ? Math.round((topCategory.monto / categoryTotal) * 100) : 0
+
+  // Mayor gasto individual del mes seleccionado, para el ticker superior.
+  const biggestExpense = useMemo(
+    () => analysisTransactions.filter((t) => t.tipo === "gasto" && t.fecha.startsWith(selectedMonth)).reduce((max, t) => (t.monto > max ? t.monto : max), 0),
+    [analysisTransactions, selectedMonth]
+  )
 
   return (
     <div className="content-fade w-full max-w-full space-y-6 overflow-x-hidden sm:space-y-7">
@@ -133,6 +146,14 @@ export default function IngresosGastosPage() {
           </div>
         </div>
       </header>
+
+      {/* Ticker: pulso del mes */}
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
+        <TickerTile label="Pagos pendientes" value={upcomingRecurring.length > 0 ? String(upcomingRecurring.length) : "Al día"} valueColor="#f59e0b" />
+        <TickerTile label="Mayor gasto" value={biggestExpense > 0 ? formatMoney(biggestExpense, "EUR") : "—"} valueColor="#ef4444" />
+        <TickerTile label="Categoría top" value={topCategory ? `${topCategory.categoria} · ${topCategoryPct}%` : "—"} valueColor="var(--gold)" />
+      </section>
 
       {/* Fila 1: Cuenta principal · Objetivo ingresos · Próximos pagos */}
       <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
