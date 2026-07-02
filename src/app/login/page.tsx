@@ -42,8 +42,8 @@ function LoginForm() {
   return (
     <div className="flex flex-col gap-6 w-full max-w-sm">
       <div className="space-y-2 text-center">
-        <div className="mx-auto mb-4 inline-flex rounded-2xl bg-background/60 p-3 ring-1 ring-border/15">
-          <Wallet className="h-6 w-6 text-primary" />
+        <div className="gold-badge mx-auto mb-4 inline-flex rounded-2xl p-3">
+          <Wallet className="h-6 w-6" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight">Acceso restringido</h1>
         <p className="text-sm text-muted-foreground">Introduce la contraseña para acceder a tu panel financiero.</p>
@@ -75,8 +75,8 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(59,130,246,0.12),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(139,92,246,0.10),transparent_35%)] dark:bg-[radial-gradient(circle_at_20%_30%,rgba(59,130,246,0.20),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(139,92,246,0.18),transparent_35%)]" />
-      <div className="relative z-10 w-full max-w-sm rounded-[24px] bg-card/70 p-8 shadow-2xl ring-1 ring-border/25 backdrop-blur-xl card-glow">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(63,107,255,0.12),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(232,182,74,0.10),transparent_35%)] dark:bg-[radial-gradient(circle_at_20%_30%,rgba(63,107,255,0.22),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(232,182,74,0.16),transparent_35%)]" />
+      <div className="hero-panel relative z-10 w-full max-w-sm rounded-[24px] p-8 shadow-2xl backdrop-blur-xl card-glow">
         <Suspense fallback={<div className="text-sm text-muted-foreground text-center py-8">Cargando...</div>}>
           <LoginForm />
         </Suspense>
