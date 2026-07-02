@@ -72,6 +72,29 @@ interface InvestmentRow {
 
 export interface WatchItem { symbol: string; name: string }
 
+/** Un aporte individual a una posición: compra inicial, DCA aplicado o aporte manual. */
+export interface Contribution {
+  id: string
+  positionId: string
+  amount: number
+  date: string
+}
+
+interface ContributionRow {
+  id: string
+  position_id: string
+  amount: number | string
+  date: string
+}
+
+function contributionToRow(c: Contribution): Record<string, unknown> {
+  return { id: c.id, position_id: c.positionId, amount: c.amount, date: c.date, user_id: USER_ID }
+}
+
+function contributionFromRow(r: ContributionRow): Contribution {
+  return { id: r.id, positionId: r.position_id, amount: Number(r.amount), date: r.date }
+}
+
 export type DcaFreq = "monthly" | "weekly"
 export interface DcaPlan { amount: number; freq: DcaFreq; last: string }
 
@@ -108,11 +131,14 @@ interface InvestmentsContextValue {
   addWatch: (w: WatchItem) => void
   removeWatch: (symbol: string) => void
   applyDca: (positionId: string, price: number) => number
+  contributions: Contribution[]
+  addContribution: (positionId: string, amount: number, date: string) => void
 }
 
 const InvestmentsContext = createContext<InvestmentsContextValue | null>(null)
 const STORAGE_KEY = "app-finanzas-investments"
 const WATCH_KEY = "app-finanzas-watchlist"
+const CONTRIB_KEY = "app-finanzas-contributions"
 
 function toRow(p: Position): Record<string, unknown> {
   const base: Record<string, unknown> = {
@@ -155,6 +181,7 @@ function fromRow(r: InvestmentRow): Position {
 export function InvestmentsProvider({ children }: { children: ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([])
   const [watchlist, setWatchlist] = useState<WatchItem[]>([])
+  const [contributions, setContributions] = useState<Contribution[]>([])
 
   useEffect(() => {
     queueMicrotask(async () => {
@@ -186,6 +213,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
       } catch {
         // ignore corrupt storage
       }
+      let loadedPositions: Position[] = local
       try {
         const { data, error } = await supabase.from("investments").select("*")
         if (error || !data) return
@@ -194,9 +222,42 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
           await supabase.from("investments").upsert(local.map(toRow))
         } else {
           const remote = (data as InvestmentRow[]).map(fromRow)
+          loadedPositions = remote
           setPositions(remote)
           try { localStorage.setItem(STORAGE_KEY, JSON.stringify(remote)) } catch {}
         }
+      } catch {
+        // Sin tabla / sin red → seguimos solo con localStorage.
+      }
+
+      let localContrib: Contribution[] = []
+      try {
+        const craw = localStorage.getItem(CONTRIB_KEY)
+        if (craw) { localContrib = JSON.parse(craw) as Contribution[]; setContributions(localContrib) }
+      } catch {
+        // ignore corrupt storage
+      }
+      try {
+        const { data, error } = await supabase.from("investment_contributions").select("*")
+        if (error || !data) return
+        let remote = (data as ContributionRow[]).map(contributionFromRow)
+        // Backfill: cada posición sin ningún aporte registrado (típicamente porque
+        // ya existía antes de esta función) recibe uno inicial con su compra
+        // original, para que el histórico mensual no empiece vacío.
+        const missing = loadedPositions
+          .filter((p) => !remote.some((c) => c.positionId === p.id))
+          .map((p) => ({
+            id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            positionId: p.id,
+            amount: p.units * p.buyPrice,
+            date: p.date,
+          }))
+        if (missing.length > 0) {
+          await supabase.from("investment_contributions").upsert(missing.map(contributionToRow))
+          remote = [...remote, ...missing]
+        }
+        setContributions(remote)
+        try { localStorage.setItem(CONTRIB_KEY, JSON.stringify(remote)) } catch {}
       } catch {
         // Sin tabla / sin red → seguimos solo con localStorage.
       }
@@ -213,6 +274,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     const pos: Position = { ...p, id }
     persistLocal([...positions, pos])
     supabase.from("investments").upsert([toRow(pos)]).then(() => {}, () => {})
+    if (pos.units * pos.buyPrice > 0) addContribution(id, pos.units * pos.buyPrice, pos.date)
     return id
   }
 
@@ -240,6 +302,17 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     supabase.from("watchlist").delete().eq("symbol", symbol).then(() => {}, () => {})
   }
 
+  const persistContrib = (next: Contribution[]) => {
+    setContributions(next)
+    try { localStorage.setItem(CONTRIB_KEY, JSON.stringify(next)) } catch {}
+  }
+  const addContribution = (positionId: string, amount: number, date: string) => {
+    const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    const c: Contribution = { id, positionId, amount, date }
+    persistContrib([...contributions, c])
+    supabase.from("investment_contributions").upsert([contributionToRow(c)]).then(() => {}, () => {})
+  }
+
   // Aplica los aportes vencidos al precio actual: suma participaciones, recalcula
   // el precio medio ponderado y avanza la fecha de la última aportación. Todo se
   // guarda en la posición (tabla `investments`). Devuelve el nº de aportes aplicados.
@@ -255,10 +328,11 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     const newBuyPrice = newUnits > 0 ? (pos.units * pos.buyPrice + totalAmount) / newUnits : pos.buyPrice
     const lastDate = format(due[due.length - 1], "yyyy-MM-dd")
     update({ ...pos, units: newUnits, buyPrice: newBuyPrice, dcaLast: lastDate })
+    for (const d of due) addContribution(positionId, plan.amount, format(d, "yyyy-MM-dd"))
     return due.length
   }
 
-  return <InvestmentsContext.Provider value={{ positions, add, update, remove, watchlist, addWatch, removeWatch, applyDca }}>{children}</InvestmentsContext.Provider>
+  return <InvestmentsContext.Provider value={{ positions, add, update, remove, watchlist, addWatch, removeWatch, applyDca, contributions, addContribution }}>{children}</InvestmentsContext.Provider>
 }
 
 export function useInvestments() {

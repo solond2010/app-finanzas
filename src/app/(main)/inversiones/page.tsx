@@ -13,6 +13,7 @@ import { AccountCards } from "@/components/investments/account-cards"
 import { ProjectionSimulator } from "@/components/investments/projection"
 import { AssetAnalysis } from "@/components/investments/asset-analysis"
 import { DcaPanel } from "@/components/investments/dca-panel"
+import { ContributionsTable } from "@/components/investments/contributions-table"
 import { MountainChart } from "@/components/shared/mountain-chart"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -428,6 +429,8 @@ export default function InversionesPage() {
           )}
 
           <DcaPanel quotes={quotes} />
+
+          <ContributionsTable quotes={quotes} />
         </>
       )}
 
