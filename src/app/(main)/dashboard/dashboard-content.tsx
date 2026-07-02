@@ -136,6 +136,8 @@ export default function DashboardContent() {
   const rangeDelta = netWorthDisplay - rangeStart
   const showPct = Math.abs(rangeStart) >= 100
   const rangePct = showPct ? Math.round((rangeDelta / Math.abs(rangeStart)) * 100) : 0
+  // Máximo histórico dentro del rango visible, para la insignia dorada del hero.
+  const isAllTimeHigh = netWorthHasData && rangeDelta > 0 && netWorthDisplay >= Math.max(...netWorthTrend.map((t) => t.patrimonio))
 
   const spending = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const spendTotal = spending.reduce((s, c) => s + c.monto, 0)
@@ -328,8 +330,11 @@ export default function DashboardContent() {
             <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="page-section-label">Evolución del patrimonio</p>
-                  <p className="mt-2 text-3xl font-bold tracking-tight tabular-nums text-foreground sm:text-4xl">
+                  <div className="flex items-center gap-2">
+                    <p className="page-section-label">Evolución del patrimonio</p>
+                    {isAllTimeHigh && <span className="gold-badge rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">Máximo histórico</span>}
+                  </div>
+                  <p className="hero-figure mt-2 text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
                     <AnimatedNumber value={netWorthDisplay} />
                   </p>
                   <p className={cn("mt-1 inline-flex flex-wrap items-center gap-x-1.5 text-sm font-medium", rangeDelta >= 0 ? "text-emerald-500" : "text-red-500")}>
@@ -344,16 +349,9 @@ export default function DashboardContent() {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+                <div className="range-tabs">
                   {RANGES.map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setRangeMonths(r)}
-                      className={cn(
-                        "rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums transition-colors",
-                        rangeMonths === r ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
+                    <button key={r} onClick={() => setRangeMonths(r)} data-active={rangeMonths === r} className="range-tab tabular-nums">
                       {r}M
                     </button>
                   ))}

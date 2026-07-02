@@ -246,9 +246,9 @@ export default function IngresosGastosPage() {
         <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
             <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><TrendingUp className="h-4 w-4 text-primary" /> Evolución del cash flow</p>
-            <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+            <div className="range-tabs">
               {RANGES.map((r) => (
-                <button key={r.m} onClick={() => setRangeM(r.m)} className={cn("rounded-full px-2.5 py-1 text-xs font-semibold transition-colors", rangeM === r.m ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>{r.label}</button>
+                <button key={r.m} onClick={() => setRangeM(r.m)} data-active={rangeM === r.m} className="range-tab">{r.label}</button>
               ))}
             </div>
           </div>

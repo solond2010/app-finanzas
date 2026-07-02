@@ -108,6 +108,7 @@ export default function AnalyticsPage() {
   const averageMonthlyNet = cashFlow.length > 0 ? Math.round(cashFlow.reduce((sum, item) => sum + item.neto, 0) / cashFlow.length) : 0
   const positiveMonths = cashFlow.filter((item) => item.neto >= 0).length
   const netWorthTrendPositive = netWorthChange >= 0
+  const isAllTimeHigh = netWorthTrendPositive && netWorthHistory.length > 0 && currentNetWorth >= Math.max(...netWorthHistory.map((n) => n.patrimonio))
 
   // Racha de meses consecutivos con flujo de caja positivo, contando hacia
   // atrás desde el mes seleccionado dentro de la ventana de 6 meses visible.
@@ -178,7 +179,10 @@ export default function AnalyticsPage() {
 
         <Card className="stagger-fade hero-panel col-span-full xl:col-span-7" style={{ animationDelay: "80ms" }}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold"><TrendingUp className="h-4 w-4 text-emerald-500" />Patrimonio neto</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />Patrimonio neto
+              {isAllTimeHigh && <span className="gold-badge rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">Máximo histórico</span>}
+            </CardTitle>
             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${netWorthTrendPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}><Sensitive>{signedMoney(netWorthChange)}</Sensitive></span>
           </CardHeader>
           <CardContent>

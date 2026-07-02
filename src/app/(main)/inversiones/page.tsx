@@ -297,7 +297,7 @@ export default function InversionesPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="page-section-label">{detailPosition ? `Rendimiento · ${detailPosition.name}` : "Evolución cartera"}</p>
-                  <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-foreground sm:text-4xl">
+                  <p className="hero-figure mt-2 text-3xl font-bold tabular-nums tracking-tight sm:text-4xl">
                     <Sensitive>{formatMoney(detailPosition ? detailPosition.units * (detailPosition.kind === "custom" ? detailPosition.buyPrice : quotes[detailPosition.symbol]?.price ?? detailPosition.buyPrice) : value, baseCurrency)}</Sensitive>
                   </p>
                   {!detailPosition && (
@@ -319,9 +319,9 @@ export default function InversionesPage() {
               </div>
 
               {evoTab === "rendimiento" && (
-                <div className="mt-3 flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1 w-fit">
+                <div className="range-tabs mt-3 w-fit">
                   {RANGES.map((r) => (
-                    <button key={r.id} onClick={() => setEvoRange(r.id)} className={cn("rounded-full px-2.5 py-1 text-xs font-semibold transition-colors", evoRange === r.id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>{r.id}</button>
+                    <button key={r.id} onClick={() => setEvoRange(r.id)} data-active={evoRange === r.id} className="range-tab">{r.id}</button>
                   ))}
                 </div>
               )}

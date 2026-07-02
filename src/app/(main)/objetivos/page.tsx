@@ -51,7 +51,7 @@ export default function ObjetivosPage() {
           {hasMetas && (
             <div className="flex flex-col gap-2 rounded-[22px] hero-panel px-6 py-4">
               <p className="page-section-label">Progreso global</p>
-              <p className="text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[38px]">
+              <p className="hero-figure text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[38px]">
                 <AnimatedNumber value={stats.overallProgress} suffix="%" />
               </p>
               <p className="text-xs text-muted-foreground">

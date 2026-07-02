@@ -443,8 +443,64 @@
    un tinte azul-marino propio en vez del `--card` neutro, para que la cifra
    más importante de cada página se distinga a simple vista del resto. */
 .hero-panel {
+  position: relative;
   background: var(--hero-bg);
   border: 1px solid var(--hero-border);
+  border-top-color: color-mix(in oklch, var(--gold), transparent 45%);
+  overflow: hidden;
+}
+
+/* Brillo ambiental muy sutil en la esquina superior derecha, para que la
+   card "de riqueza" no se sienta plana. Puramente decorativo: no roba
+   contraste al contenido porque el degradado se apaga al 88% antes de
+   llegar al centro de la card. */
+.hero-panel::before {
+  content: "";
+  position: absolute;
+  top: -25%;
+  right: -10%;
+  width: 55%;
+  height: 70%;
+  background: radial-gradient(circle at top right, color-mix(in oklch, var(--gold), transparent 88%), transparent 70%);
+  pointer-events: none;
+}
+
+/* Cifra protagonista de una hero-panel: degradado sutil de --foreground a
+   --primary para dar sensación "premium" sin sacrificar legibilidad (parte
+   de arriba siempre queda con el contraste normal del texto). */
+.hero-figure {
+  background: linear-gradient(180deg, var(--foreground) 0%, color-mix(in oklch, var(--primary), transparent 15%) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Selector de rango tipo "pestaña subrayada", usado dentro de las
+   hero-panel con gráfico (más editorial que las píldoras del resto de la
+   app, reservado a este contexto para no diluir el acento). */
+.range-tabs {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--hero-border);
+}
+
+.range-tab {
+  padding-bottom: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  border-bottom: 2px solid transparent;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.range-tab:hover {
+  color: var(--foreground);
+}
+
+.range-tab[data-active="true"] {
+  color: var(--foreground);
+  border-bottom-color: var(--gold);
 }
 
 /* Insignia dorada para señalar crecimiento / hitos positivos de patrimonio. */
