@@ -23,9 +23,10 @@ import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { useToast } from "@/components/ui/toast"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { EmptyState } from "@/components/shared/empty-state"
+import { Skeleton } from "@/components/shared/skeleton"
 
 export default function CuentasPage() {
-  const { state, dispatch } = useFinance()
+  const { state, loading, dispatch } = useFinance()
   const router = useRouter()
   const { toast } = useToast()
   const { valueByAccount } = usePortfolioValue()
@@ -73,7 +74,16 @@ export default function CuentasPage() {
         </div>
       </section>
 
-      {state.accounts.length === 0 ? (
+      {loading ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+            <Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" />
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <Skeleton className="h-40" /><Skeleton className="h-40" /><Skeleton className="h-40" />
+          </div>
+        </div>
+      ) : state.accounts.length === 0 ? (
         <EmptyState
           className="py-24"
           icon={WalletIcon}

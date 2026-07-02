@@ -34,6 +34,7 @@ import { formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { filterTransactionsByMonth } from "@/lib/calculations"
 import { EmptyState } from "@/components/shared/empty-state"
+import { Skeleton } from "@/components/shared/skeleton"
 
 const CATEGORY_COLORS: Record<string, string> = {
   Salario: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
@@ -268,7 +269,7 @@ function InlineEditSelect({
 }
 
 export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: string; selectedMonth?: string }) {
-  const { state, dispatch } = useFinance()
+  const { state, loading, dispatch } = useFinance()
   const { toast } = useToast()
   const [filterAccount, setFilterAccount] = useState<string>(cuentaId ?? "all")
   const [search, setSearch] = useState("")
@@ -436,7 +437,15 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sorted.length === 0 ? (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="py-10">
+                  <div className="space-y-2">
+                    <Skeleton className="h-10 rounded-xl" /><Skeleton className="h-10 rounded-xl" /><Skeleton className="h-10 rounded-xl" />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : sorted.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="py-10">
                   <EmptyState

@@ -26,6 +26,7 @@ import { PiggyBank, Plus, Pencil, Trash2, Target, TrendingUp, Clock } from "luci
 import { currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { EmptyState } from "@/components/shared/empty-state"
+import { Skeleton } from "@/components/shared/skeleton"
 
 function SinkingFundForm({
   fund,
@@ -130,7 +131,7 @@ function PredictionTooltip({ remaining, avgMonthly, symbol }: { remaining: numbe
 }
 
 export function SinkingFundsGrid() {
-  const { state, dispatch } = useFinance()
+  const { state, loading, dispatch } = useFinance()
   const { toast } = useToast()
   const [editingFund, setEditingFund] = useState<SinkingFund | null>(null)
   const [showNew, setShowNew] = useState(false)
@@ -179,7 +180,11 @@ export function SinkingFundsGrid() {
         </Dialog>
       </CardHeader>
       <CardContent>
-        {state.sinkingFunds.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Skeleton className="h-40" /><Skeleton className="h-40" /><Skeleton className="h-40" />
+          </div>
+        ) : state.sinkingFunds.length === 0 ? (
           <EmptyState
             className="py-10"
             icon={Target}

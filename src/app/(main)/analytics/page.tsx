@@ -12,6 +12,7 @@ import { MetricCard } from "@/components/dashboard/metric-card"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyState } from "@/components/shared/empty-state"
+import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
@@ -65,7 +66,7 @@ const RuleCard = memo(function RuleCard({ label, target, actual, value, tone, de
 })
 
 export default function AnalyticsPage() {
-  const { state, dispatch } = useFinance()
+  const { state, loading, dispatch } = useFinance()
   const [monthOffset, setMonthOffset] = useState(0)
 
   const today = new Date()
@@ -148,6 +149,17 @@ export default function AnalyticsPage() {
         </div>
       </section>
 
+      {loading ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" />
+          </div>
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <Skeleton className="h-80" /><Skeleton className="h-80" />
+          </div>
+        </div>
+      ) : (
+      <>
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Patrimonio" value={<AnimatedNumber value={Math.round(currentNetWorth)} />} subtitle={<>{netWorthTrendPositive ? "Sube" : "Baja"} <Sensitive>{signedMoney(netWorthChange)}</Sensitive> vs mes previo</>} icon={Wallet} tone={netWorthTrendPositive ? "emerald" : "red"} delay={0} />
         <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix="+" />} subtitle={`Registrados en ${formatMonth(selectedDate)}`} icon={ArrowUpRight} tone="emerald" delay={70} />
@@ -294,6 +306,8 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       </section>
+      </>
+      )}
 
       <ConfirmDialog
         open={confirmReset}

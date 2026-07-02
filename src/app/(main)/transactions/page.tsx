@@ -11,6 +11,7 @@ import { AccountLogo } from "@/components/dashboard/account-logo"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { EmptyState, EmptyPlaceholder } from "@/components/shared/empty-state"
+import { Skeleton } from "@/components/shared/skeleton"
 import { useFinance, generateId } from "@/lib/store"
 import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, getUpcomingRecurring } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
@@ -39,7 +40,7 @@ function Gauge({ value, max, color = "var(--accent-blue)" }: { value: number; ma
 }
 
 export default function IngresosGastosPage() {
-  const { state, dispatch } = useFinance()
+  const { state, loading, dispatch } = useFinance()
   const { toast } = useToast()
   const today = useMemo(() => new Date(), [])
   const [monthOffset, setMonthOffset] = useState(0)
@@ -148,6 +149,12 @@ export default function IngresosGastosPage() {
         </div>
       </header>
 
+      {loading ? (
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          <Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" />
+        </div>
+      ) : (
+      <>
       {/* Ticker: pulso del mes */}
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
@@ -281,6 +288,8 @@ export default function IngresosGastosPage() {
           </div>
         </div>
       </section>
+      </>
+      )}
 
       {/* Planes de ahorro */}
       <SinkingFundsGrid />

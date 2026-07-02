@@ -39,8 +39,9 @@ export function MobileBottomNav() {
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <span className={cn("flex h-8 w-8 items-center justify-center rounded-2xl transition-colors", active && "bg-primary/10")}>
+              <span className={cn("relative flex h-8 w-8 items-center justify-center rounded-2xl transition-colors", active && "bg-primary/10")}>
                 <Icon className="h-5 w-5" />
+                {active && <span className="absolute -top-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[var(--gold)]" />}
               </span>
               <span className="max-w-full truncate px-0.5 text-[10px] font-medium leading-none">{item.label}</span>
             </Link>

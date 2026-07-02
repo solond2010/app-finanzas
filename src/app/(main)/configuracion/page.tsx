@@ -8,9 +8,10 @@ import { useFinance, type CategoryKind } from "@/lib/store"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 import { Plus, Trash2, Download, Sparkles, Tags, FileDown, Layers } from "lucide-react"
+import { Skeleton } from "@/components/shared/skeleton"
 
 export default function ConfiguracionPage() {
-  const { state, dispatch } = useFinance()
+  const { state, loading, dispatch } = useFinance()
   const { toast } = useToast()
   const [newCat, setNewCat] = useState("")
   const [newCatKind, setNewCatKind] = useState<"ingreso" | "gasto">("gasto")
@@ -76,6 +77,11 @@ export default function ConfiguracionPage() {
         </div>
       </section>
 
+      {loading ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Skeleton className="h-64" /><Skeleton className="h-40" />
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="relative overflow-hidden ring-1 ring-border/25">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent" />
@@ -155,6 +161,7 @@ export default function ConfiguracionPage() {
           </CardContent>
         </Card>
       </div>
+      )}
     </div>
   )
 }

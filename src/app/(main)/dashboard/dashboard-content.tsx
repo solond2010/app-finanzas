@@ -9,6 +9,7 @@ import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyPlaceholder } from "@/components/shared/empty-state"
+import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { usePortfolioValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
@@ -39,10 +40,6 @@ const RANGES = [
   { id: "12M", count: 12, unit: "months" as const },
   { id: "24M", count: 24, unit: "months" as const },
 ]
-
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`skeleton-shimmer rounded-[24px] ${className ?? ""}`} />
-}
 
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
   const max = Math.max(...values.map((v) => Math.abs(v)), 1)
