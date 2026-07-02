@@ -49,7 +49,7 @@ export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
           const hasPending = pending.length > 0
           return (
             <div key={p.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/20 p-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">{p.symbol.replace("custom:", "").slice(0, 2).toUpperCase()}</span>
+              <span className="gold-badge flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold">{p.symbol.replace("custom:", "").slice(0, 2).toUpperCase()}</span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-foreground">{p.name}</p>
                 <p className="truncate text-xs text-muted-foreground">
@@ -58,7 +58,7 @@ export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
               </div>
               <div className="shrink-0 text-right">
                 {hasPending ? (
-                  <p className="text-xs font-semibold text-amber-600 dark:text-amber-500">{pending.length} pendiente{pending.length > 1 ? "s" : ""}</p>
+                  <p className="text-xs font-semibold" style={{ color: "var(--gold)" }}>{pending.length} pendiente{pending.length > 1 ? "s" : ""}</p>
                 ) : (
                   <p className="inline-flex items-center gap-1 text-xs text-muted-foreground"><CalendarClock className="h-3.5 w-3.5" /> {fmtDate(next)}</p>
                 )}

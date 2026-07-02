@@ -163,7 +163,7 @@ export function AssetAnalysis() {
         <div className="mt-5 space-y-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-sm font-bold text-primary">{asset.symbol.slice(0, 2).toUpperCase()}</span>
+              <span className="gold-badge flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-bold">{asset.symbol.slice(0, 2).toUpperCase()}</span>
               <div className="min-w-0">
                 <p className="truncate text-base font-bold text-foreground">{asset.name}</p>
                 <p className="truncate text-xs text-muted-foreground">{asset.symbol}{asset.exchange ? ` · ${asset.exchange}` : ""}</p>

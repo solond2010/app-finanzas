@@ -32,7 +32,7 @@ function WatchCard({ item, quote, hist, onRemove }: { item: WatchItem; quote?: Q
     <div className="group relative w-[230px] shrink-0 rounded-[20px] border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/15">
       <button onClick={onRemove} aria-label="Quitar de la lista" className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"><X className="h-3.5 w-3.5" /></button>
       <div className="flex items-center gap-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-[11px] font-bold text-primary">{item.symbol.slice(0, 2).toUpperCase()}</span>
+        <span className="gold-badge flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold">{item.symbol.slice(0, 2).toUpperCase()}</span>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-foreground">{item.name}</p>
           <p className="truncate text-xs text-muted-foreground">{item.symbol}</p>

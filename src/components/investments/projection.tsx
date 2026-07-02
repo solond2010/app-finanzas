@@ -106,7 +106,7 @@ export function ProjectionSimulator({ ahorros0, inversiones0 }: { ahorros0: numb
                 </div>
                 <div className="rounded-2xl border border-border bg-muted/30 p-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Objetivo alcanzado</p>
-                  <p className="mt-1 text-xl font-bold tabular-nums sm:text-2xl" style={{ color: reached ? "var(--accent-green)" : "var(--accent-red)" }}>{reached ? `${reached.year}` : "No alcanzado"}{reached && <span className="ml-1 text-xs font-medium text-muted-foreground">({reached.year - thisYear} años)</span>}</p>
+                  <p className="mt-1 text-xl font-bold tabular-nums sm:text-2xl" style={{ color: reached ? "var(--gold)" : "var(--accent-red)" }}>{reached ? `${reached.year}` : "No alcanzado"}{reached && <span className="ml-1 text-xs font-medium text-muted-foreground">({reached.year - thisYear} años)</span>}</p>
                 </div>
               </div>
 
