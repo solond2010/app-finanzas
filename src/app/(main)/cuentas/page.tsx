@@ -19,9 +19,10 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig, typeLabels } from "@/lib/account-types"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { useToast } from "@/components/ui/toast"
+import { TickerTile } from "@/components/shared/ticker-tile"
 
 export default function CuentasPage() {
   const { state, dispatch } = useFinance()
@@ -34,6 +35,18 @@ export default function CuentasPage() {
   // posiciones (no el saldo manual, que queda obsoleto al registrar inversiones).
   const accountValue = (a: Account) => (a.tipo === "inversion" && valueByAccount[a.id] != null ? valueByAccount[a.id] : a.saldo)
   const netWorth = state.accounts.reduce((s, a) => s + accountValue(a), 0)
+
+  // Cuenta con mayor saldo y cuenta más cerca de completar su objetivo, para
+  // el ticker superior (solo cuando hay cuentas registradas).
+  const topAccount = useMemo(() => (state.accounts.length === 0 ? null : state.accounts.slice().sort((a, b) => accountValue(b) - accountValue(a))[0]), [state.accounts, valueByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
+  const nearestGoal = useMemo(() => {
+    return state.accounts
+      .filter((a) => a.objetivo && a.objetivo > 0)
+      .map((a) => ({ account: a, pct: Math.min((accountValue(a) / (a.objetivo as number)) * 100, 100) }))
+      .sort((a, b) => b.pct - a.pct)[0] ?? null
+  }, [state.accounts, valueByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
+  const liquidNetWorth = state.accounts.filter((a) => a.tipo !== "inversion").reduce((s, a) => s + accountValue(a), 0)
+  const liquidPct = netWorth > 0 ? Math.round((liquidNetWorth / netWorth) * 100) : 0
 
   return (
     <div className="space-y-6 sm:space-y-7">
@@ -73,6 +86,13 @@ export default function CuentasPage() {
         </div>
       ) : (
         <>
+          <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+            <TickerTile label="Cuentas" value={String(state.accounts.length)} valueColor="var(--primary)" />
+            <TickerTile label="Cuenta líder" value={topAccount ? `${topAccount.nombre.slice(0, 14)} · ${formatMoney(accountValue(topAccount), topAccount.currency)}` : "—"} valueColor="var(--gold)" />
+            <TickerTile label="Objetivo más cerca" value={nearestGoal ? `${nearestGoal.account.nombre.slice(0, 14)} · ${Math.round(nearestGoal.pct)}%` : "—"} valueColor="#10b981" />
+            <TickerTile label="Liquidez" value={`${liquidPct}%`} valueColor="#3f6bff" />
+          </section>
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {state.accounts.map((account, index) => {
               const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
