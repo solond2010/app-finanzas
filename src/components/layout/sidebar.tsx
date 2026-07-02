@@ -149,7 +149,7 @@ export function Sidebar() {
       {!sidebarOpen && (
         <aside className="fixed left-0 top-0 z-40 hidden h-full w-16 flex-col items-center border-r bg-sidebar py-5 shadow-xl shadow-sidebar-border/50 lg:flex">
           <div className="mb-6">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <div className="gold-badge flex size-9 items-center justify-center rounded-xl">
               <Sparkles className="h-4 w-4" />
             </div>
           </div>
@@ -169,7 +169,7 @@ export function Sidebar() {
                     )}
                   >
                     <Icon className="h-4 w-4" />
-                    {isActive && <span className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-1.5 w-1.5 rounded-full bg-primary" />}
+                    {isActive && <span className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-1.5 w-1.5 rounded-full bg-[var(--gold)]" />}
                   </Link>
                 </Tooltip>
               )
@@ -212,7 +212,7 @@ export function Sidebar() {
         )}
       >
         <div className="flex items-center gap-3 mb-8 px-4">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <div className="gold-badge flex size-9 items-center justify-center rounded-xl">
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
@@ -239,7 +239,7 @@ export function Sidebar() {
               >
                 <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary" : "text-sidebar-foreground/40")} />
                 {item.label}
-                {isActive && <span className="absolute right-2 top-1/2 -translate-y-1/2 flex h-1.5 w-1.5 rounded-full bg-primary" />}
+                {isActive && <span className="absolute right-2 top-1/2 -translate-y-1/2 flex h-1.5 w-1.5 rounded-full bg-[var(--gold)]" />}
               </Link>
             )
           })}
