@@ -34,7 +34,7 @@ export interface DashboardPdfData {
   month: string
   netWorth: number
   netWorthTrend: { label: string; value: number }[]
-  rangeMonths: number
+  rangeLabel: string
   score: number
   scoreLabel: string
   scoreFactors: { label: string; ok: boolean }[]
@@ -143,7 +143,7 @@ export function generateDashboardPdf(data: DashboardPdfData) {
     doc.setTextColor(...INK)
     doc.setFont("helvetica", "bold")
     doc.setFontSize(12)
-    doc.text(`Evolución del patrimonio (${data.rangeMonths}M)`, M, y)
+    doc.text(`Evolución del patrimonio (${data.rangeLabel})`, M, y)
     const chartY = y + 10
     const img = renderBarChart(data.netWorthTrend, W - M * 2, chartH, m)
     doc.addImage(img, "PNG", M, chartY, W - M * 2, chartH)

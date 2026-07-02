@@ -14,7 +14,7 @@ import { usePortfolioValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getSavingsRate } from "@/lib/calculations"
+import { buildNetWorthHistoryDaily, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getSavingsRate } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -27,7 +27,16 @@ const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
 // para las dos cifras más importantes de la página (patrimonio y puntuación).
 const CARD_HERO = "rounded-[24px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
-const RANGES = [3, 6, 12, 24] as const
+// Rangos cortos (7D/30D) usan resolución diaria: cuentas recién creadas o con
+// pocos días de historial no muestran nada útil en un gráfico mensual (todo
+// su recorrido cabe dentro del mes en curso). Los largos siguen en meses.
+const RANGES = [
+  { id: "7D", count: 7, unit: "days" as const },
+  { id: "30D", count: 30, unit: "days" as const },
+  { id: "6M", count: 6, unit: "months" as const },
+  { id: "12M", count: 12, unit: "months" as const },
+  { id: "24M", count: 24, unit: "months" as const },
+]
 const PatrimonioTooltip = createChartTooltip(["patrimonio"], ["blue"])
 
 function Skeleton({ className }: { className?: string }) {
@@ -79,7 +88,8 @@ export default function DashboardContent() {
   const { toast } = useToast()
   const today = useMemo(() => new Date(), [])
   const [monthOffset, setMonthOffset] = useState(0)
-  const [rangeMonths, setRangeMonths] = useState<number>(6)
+  const [rangeId, setRangeId] = useState<string>("6M")
+  const activeRange = RANGES.find((r) => r.id === rangeId) ?? RANGES[2]
   const [accIdx, setAccIdx] = useState(0)
   const [showNewAccount, setShowNewAccount] = useState(false)
 
@@ -122,15 +132,23 @@ export default function DashboardContent() {
   const annualGastos = monthlyYear.reduce((s, m) => s + m.gastos, 0)
   const annualNeto = annualIngresos - annualGastos
 
-  const netWorthTrend = useMemo(
-    () => Array.from({ length: rangeMonths }, (_, i) => {
-      const offset = rangeMonths - 1 - i
+  const netWorthTrend = useMemo(() => {
+    if (activeRange.unit === "days") {
+      // Termina hoy si se mira el mes en curso; si se navegó a un mes
+      // anterior, termina en el último día de ese mes.
+      const dailyEndDate = monthOffset === 0 ? today : new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0)
+      // Ajusta cada día por el mismo delta cartera-vs-inversión que el mes
+      // actual: no tenemos precio histórico de la cartera día a día, así que
+      // se mantiene constante (misma simplificación que ya se hacía por mes).
+      return buildNetWorthHistoryDaily(state.accounts, state.transactions, activeRange.count, dailyEndDate).map((d) => ({ ...d, patrimonio: d.patrimonio - investmentSaldo + portfolioValue }))
+    }
+    return Array.from({ length: activeRange.count }, (_, i) => {
+      const offset = activeRange.count - 1 - i
       const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
       return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonth(state.accounts, state.transactions, key) - investmentSaldo + portfolioValue }
-    }),
-    [rangeMonths, selectedDate, state.accounts, state.transactions, portfolioValue, investmentSaldo]
-  )
+    })
+  }, [activeRange, selectedDate, monthOffset, today, state.accounts, state.transactions, portfolioValue, investmentSaldo])
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
   const rangeDelta = netWorthDisplay - rangeStart
@@ -263,7 +281,7 @@ export default function DashboardContent() {
         month: formatMonth(selectedDate),
         netWorth: netWorthDisplay,
         netWorthTrend: netWorthTrend.map((d) => ({ label: d.mes, value: Math.round(d.patrimonio) })),
-        rangeMonths,
+        rangeLabel: activeRange.id,
         score,
         scoreLabel: scoreTier.label,
         scoreFactors,
@@ -340,7 +358,7 @@ export default function DashboardContent() {
                   <p className={cn("mt-1 inline-flex flex-wrap items-center gap-x-1.5 text-sm font-medium", rangeDelta >= 0 ? "text-emerald-500" : "text-red-500")}>
                     {rangeDelta >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                     <Sensitive>{rangeDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(rangeDelta), "EUR")}</Sensitive>
-                    <span className="text-muted-foreground">{showPct ? `· ${rangePct >= 0 ? "+" : ""}${rangePct}% ` : ""}en {rangeMonths}M</span>
+                    <span className="text-muted-foreground">{showPct ? `· ${rangePct >= 0 ? "+" : ""}${rangePct}% ` : ""}en {activeRange.id}</span>
                   </p>
                   {portfolioValue > 0 && (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -351,8 +369,8 @@ export default function DashboardContent() {
                 </div>
                 <div className="range-tabs">
                   {RANGES.map((r) => (
-                    <button key={r} onClick={() => setRangeMonths(r)} data-active={rangeMonths === r} className="range-tab tabular-nums">
-                      {r}M
+                    <button key={r.id} onClick={() => setRangeId(r.id)} data-active={rangeId === r.id} className="range-tab tabular-nums">
+                      {r.id}
                     </button>
                   ))}
                 </div>

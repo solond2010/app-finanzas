@@ -143,6 +143,42 @@ export function getNetWorthAtMonth(accounts: Account[], transactions: Transactio
   return getNetWorth(getAccountsAtMonth(accounts, transactions, monthKey))
 }
 
+function toDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+}
+
+// Igual que isAfterMonth pero a nivel de día: una transacción cuenta como
+// "futura" respecto a dateKey solo si es de un día posterior (las del mismo
+// día ya forman parte del saldo de cierre de ese día).
+function isAfterDate(dateString: string, dateKey: string) {
+  return toDateKey(new Date(dateString)) > dateKey
+}
+
+export function getAccountsAtDate(accounts: Account[], transactions: Transaction[], dateKey: string) {
+  return accounts.map((account) => {
+    const futureTransactions = transactions.filter((t) => t.cuenta_id === account.id && isAfterDate(t.fecha, dateKey))
+    const balanceDelta = futureTransactions.reduce((sum, t) => sum + transactionDelta(t), 0)
+    return { ...account, saldo: account.saldo - balanceDelta }
+  })
+}
+
+export function getNetWorthAtDate(accounts: Account[], transactions: Transaction[], dateKey: string) {
+  return getNetWorth(getAccountsAtDate(accounts, transactions, dateKey))
+}
+
+// Histórico día a día de los últimos `days` días (incluye hoy), para rangos
+// cortos donde el detalle mensual esconde subidas/bajadas reales de la
+// semana (cuentas nuevas con pocos días de historial, gasto puntual grande...).
+export function buildNetWorthHistoryDaily(accounts: Account[], transactions: Transaction[], days: number, endDate = new Date()): NetWorthSnapshot[] {
+  return Array.from({ length: days }, (_, i) => {
+    const d = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() - (days - 1 - i))
+    return {
+      mes: d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" }),
+      patrimonio: getNetWorthAtDate(accounts, transactions, toDateKey(d)),
+    }
+  })
+}
+
 export function getCategoryBreakdown(transactions: Transaction[], monthKey?: string) {
   const gastos = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto" && !isTransfer(t))
 
