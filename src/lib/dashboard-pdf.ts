@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { formatMoney } from "@/lib/currency"
-import { BRAND, INK, MUTED, GREEN, RED, TRACK, renderBarChart, drawTile, drawTileGrid, ensureSpace, drawFooter } from "@/lib/pdf-helpers"
+import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, renderBarChart, drawTile, drawTileGrid, ensureSpace, drawFooter } from "@/lib/pdf-helpers"
 
 export interface DashboardPdfAccount {
   nombre: string
@@ -61,6 +61,8 @@ export function generateDashboardPdf(data: DashboardPdfData) {
   // Header band
   doc.setFillColor(...BRAND)
   doc.rect(0, 0, W, 90, "F")
+  doc.setFillColor(...GOLD)
+  doc.rect(0, 90, W, 3, "F")
   doc.setTextColor(255, 255, 255)
   doc.setFont("helvetica", "bold")
   doc.setFontSize(20)

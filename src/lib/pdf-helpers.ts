@@ -2,6 +2,9 @@ import { jsPDF } from "jspdf"
 
 // Azul cobalto real de la app (oklch(0.52 0.17 264), el mismo --primary de globals.css).
 export const BRAND: [number, number, number] = [52, 97, 201]
+// Dorado de marca (--gold de globals.css), usado como línea de firma bajo la
+// cabecera — el mismo acento que hero-panel/login/sidebar en el resto de la app.
+export const GOLD: [number, number, number] = [232, 182, 74]
 export const INK: [number, number, number] = [17, 24, 39]
 export const MUTED: [number, number, number] = [107, 114, 128]
 export const GREEN: [number, number, number] = [16, 185, 129]

@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
-import { BRAND, INK, MUTED, GREEN, RED, TRACK, type Tile, renderBarChart, renderPieChart, drawTile, drawTileGrid, drawProgressBar, ensureSpace, drawFooter } from "@/lib/pdf-helpers"
+import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, type Tile, renderBarChart, renderPieChart, drawTile, drawTileGrid, drawProgressBar, ensureSpace, drawFooter } from "@/lib/pdf-helpers"
 
 export interface XrayPosition {
   name: string
@@ -49,6 +49,8 @@ export function generateXrayPdf(data: XrayData) {
   // Header band
   doc.setFillColor(...BRAND)
   doc.rect(0, 0, W, 90, "F")
+  doc.setFillColor(...GOLD)
+  doc.rect(0, 90, W, 3, "F")
   doc.setTextColor(255, 255, 255)
   doc.setFont("helvetica", "bold")
   doc.setFontSize(20)
