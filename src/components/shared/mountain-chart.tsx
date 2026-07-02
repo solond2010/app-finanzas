@@ -2,9 +2,10 @@
 
 import { useMemo, useRef, useState } from "react"
 
-// Gráfico de área "montaña": picos suaves (curva, no líneas rectas) con dos
-// capas de relleno superpuestas (una tenue detrás, desplazada) para dar
-// sensación de profundidad, y un marcador dorado en el punto más alto.
+// Gráfico de área "montaña": picos angulosos (líneas rectas entre puntos,
+// no curva suavizada) con dos capas de relleno superpuestas (una tenue
+// detrás, desplazada) para dar sensación de profundidad, y un marcador
+// dorado en el punto más alto.
 // Sustituye al AreaChart de Tremor solo donde se quiere este tratamiento
 // premium — el resto de gráficos de la app se quedan con Tremor + su tooltip
 // compartido (createChartTooltip).
@@ -45,28 +46,18 @@ export function MountainChart({
     [values, data, min, span, index]
   )
 
-  // Curva suave: Catmull-Rom convertido a segmentos cúbicos de Bézier, para
-  // que los picos se vean redondeados en vez de angulosos.
-  function smoothPath(pts: { x: number; y: number }[], offsetY = 0) {
-    if (pts.length < 2) return pts.length === 1 ? `M${pts[0].x},${pts[0].y + offsetY}` : ""
-    let d = `M${pts[0].x},${pts[0].y + offsetY}`
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[i - 1] ?? pts[i]
-      const p1 = pts[i]
-      const p2 = pts[i + 1]
-      const p3 = pts[i + 2] ?? p2
-      const c1x = p1.x + (p2.x - p0.x) / 6
-      const c1y = p1.y + offsetY + (p2.y - p0.y) / 6
-      const c2x = p2.x - (p3.x - p1.x) / 6
-      const c2y = p2.y + offsetY - (p3.y - p1.y) / 6
-      d += ` C${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y + offsetY}`
-    }
-    return d
+  // Picos con punta: segmentos rectos entre puntos consecutivos, sin
+  // suavizado. La capa "back" va desplazada hacia arriba para simular una
+  // segunda cresta detrás de la principal.
+  function sharpPath(pts: { x: number; y: number }[], offsetY = 0) {
+    if (pts.length === 0) return ""
+    if (pts.length === 1) return `M${pts[0].x},${pts[0].y + offsetY}`
+    return pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y + offsetY}`).join(" ")
   }
 
-  const linePath = smoothPath(points)
+  const linePath = sharpPath(points)
   const frontArea = `${linePath} L${VB_W},${VB_H} L0,${VB_H} Z`
-  const backLinePath = smoothPath(points, -10)
+  const backLinePath = sharpPath(points, -10)
   const backArea = `${backLinePath} L${VB_W},${VB_H} L0,${VB_H} Z`
 
   const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
