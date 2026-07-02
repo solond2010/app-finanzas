@@ -151,11 +151,9 @@ export function ContributionsTable({ quotes }: { quotes: Record<string, Quote> }
           <Button size="sm" variant="outline" className="rounded-full" onClick={() => exportToExcel(allMonths, positions, { invested, value, pnl })}>
             <Download className="h-3.5 w-3.5" /> Excel
           </Button>
-          {allMonths.length > VISIBLE_MONTHS && (
-            <Button size="sm" variant="outline" className="rounded-full" onClick={() => setExpanded(true)}>
-              <Maximize2 className="h-3.5 w-3.5" /> Ver todo
-            </Button>
-          )}
+          <Button size="sm" variant="outline" className="rounded-full" onClick={() => setExpanded(true)}>
+            <Maximize2 className="h-3.5 w-3.5" /> Ver todo
+          </Button>
         </div>
       </div>
 
