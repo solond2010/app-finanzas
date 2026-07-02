@@ -26,6 +26,11 @@ export interface Transaction {
   es_necesidad: boolean
   descripcion: string
   tags: string[]
+  // Momento real de creación del registro (no el día del movimiento, que es
+  // `fecha`). Permite ordenar varias transacciones del mismo día en el
+  // histórico de patrimonio. Opcional porque las filas anteriores a la
+  // migración `supabase-transactions-timestamp.sql` no la tenían.
+  created_at?: string
 }
 
 export interface SinkingFund {
@@ -190,6 +195,7 @@ type TransactionRow = {
   es_necesidad: boolean
   descripcion: string | null
   tags: unknown
+  created_at?: string
 }
 
 type SinkingFundRow = {
@@ -244,6 +250,7 @@ function reducer(state: FinanceState, action: Action): FinanceState {
           es_necesidad: false,
           descripcion: `Saldo inicial de ${newAccount.nombre}`,
           tags: [],
+          created_at: new Date().toISOString(),
         })
       }
       return { ...state, accounts: [...state.accounts, newAccount], transactions: newTransactions }
@@ -272,6 +279,7 @@ function reducer(state: FinanceState, action: Action): FinanceState {
                 es_necesidad: false,
                 descripcion: `Ajuste de saldo de ${action.payload.nombre}`,
                 tags: [],
+                created_at: new Date().toISOString(),
               },
             ]
           : state.transactions
@@ -288,14 +296,19 @@ function reducer(state: FinanceState, action: Action): FinanceState {
         transactions: state.transactions.filter((t) => t.cuenta_id !== action.payload),
         sinkingFunds: state.sinkingFunds.filter((s) => s.cuenta_id !== action.payload),
       }
-    case "ADD_TRANSACTION":
+    case "ADD_TRANSACTION": {
+      // created_at se fija aquí (punto único) en vez de en cada sitio que
+      // despacha ADD_TRANSACTION, para poder ordenar por hora real de alta
+      // varias transacciones del mismo día en el histórico de patrimonio.
+      const newTransaction = { ...action.payload, created_at: action.payload.created_at ?? new Date().toISOString() }
       return {
         ...state,
-        transactions: [...state.transactions, action.payload],
+        transactions: [...state.transactions, newTransaction],
         accounts: state.accounts.map((a) =>
-          a.id === action.payload.cuenta_id ? { ...a, saldo: a.saldo + signedAmount(action.payload) } : a
+          a.id === newTransaction.cuenta_id ? { ...a, saldo: a.saldo + signedAmount(newTransaction) } : a
         ),
       }
+    }
     case "UPDATE_TRANSACTION":
       return updateTransactionWithBalance(state, action.payload)
     case "DELETE_TRANSACTION":
@@ -568,7 +581,7 @@ function normalizeFinanceState(state: FinanceState): FinanceState {
 }
 
 function formatTransaction(t: TransactionRow): Transaction {
-  return { id: t.id, cuenta_id: t.cuenta_id, monto: Number(t.monto), fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion ?? "", tags: Array.isArray(t.tags) ? t.tags.map(String) : [] }
+  return { id: t.id, cuenta_id: t.cuenta_id, monto: Number(t.monto), fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion ?? "", tags: Array.isArray(t.tags) ? t.tags.map(String) : [], created_at: t.created_at }
 }
 
 function formatSinkingFund(s: SinkingFundRow): SinkingFund {
@@ -580,6 +593,9 @@ function unformatAccount(a: Account) {
 }
 
 function unformatTransaction(t: Transaction): TransactionPayload {
+  // created_at NO se manda: la columna la rellena Supabase con su propio
+  // default (now()) al insertar, y así el guardado sigue funcionando aunque
+  // todavía no se haya ejecutado supabase-transactions-timestamp.sql.
   return { id: t.id, cuenta_id: t.cuenta_id, monto: t.monto, fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion, tags: t.tags }
 }
 

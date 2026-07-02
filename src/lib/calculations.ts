@@ -179,6 +179,45 @@ export function buildNetWorthHistoryDaily(accounts: Account[], transactions: Tra
   })
 }
 
+// Una transacción es "futura" respecto al instante (dateKey, createdAt) si es
+// de un día posterior, o del mismo día pero dada de alta después (empate
+// resuelto por `created_at`, no por `fecha`, que no tiene hora).
+function isAfterMoment(t: Transaction, dateKey: string, createdAt: string) {
+  const tDateKey = toDateKey(new Date(t.fecha))
+  if (tDateKey !== dateKey) return tDateKey > dateKey
+  return (t.created_at ?? "") > createdAt
+}
+
+function getNetWorthAtMoment(accounts: Account[], transactions: Transaction[], dateKey: string, createdAt: string) {
+  const reconstructed = accounts.map((account) => {
+    const futureTransactions = transactions.filter((t) => t.cuenta_id === account.id && isAfterMoment(t, dateKey, createdAt))
+    const balanceDelta = futureTransactions.reduce((sum, t) => sum + transactionDelta(t), 0)
+    return { ...account, saldo: account.saldo - balanceDelta }
+  })
+  return getNetWorth(reconstructed)
+}
+
+// Evolución del día en curso, un punto por cada transacción dada de alta hoy
+// (ordenadas por `created_at`, no por `fecha`) más un punto de partida con el
+// patrimonio de cierre de ayer. Para cuentas muy nuevas, la resolución diaria
+// no basta: si todo el movimiento del día pasó en las mismas 24h, un solo
+// punto por día esconde igual que antes el pico intermedio.
+export function buildNetWorthHistoryToday(accounts: Account[], transactions: Transaction[], today = new Date()): NetWorthSnapshot[] {
+  const todayKey = toDateKey(today)
+  const yesterdayKey = toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1))
+  const todaysTransactions = transactions
+    .filter((t) => toDateKey(new Date(t.fecha)) === todayKey)
+    .slice()
+    .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""))
+
+  const points: NetWorthSnapshot[] = [{ mes: "Inicio", patrimonio: getNetWorthAtDate(accounts, transactions, yesterdayKey) }]
+  for (const t of todaysTransactions) {
+    const label = t.created_at ? new Date(t.created_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "—"
+    points.push({ mes: label, patrimonio: getNetWorthAtMoment(accounts, transactions, todayKey, t.created_at ?? "") })
+  }
+  return points
+}
+
 export function getCategoryBreakdown(transactions: Transaction[], monthKey?: string) {
   const gastos = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto" && !isTransfer(t))
 

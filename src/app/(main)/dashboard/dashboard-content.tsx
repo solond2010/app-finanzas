@@ -14,7 +14,7 @@ import { usePortfolioValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { buildNetWorthHistoryDaily, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getSavingsRate } from "@/lib/calculations"
+import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getSavingsRate } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -27,10 +27,12 @@ const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
 // para las dos cifras más importantes de la página (patrimonio y puntuación).
 const CARD_HERO = "rounded-[24px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
-// Rangos cortos (7D/30D) usan resolución diaria: cuentas recién creadas o con
-// pocos días de historial no muestran nada útil en un gráfico mensual (todo
-// su recorrido cabe dentro del mes en curso). Los largos siguen en meses.
+// "Hoy" usa un punto por transacción (orden real de alta vía created_at) en
+// vez de por día, para cuentas tan nuevas que varios movimientos del mismo
+// día esconderían un pico intermedio con resolución diaria. 7D/30D siguen a
+// nivel de día; los rangos largos (6M/12M/24M), a nivel de mes.
 const RANGES = [
+  { id: "Hoy", count: 0, unit: "today" as const },
   { id: "7D", count: 7, unit: "days" as const },
   { id: "30D", count: 30, unit: "days" as const },
   { id: "6M", count: 6, unit: "months" as const },
@@ -89,7 +91,7 @@ export default function DashboardContent() {
   const today = useMemo(() => new Date(), [])
   const [monthOffset, setMonthOffset] = useState(0)
   const [rangeId, setRangeId] = useState<string>("6M")
-  const activeRange = RANGES.find((r) => r.id === rangeId) ?? RANGES[2]
+  const activeRange = RANGES.find((r) => r.id === rangeId) ?? RANGES[3]
   const [accIdx, setAccIdx] = useState(0)
   const [showNewAccount, setShowNewAccount] = useState(false)
 
@@ -133,6 +135,9 @@ export default function DashboardContent() {
   const annualNeto = annualIngresos - annualGastos
 
   const netWorthTrend = useMemo(() => {
+    if (activeRange.unit === "today") {
+      return buildNetWorthHistoryToday(state.accounts, state.transactions, today).map((d) => ({ ...d, patrimonio: d.patrimonio - investmentSaldo + portfolioValue }))
+    }
     if (activeRange.unit === "days") {
       // Termina hoy si se mira el mes en curso; si se navegó a un mes
       // anterior, termina en el último día de ese mes.
@@ -358,7 +363,7 @@ export default function DashboardContent() {
                   <p className={cn("mt-1 inline-flex flex-wrap items-center gap-x-1.5 text-sm font-medium", rangeDelta >= 0 ? "text-emerald-500" : "text-red-500")}>
                     {rangeDelta >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                     <Sensitive>{rangeDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(rangeDelta), "EUR")}</Sensitive>
-                    <span className="text-muted-foreground">{showPct ? `· ${rangePct >= 0 ? "+" : ""}${rangePct}% ` : ""}en {activeRange.id}</span>
+                    <span className="text-muted-foreground">{showPct ? `· ${rangePct >= 0 ? "+" : ""}${rangePct}% ` : ""}{activeRange.id === "Hoy" ? "hoy" : `en ${activeRange.id}`}</span>
                   </p>
                   {portfolioValue > 0 && (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -375,7 +380,9 @@ export default function DashboardContent() {
                   ))}
                 </div>
               </div>
-              {netWorthHasData ? (
+              {activeRange.unit === "today" && netWorthTrend.length <= 1 ? (
+                <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-64">Sin movimientos registrados hoy todavía</div>
+              ) : netWorthHasData ? (
                 <AreaChart data={netWorthTrend} index="mes" categories={["patrimonio"]} colors={["blue"]} valueFormatter={chartFormatter} showLegend={false} showGridLines={false} showYAxis={false} customTooltip={PatrimonioTooltip} className="mt-4 h-52 sm:h-64" curveType="monotone" showAnimation />
               ) : (
                 <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground sm:h-64">Sin datos de patrimonio todavía</div>
