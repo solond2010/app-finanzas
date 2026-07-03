@@ -299,6 +299,33 @@ export function getGastosBudgetProgress(accounts: Account[], transactions: Trans
   }
 }
 
+export type RecurringFrequency = "semanal" | "mensual" | "anual"
+
+// Cadencia guardada como tag: "recurrente" a secas (dato histórico, antes de
+// que existieran más cadencias) siempre significa mensual; "recurrente:X"
+// guarda la cadencia explícita. Mantenerlo así evita una migración de datos.
+export function isRecurringTransaction(t: Transaction) {
+  return t.tags?.some((tag) => tag === "recurrente" || tag.startsWith("recurrente:")) ?? false
+}
+
+export function recurringFrequency(t: Transaction): RecurringFrequency {
+  const tag = t.tags?.find((tag) => tag.startsWith("recurrente:"))
+  const freq = tag?.split(":")[1]
+  return freq === "semanal" || freq === "anual" ? freq : "mensual"
+}
+
+export function recurringTag(freq: RecurringFrequency): string {
+  return freq === "mensual" ? "recurrente" : `recurrente:${freq}`
+}
+
+function addFrequency(date: Date, freq: RecurringFrequency): Date {
+  const next = new Date(date)
+  if (freq === "semanal") next.setDate(next.getDate() + 7)
+  else if (freq === "anual") next.setFullYear(next.getFullYear() + 1)
+  else next.setMonth(next.getMonth() + 1)
+  return next
+}
+
 export interface UpcomingRecurring {
   key: string
   cuenta_id: string
@@ -308,18 +335,19 @@ export interface UpcomingRecurring {
   tipo: "ingreso" | "gasto"
   es_necesidad: boolean
   tags: string[]
+  frequency: RecurringFrequency
   nextDate: string
   overdueDays: number
 }
 
-// Una transacción "recurrente" (tag `recurrente`) se agrupa con las demás de
-// la misma cuenta+categoría+descripción+tipo; la más reciente del grupo marca
-// el ritmo. Se asume cadencia mensual (el caso de uso habitual: nómina,
-// alquiler, suscripciones) y el próximo vencimiento es esa fecha + 1 mes.
+// Una transacción recurrente se agrupa con las demás de la misma cuenta+
+// categoría+descripción+tipo; la más reciente del grupo marca el ritmo y su
+// cadencia (semanal/mensual/anual, ver recurringFrequency) determina cuándo
+// toca el próximo vencimiento.
 export function getUpcomingRecurring(transactions: Transaction[]): UpcomingRecurring[] {
   const groups = new Map<string, Transaction[]>()
   for (const t of transactions) {
-    if (!t.tags?.includes("recurrente") || isTransfer(t)) continue
+    if (!isRecurringTransaction(t) || isTransfer(t)) continue
     const key = `${t.cuenta_id}|${t.categoria}|${t.descripcion}|${t.tipo}`
     const arr = groups.get(key)
     if (arr) arr.push(t)
@@ -331,8 +359,8 @@ export function getUpcomingRecurring(transactions: Transaction[]): UpcomingRecur
   const out: UpcomingRecurring[] = []
   for (const [key, txns] of groups) {
     const last = txns.reduce((a, b) => (new Date(a.fecha) > new Date(b.fecha) ? a : b))
-    const next = new Date(last.fecha)
-    next.setMonth(next.getMonth() + 1)
+    const frequency = recurringFrequency(last)
+    const next = addFrequency(new Date(last.fecha), frequency)
     const overdueDays = Math.round((today.getTime() - next.getTime()) / 86400000)
     out.push({
       key,
@@ -343,6 +371,7 @@ export function getUpcomingRecurring(transactions: Transaction[]): UpcomingRecur
       tipo: last.tipo,
       es_necesidad: last.es_necesidad,
       tags: last.tags,
+      frequency,
       nextDate: next.toISOString().split("T")[0],
       overdueDays,
     })

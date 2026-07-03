@@ -2,7 +2,7 @@
 
 import { Suspense, useState, FormEvent } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Loader2, Wallet } from "lucide-react"
+import { Loader2, Sparkles } from "lucide-react"
 
 function LoginForm() {
   const [password, setPassword] = useState("")
@@ -41,10 +41,16 @@ function LoginForm() {
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-sm">
-      <div className="space-y-2 text-center">
-        <div className="gold-badge mx-auto mb-4 inline-flex rounded-2xl p-3">
-          <Wallet className="h-6 w-6" />
+      <div className="flex items-center justify-center gap-2.5">
+        <div className="gold-badge flex size-9 items-center justify-center rounded-xl">
+          <Sparkles className="h-4 w-4" />
         </div>
+        <div className="text-left">
+          <p className="text-base font-bold leading-tight tracking-tight">Finanzas</p>
+          <p className="page-section-label leading-tight">Panel de control</p>
+        </div>
+      </div>
+      <div className="space-y-2 text-center">
         <h1 className="text-2xl font-bold tracking-tight">Acceso restringido</h1>
         <p className="text-sm text-muted-foreground">Introduce la contraseña para acceder a tu panel financiero.</p>
       </div>
@@ -74,8 +80,18 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="hero-panel w-full max-w-sm rounded-[16px] p-8">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full opacity-40 blur-[100px]"
+        style={{ background: "var(--primary)" }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-32 -right-32 h-80 w-80 rounded-full opacity-25 blur-[100px]"
+        style={{ background: "var(--gold)" }}
+      />
+      <div className="relative hero-panel w-full max-w-sm rounded-[16px] p-8">
         <Suspense fallback={<div className="text-sm text-muted-foreground text-center py-8">Cargando...</div>}>
           <LoginForm />
         </Suspense>

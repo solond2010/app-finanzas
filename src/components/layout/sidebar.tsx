@@ -179,6 +179,7 @@ export function Sidebar() {
             <Tooltip label={privacy ? "Mostrar cifras" : "Ocultar cifras"}>
               <button
                 onClick={togglePrivacy}
+                aria-label={privacy ? "Mostrar cifras" : "Ocultar cifras"}
                 className="flex items-center justify-center rounded-xl p-2.5 text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all active:scale-95"
               >
                 {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -187,6 +188,7 @@ export function Sidebar() {
             <Tooltip label="Cambiar tema">
               <button
                 onClick={toggleTheme}
+                aria-label="Cambiar tema"
                 className="flex items-center justify-center rounded-xl p-2.5 text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all active:scale-95"
               >
                 <SunMedium className="hidden h-4 w-4 dark:block" />

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, PiggyBank, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, PiggyBank, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
@@ -15,7 +15,7 @@ import { usePortfolioValue, accountDisplayValue, type Position } from "@/lib/inv
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getSavingsRate } from "@/lib/calculations"
+import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getSavingsRate, getUpcomingRecurring } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -96,6 +96,7 @@ export default function DashboardContent() {
 
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
   const hasAnyData = state.accounts.length > 0 || analysisTransactions.length > 0 || state.sinkingFunds.length > 0
+  const overduePayments = useMemo(() => getUpcomingRecurring(state.transactions).filter((p) => p.overdueDays > 0), [state.transactions])
 
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
@@ -403,6 +404,21 @@ export default function DashboardContent() {
           )}
         </div>
       </header>
+
+      {!loading && overduePayments.length > 0 && (
+        <button
+          onClick={() => router.push("/transactions")}
+          className="flex w-full items-center gap-3 rounded-[16px] border border-amber-500/20 bg-amber-500/[0.06] p-4 text-left transition-colors hover:bg-amber-500/[0.1]"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500"><AlertTriangle className="h-4 w-4" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-foreground">
+              {overduePayments.length === 1 ? "Tienes 1 pago recurrente atrasado" : `Tienes ${overduePayments.length} pagos recurrentes atrasados`}
+            </span>
+            <span className="block truncate text-xs text-muted-foreground">{overduePayments.map((p) => p.descripcion || p.categoria).join(" · ")}</span>
+          </span>
+        </button>
+      )}
 
       {loading ? (
         <div className="space-y-6">

@@ -32,7 +32,7 @@ import { useToast } from "@/components/ui/toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
-import { filterTransactionsByMonth } from "@/lib/calculations"
+import { filterTransactionsByMonth, recurringFrequency, recurringTag, type RecurringFrequency } from "@/lib/calculations"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 
@@ -74,6 +74,7 @@ function TransactionForm({
   const [descripcion, setDescripcion] = useState(transaction?.descripcion ?? "")
   const [tagInput, setTagInput] = useState("")
   const [tags, setTags] = useState<string[]>(transaction?.tags ?? [])
+  const [recurFreq, setRecurFreq] = useState<RecurringFrequency>(transaction ? recurringFrequency(transaction) : "mensual")
 
   const visibleCategories = categories
     .filter((c) => !c.kind || c.kind === tipo || c.kind === "both")
@@ -158,7 +159,7 @@ function TransactionForm({
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
@@ -171,12 +172,32 @@ function TransactionForm({
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
-            checked={tags.includes("recurrente")}
-            onChange={(e) => setTags(e.target.checked ? [...tags, "recurrente"] : tags.filter((t) => t !== "recurrente"))}
+            checked={tags.some((t) => t === "recurrente" || t.startsWith("recurrente:"))}
+            onChange={(e) => {
+              const withoutRecurring = tags.filter((t) => t !== "recurrente" && !t.startsWith("recurrente:"))
+              setTags(e.target.checked ? [...withoutRecurring, recurringTag(recurFreq)] : withoutRecurring)
+            }}
             className="rounded border-muted-foreground"
           />
-          <span className="text-sm text-muted-foreground">Es recurrente (mensual)</span>
+          <span className="text-sm text-muted-foreground">Es recurrente</span>
         </label>
+        {tags.some((t) => t === "recurrente" || t.startsWith("recurrente:")) && (
+          <Select
+            value={recurFreq}
+            onValueChange={(v) => {
+              const freq = v as RecurringFrequency
+              setRecurFreq(freq)
+              setTags([...tags.filter((t) => t !== "recurrente" && !t.startsWith("recurrente:")), recurringTag(freq)])
+            }}
+          >
+            <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="semanal">Semanal</SelectItem>
+              <SelectItem value="mensual">Mensual</SelectItem>
+              <SelectItem value="anual">Anual</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="space-y-1.5">

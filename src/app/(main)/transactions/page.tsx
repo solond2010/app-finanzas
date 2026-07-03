@@ -230,7 +230,10 @@ export default function IngresosGastosPage() {
                 <div key={item.key} className="flex items-center gap-2 rounded-xl border border-border p-2.5">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold text-foreground">{item.descripcion || item.categoria}</p>
-                    <p className={cn("text-[11px] font-medium", item.overdueDays > 0 ? "text-red-500" : "text-muted-foreground")}>{recurringDateLabel(item)}</p>
+                    <p className={cn("text-[11px] font-medium", item.overdueDays > 0 ? "text-red-500" : "text-muted-foreground")}>
+                      {recurringDateLabel(item)}
+                      {item.frequency !== "mensual" && ` · ${item.frequency === "semanal" ? "Semanal" : "Anual"}`}
+                    </p>
                   </div>
                   <span className={cn("shrink-0 text-xs font-bold tabular-nums", (item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "text-emerald-500" : "text-foreground")}>
                     <Sensitive>{(item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(item.monto), "EUR")}</Sensitive>

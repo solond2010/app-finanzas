@@ -42,6 +42,9 @@ export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
           <p className="text-xs text-muted-foreground">Tus compras periódicas. Aplica los vencidos al precio de mercado.</p>
         </div>
       </div>
+      <p className="mt-3 rounded-xl bg-muted/30 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+        Aplicar un aporte suma las unidades a la posición pero <strong className="font-semibold text-foreground">no descuenta el importe de ninguna cuenta</strong> todavía — regístralo tú como transacción si quieres que se refleje en el patrimonio líquido.
+      </p>
 
       <div className="mt-4 space-y-3">
         {plans.map(({ p, plan, pending, next, price }) => {
