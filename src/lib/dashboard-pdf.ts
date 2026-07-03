@@ -3,25 +3,25 @@ import autoTable from "jspdf-autotable"
 import { formatMoney } from "@/lib/currency"
 import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, renderBarChart, drawTile, drawTileGrid, ensureSpace, drawFooter } from "@/lib/pdf-helpers"
 
-export interface DashboardPdfAccount {
+interface DashboardPdfAccount {
   nombre: string
   tipo: string
   banco: string
   saldo: number
 }
 
-export interface DashboardPdfBudgetRow {
+interface DashboardPdfBudgetRow {
   categoria: string
   gastado: number
   limite: number
 }
 
-export interface DashboardPdfCategoryRow {
+interface DashboardPdfCategoryRow {
   categoria: string
   monto: number
 }
 
-export interface DashboardPdfTransactionRow {
+interface DashboardPdfTransactionRow {
   fecha: string
   descripcion: string
   categoria: string

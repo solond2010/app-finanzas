@@ -3,7 +3,7 @@ import autoTable from "jspdf-autotable"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, type Tile, renderBarChart, renderPieChart, drawTile, drawTileGrid, drawProgressBar, ensureSpace, drawFooter } from "@/lib/pdf-helpers"
 
-export interface XrayPosition {
+interface XrayPosition {
   name: string
   kind: string
   account: string

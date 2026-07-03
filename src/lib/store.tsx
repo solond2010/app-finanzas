@@ -93,7 +93,6 @@ type Action =
   | { type: "ADD_SINKING_FUND"; payload: SinkingFund }
   | { type: "UPDATE_SINKING_FUND"; payload: SinkingFund }
   | { type: "DELETE_SINKING_FUND"; payload: string }
-  | { type: "MERGE_SAMPLE"; payload: FinanceState }
   | { type: "RESET" }
   | { type: "ADD_CATEGORY"; payload: Omit<Category, 'id'> }
   | { type: "DELETE_CATEGORY"; payload: string }
@@ -164,7 +163,7 @@ const DEFAULT_CATEGORIES: Category[] = DEFAULT_CATEGORY_DEFS.map((d, i) => ({
 // Garantiza que existan todas las categorías predeterminadas y que cada categoría
 // tenga `kind`. Rellena el tipo de las antiguas (por id) y deja las personalizadas
 // sin tipo conocido como "both" para que sigan apareciendo en ambos formularios.
-export function mergeDefaultCategories(loaded: Category[]): Category[] {
+function mergeDefaultCategories(loaded: Category[]): Category[] {
   const existing = new Set(loaded.map((c) => c.id))
   const result: Category[] = loaded.map((c) => {
     if (c.kind) return c
@@ -229,14 +228,6 @@ function reducer(state: FinanceState, action: Action): FinanceState {
   switch (action.type) {
     case "SET_STATE":
       return normalizeFinanceState(action.payload)
-    case "MERGE_SAMPLE":
-      return {
-        accounts: [...state.accounts, ...action.payload.accounts.filter((a: Account) => !state.accounts.some((ea) => ea.id === a.id))],
-        transactions: [...state.transactions, ...action.payload.transactions],
-        sinkingFunds: [...state.sinkingFunds, ...action.payload.sinkingFunds],
-        categories: state.categories,
-        budgets: state.budgets,
-      }
     case "RESET":
       return defaultState
     case "ADD_ACCOUNT": {
@@ -624,43 +615,4 @@ export function useSyncStatus() {
 
 export function generateId(): string {
   return crypto.randomUUID?.() ?? (Date.now().toString(36) + Math.random().toString(36).slice(2, 7))
-}
-
-export function generateSampleData(): FinanceState {
-  const sampleAccounts: Account[] = [
-    { id: "s_acc_emergency", nombre: "Emergencias", tipo: "emergencia", banco: "Trade Republic", saldo: 8250, currency: "EUR", objetivo: 15000, limite_mensual: null, color: "#10b981" },
-    { id: "s_acc_ahorro", nombre: "Ahorro", tipo: "ahorro", banco: "MyInvestor", saldo: 3400, currency: "USD", objetivo: 20000, limite_mensual: null, color: "#3b82f6" },
-    { id: "s_acc_inversion", nombre: "Inversión", tipo: "inversion", banco: "Interactive Brokers", saldo: 12750, currency: "CHF", objetivo: null, limite_mensual: null, color: "#8b5cf6" },
-    { id: "s_acc_principal", nombre: "Principal", tipo: "efectivo", banco: "BBVA", saldo: 2200, currency: "EUR", objetivo: null, limite_mensual: null, color: "#f59e0b" },
-    { id: "s_acc_gastos", nombre: "Gastos Mes", tipo: "gastos", banco: "Revolut", saldo: 500, currency: "EUR", objetivo: null, limite_mensual: 2000, color: "#ef4444" },
-  ]
-
-  const months = [0, 1, 2, 3, 4, 5]
-  const sampleTransactions: Transaction[] = []
-  let idCounter = 0
-  const now = new Date()
-
-  for (const offset of months) {
-    const d = new Date(now.getFullYear(), now.getMonth() - offset, 1)
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, "0")
-
-    sampleTransactions.push(
-      { id: `s_t${idCounter++}`, cuenta_id: "s_acc_principal", monto: 3200, fecha: `${y}-${m}-15`, tipo: "ingreso", categoria: "Salario", es_necesidad: true, descripcion: "Nómina mensual", tags: ["recurrente"] },
-      { id: `s_t${idCounter++}`, cuenta_id: "s_acc_principal", monto: 850, fecha: `${y}-${m}-12`, tipo: "gasto", categoria: "Alquiler", es_necesidad: true, descripcion: "Alquiler piso", tags: ["recurrente", "vivienda"] },
-      { id: `s_t${idCounter++}`, cuenta_id: "s_acc_gastos", monto: 100 + Math.round(Math.random() * 80), fecha: `${y}-${m}-10`, tipo: "gasto", categoria: "Supermercado", es_necesidad: true, descripcion: "Compra semanal", tags: ["alimentación"] },
-      { id: `s_t${idCounter++}`, cuenta_id: "s_acc_principal", monto: 45, fecha: `${y}-${m}-08`, tipo: "gasto", categoria: "Transporte", es_necesidad: true, descripcion: "Abono mensual", tags: ["recurrente", "transporte"] },
-      { id: `s_t${idCounter++}`, cuenta_id: "s_acc_principal", monto: 55, fecha: `${y}-${m}-05`, tipo: "gasto", categoria: "Internet", es_necesidad: true, descripcion: "Fibra óptica", tags: ["recurrente", "suscripción"] },
-      { id: `s_t${idCounter++}`, cuenta_id: "s_acc_gastos", monto: 60 + Math.round(Math.random() * 40), fecha: `${y}-${m}-20`, tipo: "gasto", categoria: "Cena", es_necesidad: false, descripcion: "Restaurante", tags: ["ocio"] },
-      { id: `s_t${idCounter++}`, cuenta_id: "s_acc_gastos", monto: 9.99, fecha: `${y}-${m}-01`, tipo: "gasto", categoria: "Spotify", es_necesidad: false, descripcion: "Suscripción música", tags: ["recurrente", "suscripción", "ocio"] },
-      { id: `s_t${idCounter++}`, cuenta_id: "s_acc_ahorro", monto: 300, fecha: `${y}-${m}-28`, tipo: "gasto", categoria: "Transferencia", es_necesidad: false, descripcion: "Ahorro mensual", tags: ["ahorro"] },
-    )
-  }
-
-  const sampleFunds: SinkingFund[] = [
-    { id: "s_sf1", nombre: "Coche Nuevo", cantidad_objetivo: 25000, fecha_limite: "2027-12-31", ahorrado_actual: 5000, cuenta_id: "s_acc_ahorro" },
-    { id: "s_sf2", nombre: "Viaje Verano 2027", cantidad_objetivo: 8000, fecha_limite: "2027-06-30", ahorrado_actual: 2000, cuenta_id: "s_acc_ahorro" },
-  ]
-
-  return { accounts: sampleAccounts, transactions: sampleTransactions, sinkingFunds: sampleFunds, categories: DEFAULT_CATEGORIES, budgets: [] }
 }

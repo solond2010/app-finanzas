@@ -44,32 +44,6 @@ export function filterTransactionsByMonth(transactions: Transaction[], monthKey?
   return transactions.filter((t) => isInMonth(t.fecha, monthKey))
 }
 
-export function getLastQuarterTransactions(transactions: Transaction[]) {
-  const now = new Date()
-  const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1)
-  return transactions.filter((t) => new Date(t.fecha) >= threeMonthsAgo)
-}
-
-export function calculateAverageMonthlyNeeds(transactions: Transaction[]): number {
-  const lastQuarter = getLastQuarterTransactions(transactions)
-  const needsExpenses = lastQuarter.filter((t) => t.tipo === "gasto" && t.es_necesidad)
-  const totalNeeds = needsExpenses.reduce((sum, t) => sum + t.monto, 0)
-  return Math.round(totalNeeds / 3)
-}
-
-export function calculateEmergencyFund(transactions: Transaction[], accounts: Account[], months: number): { needed: number; saved: number } {
-  const monthlyAvg = calculateAverageMonthlyNeeds(transactions)
-  const needed = monthlyAvg * months
-  const emergencyAccount = accounts.find((a) => a.tipo === "emergencia")
-  const saved = emergencyAccount?.saldo ?? 0
-  return { needed, saved }
-}
-
-export function getCurrentMonthTotals(transactions: Transaction[]) {
-  const { ingresos, gastos } = getMonthTotals(transactions, 0)
-  return { ingresos, gastos, neto: ingresos - gastos }
-}
-
 export function getMonthTotalsByString(transactions: Transaction[], month: string) {
   const monthTxns = filterTransactionsByMonth(transactions, month)
   const ingresos = monthTxns.filter((t) => t.tipo === "ingreso" && !isTransfer(t)).reduce((s, t) => s + t.monto, 0)
@@ -94,31 +68,6 @@ export function getMonthlyInvestmentInflow(transactions: Transaction[], accounts
     .reduce((s, t) => s + t.monto, 0)
 }
 
-export function getMonthTotals(transactions: Transaction[], monthsAgo: number) {
-  const now = new Date()
-  const d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
-  const month = d.getMonth()
-  const year = d.getFullYear()
-
-  const monthTxns = transactions.filter((t) => {
-    const td = new Date(t.fecha)
-    return td.getMonth() === month && td.getFullYear() === year
-  })
-
-  const ingresos = monthTxns.filter((t) => t.tipo === "ingreso" && !isTransfer(t)).reduce((s, t) => s + t.monto, 0)
-  const gastos = monthTxns.filter((t) => t.tipo === "gasto" && !isTransfer(t)).reduce((s, t) => s + t.monto, 0)
-
-  return { ingresos, gastos, neto: ingresos - gastos, label: formatMonth(d) }
-}
-
-function formatMonth(d: Date) {
-  return d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" })
-}
-
-export function getCurrentMonthNeedsVsWants(transactions: Transaction[]) {
-  return getNeedsVsWantsForMonth(transactions)
-}
-
 export function getNeedsVsWantsForMonth(transactions: Transaction[], monthKey?: string) {
   const monthTransactions = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto" && !isTransfer(t))
   const necesidades = monthTransactions.filter((t) => t.es_necesidad).reduce((s, t) => s + t.monto, 0)
@@ -126,7 +75,7 @@ export function getNeedsVsWantsForMonth(transactions: Transaction[], monthKey?: 
   return { necesidades, deseos }
 }
 
-export function getNetWorth(accounts: Account[]): number {
+function getNetWorth(accounts: Account[]): number {
   return accounts.reduce((sum, a) => sum + convertToEur(a.saldo, a.currency), 0)
 }
 
@@ -154,7 +103,7 @@ function isAfterDate(dateString: string, dateKey: string) {
   return toDateKey(new Date(dateString)) > dateKey
 }
 
-export function getAccountsAtDate(accounts: Account[], transactions: Transaction[], dateKey: string) {
+function getAccountsAtDate(accounts: Account[], transactions: Transaction[], dateKey: string) {
   return accounts.map((account) => {
     const futureTransactions = transactions.filter((t) => t.cuenta_id === account.id && isAfterDate(t.fecha, dateKey))
     const balanceDelta = futureTransactions.reduce((sum, t) => sum + transactionDelta(t), 0)
@@ -162,7 +111,7 @@ export function getAccountsAtDate(accounts: Account[], transactions: Transaction
   })
 }
 
-export function getNetWorthAtDate(accounts: Account[], transactions: Transaction[], dateKey: string) {
+function getNetWorthAtDate(accounts: Account[], transactions: Transaction[], dateKey: string) {
   return getNetWorth(getAccountsAtDate(accounts, transactions, dateKey))
 }
 
@@ -258,8 +207,9 @@ export function calculateMonthlySaving(amountTarget: number, current: number, de
   return Math.round((amountTarget - current) / monthsLeft)
 }
 
-export function buildMonthlySummaries(transactions: Transaction[]): MonthlySummary[] {
-  return buildMonthlySummariesUpTo(transactions)
+// Etiqueta corta de mes para ejes de gráficos ("jul 26").
+function formatMonth(d: Date) {
+  return d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" })
 }
 
 export function buildMonthlySummariesUpTo(transactions: Transaction[], endMonthKey?: string): MonthlySummary[] {
@@ -283,28 +233,12 @@ export function buildNetWorthHistory(transactions: Transaction[], accounts: Acco
   }))
 }
 
-export function getGastosBudgetProgress(accounts: Account[], transactions: Transaction[], monthKey?: string) {
-  const gastosAccount = accounts.find((a) => a.tipo === "gastos")
-  if (!gastosAccount || !gastosAccount.limite_mensual) return null
-
-  const gastado = filterTransactionsByMonth(transactions, monthKey)
-    .filter((t) => t.tipo === "gasto" && t.cuenta_id === gastosAccount.id)
-    .reduce((s, t) => s + t.monto, 0)
-
-  return {
-    gastado,
-    limite: gastosAccount.limite_mensual,
-    restante: gastosAccount.limite_mensual - gastado,
-    progreso: Math.min(Math.round((gastado / gastosAccount.limite_mensual) * 100), 100),
-  }
-}
-
 export type RecurringFrequency = "semanal" | "mensual" | "anual"
 
 // Cadencia guardada como tag: "recurrente" a secas (dato histórico, antes de
 // que existieran más cadencias) siempre significa mensual; "recurrente:X"
 // guarda la cadencia explícita. Mantenerlo así evita una migración de datos.
-export function isRecurringTransaction(t: Transaction) {
+function isRecurringTransaction(t: Transaction) {
   return t.tags?.some((tag) => tag === "recurrente" || tag.startsWith("recurrente:")) ?? false
 }
 

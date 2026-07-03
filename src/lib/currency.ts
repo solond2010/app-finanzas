@@ -6,7 +6,7 @@ export const CURRENCY_OPTIONS: Array<{ code: CurrencyCode; label: string }> = [
   { code: "CHF", label: "Franco suizo (CHF)" },
 ]
 
-export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
+const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   EUR: "€",
   USD: "$",
   CHF: "CHF",
@@ -15,7 +15,7 @@ export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
 // Valores de respaldo: se usan hasta que refreshExchangeRates() trae los
 // tipos reales (o si esa petición falla, p. ej. sin red). No se mantienen a
 // mano; approximan un punto de partida razonable, no la cotización actual.
-export const EUR_RATES: Record<CurrencyCode, number> = {
+const EUR_RATES: Record<CurrencyCode, number> = {
   EUR: 1,
   USD: 0.92,
   CHF: 1.04,

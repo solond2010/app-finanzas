@@ -10,7 +10,7 @@ export const MUTED: [number, number, number] = [107, 114, 128]
 export const GREEN: [number, number, number] = [16, 185, 129]
 export const RED: [number, number, number] = [239, 68, 68]
 export const TRACK: [number, number, number] = [229, 231, 235]
-export const PIE_COLORS = ["rgb(52,97,201)", "#0ea5e9", "#6366f1", "#8b5cf6", "#0891b2", "#64748b", "#10b981", "#f59e0b"]
+const PIE_COLORS = ["rgb(52,97,201)", "#0ea5e9", "#6366f1", "#8b5cf6", "#0891b2", "#64748b", "#10b981", "#f59e0b"]
 
 export interface Tile { label: string; value: string; color?: [number, number, number] }
 

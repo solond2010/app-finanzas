@@ -2,7 +2,7 @@ import React, { memo } from "react"
 import { TrendingDown, TrendingUp } from "lucide-react"
 import { formatCappedPct } from "@/lib/format"
 
-export type MetricTone = "emerald" | "red" | "blue" | "amber" | "violet"
+type MetricTone = "emerald" | "red" | "blue" | "amber" | "violet"
 
 interface MetricCardProps {
   label: string

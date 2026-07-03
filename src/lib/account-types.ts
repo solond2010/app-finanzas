@@ -17,7 +17,3 @@ export const typeLabels: Record<string, string> = {
   efectivo: "Efectivo",
   gastos: "Gastos",
 }
-
-export function tipoLabel(tipo: string) {
-  return typeLabels[tipo] || tipo
-}

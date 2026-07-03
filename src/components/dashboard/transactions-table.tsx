@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { formatMoney } from "@/lib/currency"
+import { dateLabel } from "@/lib/format"
 import { Sensitive } from "@/components/shared/sensitive"
 import { filterTransactionsByMonth, recurringFrequency, recurringTag, type RecurringFrequency } from "@/lib/calculations"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -350,16 +351,6 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
       dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, monto } })
     }
     toast("Transacción actualizada", "success")
-  }
-
-  const dateLabel = (dateStr: string) => {
-    const d = new Date(dateStr)
-    const today = new Date()
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
-    if (d.toDateString() === today.toDateString()) return "Hoy"
-    if (d.toDateString() === yesterday.toDateString()) return "Ayer"
-    return d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })
   }
 
   const sorted = useMemo(

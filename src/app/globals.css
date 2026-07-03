@@ -430,13 +430,6 @@
   border-color: color-mix(in oklch, var(--foreground), transparent 78%);
 }
 
-/* ── Hero Gradient ── */
-
-.hero-gradient {
-  position: relative;
-  overflow: hidden;
-}
-
 /* Tarjeta destacada para las cifras "de riqueza" (patrimonio, puntuación,
    evolución de cartera): mismo radio/padding que una card normal pero con
    un tinte azul-marino propio en vez del `--card` neutro, para que la cifra

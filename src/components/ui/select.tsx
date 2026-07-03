@@ -8,15 +8,6 @@ import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
 const Select = SelectPrimitive.Root
 
-function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
-  return (
-    <SelectPrimitive.Group
-      data-slot="select-group"
-      className={cn("scroll-my-1 p-1", className)}
-      {...props}
-    />
-  )
-}
 
 function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
   return (
@@ -95,18 +86,6 @@ function SelectContent({
   )
 }
 
-function SelectLabel({
-  className,
-  ...props
-}: SelectPrimitive.GroupLabel.Props) {
-  return (
-    <SelectPrimitive.GroupLabel
-      data-slot="select-label"
-      className={cn("px-2.5 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground", className)}
-      {...props}
-    />
-  )
-}
 
 function SelectItem({
   className,
@@ -136,18 +115,6 @@ function SelectItem({
   )
 }
 
-function SelectSeparator({
-  className,
-  ...props
-}: SelectPrimitive.Separator.Props) {
-  return (
-    <SelectPrimitive.Separator
-      data-slot="select-separator"
-      className={cn("pointer-events-none -mx-1 my-1 h-px bg-border", className)}
-      {...props}
-    />
-  )
-}
 
 function SelectScrollUpButton({
   className,
@@ -188,12 +155,7 @@ function SelectScrollDownButton({
 export {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
-  SelectScrollDownButton,
-  SelectScrollUpButton,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 }
