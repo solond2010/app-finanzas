@@ -2,7 +2,7 @@
 // coincide la contraseña probada con la real. `a !== b` corta en el primer
 // carácter distinto — en teoría permite adivinar la contraseña carácter a
 // carácter midiendo la respuesta. Implementación manual (no crypto.timingSafeEqual)
-// porque este módulo lo usa tanto middleware.ts (Edge Runtime, sin el módulo
+// porque este módulo lo usa tanto proxy.ts (Edge Runtime, sin el módulo
 // `crypto` de Node) como la ruta /api/login (Node).
 export function timingSafeEqualString(a: string, b: string): boolean {
   if (a.length !== b.length) return false

@@ -70,6 +70,7 @@ export function AssetAnalysis() {
   useEffect(() => {
     if (!symbol) return
     let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- signal loading before the async fetch starts
     setLoading(true)
     fetch(`/api/asset?symbol=${encodeURIComponent(symbol)}`)
       .then((r) => r.json())

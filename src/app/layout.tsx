@@ -33,6 +33,7 @@ export default async function RootLayout({
     <html
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable}${isDark ? " dark" : ""}`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-background font-sans antialiased">

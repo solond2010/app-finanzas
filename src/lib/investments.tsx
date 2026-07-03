@@ -122,9 +122,23 @@ export function planOf(p: Position): DcaPlan | null {
   return { amount: p.dcaAmount, freq: p.dcaFreq ?? "monthly", last: p.dcaLast ?? p.date }
 }
 
+/** Fusiona una nueva compra en una posición existente del mismo activo/cuenta, recalculando el precio medio ponderado. */
+export function mergedPosition(existing: Position, incoming: Omit<Position, "id">): Position {
+  const addedCost = incoming.units * incoming.buyPrice
+  const newUnits = existing.units + incoming.units
+  const newBuyPrice = newUnits > 0 ? (existing.units * existing.buyPrice + addedCost) / newUnits : incoming.buyPrice
+  return {
+    ...existing,
+    units: newUnits,
+    buyPrice: newBuyPrice,
+    date: incoming.date > existing.date ? incoming.date : existing.date,
+    ...(incoming.dca ? { dca: incoming.dca, dcaAmount: incoming.dcaAmount, dcaFreq: incoming.dcaFreq, dcaLast: incoming.dcaLast } : {}),
+  }
+}
+
 interface InvestmentsContextValue {
   positions: Position[]
-  add: (p: Omit<Position, "id">) => string
+  add: (p: Omit<Position, "id">) => { id: string; merged: boolean }
   update: (p: Position) => void
   remove: (id: string) => void
   watchlist: WatchItem[]
@@ -270,12 +284,24 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
   }
 
   const add = (p: Omit<Position, "id">) => {
+    // Comprar más de un activo que ya tienes en la misma cuenta no debe crear
+    // una posición duplicada: se fusiona en la existente recalculando el
+    // precio medio ponderado (mismo cálculo que applyDca para los aportes DCA).
+    const existing = positions.find((x) => x.symbol === p.symbol && x.accountId === p.accountId)
+    if (existing) {
+      const merged = mergedPosition(existing, p)
+      update(merged)
+      const addedCost = p.units * p.buyPrice
+      if (addedCost > 0) addContribution(existing.id, addedCost, p.date)
+      return { id: existing.id, merged: true }
+    }
+    // eslint-disable-next-line react-hooks/purity -- event-handler code, not render; needs a fresh id per call
     const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const pos: Position = { ...p, id }
     persistLocal([...positions, pos])
     dbUpsert("investments", [toRow(pos)]).then(() => {}, () => {})
     if (pos.units * pos.buyPrice > 0) addContribution(id, pos.units * pos.buyPrice, pos.date)
-    return id
+    return { id, merged: false }
   }
 
   const update = (pos: Position) => {

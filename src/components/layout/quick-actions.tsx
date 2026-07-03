@@ -107,6 +107,7 @@ function UnifiedMovementForm({
   // es válida para el nuevo tipo.
   useEffect(() => {
     if (tipo === "traspaso") return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- recompute defaults for the new tipo
     setCuentaId(defaultAccountFor(tipo, accounts))
     setEsNecesidad(tipo === "gasto")
     setCategoria("")

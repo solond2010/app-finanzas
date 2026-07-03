@@ -124,6 +124,7 @@ export default function DashboardContent() {
   const [priceHistory, setPriceHistory] = useState<Record<string, { t: number; c: number }[]>>({})
   useEffect(() => {
     const syms = historySymbolsKey ? historySymbolsKey.split(",") : []
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on empty deps before the async fetch
     if (syms.length === 0) { setPriceHistory({}); return }
     let cancelled = false
     fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}&interval=1mo&range=2y`)

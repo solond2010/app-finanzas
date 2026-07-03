@@ -138,8 +138,8 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId }
       update({ ...payload, id: editing.id })
       toast("Posición actualizada", "success")
     } else {
-      add(payload)
-      toast("Posición añadida", "success")
+      const { merged } = add(payload)
+      toast(merged ? "Sumado a tu posición existente" : "Posición añadida", "success")
     }
     onOpenChange(false)
   }
