@@ -53,10 +53,17 @@ export function MountainChart<T extends object>({
 
   const hovered = hoverIdx !== null ? points[hoverIdx] : null
   const last = points.at(-1)
+  const first = points[0]
+  // Sin interacción de teclado (el detalle punto a punto solo se ve al pasar
+  // el ratón), así que al menos el resumen inicio→fin se anuncia a lectores
+  // de pantalla vía aria-label en vez de dejar el gráfico en silencio total.
+  const trendSummary = first && last
+    ? `Gráfico de evolución de ${first.label} a ${last.label}: de ${valueFormatter(first.v)} a ${valueFormatter(last.v)}.`
+    : "Gráfico de evolución sin datos."
 
   return (
-    <div ref={containerRef} className={`relative select-none ${className ?? ""}`} onMouseMove={handleMove} onMouseLeave={() => setHoverIdx(null)}>
-      <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="h-full w-full overflow-visible">
+    <div ref={containerRef} className={`relative select-none ${className ?? ""}`} onMouseMove={handleMove} onMouseLeave={() => setHoverIdx(null)} role="img" aria-label={trendSummary}>
+      <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="h-full w-full overflow-visible" aria-hidden="true">
         {/* Líneas de referencia horizontales, discretas */}
         <line x1="0" y1={PAD_TOP} x2={VB_W} y2={PAD_TOP} stroke="var(--border)" strokeWidth="1" />
         <line x1="0" y1={(PAD_TOP + VB_H) / 2} x2={VB_W} y2={(PAD_TOP + VB_H) / 2} stroke="var(--border)" strokeWidth="1" />

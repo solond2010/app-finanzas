@@ -204,7 +204,9 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {!hasData ? <EmptyState icon={BarChart3} title="Aún no hay movimientos" description="Añade ingresos y gastos para comparar tu ritmo mensual." bordered className="h-full" /> : (
-              <BarChart data={summaries} index="mes" categories={["ingresos", "gastos"]} colors={["emerald", "red"]} valueFormatter={chartFormatter} yAxisWidth={64} customTooltip={SummaryTooltip} className="h-[310px]" showAnimation />
+              <div role="img" aria-label="Gráfico de barras: ingresos y gastos mes a mes">
+                <BarChart data={summaries} index="mes" categories={["ingresos", "gastos"]} colors={["emerald", "red"]} valueFormatter={chartFormatter} yAxisWidth={64} customTooltip={SummaryTooltip} className="h-[310px]" showAnimation />
+              </div>
             )}
           </CardContent>
         </Card>
@@ -218,7 +220,9 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {categoryBreakdown.length === 0 ? <EmptyState icon={Layers3} title="Sin gasto categorizado" description="Cuando registres gastos, aquí verás las categorías que más pesan." bordered className="h-full" /> : (
-              <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={72} customTooltip={CategoryTooltip} className="h-[340px]" showAnimation layout="vertical" />
+              <div role="img" aria-label={`Gráfico de barras: gasto por categoría${topCategory ? `, encabezado por ${topCategory.categoria}` : ""}`}>
+                <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={72} customTooltip={CategoryTooltip} className="h-[340px]" showAnimation layout="vertical" />
+              </div>
             )}
           </CardContent>
         </Card>
@@ -231,7 +235,9 @@ export default function AnalyticsPage() {
             <CardContent>
               {totalSpending === 0 ? <EmptyState icon={Gauge} title="Sin gastos este mes" description="La distribución aparecerá al registrar necesidades y deseos." bordered className="h-full" /> : (
                 <div className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center lg:grid-cols-1 xl:grid-cols-[180px_1fr]">
-                  <DonutChart data={needsWantsData} category="value" index="name" colors={["emerald", "amber"]} variant="donut" customTooltip={NeedsWantsTooltip} className="mx-auto h-44 w-44" showAnimation />
+                  <div role="img" aria-label={`Gráfico circular: ${Math.round(needsPct)}% necesidades, ${Math.round(wantsPct)}% deseos`}>
+                    <DonutChart data={needsWantsData} category="value" index="name" colors={["emerald", "amber"]} variant="donut" customTooltip={NeedsWantsTooltip} className="mx-auto h-44 w-44" showAnimation />
+                  </div>
                   <div className="space-y-3">
                     <div className="rounded-2xl bg-emerald-500/[0.05] p-3 ring-1 ring-emerald-500/10">
                       <div className="flex items-center justify-between text-sm"><span>Necesidades</span><strong className="text-emerald-500 tabular-nums">{Math.round(needsPct)}%</strong></div>

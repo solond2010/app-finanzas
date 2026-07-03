@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CURRENCY_OPTIONS, currencySymbol } from "@/lib/currency"
 import { BANKS, matchBank } from "@/components/dashboard/account-logo"
 import { useToast } from "@/components/ui/toast"
-import { Upload, X } from "lucide-react"
+import { Upload, X, AlertCircle } from "lucide-react"
+import { parseAmount } from "@/lib/validation"
 
 const COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#14b8a6", "#f97316"]
 
@@ -37,6 +38,7 @@ export function AccountDialog({
   const [color, setColor] = useState(account?.color ?? COLORS[0])
   const [logoUrl, setLogoUrl] = useState(account?.logoUrl ?? "")
   const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
@@ -71,15 +73,39 @@ export function AccountDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+    if (!nombre.trim()) { setError("Ponle un nombre a la cuenta."); return }
+
+    // El saldo sí admite negativos (cuenta en descubierto, tarjeta de crédito
+    // con deuda), así que no puede pasar por parseAmountOrZero — solo se
+    // rechaza si no es un número real.
+    const rawSaldo = saldo.trim()
+    const parsedSaldo = rawSaldo === "" ? 0 : Number(rawSaldo.replace(",", "."))
+    if (!Number.isFinite(parsedSaldo)) { setError("El saldo no es un importe válido."); return }
+
+    let parsedObjetivo: number | null = null
+    if (objetivo.trim() !== "") {
+      const n = parseAmount(objetivo)
+      if (!n) { setError("El objetivo debe ser un importe mayor que 0 (o déjalo vacío)."); return }
+      parsedObjetivo = n
+    }
+
+    let parsedLimite: number | null = null
+    if (limiteMensual.trim() !== "") {
+      const n = parseAmount(limiteMensual)
+      if (!n) { setError("El límite mensual debe ser un importe mayor que 0 (o déjalo vacío)."); return }
+      parsedLimite = n
+    }
+
     onSave({
       id: account?.id ?? generateId(),
-      nombre,
+      nombre: nombre.trim(),
       tipo,
       banco,
-      saldo: Number(saldo) || 0,
+      saldo: parsedSaldo,
       currency,
-      objetivo: objetivo ? Number(objetivo) : null,
-      limite_mensual: limiteMensual ? Number(limiteMensual) : null,
+      objetivo: parsedObjetivo,
+      limite_mensual: parsedLimite,
       color,
       logoUrl,
     })
@@ -209,6 +235,11 @@ export function AccountDialog({
               <label className="text-xs text-muted-foreground">Límite mensual (€)</label>
               <Input type="number" value={limiteMensual} onChange={(e) => setLimiteMensual(e.target.value)} placeholder="Ej: 2000" />
             </div>
+          )}
+          {error && (
+            <p className="flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-500">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+            </p>
           )}
           <div className="flex justify-end gap-2 pt-2">
             {onDelete && account && (

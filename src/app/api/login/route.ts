@@ -1,12 +1,31 @@
 import { NextResponse } from "next/server"
+import { checkLoginRateLimit, clearLoginAttempts, recordFailedLogin, timingSafeEqualString } from "@/lib/auth"
+
+// x-forwarded-for puede traer varias IPs separadas por coma (cadena de
+// proxies); la primera es la del cliente original.
+function getClientIp(request: Request): string {
+  const fwd = request.headers.get("x-forwarded-for")
+  return fwd?.split(",")[0]?.trim() || "unknown"
+}
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request)
+  const rateLimit = checkLoginRateLimit(ip)
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Demasiados intentos. Inténtalo de nuevo en unos minutos." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds ?? 300) } }
+    )
+  }
+
   const { password } = await request.json()
   const expected = process.env.APP_PASSWORD
 
-  if (!expected || password !== expected) {
+  if (!expected || typeof password !== "string" || !timingSafeEqualString(password, expected)) {
+    recordFailedLogin(ip)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+  clearLoginAttempts(ip)
 
   const response = NextResponse.json({ ok: true })
   response.cookies.set("app-auth", password, {

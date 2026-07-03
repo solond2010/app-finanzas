@@ -26,7 +26,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Category, generateId } from "@/lib/store"
-import { Filter, Plus, Pencil, Trash2, Search, Download } from "lucide-react"
+import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle } from "lucide-react"
+import { parseAmount } from "@/lib/validation"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
@@ -76,6 +77,7 @@ function TransactionForm({
   const [tagInput, setTagInput] = useState("")
   const [tags, setTags] = useState<string[]>(transaction?.tags ?? [])
   const [recurFreq, setRecurFreq] = useState<RecurringFrequency>(transaction ? recurringFrequency(transaction) : "mensual")
+  const [error, setError] = useState("")
 
   const visibleCategories = categories
     .filter((c) => !c.kind || c.kind === tipo || c.kind === "both")
@@ -89,11 +91,16 @@ function TransactionForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!cuentaId || !monto || !fecha || !categoria) return
+    setError("")
+    if (!cuentaId) { setError("Selecciona una cuenta."); return }
+    if (!fecha) { setError("Indica una fecha."); return }
+    if (!categoria) { setError("Selecciona una categoría."); return }
+    const amount = parseAmount(monto)
+    if (!amount) { setError("Indica un importe válido mayor que 0."); return }
     onSave({
       id: transaction?.id ?? generateId(),
       cuenta_id: cuentaId,
-      monto: Number(monto),
+      monto: amount,
       fecha,
       tipo,
       categoria,
@@ -225,6 +232,12 @@ function TransactionForm({
         )}
       </div>
 
+      {error && (
+        <p className="flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-500">
+          <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+        </p>
+      )}
+
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" size="sm" onClick={onCancel}>Cancelar</Button>
         <Button type="submit" size="sm">{transaction ? "Guardar" : "Crear"}</Button>
@@ -346,8 +359,8 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
       if (!rawValue) return
       dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, fecha: rawValue } })
     } else if (field === "monto") {
-      const monto = Number(rawValue)
-      if (!Number.isFinite(monto) || monto <= 0) return
+      const monto = parseAmount(rawValue)
+      if (!monto) { toast("Importe no válido: debe ser mayor que 0", "error"); return }
       dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, monto } })
     }
     toast("Transacción actualizada", "success")

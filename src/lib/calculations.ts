@@ -79,17 +79,54 @@ function getNetWorth(accounts: Account[]): number {
   return accounts.reduce((sum, a) => sum + convertToEur(a.saldo, a.currency), 0)
 }
 
-export function getAccountsAtMonth(accounts: Account[], transactions: Transaction[], monthKey?: string) {
-  if (!monthKey) return accounts
+// Agrupa las transacciones por cuenta una sola vez (O(n)). Los "historial de
+// patrimonio" de abajo llaman a las funciones de más abajo una vez POR MES/DÍA
+// del rango visible (hasta 24-30 veces); sin agrupar antes, cada una de esas
+// llamadas recorría accounts.map() × transactions.filter() entero — con años
+// de histórico eso son cientos de miles de comparaciones en cada render tras
+// añadir un solo movimiento. Agrupando antes, cada llamada solo recorre la
+// porción de transacciones de cada cuenta, no el histórico completo.
+function groupByAccount(transactions: Transaction[]): Map<string, Transaction[]> {
+  const map = new Map<string, Transaction[]>()
+  for (const t of transactions) {
+    const arr = map.get(t.cuenta_id)
+    if (arr) arr.push(t)
+    else map.set(t.cuenta_id, [t])
+  }
+  return map
+}
+
+function accountsWithDelta(accounts: Account[], txByAccount: Map<string, Transaction[]>, isFuture: (t: Transaction) => boolean) {
   return accounts.map((account) => {
-    const futureTransactions = transactions.filter((t) => t.cuenta_id === account.id && isAfterMonth(t.fecha, monthKey))
-    const balanceDelta = futureTransactions.reduce((sum, t) => sum + transactionDelta(t), 0)
+    const accountTxs = txByAccount.get(account.id)
+    let balanceDelta = 0
+    if (accountTxs) {
+      for (const t of accountTxs) if (isFuture(t)) balanceDelta += transactionDelta(t)
+    }
     return { ...account, saldo: account.saldo - balanceDelta }
   })
 }
 
+export function getAccountsAtMonth(accounts: Account[], transactions: Transaction[], monthKey?: string) {
+  if (!monthKey) return accounts
+  return accountsWithDelta(accounts, groupByAccount(transactions), (t) => isAfterMonth(t.fecha, monthKey))
+}
+
 export function getNetWorthAtMonth(accounts: Account[], transactions: Transaction[], monthKey?: string) {
   return getNetWorth(getAccountsAtMonth(accounts, transactions, monthKey))
+}
+
+// Variantes para llamadores que necesitan getNetWorthAtMonth en un bucle
+// (un punto por mes de un rango de hasta 24 meses, como el gráfico de
+// evolución del Dashboard): agrupar las transacciones una vez fuera del
+// bucle y reutilizar el mapa evita repetir el agrupado O(n) en cada mes.
+export function groupTransactionsByAccount(transactions: Transaction[]): Map<string, Transaction[]> {
+  return groupByAccount(transactions)
+}
+
+export function getNetWorthAtMonthFromGroups(accounts: Account[], txByAccount: Map<string, Transaction[]>, monthKey?: string) {
+  if (!monthKey) return getNetWorth(accounts)
+  return getNetWorth(accountsWithDelta(accounts, txByAccount, (t) => isAfterMonth(t.fecha, monthKey)))
 }
 
 function toDateKey(date: Date) {
@@ -103,16 +140,12 @@ function isAfterDate(dateString: string, dateKey: string) {
   return toDateKey(new Date(dateString)) > dateKey
 }
 
-function getAccountsAtDate(accounts: Account[], transactions: Transaction[], dateKey: string) {
-  return accounts.map((account) => {
-    const futureTransactions = transactions.filter((t) => t.cuenta_id === account.id && isAfterDate(t.fecha, dateKey))
-    const balanceDelta = futureTransactions.reduce((sum, t) => sum + transactionDelta(t), 0)
-    return { ...account, saldo: account.saldo - balanceDelta }
-  })
+function getAccountsAtDate(accounts: Account[], txByAccount: Map<string, Transaction[]>, dateKey: string) {
+  return accountsWithDelta(accounts, txByAccount, (t) => isAfterDate(t.fecha, dateKey))
 }
 
-function getNetWorthAtDate(accounts: Account[], transactions: Transaction[], dateKey: string) {
-  return getNetWorth(getAccountsAtDate(accounts, transactions, dateKey))
+function getNetWorthAtDate(accounts: Account[], txByAccount: Map<string, Transaction[]>, dateKey: string) {
+  return getNetWorth(getAccountsAtDate(accounts, txByAccount, dateKey))
 }
 
 // Histórico día a día de los últimos `days` días (incluye hoy), para rangos
@@ -128,13 +161,23 @@ function getNetWorthAtDate(accounts: Account[], transactions: Transaction[], dat
 // día tuvo ese máximo alcanzable. Se añade como punto extra antes del cierre.
 export function buildNetWorthHistoryDaily(accounts: Account[], transactions: Transaction[], days: number, endDate = new Date()): NetWorthSnapshot[] {
   const currencyByAccount = new Map(accounts.map((a) => [a.id, a.currency]))
+  const txByAccount = groupByAccount(transactions)
+  // Igual que txByAccount: agrupar por día una vez evita recorrer todas las
+  // transacciones en cada una de las `days` iteraciones del bucle de abajo.
+  const txByDateKey = new Map<string, Transaction[]>()
+  for (const t of transactions) {
+    const key = toDateKey(new Date(t.fecha))
+    const arr = txByDateKey.get(key)
+    if (arr) arr.push(t)
+    else txByDateKey.set(key, [t])
+  }
   const points: NetWorthSnapshot[] = []
   for (let i = 0; i < days; i++) {
     const d = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() - (days - 1 - i))
     const dateKey = toDateKey(d)
     const dayLabel = d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
-    const dayEnd = getNetWorthAtDate(accounts, transactions, dateKey)
-    const todaysTransactions = transactions.filter((t) => toDateKey(new Date(t.fecha)) === dateKey)
+    const dayEnd = getNetWorthAtDate(accounts, txByAccount, dateKey)
+    const todaysTransactions = txByDateKey.get(dateKey) ?? []
     const outflow = todaysTransactions
       .filter((t) => t.tipo === "gasto")
       .reduce((sum, t) => sum + convertToEur(t.monto, currencyByAccount.get(t.cuenta_id) ?? "EUR"), 0)
@@ -156,13 +199,8 @@ function isAfterMoment(t: Transaction, dateKey: string, createdAt: string) {
   return (t.created_at ?? "") > createdAt
 }
 
-function getNetWorthAtMoment(accounts: Account[], transactions: Transaction[], dateKey: string, createdAt: string) {
-  const reconstructed = accounts.map((account) => {
-    const futureTransactions = transactions.filter((t) => t.cuenta_id === account.id && isAfterMoment(t, dateKey, createdAt))
-    const balanceDelta = futureTransactions.reduce((sum, t) => sum + transactionDelta(t), 0)
-    return { ...account, saldo: account.saldo - balanceDelta }
-  })
-  return getNetWorth(reconstructed)
+function getNetWorthAtMoment(accounts: Account[], txByAccount: Map<string, Transaction[]>, dateKey: string, createdAt: string) {
+  return getNetWorth(accountsWithDelta(accounts, txByAccount, (t) => isAfterMoment(t, dateKey, createdAt)))
 }
 
 // Evolución del día en curso, un punto por cada transacción dada de alta hoy
@@ -178,10 +216,11 @@ export function buildNetWorthHistoryToday(accounts: Account[], transactions: Tra
     .slice()
     .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""))
 
-  const points: NetWorthSnapshot[] = [{ mes: "Inicio", patrimonio: getNetWorthAtDate(accounts, transactions, yesterdayKey) }]
+  const txByAccount = groupByAccount(transactions)
+  const points: NetWorthSnapshot[] = [{ mes: "Inicio", patrimonio: getNetWorthAtDate(accounts, txByAccount, yesterdayKey) }]
   for (const t of todaysTransactions) {
     const label = t.created_at ? new Date(t.created_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "—"
-    points.push({ mes: label, patrimonio: getNetWorthAtMoment(accounts, transactions, todayKey, t.created_at ?? "") })
+    points.push({ mes: label, patrimonio: getNetWorthAtMoment(accounts, txByAccount, todayKey, t.created_at ?? "") })
   }
   return points
 }
@@ -227,9 +266,13 @@ export function buildMonthlyCashFlow(transactions: Transaction[], endMonthKey?: 
 }
 
 export function buildNetWorthHistory(transactions: Transaction[], accounts: Account[], endMonthKey?: string): NetWorthSnapshot[] {
+  // Agrupar una vez fuera del bucle: getNetWorthAtMonth por sí sola ya agrupa
+  // internamente, pero llamada hasta 24 veces (una por mes de la ventana)
+  // repetiría el agrupado 24 veces sobre el mismo array si no se reutiliza.
+  const txByAccount = groupByAccount(transactions)
   return getMonthWindow(endMonthKey).map((month) => ({
     mes: formatMonth(parseMonthKey(month)),
-    patrimonio: getNetWorthAtMonth(accounts, transactions, month),
+    patrimonio: getNetWorth(accountsWithDelta(accounts, txByAccount, (t) => isAfterMonth(t.fecha, month))),
   }))
 }
 
@@ -262,6 +305,7 @@ function addFrequency(date: Date, freq: RecurringFrequency): Date {
 
 export interface UpcomingRecurring {
   key: string
+  sourceTransactionId: string
   cuenta_id: string
   categoria: string
   descripcion: string
@@ -298,6 +342,7 @@ export function getUpcomingRecurring(transactions: Transaction[]): UpcomingRecur
     const overdueDays = Math.round((today.getTime() - next.getTime()) / 86400000)
     out.push({
       key,
+      sourceTransactionId: last.id,
       cuenta_id: last.cuenta_id,
       categoria: last.categoria,
       descripcion: last.descripcion,

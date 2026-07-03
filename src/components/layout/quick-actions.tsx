@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { AlertCircle } from "lucide-react"
 import { Plus, ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, Send } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Account, type Category, generateId } from "@/lib/store"
+import { parseAmount } from "@/lib/validation"
 import { formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { AccountLogo } from "@/components/dashboard/account-logo"
@@ -98,6 +100,7 @@ function UnifiedMovementForm({
   const [descripcion, setDescripcion] = useState("")
   const [origenId, setOrigenId] = useState(accounts[0]?.id ?? "")
   const [destinoId, setDestinoId] = useState(accounts[1]?.id ?? accounts[0]?.id ?? "")
+  const [error, setError] = useState("")
 
   // Al cambiar de tipo, recalcula la cuenta por defecto (gasto → cuenta de
   // gastos/efectivo, ingreso → efectivo/ahorro) y limpia la categoría, que no
@@ -116,16 +119,22 @@ function UnifiedMovementForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+    const amount = parseAmount(monto)
+    if (!amount) { setError("Indica un importe válido mayor que 0."); return }
+
     if (tipo === "traspaso") {
-      if (!origenId || !destinoId || !monto || origenId === destinoId) return
-      onSaveTransfer(origenId, destinoId, Number(monto), descripcion || "Traspaso", fecha)
+      if (!origenId || !destinoId) { setError("Selecciona cuenta de origen y destino."); return }
+      if (origenId === destinoId) { setError("El origen y el destino no pueden ser la misma cuenta."); return }
+      onSaveTransfer(origenId, destinoId, amount, descripcion || "Traspaso", fecha)
       return
     }
-    if (!cuentaId || !monto || !categoria) return
+    if (!cuentaId) { setError("Selecciona una cuenta."); return }
+    if (!categoria) { setError("Selecciona una categoría."); return }
     onSaveTransaction({
       id: generateId(),
       cuenta_id: cuentaId,
-      monto: Number(monto),
+      monto: amount,
       fecha,
       tipo,
       categoria,
@@ -273,6 +282,12 @@ function UnifiedMovementForm({
             <span className="text-sm text-foreground">Es necesidad</span>
           </label>
         </>
+      )}
+
+      {error && (
+        <p className="flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-500">
+          <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+        </p>
       )}
 
       <div className="flex justify-end gap-3 pt-2">

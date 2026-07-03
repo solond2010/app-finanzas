@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { timingSafeEqualString } from "@/lib/auth"
 
 // Auth de un solo secreto compartido (sin usuarios ni sesiones individuales),
 // a juego con el resto de la app: store.tsx escribe siempre con un `USER_ID`
@@ -11,15 +12,16 @@ export function middleware(request: NextRequest) {
   const password = process.env.APP_PASSWORD
 
   if (!password) return NextResponse.next()
+  const authed = authCookie != null && timingSafeEqualString(authCookie, password)
 
   if (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/api/login") {
-    if (authCookie === password && request.nextUrl.pathname !== "/api/login") {
+    if (authed && request.nextUrl.pathname !== "/api/login") {
       return NextResponse.redirect(new URL("/dashboard", request.url))
     }
     return NextResponse.next()
   }
 
-  if (authCookie !== password) {
+  if (!authed) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("redirect", request.nextUrl.pathname)
     return NextResponse.redirect(loginUrl)

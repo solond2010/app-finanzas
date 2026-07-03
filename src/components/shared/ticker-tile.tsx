@@ -16,7 +16,11 @@ export function TickerTile({ label, value, detail, valueColor, trend, trendColor
       <div className="mt-1.5 flex items-end justify-between gap-2">
         <span className="truncate text-lg font-bold tabular-nums" style={{ color: valueColor }}>{value}</span>
         {data && data.length > 1 && (
-          <SparkLineChart data={data} index="i" categories={["v"]} colors={[trendColor ?? "blue"]} className="h-5 w-12 shrink-0" />
+          // Decorativo: la cifra de al lado ya dice lo mismo en texto, así que
+          // se oculta a lectores de pantalla en vez de anunciar un SVG mudo.
+          <span aria-hidden="true">
+            <SparkLineChart data={data} index="i" categories={["v"]} colors={[trendColor ?? "blue"]} className="h-5 w-12 shrink-0" />
+          </span>
         )}
       </div>
       {detail && <p className="mt-0.5 truncate text-xs text-muted-foreground">{detail}</p>}

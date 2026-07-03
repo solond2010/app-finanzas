@@ -51,7 +51,7 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
 
 export function Sidebar() {
   const pathname = usePathname()
-  const syncStatus = useSyncStatus()
+  const { status: syncStatus, retrySync } = useSyncStatus()
   const { privacy, toggle: togglePrivacy } = usePrivacy()
   const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -96,12 +96,14 @@ export function Sidebar() {
 
   const syncMeta =
     syncStatus === "syncing"
-      ? { label: "Sincronizando...", icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, className: "text-amber-500" }
+      ? { label: "Sincronizando...", icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, className: "text-amber-500", retry: false }
       : syncStatus === "saved"
-        ? { label: "Guardado en nube", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-emerald-500" }
+        ? { label: "Guardado en nube", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-emerald-500", retry: false }
         : syncStatus === "error"
-          ? { label: "Error de sincronización", icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-red-500" }
-          : { label: "Sin cambios pendientes", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-muted-foreground" }
+          ? { label: "Error de sincronización · toca para reintentar", icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-red-500", retry: true }
+          : syncStatus === "offline"
+            ? { label: "Sin conexión · se guardará al reconectar", icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-muted-foreground", retry: true }
+            : { label: "Sin cambios pendientes", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-muted-foreground", retry: false }
 
   return (
     <>
@@ -196,9 +198,19 @@ export function Sidebar() {
               </button>
             </Tooltip>
             <Tooltip label={syncMeta.label}>
-              <span className="flex items-center justify-center rounded-xl p-2.5">
-                <span className={syncMeta.className}>{syncMeta.icon}</span>
-              </span>
+              {syncMeta.retry ? (
+                <button
+                  onClick={retrySync}
+                  aria-label={syncMeta.label}
+                  className="flex items-center justify-center rounded-xl p-2.5 transition-colors hover:bg-sidebar-accent/50"
+                >
+                  <span className={syncMeta.className}>{syncMeta.icon}</span>
+                </button>
+              ) : (
+                <span className="flex items-center justify-center rounded-xl p-2.5">
+                  <span className={syncMeta.className}>{syncMeta.icon}</span>
+                </span>
+              )}
             </Tooltip>
           </div>
         </aside>
@@ -270,10 +282,20 @@ export function Sidebar() {
             <span className="hidden dark:inline">Modo claro</span>
             <span className="dark:hidden">Modo oscuro</span>
           </button>
-          <div className={cn("flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium", syncMeta.className)}>
-            {syncMeta.icon}
-            <span>{syncMeta.label}</span>
-          </div>
+          {syncMeta.retry ? (
+            <button
+              onClick={retrySync}
+              className={cn("flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition-colors hover:bg-sidebar-accent/50", syncMeta.className)}
+            >
+              {syncMeta.icon}
+              <span className="text-left">{syncMeta.label}</span>
+            </button>
+          ) : (
+            <div className={cn("flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium", syncMeta.className)}>
+              {syncMeta.icon}
+              <span>{syncMeta.label}</span>
+            </div>
+          )}
         </div>
       </aside>
     </>

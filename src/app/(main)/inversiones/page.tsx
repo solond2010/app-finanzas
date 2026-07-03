@@ -20,7 +20,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
-import { getMonthTotalsByString, getMonthlyInvestmentInflow, getNetWorthAtMonth } from "@/lib/calculations"
+import { getMonthTotalsByString, getMonthlyInvestmentInflow, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount } from "@/lib/calculations"
 import { getSetting, setSetting } from "@/lib/settings"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
@@ -206,15 +206,18 @@ export default function InversionesPage() {
     () => investmentAccounts.reduce((s, a) => s + accountDisplayValue(a, valueByAccount, investedByAccount), 0),
     [investmentAccounts, valueByAccount, investedByAccount]
   )
-  const netWorthTrend = useMemo(() => Array.from({ length: 6 }, (_, i) => {
-    const offset = 5 - i
-    const d = new Date()
-    d.setDate(1)
-    d.setMonth(d.getMonth() - offset)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-    const label = d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" })
-    return { label, value: Math.round(getNetWorthAtMonth(state.accounts, state.transactions, key) - investmentAccountSaldo + investmentDisplayTotal) }
-  }), [state.accounts, state.transactions, investmentAccountSaldo, investmentDisplayTotal])
+  const netWorthTrend = useMemo(() => {
+    const txByAccount = groupTransactionsByAccount(state.transactions)
+    return Array.from({ length: 6 }, (_, i) => {
+      const offset = 5 - i
+      const d = new Date()
+      d.setDate(1)
+      d.setMonth(d.getMonth() - offset)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      const label = d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" })
+      return { label, value: Math.round(getNetWorthAtMonthFromGroups(state.accounts, txByAccount, key) - investmentAccountSaldo + investmentDisplayTotal) }
+    })
+  }, [state.accounts, state.transactions, investmentAccountSaldo, investmentDisplayTotal])
   // Patrimonio a cierre del mes elegido para el informe: mismo cálculo que el
   // histórico de arriba (para el mes actual coincide con `netWorth`).
   const xrayNetWorth = useMemo(
@@ -351,10 +354,14 @@ export default function InversionesPage() {
                 )
               )}
               {evoTab === "activos" && (
-                <DonutChart data={activosData} category="value" index="name" colors={DONUT_COLORS} valueFormatter={donutFormatter} variant="donut" customTooltip={activosTooltip} className="mt-4 h-52 sm:h-56" showAnimation />
+                <div role="img" aria-label="Gráfico circular: peso de cada activo en la cartera">
+                  <DonutChart data={activosData} category="value" index="name" colors={DONUT_COLORS} valueFormatter={donutFormatter} variant="donut" customTooltip={activosTooltip} className="mt-4 h-52 sm:h-56" showAnimation />
+                </div>
               )}
               {evoTab === "tipologia" && (
-                <DonutChart data={tipologiaData} category="value" index="name" colors={DONUT_COLORS} valueFormatter={donutFormatter} variant="donut" customTooltip={tipologiaTooltip} className="mt-4 h-52 sm:h-56" showAnimation />
+                <div role="img" aria-label="Gráfico circular: peso de cada tipología de activo en la cartera">
+                  <DonutChart data={tipologiaData} category="value" index="name" colors={DONUT_COLORS} valueFormatter={donutFormatter} variant="donut" customTooltip={tipologiaTooltip} className="mt-4 h-52 sm:h-56" showAnimation />
+                </div>
               )}
             </div>
 

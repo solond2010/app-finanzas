@@ -27,13 +27,22 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
   const [open, setOpen] = useState(false)
 
   const budgetProgress = useMemo(() => {
+    // Antes se recorría `transactions` entera una vez POR presupuesto
+    // (O(presupuestos × transacciones)); con historial de varios años eso son
+    // decenas de miles de comparaciones en cada render. Un único pase agrupa
+    // el gasto por categoría, y luego cada presupuesto solo consulta el mapa.
+    const categoryById = new Map(categories.map((c) => [c.id, c]))
+    const spentByCategory = new Map<string, number>()
+    for (const t of transactions) {
+      if (t.tipo !== "gasto" || !t.fecha.startsWith(selectedMonth)) continue
+      spentByCategory.set(t.categoria, (spentByCategory.get(t.categoria) ?? 0) + t.monto)
+    }
+
     return budgets
       .filter((b) => b.month === selectedMonth)
       .map((budget) => {
-        const category = categories.find((c) => c.id === budget.category_id)
-        const spent = transactions
-          .filter((t) => t.categoria === category?.name && t.fecha.startsWith(selectedMonth) && t.tipo === "gasto")
-          .reduce((sum, t) => sum + t.monto, 0)
+        const category = categoryById.get(budget.category_id)
+        const spent = spentByCategory.get(category?.name ?? "") ?? 0
 
         return {
           ...budget,

@@ -187,7 +187,9 @@ export function AssetAnalysis() {
           </div>
 
           {chartData.length > 1 ? (
-            <AreaChart data={chartData} index="fecha" categories={["Precio"]} colors={[up ? "emerald" : "red"]} valueFormatter={(v) => fmtPrice(v, cur)} showLegend={false} showGridLines={false} showYAxis={false} startEndOnly customTooltip={PriceTooltip} className="h-56" curveType="monotone" showAnimation />
+            <div role="img" aria-label={`Gráfico de área: evolución del precio, tendencia ${up ? "al alza" : "a la baja"}`}>
+              <AreaChart data={chartData} index="fecha" categories={["Precio"]} colors={[up ? "emerald" : "red"]} valueFormatter={(v) => fmtPrice(v, cur)} showLegend={false} showGridLines={false} showYAxis={false} startEndOnly customTooltip={PriceTooltip} className="h-56" curveType="monotone" showAnimation />
+            </div>
           ) : (
             <div className="flex h-56 items-center justify-center rounded-2xl bg-muted/40 text-sm text-muted-foreground">Sin datos de gráfico</div>
           )}

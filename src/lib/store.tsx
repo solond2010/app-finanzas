@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useReducer, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
 import { type CurrencyCode, refreshExchangeRates } from "./currency"
 
@@ -72,7 +72,7 @@ export interface Budget {
   user_id: string
 }
 
-interface FinanceState {
+export interface FinanceState {
   accounts: Account[]
   transactions: Transaction[]
   sinkingFunds: SinkingFund[]
@@ -80,7 +80,7 @@ interface FinanceState {
   budgets: Budget[]
 }
 
-type SyncStatus = "idle" | "syncing" | "saved" | "error"
+type SyncStatus = "idle" | "syncing" | "saved" | "error" | "offline"
 
 type Action =
   | { type: "SET_STATE"; payload: FinanceState }
@@ -210,7 +210,7 @@ type SinkingFundRow = {
 
 type TransactionPayload = Omit<TransactionRow, "monto" | "tags" | "descripcion"> & { monto: number; tags: string[]; descripcion: string }
 
-const defaultState: FinanceState = {
+export const defaultState: FinanceState = {
   accounts: [
     { id: "acc_emergency", nombre: "Emergencias", tipo: "emergencia", banco: "", saldo: 0, currency: "EUR", objetivo: null, limite_mensual: null, color: "#10b981" },
     { id: "acc_ahorro", nombre: "Ahorro", tipo: "ahorro", banco: "", saldo: 0, currency: "EUR", objetivo: null, limite_mensual: null, color: "#3b82f6" },
@@ -224,7 +224,7 @@ const defaultState: FinanceState = {
   budgets: [],
 }
 
-function reducer(state: FinanceState, action: Action): FinanceState {
+export function reducer(state: FinanceState, action: Action): FinanceState {
   switch (action.type) {
     case "SET_STATE":
       return normalizeFinanceState(action.payload)
@@ -314,8 +314,11 @@ function reducer(state: FinanceState, action: Action): FinanceState {
     case "DELETE_SINKING_FUND":
       return { ...state, sinkingFunds: state.sinkingFunds.filter((s) => s.id !== action.payload) }
     case "ADD_CATEGORY":
-      return state.categories.some(c => c.name === action.payload.name) 
-        ? state 
+      // Comparación sin distinguir mayúsculas ni espacios sobrantes: mismo
+      // criterio que el formulario de Configuración, aquí también por si
+      // ADD_CATEGORY llega a dispararse alguna vez desde otro punto de la app.
+      return state.categories.some((c) => c.name.trim().toLowerCase() === action.payload.name.trim().toLowerCase())
+        ? state
         : { ...state, categories: [...state.categories, { id: generateId(), ...action.payload }] }
     case "DELETE_CATEGORY":
       // Al borrar una categoría también eliminamos sus presupuestos dependientes
@@ -389,8 +392,14 @@ const FinanceContext = createContext<FinanceContextValue | null>(null)
 // El estado de sincronización vive en su propio contexto: cambia dos veces por
 // cada dispatch ("syncing" → "saved") y solo lo consume el indicador del
 // sidebar — si viviera en FinanceContext, cada sync re-renderizaría todos los
-// consumidores de useFinance() de la app dos veces extra.
-const SyncStatusContext = createContext<SyncStatus>("idle")
+// consumidores de useFinance() de la app dos veces extra. `retrySync` es
+// estable (useCallback), así que viaja aquí en vez de en FinanceContext: solo
+// cambia la referencia del objeto cuando cambia `status`, no en cada dispatch.
+interface SyncStatusContextValue {
+  status: SyncStatus
+  retrySync: () => void
+}
+const SyncStatusContext = createContext<SyncStatusContextValue>({ status: "idle", retrySync: () => {} })
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, defaultState)
@@ -422,30 +431,96 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // state en un ref: los reintentos disparados por setTimeout/eventos 'online'
+  // deben sincronizar siempre el estado MÁS RECIENTE, no el que había en el
+  // closure cuando se programó el reintento.
+  const stateRef = useRef(state)
+  useEffect(() => { stateRef.current = state }, [state])
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const retryAttemptRef = useRef(0)
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
+
+  const clearRetry = useCallback(() => {
+    if (retryTimeoutRef.current) { clearTimeout(retryTimeoutRef.current); retryTimeoutRef.current = null }
+  }, [])
+
+  // Backoff entre reintentos tras un fallo (3s, 8s, 20s, luego cada 30s): evita
+  // machacar Supabase si está caído, pero sin dejar de intentarlo — cualquier
+  // cambio de estado nuevo cancela este reintento y prueba de inmediato con el
+  // dato fresco, así que en uso normal esto solo se nota si Supabase sigue
+  // caído varios segundos seguidos.
+  const RETRY_DELAYS = [3000, 8000, 20000, 30000]
+
+  // attemptSync se reprograma a sí mismo vía setTimeout tras un fallo. Referenciar
+  // la función directamente por su nombre dentro de su propio cuerpo dispara el
+  // lint "accessed before it is declared" (y es fresco solo hasta que cambien sus
+  // deps); pasando por un ref, el reintento programado siempre llama a la versión
+  // más reciente sin ese problema.
+  const attemptSyncRef = useRef<() => void>(() => {})
+
+  const attemptSync = useCallback(() => {
+    clearRetry()
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setSyncStatus("offline")
+      return
+    }
+    setSyncStatus("syncing")
+    syncChainRef.current = syncChainRef.current
+      .then(() => syncToSupabase(stateRef.current))
+      .then(() => {
+        if (!mountedRef.current) return
+        retryAttemptRef.current = 0
+        setSyncStatus("saved")
+      })
+      .catch((err) => {
+        console.error("[Finance] Error al sincronizar con Supabase:", err)
+        if (!mountedRef.current) return
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          setSyncStatus("offline")
+          return
+        }
+        setSyncStatus("error")
+        const delay = RETRY_DELAYS[Math.min(retryAttemptRef.current, RETRY_DELAYS.length - 1)]
+        retryAttemptRef.current++
+        retryTimeoutRef.current = setTimeout(() => attemptSyncRef.current(), delay)
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearRetry])
+
+  useEffect(() => { attemptSyncRef.current = attemptSync }, [attemptSync])
+
+  const retrySync = useCallback(() => {
+    retryAttemptRef.current = 0
+    attemptSync()
+  }, [attemptSync])
+
   useEffect(() => {
     if (!initialized) return
     // Copia de seguridad local en cada cambio (red de seguridad ante pérdidas en
     // Supabase). La app la usa como fallback si Supabase está vacío/caído.
     try { localStorage.setItem("app-finanzas-data", JSON.stringify(state)) } catch {}
-    let cancelled = false
-    // Refleja en la UI el inicio de la sincronización con Supabase (sistema
-    // externo). Es el uso previsto de un efecto: sincronizar React con un
-    // sistema externo asíncrono.
+    retryAttemptRef.current = 0
+    // attemptSync() refleja en la UI ("syncing") el inicio de la sincronización
+    // con Supabase (sistema externo) — uso previsto de un efecto, igual que antes
+    // de que este cuerpo se moviera a una función reutilizable por los reintentos.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSyncStatus("syncing")
-    syncChainRef.current = syncChainRef.current
-      .then(() => syncToSupabase(state))
-      .then(() => {
-        if (!cancelled) setSyncStatus("saved")
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setSyncStatus("error")
-          console.error("[Finance] Error al sincronizar con Supabase:", err)
-        }
-      })
-    return () => { cancelled = true }
-  }, [state, initialized])
+    attemptSync()
+    return clearRetry
+  }, [state, initialized, attemptSync, clearRetry])
+
+  // Si el navegador pierde la conexión, no tiene sentido seguir reintentando
+  // cada pocos segundos (solo va a fallar); en cuanto vuelve, se reintenta ya.
+  useEffect(() => {
+    const handleOnline = () => { retryAttemptRef.current = 0; attemptSync() }
+    const handleOffline = () => { clearRetry(); setSyncStatus("offline") }
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [attemptSync, clearRetry])
 
   // Memoizado: si no, este objeto se recrea en cada render de FinanceProvider
   // (aunque state/loading no hayan cambiado) y como Context re-renderiza a
@@ -453,10 +528,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // cambio en cualquier parte del árbol forzaba un re-render de absolutamente
   // todo lo que usa useFinance() en la app.
   const contextValue = useMemo(() => ({ state, dispatch, loading }), [state, loading])
+  const syncStatusValue = useMemo(() => ({ status: syncStatus, retrySync }), [syncStatus, retrySync])
 
   return (
     <FinanceContext.Provider value={contextValue}>
-      <SyncStatusContext.Provider value={syncStatus}>{children}</SyncStatusContext.Provider>
+      <SyncStatusContext.Provider value={syncStatusValue}>{children}</SyncStatusContext.Provider>
     </FinanceContext.Provider>
   )
 }

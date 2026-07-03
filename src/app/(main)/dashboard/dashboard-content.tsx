@@ -15,7 +15,7 @@ import { usePortfolioValue, accountDisplayValue, type Position } from "@/lib/inv
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getSavingsRate, getUpcomingRecurring } from "@/lib/calculations"
+import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -197,13 +197,16 @@ export default function DashboardContent() {
       // se mantiene constante (misma simplificación que ya se hacía por mes).
       return buildNetWorthHistoryDaily(state.accounts, state.transactions, activeRange.count, dailyEndDate).map((d) => ({ ...d, patrimonio: d.patrimonio - investmentSaldo + portfolioValue }))
     }
+    // Agrupado una vez fuera del bucle (hasta 24 meses): ver comentario en
+    // groupTransactionsByAccount.
+    const txByAccount = groupTransactionsByAccount(state.transactions)
     return Array.from({ length: activeRange.count }, (_, i) => {
       const offset = activeRange.count - 1 - i
       const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
       const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0)
       const historicalPortfolio = i === activeRange.count - 1 ? portfolioValue : estimateHistoricalPortfolioValue(monthEnd)
-      return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonth(state.accounts, state.transactions, key) - investmentSaldo + historicalPortfolio }
+      return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonthFromGroups(state.accounts, txByAccount, key) - investmentSaldo + historicalPortfolio }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRange, selectedDate, monthOffset, today, state.accounts, state.transactions, portfolioValue, investmentSaldo, investPositions, priceHistory])
@@ -338,13 +341,21 @@ export default function DashboardContent() {
   // Presupuesto del mes seleccionado, mismo cálculo que MonthlyBudget, para
   // incluirlo también en el PDF exportado.
   const budgetRows = useMemo(() => {
+    // Un pase agrupa el gasto por categoría en vez de refiltrar
+    // `analysisTransactions` entera por cada presupuesto (ver mismo fix en
+    // MonthlyBudget) — evita un O(presupuestos × transacciones) en cada render.
+    const categoryById = new Map(state.categories.map((c) => [c.id, c]))
+    const spentByCategory = new Map<string, number>()
+    for (const t of analysisTransactions) {
+      if (t.tipo !== "gasto" || !t.fecha.startsWith(selectedMonth)) continue
+      spentByCategory.set(t.categoria, (spentByCategory.get(t.categoria) ?? 0) + t.monto)
+    }
+
     return state.budgets
       .filter((b) => b.month === selectedMonth)
       .map((budget) => {
-        const category = state.categories.find((c) => c.id === budget.category_id)
-        const gastado = analysisTransactions
-          .filter((t) => t.categoria === category?.name && t.fecha.startsWith(selectedMonth) && t.tipo === "gasto")
-          .reduce((s, t) => s + t.monto, 0)
+        const category = categoryById.get(budget.category_id)
+        const gastado = spentByCategory.get(category?.name ?? "") ?? 0
         return { categoria: category?.name ?? "Sin categoría", gastado, limite: budget.amount }
       })
       .filter((b) => b.limite > 0)

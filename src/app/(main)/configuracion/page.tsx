@@ -19,7 +19,10 @@ export default function ConfiguracionPage() {
   const addCategory = () => {
     const name = newCat.trim()
     if (!name) return
-    if (state.categories.some(c => c.name === name)) {
+    // Comparación sin distinguir mayúsculas/tildes de caja: "Suscripciones" y
+    // "suscripciones" son la misma categoría para quien la usa, y antes de
+    // este fix el check exacto dejaba pasar duplicados con distinta capitalización.
+    if (state.categories.some((c) => c.name.trim().toLowerCase() === name.toLowerCase())) {
       toast("Esa categoría ya existe", "error")
       return
     }

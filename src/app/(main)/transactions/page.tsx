@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { AreaChart } from "@tremor/react"
-import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp, X } from "lucide-react"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { ImportCsvButton } from "@/components/dashboard/import-csv-button"
 import { getSetting, setSetting } from "@/lib/settings"
@@ -95,6 +95,17 @@ export default function IngresosGastosPage() {
       },
     })
     toast("Pago registrado", "success")
+  }
+  // Sin esto, un pago cancelado (una suscripción dada de baja, p. ej.) se
+  // queda marcado "recurrente" para siempre: como nadie vuelve a registrar un
+  // pago nuevo de esa serie, "Atrasado Nd" crece sin parar cada vez más días.
+  // Quita la etiqueta de la última transacción de la serie sin borrar el
+  // historial — solo dice "esto ya no se repite".
+  const stopRecurring = (item: ReturnType<typeof getUpcomingRecurring>[number]) => {
+    const source = state.transactions.find((t) => t.id === item.sourceTransactionId)
+    if (!source) return
+    dispatch({ type: "UPDATE_TRANSACTION", payload: { ...source, tags: source.tags.filter((t) => t !== "recurrente" && !t.startsWith("recurrente:")) } })
+    toast("Ya no se repetirá", "success")
   }
   const recurringDateLabel = (item: ReturnType<typeof getUpcomingRecurring>[number]) => {
     if (item.overdueDays > 0) return `Atrasado ${item.overdueDays}d`
@@ -238,6 +249,9 @@ export default function IngresosGastosPage() {
                   <span className={cn("shrink-0 text-xs font-bold tabular-nums", (item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "text-emerald-500" : "text-foreground")}>
                     <Sensitive>{(item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(item.monto), "EUR")}</Sensitive>
                   </span>
+                  <button onClick={() => stopRecurring(item)} aria-label="Dejar de repetir" title="Dejar de repetir" className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500">
+                    <X className="h-4 w-4" />
+                  </button>
                   <button onClick={() => registerRecurring(item)} aria-label="Registrar pago" title="Registrar pago" className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-emerald-500/10 hover:text-emerald-500">
                     <Check className="h-4 w-4" />
                   </button>
@@ -260,7 +274,9 @@ export default function IngresosGastosPage() {
             </div>
           </div>
           {cashflowHasData ? (
-            <AreaChart data={cashflow} index="mes" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="mt-2 h-64 sm:h-72" curveType="monotone" showAnimation />
+            <div role="img" aria-label="Gráfico de área: evolución de ingresos y gastos por mes">
+              <AreaChart data={cashflow} index="mes" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="mt-2 h-64 sm:h-72" curveType="monotone" showAnimation />
+            </div>
           ) : (
             <EmptyPlaceholder text="Sin movimientos en este periodo" className="mt-2 h-64 sm:h-72" />
           )}

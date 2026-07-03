@@ -22,11 +22,12 @@ import {
 import { useFinance, type SinkingFund, generateId } from "@/lib/store"
 import { calculateMonthlySaving } from "@/lib/calculations"
 import { CircularProgress } from "@/components/ui/circular-progress"
-import { PiggyBank, Plus, Pencil, Trash2, Target, TrendingUp, Clock } from "lucide-react"
+import { PiggyBank, Plus, Pencil, Trash2, Target, TrendingUp, Clock, AlertCircle } from "lucide-react"
 import { currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
+import { parseAmount, parseAmountOrZero } from "@/lib/validation"
 
 function SinkingFundForm({
   fund,
@@ -45,15 +46,26 @@ function SinkingFundForm({
   const [fechaLimite, setFechaLimite] = useState(fund?.fecha_limite ?? "")
   const [cuentaId, setCuentaId] = useState(fund?.cuenta_id ?? accounts[0]?.id ?? "")
   const [ahorradoTocado, setAhorradoTocado] = useState(!!fund?.ahorrado_actual)
+  const [error, setError] = useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!nombre || !objetivo || !fechaLimite || !cuentaId) return
+    setError("")
+    if (!nombre.trim()) { setError("Ponle un nombre a la meta."); return }
+    if (!fechaLimite) { setError("Indica una fecha límite."); return }
+    if (!cuentaId) { setError("Selecciona una cuenta vinculada."); return }
+
+    const cantidadObjetivo = parseAmount(objetivo)
+    if (!cantidadObjetivo) { setError("El objetivo debe ser un importe mayor que 0."); return }
+
+    const ahorradoActual = parseAmountOrZero(ahorrado)
+    if (Number.isNaN(ahorradoActual)) { setError("La cantidad ahorrada no es un importe válido."); return }
+
     onSave({
       id: fund?.id ?? generateId(),
-      nombre,
-      cantidad_objetivo: Number(objetivo),
-      ahorrado_actual: Number(ahorrado) || 0,
+      nombre: nombre.trim(),
+      cantidad_objetivo: cantidadObjetivo,
+      ahorrado_actual: ahorradoActual,
       fecha_limite: fechaLimite,
       cuenta_id: cuentaId,
     })
@@ -98,6 +110,11 @@ function SinkingFundForm({
           </Select>
         </div>
       </div>
+      {error && (
+        <p className="flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-500">
+          <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+        </p>
+      )}
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" size="sm" onClick={onCancel}>Cancelar</Button>
         <Button type="submit" size="sm">{fund ? "Guardar" : "Crear"}</Button>
