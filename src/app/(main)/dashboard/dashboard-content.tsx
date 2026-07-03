@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, PiggyBank, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
@@ -11,7 +11,7 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
+import { usePortfolioValue, accountDisplayValue, type Position } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
@@ -100,7 +100,7 @@ export default function DashboardContent() {
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
-  const { value: portfolioValue, pnl: portfolioPnl, pnlPct: portfolioPnlPct, valueByAccount, investedByAccount } = usePortfolioValue()
+  const { positions: investPositions, value: portfolioValue, pnl: portfolioPnl, pnlPct: portfolioPnlPct, valueByAccount, investedByAccount } = usePortfolioValue()
   // El saldo de las cuentas de inversión no baja al comprar una posición (no
   // genera un gasto), así que solo se sustituye la parte ya invertida por el
   // valor de mercado actual — el efectivo aún sin invertir se mantiene intacto
@@ -112,6 +112,52 @@ export default function DashboardContent() {
     [investmentAccounts, valueByAccount, investedByAccount]
   )
   const netWorthDisplay = netWorth - investmentSaldo + investmentDisplayTotal
+
+  // Precio histórico mensual (2 años) de cada símbolo en cartera, para poder
+  // reconstruir cuánto valía la cartera en meses pasados en vez de usar el
+  // valor de HOY para todos los puntos del gráfico (ver estimateHistoricalPortfolioValue).
+  const historySymbolsKey = useMemo(
+    () => [...new Set(investPositions.filter((p) => p.kind !== "custom").map((p) => p.symbol))].sort().join(","),
+    [investPositions]
+  )
+  const [priceHistory, setPriceHistory] = useState<Record<string, { t: number; c: number }[]>>({})
+  useEffect(() => {
+    const syms = historySymbolsKey ? historySymbolsKey.split(",") : []
+    if (syms.length === 0) { setPriceHistory({}); return }
+    let cancelled = false
+    fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}&interval=1mo&range=2y`)
+      .then((r) => r.json())
+      .then((d: { history?: Record<string, { t: number; c: number }[]> }) => { if (!cancelled) setPriceHistory(d.history ?? {}) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [historySymbolsKey])
+
+  // Precio de un símbolo en la fecha más cercana (sin pasarse) a `atDate`,
+  // dentro del histórico ya cargado. Sin histórico para ese símbolo (activo
+  // personalizado, IPO reciente, fallo de red), usamos el precio de compra
+  // como mejor aproximación disponible.
+  const priceAt = (p: Position, atDate: Date) => {
+    const hist = priceHistory[p.symbol]
+    if (!hist || hist.length === 0) return p.buyPrice
+    const atMs = atDate.getTime()
+    let best: { t: number; c: number } | null = null
+    for (const point of hist) {
+      const pointMs = point.t * 1000
+      if (pointMs <= atMs && (!best || pointMs > best.t * 1000)) best = point
+    }
+    return best?.c ?? hist[0].c
+  }
+
+  // Valor estimado de la cartera a cierre de `atDate`: para cada posición ya
+  // comprada en esa fecha, sus unidades actuales (no se reconstruyen aportes
+  // DCA pasados, una simplificación razonable mientras no haya DCA activo) al
+  // precio histórico de entonces, en vez del valor de mercado de HOY.
+  const estimateHistoricalPortfolioValue = (atDate: Date) => {
+    return investPositions.reduce((sum, p) => {
+      if (new Date(p.date).getTime() > atDate.getTime()) return sum
+      return sum + p.units * priceAt(p, atDate)
+    }, 0)
+  }
 
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
 
@@ -154,9 +200,12 @@ export default function DashboardContent() {
       const offset = activeRange.count - 1 - i
       const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-      return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonth(state.accounts, state.transactions, key) - investmentSaldo + portfolioValue }
+      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+      const historicalPortfolio = i === activeRange.count - 1 ? portfolioValue : estimateHistoricalPortfolioValue(monthEnd)
+      return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonth(state.accounts, state.transactions, key) - investmentSaldo + historicalPortfolio }
     })
-  }, [activeRange, selectedDate, monthOffset, today, state.accounts, state.transactions, portfolioValue, investmentSaldo])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRange, selectedDate, monthOffset, today, state.accounts, state.transactions, portfolioValue, investmentSaldo, investPositions, priceHistory])
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
   const rangeDelta = netWorthDisplay - rangeStart

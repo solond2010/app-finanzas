@@ -12,10 +12,31 @@ export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   CHF: "CHF",
 }
 
+// Valores de respaldo: se usan hasta que refreshExchangeRates() trae los
+// tipos reales (o si esa petición falla, p. ej. sin red). No se mantienen a
+// mano; approximan un punto de partida razonable, no la cotización actual.
 export const EUR_RATES: Record<CurrencyCode, number> = {
   EUR: 1,
   USD: 0.92,
   CHF: 1.04,
+}
+
+/**
+ * Sustituye EUR_RATES por tipos de cambio reales (vía /api/fx, tipos BCE).
+ * Se llama una vez al arrancar la app (antes de que se muestre ninguna
+ * cifra convertida), así que convertToEur no necesita ningún cambio: sigue
+ * siendo síncrona y lee siempre el valor más reciente de este mismo objeto.
+ */
+export async function refreshExchangeRates(): Promise<void> {
+  try {
+    const res = await fetch("/api/fx")
+    if (!res.ok) return
+    const rates = await res.json()
+    if (typeof rates.USD === "number") EUR_RATES.USD = rates.USD
+    if (typeof rates.CHF === "number") EUR_RATES.CHF = rates.CHF
+  } catch {
+    // sin red → seguimos con los valores de respaldo
+  }
 }
 
 export function currencySymbol(currency: CurrencyCode) {

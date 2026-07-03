@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { addMonths, addWeeks, format, parseISO } from "date-fns"
-import { supabase } from "./supabase"
+import { dbSelect, dbUpsert, dbDeleteEq } from "./db-client"
 import { USER_ID } from "./store"
 
 export type AssetKind = "stock" | "fund" | "crypto" | "custom"
@@ -193,12 +193,12 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
         // ignore
       }
       try {
-        const { data, error } = await supabase.from("watchlist").select("*")
-        if (!error && data) {
+        const data = await dbSelect<{ symbol: string; name: string }>("watchlist")
+        if (data) {
           if (data.length === 0 && localWatch.length > 0) {
-            await supabase.from("watchlist").upsert(localWatch.map((w) => ({ symbol: w.symbol, name: w.name, user_id: USER_ID })))
+            await dbUpsert("watchlist", localWatch.map((w) => ({ symbol: w.symbol, name: w.name, user_id: USER_ID })))
           } else {
-            const remote = (data as { symbol: string; name: string }[]).map((w) => ({ symbol: w.symbol, name: w.name }))
+            const remote = data.map((w) => ({ symbol: w.symbol, name: w.name }))
             setWatchlist(remote)
             try { localStorage.setItem(WATCH_KEY, JSON.stringify(remote)) } catch {}
           }
@@ -215,13 +215,13 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
       }
       let loadedPositions: Position[] = local
       try {
-        const { data, error } = await supabase.from("investments").select("*")
-        if (error || !data) return
+        const data = await dbSelect<InvestmentRow>("investments")
+        if (!data) return
         if (data.length === 0 && local.length > 0) {
           // La tabla existe pero está vacía: migra lo que había en localStorage.
-          await supabase.from("investments").upsert(local.map(toRow))
+          await dbUpsert("investments", local.map(toRow))
         } else {
-          const remote = (data as InvestmentRow[]).map(fromRow)
+          const remote = data.map(fromRow)
           loadedPositions = remote
           setPositions(remote)
           try { localStorage.setItem(STORAGE_KEY, JSON.stringify(remote)) } catch {}
@@ -238,9 +238,9 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
         // ignore corrupt storage
       }
       try {
-        const { data, error } = await supabase.from("investment_contributions").select("*")
-        if (error || !data) return
-        let remote = (data as ContributionRow[]).map(contributionFromRow)
+        const data = await dbSelect<ContributionRow>("investment_contributions")
+        if (!data) return
+        let remote = data.map(contributionFromRow)
         // Backfill: cada posición sin ningún aporte registrado (típicamente porque
         // ya existía antes de esta función) recibe uno inicial con su compra
         // original, para que el histórico mensual no empiece vacío.
@@ -253,7 +253,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
             date: p.date,
           }))
         if (missing.length > 0) {
-          await supabase.from("investment_contributions").upsert(missing.map(contributionToRow))
+          await dbUpsert("investment_contributions", missing.map(contributionToRow))
           remote = [...remote, ...missing]
         }
         setContributions(remote)
@@ -273,19 +273,19 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const pos: Position = { ...p, id }
     persistLocal([...positions, pos])
-    supabase.from("investments").upsert([toRow(pos)]).then(() => {}, () => {})
+    dbUpsert("investments", [toRow(pos)]).then(() => {}, () => {})
     if (pos.units * pos.buyPrice > 0) addContribution(id, pos.units * pos.buyPrice, pos.date)
     return id
   }
 
   const update = (pos: Position) => {
     persistLocal(positions.map((x) => (x.id === pos.id ? pos : x)))
-    supabase.from("investments").upsert([toRow(pos)]).then(() => {}, () => {})
+    dbUpsert("investments", [toRow(pos)]).then(() => {}, () => {})
   }
 
   const remove = (id: string) => {
     persistLocal(positions.filter((x) => x.id !== id))
-    supabase.from("investments").delete().eq("id", id).then(() => {}, () => {})
+    dbDeleteEq("investments", "id", id).then(() => {}, () => {})
   }
 
   const persistWatch = (next: WatchItem[]) => {
@@ -295,11 +295,11 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
   const addWatch = (w: WatchItem) => {
     if (watchlist.some((x) => x.symbol === w.symbol)) return
     persistWatch([...watchlist, w])
-    supabase.from("watchlist").upsert([{ symbol: w.symbol, name: w.name, user_id: USER_ID }]).then(() => {}, () => {})
+    dbUpsert("watchlist", [{ symbol: w.symbol, name: w.name, user_id: USER_ID }]).then(() => {}, () => {})
   }
   const removeWatch = (symbol: string) => {
     persistWatch(watchlist.filter((x) => x.symbol !== symbol))
-    supabase.from("watchlist").delete().eq("symbol", symbol).then(() => {}, () => {})
+    dbDeleteEq("watchlist", "symbol", symbol).then(() => {}, () => {})
   }
 
   const persistContrib = (next: Contribution[]) => {
@@ -310,7 +310,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const c: Contribution = { id, positionId, amount, date }
     persistContrib([...contributions, c])
-    supabase.from("investment_contributions").upsert([contributionToRow(c)]).then(() => {}, () => {})
+    dbUpsert("investment_contributions", [contributionToRow(c)]).then(() => {}, () => {})
   }
 
   // Aplica los aportes vencidos al precio actual: suma participaciones, recalcula

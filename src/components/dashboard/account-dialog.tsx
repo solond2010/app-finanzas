@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { type Account, generateId } from "@/lib/store"
-import { supabase } from "@/lib/supabase"
+import { uploadLogo } from "@/lib/db-client"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -60,10 +60,8 @@ export function AccountDialog({
     try {
       const ext = file.name.split(".").pop() ?? "png"
       const path = `${account?.id ?? generateId()}-${Date.now()}.${ext}`
-      const { error } = await supabase.storage.from("bank-logos").upload(path, file, { upsert: true })
-      if (error) throw error
-      const { data } = supabase.storage.from("bank-logos").getPublicUrl(path)
-      setLogoUrl(data.publicUrl)
+      const url = await uploadLogo(file, path)
+      setLogoUrl(url)
     } catch {
       toast("No se pudo subir el logo. ¿Has creado el bucket \"bank-logos\" en Supabase?", "error")
     } finally {

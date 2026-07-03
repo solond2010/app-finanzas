@@ -1,8 +1,8 @@
 "use client"
 
 import { createContext, useContext, useReducer, useEffect, useRef, useState, type ReactNode } from "react"
-import { supabase } from "./supabase"
-import { type CurrencyCode } from "./currency"
+import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
+import { type CurrencyCode, refreshExchangeRates } from "./currency"
 
 export interface Account {
   id: string
@@ -409,7 +409,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     if (loadedRef.current) return
     loadedRef.current = true
 
-    loadFromSupabase().then((remote) => {
+    // Los tipos de cambio en vivo se piden en paralelo con los datos, y ambos
+    // terminan antes de quitar el loading: así ninguna cifra convertida entre
+    // divisas llega a pintarse con los valores de respaldo desactualizados.
+    Promise.all([loadFromSupabase(), refreshExchangeRates()]).then(([remote]) => {
       if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
         dispatch({ type: "SET_STATE", payload: { ...remote, categories: mergeDefaultCategories(remote.categories) } })
       } else {
@@ -454,21 +457,20 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
 async function loadFromSupabase(): Promise<FinanceState | null> {
   try {
-    const [accRes, txRes, sfRes, catRes, budRes] = await Promise.all([
-      supabase.from("accounts").select("*"),
-      supabase.from("transactions").select("*"),
-      supabase.from("sinking_funds").select("*"),
-      supabase.from("categories").select("*"),
-      supabase.from("budgets").select("*"),
+    const [accData, txData, sfData, catData, budData] = await Promise.all([
+      dbSelect<AccountRow>("accounts"),
+      dbSelect<TransactionRow>("transactions"),
+      dbSelect<SinkingFundRow>("sinking_funds"),
+      dbSelect<Category>("categories"),
+      dbSelect<Budget>("budgets"),
     ])
-    if (accRes.error || txRes.error || sfRes.error || catRes.error || budRes.error) return null
-    if (!accRes.data || !txRes.data || !sfRes.data || !catRes.data || !budRes.data) return null
+    if (!accData || !txData || !sfData || !catData || !budData) return null
     return {
-      accounts: accRes.data.map(formatAccount),
-      transactions: txRes.data.map(formatTransaction),
-      sinkingFunds: sfRes.data.map(formatSinkingFund),
-      categories: catRes.data as Category[],
-      budgets: budRes.data as Budget[],
+      accounts: accData.map(formatAccount),
+      transactions: txData.map(formatTransaction),
+      sinkingFunds: sfData.map(formatSinkingFund),
+      categories: catData,
+      budgets: budData,
     }
   } catch {
     return null
@@ -478,32 +480,13 @@ async function loadFromSupabase(): Promise<FinanceState | null> {
 export const USER_ID = '8c449806-d8b4-498a-98d7-28809bb7c95a'
 
 async function syncToSupabase(state: FinanceState) {
-  const { error: accErr } = await supabase.from("accounts").upsert(
-    state.accounts.map(a => ({ ...unformatAccount(a), user_id: USER_ID }))
-  )
-  if (accErr) throw accErr
-
-  const { error: txErr } = await supabase.from("transactions").upsert(
-    state.transactions.map(t => ({ ...unformatTransaction(t), user_id: USER_ID }))
-  )
-  if (txErr) throw txErr
-
-  const { error: sfErr } = await supabase.from("sinking_funds").upsert(
-    state.sinkingFunds.map(sf => ({ ...unformatSinkingFund(sf), user_id: USER_ID }))
-  )
-  if (sfErr) throw sfErr
-
-  const { error: catErr } = await supabase.from("categories").upsert(
-    state.categories.map(c => ({ ...c, user_id: USER_ID }))
-  )
-  if (catErr) throw catErr
-
+  await dbUpsert("accounts", state.accounts.map(a => ({ ...unformatAccount(a), user_id: USER_ID })))
+  await dbUpsert("transactions", state.transactions.map(t => ({ ...unformatTransaction(t), user_id: USER_ID })))
+  await dbUpsert("sinking_funds", state.sinkingFunds.map(sf => ({ ...unformatSinkingFund(sf), user_id: USER_ID })))
+  await dbUpsert("categories", state.categories.map(c => ({ ...c, user_id: USER_ID })))
   // Los presupuestos deben subirse DESPUÉS de las categorías: budgets.category_id
   // tiene una FK a categories.id, así que la categoría referenciada ya debe existir.
-  const { error: budErr } = await supabase.from("budgets").upsert(
-    state.budgets.map(b => ({ id: b.id, category_id: b.category_id, amount: b.amount, month: b.month, user_id: USER_ID }))
-  )
-  if (budErr) throw budErr
+  await dbUpsert("budgets", state.budgets.map(b => ({ id: b.id, category_id: b.category_id, amount: b.amount, month: b.month, user_id: USER_ID })))
 
   await deleteRemoteMissingRows("transactions", state.transactions.map((t) => t.id))
   await deleteRemoteMissingRows("sinking_funds", state.sinkingFunds.map((s) => s.id))
@@ -532,10 +515,10 @@ function loadLocalBackup(): FinanceState | null {
 }
 
 async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sinking_funds" | "budgets" | "categories", localIds: string[]) {
-  const { data, error } = await supabase.from(table).select("id")
-  if (error) throw error
+  const data = await dbSelect<{ id: string }>(table, "id")
+  if (!data) throw new Error(`No se pudo leer "${table}" para sincronizar borrados`)
 
-  const remoteIds = (data ?? []).map((row: { id: string }) => row.id)
+  const remoteIds = data.map((row) => row.id)
   const localSet = new Set(localIds)
   const missing = remoteIds.filter((id) => !localSet.has(id))
   if (missing.length === 0) return
@@ -548,8 +531,7 @@ async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sin
     return
   }
 
-  const { error: deleteErr } = await supabase.from(table).delete().in("id", missing)
-  if (deleteErr) throw deleteErr
+  await dbDeleteIn(table, missing)
 }
 
 function formatAccount(a: AccountRow): Account {
