@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useState } from "react"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
+import { PositionDialog } from "@/components/investments/position-dialog"
 import { currencySymbol, formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
@@ -19,6 +20,7 @@ export default function AccountDetailPage() {
   const router = useRouter()
   const { state, dispatch } = useFinance()
   const [editing, setEditing] = useState(false)
+  const [investing, setInvesting] = useState(false)
   const { valueByAccount, investedByAccount } = usePortfolioValue()
 
   const account = state.accounts.find((a) => a.id === id)
@@ -203,10 +205,15 @@ export default function AccountDetailPage() {
               </div>
               <div className="flex items-center gap-3 rounded-2xl bg-muted/30 p-4">
                 <span className="gold-badge flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"><PiggyBank className="h-4 w-4" /></span>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">= Efectivo sin invertir</p>
                   <p className="text-base font-bold tabular-nums" style={{ color: "var(--gold)" }}><Sensitive>{formatMoney(idleCash, account.currency)}</Sensitive></p>
                 </div>
+                {idleCash > 0 && (
+                  <Button type="button" size="sm" className="shrink-0 rounded-full" onClick={() => setInvesting(true)}>
+                    Invertir esto
+                  </Button>
+                )}
               </div>
               <div className="flex items-center gap-3 rounded-2xl bg-muted/30 p-4">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><TrendingUp className="h-4 w-4" /></span>
@@ -240,6 +247,10 @@ export default function AccountDetailPage() {
           onSave={(a) => { dispatch({ type: "UPDATE_ACCOUNT", payload: a }); setEditing(false) }}
           onDelete={(id) => { dispatch({ type: "DELETE_ACCOUNT", payload: id }); router.push("/cuentas") }}
         />
+      )}
+
+      {investing && (
+        <PositionDialog open={investing} onOpenChange={setInvesting} defaultAccountId={account.id} />
       )}
     </div>
   )

@@ -23,7 +23,7 @@ const TABS: { kind: AssetKind; label: string; types: string[] }[] = [
 
 const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/
 
-export function PositionDialog({ open, onOpenChange, editing }: { open: boolean; onOpenChange: (o: boolean) => void; editing?: Position | null }) {
+export function PositionDialog({ open, onOpenChange, editing, defaultAccountId }: { open: boolean; onOpenChange: (o: boolean) => void; editing?: Position | null; defaultAccountId?: string }) {
   const { state } = useFinance()
   const { add, update } = useInvestments()
   const { toast } = useToast()
@@ -69,11 +69,11 @@ export function PositionDialog({ open, onOpenChange, editing }: { open: boolean;
       } else {
         setKind("stock"); setSelected(null); setCustomName("")
         setCurrency("EUR"); setDate(new Date().toISOString().split("T")[0]); setUnits(""); setBuyPrice("")
-        setDca(false); setDcaAmount(""); setDcaFreq("monthly"); setAccountId(investAccounts[0]?.id ?? "")
+        setDca(false); setDcaAmount(""); setDcaFreq("monthly"); setAccountId(defaultAccountId ?? investAccounts[0]?.id ?? "")
         setAssetClass(defaultAssetClass("stock"))
       }
     })
-  }, [open, editing, investAccounts])
+  }, [open, editing, investAccounts, defaultAccountId])
 
   useEffect(() => {
     // Búsqueda con debounce contra una API externa (sistema externo): uso válido

@@ -231,14 +231,32 @@ export default function DashboardContent() {
   )
   const accountName = (id: string) => state.accounts.find((a) => a.id === id)?.nombre ?? "—"
 
+  // Patrimonio de hace un mes, para el factor "Patrimonio en crecimiento" de
+  // la puntuación financiera. A propósito NO se usa `rangeStart` (el primer
+  // punto del gráfico de evolución): ese valor depende de qué pestaña de
+  // rango tenga seleccionada el usuario (Hoy/7D/30D/6M/12M/24M), así que la
+  // puntuación cambiaba solo con tocar el gráfico, sin que nada financiero
+  // hubiera cambiado. Este punto de comparación es fijo.
+  const scoreBaselineDate = useMemo(() => new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1), [selectedDate])
+  const scoreBaselineKey = `${scoreBaselineDate.getFullYear()}-${String(scoreBaselineDate.getMonth() + 1).padStart(2, "0")}`
+  const scoreBaseline = useMemo(
+    () => getNetWorthAtMonth(state.accounts, state.transactions, scoreBaselineKey) - investmentSaldo + investmentDisplayTotal,
+    [state.accounts, state.transactions, scoreBaselineKey, investmentSaldo, investmentDisplayTotal]
+  )
+
   const score = useMemo(() => {
     let s = 0
     s += (Math.max(0, Math.min(savingsRate, 30)) / 30) * 40
-    if (monthTotals.neto > 0) s += 20
-    if (netWorthDisplay > rangeStart) s += 20
+    // Los dos factores de abajo usan una zona de transición (en vez de un
+    // corte seco en 0) para que un único movimiento pequeño (un ajuste, un
+    // ingreso puntual) no dispare la puntuación de golpe ±20 puntos: solo
+    // cambios claramente positivos o negativos mueven el factor entero.
+    s += Math.max(0, Math.min(1, (monthTotals.neto + 100) / 200)) * 20
+    const growthPct = scoreBaseline > 0 ? ((netWorthDisplay - scoreBaseline) / scoreBaseline) * 100 : netWorthDisplay > 0 ? 100 : 0
+    s += Math.max(0, Math.min(1, (growthPct + 2) / 4)) * 20
     if (displayAccounts.some((a) => a.tipo === "emergencia" && a.saldo > 0)) s += 20
     return Math.round(Math.max(0, Math.min(100, s)))
-  }, [savingsRate, monthTotals.neto, netWorthDisplay, rangeStart, displayAccounts])
+  }, [savingsRate, monthTotals.neto, netWorthDisplay, scoreBaseline, displayAccounts])
 
   const scoreTier =
     score >= 80 ? { label: "Excelente", color: "var(--accent-green)" }
@@ -249,7 +267,7 @@ export default function DashboardContent() {
   const scoreFactors = [
     { label: "Tasa de ahorro ≥ 20%", ok: savingsRate >= 20 },
     { label: "Flujo del mes positivo", ok: monthTotals.neto > 0 },
-    { label: "Patrimonio en crecimiento", ok: netWorthDisplay > rangeStart },
+    { label: "Patrimonio en crecimiento", ok: netWorthDisplay > scoreBaseline },
     { label: "Fondo de emergencia activo", ok: displayAccounts.some((a) => a.tipo === "emergencia" && a.saldo > 0) },
   ]
 
