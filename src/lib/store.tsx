@@ -392,10 +392,14 @@ interface FinanceContextValue {
   state: FinanceState
   dispatch: React.Dispatch<Action>
   loading: boolean
-  syncStatus: SyncStatus
 }
 
 const FinanceContext = createContext<FinanceContextValue | null>(null)
+// El estado de sincronización vive en su propio contexto: cambia dos veces por
+// cada dispatch ("syncing" → "saved") y solo lo consume el indicador del
+// sidebar — si viviera en FinanceContext, cada sync re-renderizaría todos los
+// consumidores de useFinance() de la app dos veces extra.
+const SyncStatusContext = createContext<SyncStatus>("idle")
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, defaultState)
@@ -453,13 +457,17 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, [state, initialized])
 
   // Memoizado: si no, este objeto se recrea en cada render de FinanceProvider
-  // (aunque state/loading/syncStatus no hayan cambiado) y como Context re-
-  // renderiza a todos los consumidores cuando su `value` cambia de referencia,
-  // cualquier cambio en cualquier parte del árbol forzaba un re-render de
-  // absolutamente todo lo que usa useFinance() en la app.
-  const contextValue = useMemo(() => ({ state, dispatch, loading, syncStatus }), [state, loading, syncStatus])
+  // (aunque state/loading no hayan cambiado) y como Context re-renderiza a
+  // todos los consumidores cuando su `value` cambia de referencia, cualquier
+  // cambio en cualquier parte del árbol forzaba un re-render de absolutamente
+  // todo lo que usa useFinance() en la app.
+  const contextValue = useMemo(() => ({ state, dispatch, loading }), [state, loading])
 
-  return <FinanceContext.Provider value={contextValue}>{children}</FinanceContext.Provider>
+  return (
+    <FinanceContext.Provider value={contextValue}>
+      <SyncStatusContext.Provider value={syncStatus}>{children}</SyncStatusContext.Provider>
+    </FinanceContext.Provider>
+  )
 }
 
 async function loadFromSupabase(): Promise<FinanceState | null> {
@@ -608,6 +616,10 @@ export function useFinance() {
   const ctx = useContext(FinanceContext)
   if (!ctx) throw new Error("useFinance must be used within FinanceProvider")
   return ctx
+}
+
+export function useSyncStatus() {
+  return useContext(SyncStatusContext)
 }
 
 export function generateId(): string {

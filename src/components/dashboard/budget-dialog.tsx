@@ -65,7 +65,7 @@ export function BudgetDialog({ open, onOpenChange, selectedMonth }: BudgetDialog
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Presupuestos de <span className="capitalize">{monthLabel}</span></DialogTitle>
+          <DialogTitle>Presupuestos de {monthLabel}</DialogTitle>
         </DialogHeader>
 
         <p className="text-sm text-muted-foreground">Asigna un límite mensual por categoría. Déjalo vacío o en 0 para quitarlo.</p>

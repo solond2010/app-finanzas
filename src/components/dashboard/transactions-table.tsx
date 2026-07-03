@@ -481,7 +481,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
               currentGrouped.map((group) => (
                 <Fragment key={group.date}>
                   <TableRow>
-                    <TableCell colSpan={8} className="px-3 py-2 bg-card/90 backdrop-blur-sm text-[11px] sm:text-xs font-bold text-muted-foreground capitalize tracking-[0.08em] border-b border-border/40">
+                    <TableCell colSpan={8} className="px-3 py-2 bg-card/90 backdrop-blur-sm text-[11px] sm:text-xs font-bold text-muted-foreground tracking-[0.08em] border-b border-border/40">
                       {group.label}
                     </TableCell>
                   </TableRow>

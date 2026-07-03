@@ -250,6 +250,19 @@ export function SinkingFundsGrid() {
                         <Sensitive as="span" className="tabular-nums">{monthly.toLocaleString("es-ES")} {symbol}/mes</Sensitive>
                       </p>
                     )}
+                    {remaining > 0 && averageMonthlySavings > 0 && (() => {
+                      // Estimación visible también en móvil (el tooltip solo
+                      // aparece con hover): meses restantes al ritmo de ahorro
+                      // medio real de los últimos 3 meses.
+                      const monthsNeeded = Math.ceil(remaining / averageMonthlySavings)
+                      const estimated = new Date()
+                      estimated.setMonth(estimated.getMonth() + monthsNeeded)
+                      return (
+                        <p className="text-emerald-500/90">
+                          A tu ritmo: {estimated.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
+                        </p>
+                      )
+                    })()}
                   </div>
                 </div>
               )

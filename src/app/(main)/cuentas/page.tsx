@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AnimatedNumber } from "@/components/shared/animated-number"
-import { Wallet as WalletIcon, Sparkles, Plus } from "lucide-react"
+import { Wallet as WalletIcon, Plus } from "lucide-react"
 import { formatMoney, currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig, typeLabels } from "@/lib/account-types"
@@ -52,28 +52,19 @@ export default function CuentasPage() {
 
   return (
     <div className="content-fade space-y-6 sm:space-y-7">
-      <section className="rounded-[16px] border border-border bg-card p-6 sm:p-8">
-        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
-              <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-              Tus cuentas
-            </div>
-            <div className="space-y-2">
-              <p className="page-section-label">Patrimonio</p>
-              <h1 className="max-w-3xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl">Todo tu dinero, centralizado.</h1>
-              <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Saldos, bancos y progreso de objetivos financieros en un solo vistazo.</p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 rounded-[16px] hero-panel px-6 py-4">
-            <p className="page-section-label">Patrimonio neto total</p>
-            <p className="hero-figure text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[38px]">
-              <Sensitive as="span"><AnimatedNumber value={netWorth} /></Sensitive>
-            </p>
-          </div>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="page-section-label">Patrimonio</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Cuentas</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Saldos, bancos y progreso de objetivos en un vistazo.</p>
         </div>
-      </section>
+        <div className="flex flex-col gap-1 rounded-[16px] hero-panel px-5 py-3.5 sm:items-end">
+          <p className="page-section-label">Patrimonio neto total</p>
+          <p className="hero-figure text-[26px] font-bold leading-none tracking-tight tabular-nums sm:text-[30px]">
+            <Sensitive as="span"><AnimatedNumber value={netWorth} /></Sensitive>
+          </p>
+        </div>
+      </header>
 
       {loading ? (
         <div className="space-y-4">
@@ -96,8 +87,8 @@ export default function CuentasPage() {
         <>
           <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <TickerTile label="Cuentas" value={String(state.accounts.length)} valueColor="var(--primary)" />
-            <TickerTile label="Cuenta líder" value={topAccount ? topAccount.nombre : "—"} suffix={topAccount ? `· ${formatMoney(accountValue(topAccount), topAccount.currency)}` : undefined} valueColor="var(--gold)" />
-            <TickerTile label="Objetivo más cerca" value={nearestGoal ? nearestGoal.account.nombre : "—"} suffix={nearestGoal ? `· ${Math.round(nearestGoal.pct)}%` : undefined} valueColor="var(--accent-green)" />
+            <TickerTile label="Cuenta líder" value={topAccount ? formatMoney(accountValue(topAccount), topAccount.currency) : "—"} detail={topAccount?.nombre} valueColor="var(--gold)" />
+            <TickerTile label="Objetivo más cerca" value={nearestGoal ? `${Math.round(nearestGoal.pct)}%` : "—"} detail={nearestGoal?.account.nombre} valueColor="var(--accent-green)" />
             <TickerTile label="Liquidez" value={`${liquidPct}%`} valueColor="var(--accent-blue)" />
           </section>
 

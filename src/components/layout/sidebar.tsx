@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { useFinance } from "@/lib/store"
+import { useSyncStatus } from "@/lib/store"
 import { usePrivacy } from "@/lib/privacy"
 import {
   LayoutDashboard,
@@ -51,7 +51,7 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { syncStatus } = useFinance()
+  const syncStatus = useSyncStatus()
   const { privacy, toggle: togglePrivacy } = usePrivacy()
   const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar()
   const [mobileOpen, setMobileOpen] = useState(false)

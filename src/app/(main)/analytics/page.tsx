@@ -2,7 +2,7 @@
 
 import { useMemo, useState, memo } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Layers3, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react"
+import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Layers3, PiggyBank, TrendingDown, TrendingUp, Wallet } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -136,36 +136,24 @@ export default function AnalyticsPage() {
 
   return (
     <div className="content-fade space-y-6 sm:space-y-7">
-      <section className="hero-gradient rounded-[16px] bg-card/70 p-6 sm:p-8 card-glow">
-        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
-              <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-              Centro de inteligencia financiera
-            </div>
-            <div className="space-y-2">
-              <p className="page-section-label">Analíticas</p>
-              <h1 className="max-w-3xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl">Entiende tu dinero sin leer una hoja de cálculo.</h1>
-              <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Patrimonio, cash flow, hábitos de gasto y regla 50/30/20 en una vista pensada para tomar decisiones.</p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3 lg:min-w-[310px] lg:items-end">
-            <div className="flex items-center gap-2 rounded-2xl bg-background/70 px-3 py-2 card-glow">
-              <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes anterior">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="min-w-[165px] text-center text-sm font-bold capitalize tracking-tight">{formatMonth(selectedDate)}</span>
-              <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes siguiente">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
-              {hasData && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmReset(true)}>Limpiar</Button>}
-            </div>
-          </div>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="page-section-label">Centro de inteligencia financiera</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Analíticas</h1>
         </div>
-      </section>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+            <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes anterior">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="w-28 text-center text-sm font-medium text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
+            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes siguiente">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          {hasData && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmReset(true)}>Limpiar</Button>}
+        </div>
+      </header>
 
       {loading ? (
         <div className="space-y-4">
@@ -189,7 +177,7 @@ export default function AnalyticsPage() {
         <TickerTile label="Tasa de ahorro" value={`${Math.round(savingsActual)}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
         <TickerTile label="Racha positiva" value={streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"} valueColor="var(--accent-amber)" />
         <TickerTile label="Cash flow medio" value={signedMoney(averageMonthlyNet)} valueColor={averageMonthlyNet >= 0 ? "var(--accent-green)" : "var(--accent-red)"} />
-        <TickerTile label="Categoría top" value={topCategory ? topCategory.categoria : "—"} suffix={topCategory ? `· ${topCategoryPct}%` : undefined} valueColor="var(--gold)" />
+        <TickerTile label="Categoría top" value={topCategory ? `${topCategoryPct}%` : "—"} detail={topCategory?.categoria} valueColor="var(--gold)" />
       </section>
 
       <section className="grid grid-cols-12 gap-6">

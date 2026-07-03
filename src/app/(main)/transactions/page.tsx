@@ -143,7 +143,7 @@ export default function IngresosGastosPage() {
           <ImportCsvButton />
           <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
             <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="w-28 text-center text-sm font-medium capitalize text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
+            <span className="w-28 text-center text-sm font-medium text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
             <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
           </div>
         </div>
@@ -160,7 +160,7 @@ export default function IngresosGastosPage() {
         <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
         <TickerTile label="Pagos pendientes" value={upcomingRecurring.length > 0 ? String(upcomingRecurring.length) : "Al día"} valueColor="var(--accent-amber)" />
         <TickerTile label="Mayor gasto" value={biggestExpense > 0 ? formatMoney(biggestExpense, "EUR") : "—"} valueColor="var(--accent-red)" />
-        <TickerTile label="Categoría top" value={topCategory ? `${topCategory.categoria} · ${topCategoryPct}%` : "—"} valueColor="var(--gold)" />
+        <TickerTile label="Categoría top" value={topCategory ? `${topCategoryPct}%` : "—"} detail={topCategory?.categoria} valueColor="var(--gold)" />
       </section>
 
       {/* Fila 1: Cuenta principal · Objetivo ingresos · Próximos pagos */}
@@ -269,7 +269,7 @@ export default function IngresosGastosPage() {
         {/* Balance */}
         <div className={`${CARD} flex min-w-0 flex-col gap-4`}>
           <div>
-            <p className="page-section-label">Balance · <span className="capitalize">{formatMonth(selectedDate)}</span></p>
+            <p className="page-section-label">Balance · {formatMonth(selectedDate)}</p>
             <p className={cn("mt-1 text-3xl font-bold tabular-nums tracking-tight", monthTotals.neto >= 0 ? "text-foreground" : "text-red-500")}>
               <Sensitive><AnimatedNumber value={monthTotals.neto} prefix={monthTotals.neto >= 0 ? "+" : ""} /></Sensitive>
             </p>

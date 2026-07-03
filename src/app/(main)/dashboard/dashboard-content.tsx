@@ -19,7 +19,7 @@ import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransaction
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
-import { formatMonth, isInitialBalanceTransaction, chartFormatter, formatCappedPct } from "@/lib/format"
+import { formatMonth, isInitialBalanceTransaction, chartFormatter, formatCappedPct, PCT_CHANGE_CAP } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
@@ -101,7 +101,7 @@ export default function DashboardContent() {
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
-  const { positions: investPositions, value: portfolioValue, pnl: portfolioPnl, pnlPct: portfolioPnlPct, valueByAccount, investedByAccount } = usePortfolioValue()
+  const { positions: investPositions, value: portfolioValue, pnl: portfolioPnl, valueByAccount, investedByAccount } = usePortfolioValue()
   // El saldo de las cuentas de inversión no baja al comprar una posición (no
   // genera un gasto), así que solo se sustituye la parte ya invertida por el
   // valor de mercado actual — el efectivo aún sin invertir se mantiene intacto
@@ -210,8 +210,11 @@ export default function DashboardContent() {
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
   const rangeDelta = netWorthDisplay - rangeStart
-  const showPct = Math.abs(rangeStart) >= 100
-  const rangePct = showPct ? (rangeDelta / Math.abs(rangeStart)) * 100 : 0
+  // El % solo se muestra si la base es significativa Y el resultado es un dato
+  // legible: contra una base pequeña sale un ">500%" que parece un error, y en
+  // ese caso la cifra absoluta ya cuenta la historia completa.
+  const rangePct = Math.abs(rangeStart) >= 100 ? (rangeDelta / Math.abs(rangeStart)) * 100 : 0
+  const showPct = Math.abs(rangeStart) >= 100 && Math.abs(rangePct) <= PCT_CHANGE_CAP
   // Máximo histórico dentro del rango visible, para la insignia dorada del hero.
   const isAllTimeHigh = netWorthHasData && rangeDelta > 0 && netWorthDisplay >= Math.max(...netWorthTrend.map((t) => t.patrimonio))
 
@@ -347,6 +350,15 @@ export default function DashboardContent() {
       .filter((b) => b.limite > 0)
   }, [state.budgets, state.categories, analysisTransactions, selectedMonth])
 
+  // Respuesta directa a "¿cuánto puedo gastar aún este mes?": suma de los
+  // presupuestos del mes menos lo ya gastado en esas categorías. Negativo si
+  // el presupuesto está excedido (se pinta en rojo).
+  const budgetTotals = useMemo(() => {
+    const limite = budgetRows.reduce((s, b) => s + b.limite, 0)
+    const gastado = budgetRows.reduce((s, b) => s + b.gastado, 0)
+    return { limite, gastado, disponible: limite - gastado }
+  }, [budgetRows])
+
   const [exportingPdf, setExportingPdf] = useState(false)
   const handleExportDashboard = async () => {
     setExportingPdf(true)
@@ -394,7 +406,7 @@ export default function DashboardContent() {
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
             <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="w-28 text-center text-sm font-medium capitalize text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
+            <span className="w-28 text-center text-sm font-medium text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
             <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
           </div>
           {hasAnyData && (
@@ -506,7 +518,12 @@ export default function DashboardContent() {
           <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <TickerTile label="Ingresos" value={`+${formatMoney(monthTotals.ingresos, "EUR")}`} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" />
             <TickerTile label="Gastos" value={`-${formatMoney(monthTotals.gastos, "EUR")}`} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" />
-            <TickerTile label="Cartera" value={portfolioValue > 0 ? `${portfolioPnlPct >= 0 ? "+" : ""}${portfolioPnlPct.toFixed(2)}%` : "—"} valueColor="var(--gold)" />
+            <TickerTile
+              label="Disponible este mes"
+              value={budgetTotals.limite > 0 ? formatMoney(budgetTotals.disponible, "EUR") : "—"}
+              detail={budgetTotals.limite > 0 ? `de ${formatMoney(budgetTotals.limite, "EUR")} presupuestados` : "Sin presupuesto definido"}
+              valueColor={budgetTotals.limite > 0 ? (budgetTotals.disponible >= 0 ? "var(--gold)" : "var(--accent-red)") : undefined}
+            />
             <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" />
           </section>
 

@@ -19,7 +19,7 @@ import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { EmptyState } from "@/components/shared/empty-state"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
-import { chartFormatter, isInitialBalanceTransaction } from "@/lib/format"
+import { chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
 import { getMonthTotalsByString, getMonthlyInvestmentInflow, getNetWorthAtMonth } from "@/lib/calculations"
 import { getSetting, setSetting } from "@/lib/settings"
 import { Sensitive } from "@/components/shared/sensitive"
@@ -148,6 +148,9 @@ export default function InversionesPage() {
   }), [positions, quotes])
 
   const baseCurrency = (positions[0]?.currency ?? "EUR") as CurrencyCode
+  // Alias del valor total de cartera: dentro del map de posiciones `value` queda
+  // sombreado por el valor de la fila, y el peso se calcula contra el total.
+  const totalValue = value
   const ahorros0 = state.accounts.filter((a) => a.tipo === "ahorro").reduce((s, a) => s + a.saldo, 0)
 
   const activosData = useMemo(
@@ -189,7 +192,7 @@ export default function InversionesPage() {
   const MAX_XRAY_MONTH_OFFSET = 5
   const xraySelectedDate = useMemo(() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - xrayMonthOffset); return d }, [xrayMonthOffset])
   const xrayMonthKey = useMemo(() => `${xraySelectedDate.getFullYear()}-${String(xraySelectedDate.getMonth() + 1).padStart(2, "0")}`, [xraySelectedDate])
-  const xrayMonthLabel = useMemo(() => xraySelectedDate.toLocaleDateString("es-ES", { month: "long", year: "numeric" }), [xraySelectedDate])
+  const xrayMonthLabel = useMemo(() => formatMonth(xraySelectedDate), [xraySelectedDate])
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
   const xrayMonthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, xrayMonthKey), [analysisTransactions, xrayMonthKey])
   const xrayInvestmentInflow = useMemo(() => getMonthlyInvestmentInflow(analysisTransactions, state.accounts, xrayMonthKey), [analysisTransactions, state.accounts, xrayMonthKey])
@@ -270,7 +273,7 @@ export default function InversionesPage() {
                 <button onClick={() => setXrayMonthOffset((o) => Math.min(MAX_XRAY_MONTH_OFFSET, o + 1))} disabled={xrayMonthOffset >= MAX_XRAY_MONTH_OFFSET} aria-label="Mes anterior del informe" className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none">
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </button>
-                <span className="w-24 text-center text-xs font-medium capitalize text-foreground">{xrayMonthLabel}</span>
+                <span className="w-24 text-center text-xs font-medium text-foreground">{xrayMonthLabel}</span>
                 <button onClick={() => setXrayMonthOffset((o) => Math.max(0, o - 1))} disabled={xrayMonthOffset <= 0} aria-label="Mes siguiente del informe" className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none">
                   <ChevronRight className="h-3.5 w-3.5" />
                 </button>
@@ -299,7 +302,7 @@ export default function InversionesPage() {
             <TickerTile label="Valor cartera" value={formatMoney(value, baseCurrency)} />
             <TickerTile label="Rentabilidad" value={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`} valueColor={pnlPct >= 0 ? "var(--accent-green)" : "var(--accent-red)"} />
             <TickerTile label="Invertido" value={formatMoney(invested, baseCurrency)} />
-            <TickerTile label="Mejor posición" value={bestPosition ? bestPosition.p.name : "—"} suffix={bestPosition ? `${bestPosition.plPct >= 0 ? "+" : ""}${bestPosition.plPct.toFixed(2)}%` : undefined} valueColor="var(--gold)" />
+            <TickerTile label="Mejor posición" value={bestPosition ? `${bestPosition.plPct >= 0 ? "+" : ""}${bestPosition.plPct.toFixed(2)}%` : "—"} detail={bestPosition?.p.name} valueColor="var(--gold)" />
           </section>
 
           {/* Fila superior: cuentas + seguimiento */}
@@ -392,7 +395,11 @@ export default function InversionesPage() {
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">{p.symbol.replace("custom:", "").slice(0, 2).toUpperCase()}</span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold text-foreground">{p.name}</p>
-                          <p className="truncate text-xs text-muted-foreground"><Sensitive>{formatMoney(value, p.currency as CurrencyCode)}</Sensitive>{!live && p.kind !== "custom" && " · sin precio"}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            <Sensitive>{formatMoney(value, p.currency as CurrencyCode)}</Sensitive>
+                            {totalValue > 0 && value > 0 && ` · ${((value / totalValue) * 100).toFixed(1)}% de la cartera`}
+                            {!live && p.kind !== "custom" && " · sin precio"}
+                          </p>
                         </div>
                         <span className={cn("shrink-0 text-xs font-bold tabular-nums",
                           (posView === "daily" ? (changePct ?? 0) : plPct) >= 0 ? "text-emerald-500" : "text-red-500")}>

@@ -21,8 +21,11 @@ export function formatCappedPct(value: number, cap = PCT_CHANGE_CAP) {
   return magnitude > cap ? `${sign}>${cap}%` : `${sign}${magnitude}%`
 }
 
+// Capitaliza solo la primera letra ("Julio de 2026"). No usar la clase CSS
+// `capitalize` sobre este texto: capitaliza cada palabra y produce "Julio De 2026".
 export function formatMonth(date: Date) {
-  return date.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+  const s = date.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 export function formatMonthShort(d: Date) {
@@ -51,5 +54,6 @@ export function dateLabel(dateStr: string) {
   yesterday.setDate(yesterday.getDate() - 1)
   if (d.toDateString() === today.toDateString()) return "Hoy"
   if (d.toDateString() === yesterday.toDateString()) return "Ayer"
-  return d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })
+  const s = d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }

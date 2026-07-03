@@ -49,6 +49,8 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
 
   const overCount = budgetProgress.filter((b) => b.percentage >= 100).length
   const warningCount = budgetProgress.filter((b) => b.percentage >= WARNING_THRESHOLD && b.percentage < 100).length
+  const totalLimit = budgetProgress.reduce((s, b) => s + b.amount, 0)
+  const totalRemaining = budgetProgress.reduce((s, b) => s + b.remaining, 0)
 
   return (
     <div className={CARD}>
@@ -112,6 +114,12 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
               </div>
             )
           })}
+          <div className="flex items-center justify-between border-t border-border/60 pt-3 text-xs">
+            <span className="font-medium text-muted-foreground">Disponible este mes</span>
+            <span className={cn("font-semibold tabular-nums", totalRemaining >= 0 ? "text-emerald-500" : "text-red-500")}>
+              <Sensitive>{formatMoney(totalRemaining, "EUR")}</Sensitive> <span className="font-normal text-muted-foreground">de <Sensitive>{formatMoney(totalLimit, "EUR")}</Sensitive></span>
+            </span>
+          </div>
         </div>
       )}
 

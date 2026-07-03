@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { Sparkles, Target, TrendingUp, Wallet } from "lucide-react"
+import { Target, TrendingUp, Wallet } from "lucide-react"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { TickerTile } from "@/components/shared/ticker-tile"
@@ -34,39 +34,30 @@ export default function ObjetivosPage() {
 
   return (
     <div className="content-fade space-y-6 sm:space-y-7">
-      <section className="hero-gradient rounded-[16px] bg-card/70 p-6 card-glow sm:p-8">
-        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
-              <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-              Metas de ahorro
-            </div>
-            <div className="space-y-2">
-              <p className="page-section-label">Objetivos</p>
-              <h1 className="max-w-3xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl">Convierte metas en logros.</h1>
-              <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Define objetivos, vincula cuentas y sigue tu progreso automáticamente mes a mes.</p>
-            </div>
-          </div>
-
-          {hasMetas && (
-            <div className="flex flex-col gap-2 rounded-[16px] hero-panel px-6 py-4">
-              <p className="page-section-label">Progreso global</p>
-              <p className="hero-figure text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[38px]">
-                <AnimatedNumber value={stats.overallProgress} suffix="%" />
-              </p>
-              <p className="text-xs text-muted-foreground">
-                <AnimatedNumber value={Math.round(stats.totalAhorrado)} /> de <AnimatedNumber value={Math.round(stats.totalObjetivo)} />
-              </p>
-            </div>
-          )}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="page-section-label">Metas de ahorro</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Objetivos</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Define objetivos, vincula cuentas y sigue tu progreso mes a mes.</p>
         </div>
-      </section>
+        {hasMetas && (
+          <div className="flex flex-col gap-1 rounded-[16px] hero-panel px-5 py-3.5 sm:items-end">
+            <p className="page-section-label">Progreso global</p>
+            <p className="hero-figure text-[26px] font-bold leading-none tracking-tight tabular-nums sm:text-[30px]">
+              <AnimatedNumber value={stats.overallProgress} suffix="%" />
+            </p>
+            <p className="text-xs text-muted-foreground">
+              <AnimatedNumber value={Math.round(stats.totalAhorrado)} /> de <AnimatedNumber value={Math.round(stats.totalObjetivo)} />
+            </p>
+          </div>
+        )}
+      </header>
 
       {hasMetas && (
         <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           <TickerTile label="Restante total" value={money(totalRestante)} valueColor="var(--accent-amber)" />
-          <TickerTile label="Meta más cerca" value={nearestFund ? nearestFund.nombre : "—"} suffix={nearestFund ? `· ${Math.round(nearestFund.pct)}%` : undefined} valueColor="var(--accent-green)" />
-          <TickerTile label="Mayor esfuerzo" value={biggestEffortFund ? biggestEffortFund.nombre : "—"} suffix={biggestEffortFund ? `· ${money(biggestEffortFund.restante)}` : undefined} valueColor="var(--gold)" />
+          <TickerTile label="Meta más cerca" value={nearestFund ? `${Math.round(nearestFund.pct)}%` : "—"} detail={nearestFund?.nombre} valueColor="var(--accent-green)" />
+          <TickerTile label="Mayor esfuerzo" value={biggestEffortFund ? money(biggestEffortFund.restante) : "—"} detail={biggestEffortFund?.nombre} valueColor="var(--gold)" />
           <TickerTile label="Completadas" value={`${completedCount}/${stats.count}`} valueColor="var(--primary)" />
         </section>
       )}
