@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
+import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
@@ -82,7 +83,24 @@ export default function AnalyticsPage() {
   const categoryBreakdown = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const summaries = useMemo(() => buildMonthlySummariesUpTo(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const cashFlow = useMemo(() => buildMonthlyCashFlow(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
-  const netWorthHistory = useMemo(() => buildNetWorthHistory(state.transactions, state.accounts, selectedMonth), [state.transactions, state.accounts, selectedMonth])
+  const { valueByAccount, investedByAccount } = usePortfolioValue()
+  // Las cuentas de inversión no bajan su saldo al comprar una posición (no
+  // genera un gasto), así que el patrimonio en crudo mezcla efectivo sin
+  // invertir con dinero ya invertido. Se sustituye la parte invertida por su
+  // valor de mercado real (ver accountDisplayValue), igual que en
+  // Dashboard/Cuentas/Inversiones — si no, esta página mostraba una cifra de
+  // patrimonio distinta a la del resto de la app.
+  const investmentAccounts = useMemo(() => state.accounts.filter((a) => a.tipo === "inversion"), [state.accounts])
+  const investmentSaldo = useMemo(() => investmentAccounts.reduce((s, a) => s + a.saldo, 0), [investmentAccounts])
+  const investmentDisplayTotal = useMemo(
+    () => investmentAccounts.reduce((s, a) => s + accountDisplayValue(a, valueByAccount, investedByAccount), 0),
+    [investmentAccounts, valueByAccount, investedByAccount]
+  )
+  const rawNetWorthHistory = useMemo(() => buildNetWorthHistory(state.transactions, state.accounts, selectedMonth), [state.transactions, state.accounts, selectedMonth])
+  const netWorthHistory = useMemo(
+    () => rawNetWorthHistory.map((point) => ({ ...point, patrimonio: point.patrimonio - investmentSaldo + investmentDisplayTotal })),
+    [rawNetWorthHistory, investmentSaldo, investmentDisplayTotal]
+  )
 
   const currentNetWorth = netWorthHistory.at(-1)?.patrimonio ?? 0
   const previousNetWorth = netWorthHistory.at(-2)?.patrimonio ?? currentNetWorth

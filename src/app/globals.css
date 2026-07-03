@@ -543,8 +543,15 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Contorno de foco de teclado por defecto para toda la app. Los componentes
+   Button/Input ya traen su propio anillo (focus-visible:ring-*, vía
+   box-shadow) y este contorno no interfiere con eso al ser una propiedad
+   distinta — pero cualquier <button>/<a> "a mano" sin ese anillo propio
+   (sidebar, nav, tarjetas clicables) se quedaba sin ninguna marca visible de
+   foco al navegar con teclado. */
 :focus-visible {
-  outline: none;
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 /* ── Tremor / Recharts overrides ── */

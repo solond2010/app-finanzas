@@ -291,10 +291,10 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
       const values = [
         t.fecha,
         t.tipo,
-        t.categoria,
+        `"${t.categoria.replaceAll('"', '""')}"`,
         `"${t.descripcion.replaceAll('"', '""')}"`,
         t.monto,
-        account?.nombre ?? "",
+        `"${(account?.nombre ?? "").replaceAll('"', '""')}"`,
         account?.currency ?? "EUR",
         `"${t.tags.join(", ").replaceAll('"', '""')}"`,
       ]

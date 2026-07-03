@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useReducer, useEffect, useRef, useState, type ReactNode } from "react"
+import { createContext, useContext, useReducer, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
 import { type CurrencyCode, refreshExchangeRates } from "./currency"
 
@@ -452,7 +452,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true }
   }, [state, initialized])
 
-  return <FinanceContext.Provider value={{ state, dispatch, loading, syncStatus }}>{children}</FinanceContext.Provider>
+  // Memoizado: si no, este objeto se recrea en cada render de FinanceProvider
+  // (aunque state/loading/syncStatus no hayan cambiado) y como Context re-
+  // renderiza a todos los consumidores cuando su `value` cambia de referencia,
+  // cualquier cambio en cualquier parte del árbol forzaba un re-render de
+  // absolutamente todo lo que usa useFinance() en la app.
+  const contextValue = useMemo(() => ({ state, dispatch, loading, syncStatus }), [state, loading, syncStatus])
+
+  return <FinanceContext.Provider value={contextValue}>{children}</FinanceContext.Provider>
 }
 
 async function loadFromSupabase(): Promise<FinanceState | null> {
