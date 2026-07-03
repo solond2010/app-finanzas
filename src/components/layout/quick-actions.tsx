@@ -360,16 +360,13 @@ export function QuickActionsFAB() {
           isScrolling ? "scale-90 opacity-60" : "scale-100 opacity-100"
         }`}
       >
-        <div className="relative">
-          <span className="absolute inset-0 rounded-full animate-spin-slow" style={{ boxShadow: "0 0 0 2px color-mix(in oklch, var(--gold), transparent 70%), 0 0 20px 4px color-mix(in oklch, var(--gold), transparent 75%)" }} />
-          <button
-            onClick={() => setDialogOpen(true)}
-            aria-label="Nuevo movimiento"
-            className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[var(--gold)] to-[color-mix(in_oklch,var(--gold),oklch(1_0_0)_18%)] shadow-xl shadow-[color-mix(in_oklch,var(--gold),transparent_55%)] transition-all duration-300 hover:scale-110 hover:shadow-2xl active:scale-95"
-          >
-            <Plus className="h-7 w-7 text-[var(--gold-foreground)]" />
-          </button>
-        </div>
+        <button
+          onClick={() => setDialogOpen(true)}
+          aria-label="Nuevo movimiento"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--gold)] shadow-md transition-colors hover:brightness-95 active:scale-95"
+        >
+          <Plus className="h-6 w-6 text-[var(--gold-foreground)]" />
+        </button>
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

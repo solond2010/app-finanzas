@@ -423,11 +423,10 @@
 }
 
 .glass-card-hover {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+  transition: border-color 0.15s ease;
 }
 
 .glass-card-hover:hover {
-  translate: 0 -2px;
   border-color: color-mix(in oklch, var(--foreground), transparent 78%);
 }
 
@@ -447,32 +446,12 @@
   background: var(--hero-bg);
   border: 1px solid var(--hero-border);
   border-top-color: color-mix(in oklch, var(--gold), transparent 45%);
-  overflow: hidden;
 }
 
-/* Brillo ambiental muy sutil en la esquina superior derecha, para que la
-   card "de riqueza" no se sienta plana. Puramente decorativo: no roba
-   contraste al contenido porque el degradado se apaga al 88% antes de
-   llegar al centro de la card. */
-.hero-panel::before {
-  content: "";
-  position: absolute;
-  top: -25%;
-  right: -10%;
-  width: 55%;
-  height: 70%;
-  background: radial-gradient(circle at top right, color-mix(in oklch, var(--gold), transparent 88%), transparent 70%);
-  pointer-events: none;
-}
-
-/* Cifra protagonista de una hero-panel: degradado sutil de --foreground a
-   --primary para dar sensación "premium" sin sacrificar legibilidad (parte
-   de arriba siempre queda con el contraste normal del texto). */
+/* Cifra protagonista de una hero-panel: color sólido, sin degradado de
+   texto (antes era un gradient-clip foreground→primary). */
 .hero-figure {
-  background: linear-gradient(180deg, var(--foreground) 0%, color-mix(in oklch, var(--primary), transparent 15%) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--foreground);
 }
 
 /* Selector de rango tipo "pestaña subrayada", usado dentro de las

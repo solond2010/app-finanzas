@@ -204,7 +204,7 @@ export function SinkingFundsGrid() {
               const circleColor = progress >= 100 ? "var(--accent-green)" : progress >= 50 ? "var(--accent-amber)" : "var(--accent-blue)"
 
               return (
-                <div key={fund.id} className="group relative rounded-2xl border border-border/60 bg-background/70 p-5 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/5">
+                <div key={fund.id} className="group relative rounded-2xl border border-border/60 bg-background/70 p-5 shadow-sm transition-colors hover:shadow-md hover:shadow-primary/5">
                   <PredictionTooltip remaining={remaining} avgMonthly={averageMonthlySavings} symbol={symbol} />
                   <button
                     className="absolute top-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"

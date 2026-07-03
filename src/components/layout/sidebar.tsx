@@ -106,7 +106,7 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile header */}
-      <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b bg-background/80 px-3 py-2.5 backdrop-blur-xl lg:hidden">
+      <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b bg-background/80 px-3 py-2.5 lg:hidden">
         <div className="flex items-center gap-2">
           <button
             onClick={togglePrivacy}
@@ -140,7 +140,7 @@ export function Sidebar() {
         style={{ transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}
         aria-label={sidebarOpen ? "Colapsar menú" : "Expandir menú"}
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground/60 shadow-md backdrop-blur-xl hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all hover:scale-110">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground/60 shadow-md hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all">
           <ChevronLeft className={cn("h-3.5 w-3.5 transition-transform duration-300", !sidebarOpen && "rotate-180")} />
         </span>
       </button>
@@ -165,7 +165,7 @@ export function Sidebar() {
                       "flex items-center justify-center rounded-xl p-2.5 transition-all duration-200",
                       isActive
                         ? "bg-primary/10 text-primary"
-                        : "text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:scale-110 active:scale-95"
+                        : "text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground active:scale-95"
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -179,7 +179,7 @@ export function Sidebar() {
             <Tooltip label={privacy ? "Mostrar cifras" : "Ocultar cifras"}>
               <button
                 onClick={togglePrivacy}
-                className="flex items-center justify-center rounded-xl p-2.5 text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all hover:scale-110 active:scale-95"
+                className="flex items-center justify-center rounded-xl p-2.5 text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all active:scale-95"
               >
                 {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -187,7 +187,7 @@ export function Sidebar() {
             <Tooltip label="Cambiar tema">
               <button
                 onClick={toggleTheme}
-                className="flex items-center justify-center rounded-xl p-2.5 text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all hover:scale-110 active:scale-95"
+                className="flex items-center justify-center rounded-xl p-2.5 text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all active:scale-95"
               >
                 <SunMedium className="hidden h-4 w-4 dark:block" />
                 <MoonStar className="h-4 w-4 dark:hidden" />

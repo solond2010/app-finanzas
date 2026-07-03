@@ -63,8 +63,8 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="content-fade space-y-6 sm:space-y-7">
-      <section className="relative overflow-hidden rounded-[24px] bg-card/70 p-6 shadow-sm ring-1 ring-border/30 backdrop-blur-xl sm:p-8">
-        <div className="relative z-10 space-y-4">
+      <section className="rounded-[16px] border border-border bg-card p-6 sm:p-8">
+        <div className="space-y-4">
           <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
             <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
             Configuración
@@ -83,16 +83,15 @@ export default function ConfiguracionPage() {
         </div>
       ) : (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card className="relative overflow-hidden ring-1 ring-border/25">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent" />
-          <CardHeader className="relative z-10 pb-2">
+        <Card className="border border-border">
+          <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <Layers className="h-4 w-4 text-amber-500" />
               Categorías
             </CardTitle>
             <p className="text-sm text-muted-foreground font-normal">{state.categories.length} categorías configuradas</p>
           </CardHeader>
-          <CardContent className="relative z-10 space-y-4">
+          <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="inline-flex rounded-full bg-muted/60 p-0.5 text-xs font-semibold">
                 <button onClick={() => setNewCatKind("gasto")} className={cn("rounded-full px-3 py-1 transition-colors", newCatKind === "gasto" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Gasto</button>
@@ -139,16 +138,15 @@ export default function ConfiguracionPage() {
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden ring-1 ring-border/25">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent" />
-          <CardHeader className="relative z-10 pb-2">
+        <Card className="border border-border">
+          <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <FileDown className="h-4 w-4 text-blue-500" />
               Exportar datos
             </CardTitle>
             <p className="text-sm text-muted-foreground font-normal">{state.transactions.length} transacciones registradas</p>
           </CardHeader>
-          <CardContent className="relative z-10">
+          <CardContent>
             <div className="flex items-center justify-between rounded-2xl bg-muted/30 p-4 ring-1 ring-border/20">
               <div className="space-y-1">
                 <p className="text-sm font-medium">Descarga tu histórico</p>

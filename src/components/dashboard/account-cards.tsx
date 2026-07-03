@@ -41,7 +41,7 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
         return (
           <div
             key={account.id}
-            className={`stagger-fade relative overflow-hidden rounded-[20px] bg-card/70 backdrop-blur-xl p-5 shadow-sm ring-1 ring-border/20 transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 cursor-pointer group ${santander ? "border-l-4 border-l-red-600/70" : ""}`}
+            className={`stagger-fade relative overflow-hidden rounded-[16px] bg-card/70 backdrop-blur-xl p-5 shadow-sm ring-1 ring-border/20 transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 cursor-pointer group ${santander ? "border-l-4 border-l-red-600/70" : ""}`}
             style={{ animationDelay: `${idx * 80}ms` }}
             onClick={() => router.push(`/cuentas/${account.id}`)}
           >
@@ -123,7 +123,7 @@ export function AccountCards({ selectedMonth }: { selectedMonth?: string }) {
       })}
 
       <button
-        className="rounded-[20px] border-2 border-dashed border-muted-foreground/25 p-5 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-md cursor-pointer bg-card/50 backdrop-blur-sm ring-1 ring-border/10"
+        className="rounded-[16px] border-2 border-dashed border-muted-foreground/25 p-5 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-md cursor-pointer bg-card/50 backdrop-blur-sm ring-1 ring-border/10"
         onClick={() => setShowNew(true)}
       >
         <Plus className="h-6 w-6" />

@@ -34,7 +34,7 @@ export default function ObjetivosPage() {
 
   return (
     <div className="content-fade space-y-6 sm:space-y-7">
-      <section className="hero-gradient rounded-[24px] bg-card/70 p-6 card-glow sm:p-8">
+      <section className="hero-gradient rounded-[16px] bg-card/70 p-6 card-glow sm:p-8">
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
@@ -49,7 +49,7 @@ export default function ObjetivosPage() {
           </div>
 
           {hasMetas && (
-            <div className="flex flex-col gap-2 rounded-[22px] hero-panel px-6 py-4">
+            <div className="flex flex-col gap-2 rounded-[16px] hero-panel px-6 py-4">
               <p className="page-section-label">Progreso global</p>
               <p className="hero-figure text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[38px]">
                 <AnimatedNumber value={stats.overallProgress} suffix="%" />

@@ -24,10 +24,10 @@ import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 
-const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+const CARD = "rounded-[16px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
 // para las dos cifras más importantes de la página (patrimonio y puntuación).
-const CARD_HERO = "rounded-[24px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+const CARD_HERO = "rounded-[16px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 // "Hoy" usa un punto por transacción (orden real de alta vía created_at) en
 // vez de por día, para cuentas tan nuevas que varios movimientos del mismo
 // día esconderían un pico intermedio con resolución diaria. 7D/30D siguen a
@@ -572,7 +572,7 @@ export default function DashboardContent() {
                 return (
                   <button
                     onClick={() => router.push(`/cuentas/${currentAccount.id}`)}
-                    className="group flex w-full flex-col gap-5 rounded-[20px] border border-border bg-muted/30 p-5 text-left transition-colors hover:bg-muted/60 sm:p-6"
+                    className="group flex w-full flex-col gap-5 rounded-[16px] border border-border bg-muted/30 p-5 text-left transition-colors hover:bg-muted/60 sm:p-6"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">

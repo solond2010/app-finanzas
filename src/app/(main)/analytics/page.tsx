@@ -42,7 +42,7 @@ const RuleCard = memo(function RuleCard({ label, target, actual, value, tone, de
   const good = Math.abs(diff) <= 6 || (label.includes("Ahorro") && actual >= target)
 
   return (
-    <div className="stagger-fade glass-card rounded-[22px] p-5 card-glow glass-card-hover" style={{ animationDelay: `${delay}ms` }}>
+    <div className="stagger-fade glass-card rounded-[16px] p-5 card-glow glass-card-hover" style={{ animationDelay: `${delay}ms` }}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="page-section-label">{label}</p>
@@ -118,7 +118,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="content-fade space-y-6 sm:space-y-7">
-      <section className="hero-gradient rounded-[24px] bg-card/70 p-6 sm:p-8 card-glow">
+      <section className="hero-gradient rounded-[16px] bg-card/70 p-6 sm:p-8 card-glow">
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">

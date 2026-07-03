@@ -74,9 +74,8 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(63,107,255,0.12),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(232,182,74,0.10),transparent_35%)] dark:bg-[radial-gradient(circle_at_20%_30%,rgba(63,107,255,0.22),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(232,182,74,0.16),transparent_35%)]" />
-      <div className="hero-panel relative z-10 w-full max-w-sm rounded-[24px] p-8 shadow-2xl backdrop-blur-xl card-glow">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="hero-panel w-full max-w-sm rounded-[16px] p-8">
         <Suspense fallback={<div className="text-sm text-muted-foreground text-center py-8">Cargando...</div>}>
           <LoginForm />
         </Suspense>

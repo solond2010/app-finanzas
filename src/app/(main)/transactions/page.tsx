@@ -21,10 +21,10 @@ import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 
-const CARD = "rounded-[24px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+const CARD = "rounded-[16px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 // Card del gráfico de evolución del cash flow: la vista analítica principal
 // de la página, con el mismo tinte azul-marino que las demás "hero cards".
-const CARD_HERO = "rounded-[24px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+const CARD_HERO = "rounded-[16px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 const RANGES = [{ label: "1M", m: 1 }, { label: "3M", m: 3 }, { label: "6M", m: 6 }, { label: "1 año", m: 12 }]
 const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["blue", "red"])
 
@@ -166,7 +166,7 @@ export default function IngresosGastosPage() {
       {/* Fila 1: Cuenta principal · Objetivo ingresos · Próximos pagos */}
       <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Cuenta (carrusel) */}
-        <div className="relative min-w-0 overflow-hidden rounded-[24px] bg-gradient-to-br from-primary to-[color-mix(in_oklch,var(--primary),#000_22%)] p-5 text-white shadow-[0_14px_34px_-20px_var(--primary)] sm:p-6">
+        <div className="relative min-w-0 overflow-hidden rounded-[16px] bg-primary p-5 text-white sm:p-6">
           <div className="flex items-center justify-between text-xs font-medium text-white/70">
             <div className="flex items-center gap-1">
               {accCount > 1 && (

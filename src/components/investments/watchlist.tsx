@@ -29,7 +29,7 @@ function WatchCard({ item, quote, hist, onRemove }: { item: WatchItem; quote?: Q
   const up = changePct >= 0
   const closes = (hist ?? []).map((h) => h.c)
   return (
-    <div className="group relative w-[230px] shrink-0 rounded-[20px] border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/15">
+    <div className="group relative w-[230px] shrink-0 rounded-[16px] border border-border bg-card p-4 transition-colors hover:border-foreground/15">
       <button onClick={onRemove} aria-label="Quitar de la lista" className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"><X className="h-3.5 w-3.5" /></button>
       <div className="flex items-center gap-2.5">
         <span className="gold-badge flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold">{item.symbol.slice(0, 2).toUpperCase()}</span>
@@ -134,7 +134,7 @@ export function WatchlistRow({ leading }: { leading?: React.ReactNode }) {
         ))}
         <button
           onClick={() => setAddOpen(true)}
-          className="flex w-[120px] shrink-0 flex-col items-center justify-center gap-2 rounded-[20px] border border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+          className="flex w-[120px] shrink-0 flex-col items-center justify-center gap-2 rounded-[16px] border border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary"><Plus className="h-4 w-4" /></span>
           <span className="text-xs font-medium">Añadir</span>

@@ -52,7 +52,7 @@ export default function CuentasPage() {
 
   return (
     <div className="content-fade space-y-6 sm:space-y-7">
-      <section className="hero-gradient rounded-[24px] bg-card/70 p-6 sm:p-8 card-glow">
+      <section className="rounded-[16px] border border-border bg-card p-6 sm:p-8">
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
@@ -66,7 +66,7 @@ export default function CuentasPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 rounded-[22px] hero-panel px-6 py-4">
+          <div className="flex flex-col gap-2 rounded-[16px] hero-panel px-6 py-4">
             <p className="page-section-label">Patrimonio neto total</p>
             <p className="hero-figure text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[38px]">
               <Sensitive as="span"><AnimatedNumber value={netWorth} /></Sensitive>
@@ -108,11 +108,10 @@ export default function CuentasPage() {
                 <button
                   key={account.id}
                   onClick={() => router.push(`/cuentas/${account.id}`)}
-                  className="stagger-fade group relative overflow-hidden rounded-[22px] bg-card/70 p-6 text-left ring-1 ring-border/25 backdrop-blur-xl card-glow glass-card-hover"
+                  className="stagger-fade group rounded-[16px] border border-border bg-card p-6 text-left glass-card-hover"
                   style={{ animationDelay: `${index * 60}ms` }}
                 >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${cfg.tint} opacity-60 rounded-[22px]`} />
-                  <div className="relative z-10 space-y-4">
+                  <div className="space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <AccountLogo account={account} className="h-11 w-11" />
@@ -155,7 +154,7 @@ export default function CuentasPage() {
             })}
             <button
               onClick={() => setShowNewAccount(true)}
-              className="stagger-fade flex flex-col items-center justify-center gap-3 rounded-[22px] border-2 border-dashed border-muted-foreground/25 p-6 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground transition-all duration-300 hover:-translate-y-1 hover:shadow-md bg-card/50 backdrop-blur-sm ring-1 ring-border/10"
+              className="stagger-fade flex flex-col items-center justify-center gap-3 rounded-[16px] border border-dashed border-muted-foreground/25 p-6 text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:text-foreground"
               style={{ animationDelay: `${state.accounts.length * 60}ms` }}
             >
               <Plus className="h-8 w-8" />

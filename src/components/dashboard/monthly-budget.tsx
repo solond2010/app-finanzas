@@ -21,7 +21,7 @@ interface MonthlyBudgetProps {
   selectedMonth: string
 }
 
-const CARD = "rounded-[24px] border border-border bg-card p-4 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+const CARD = "rounded-[16px] border border-border bg-card p-4 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 
 export function MonthlyBudget({ budgets, transactions, categories, selectedMonth }: MonthlyBudgetProps) {
   const [open, setOpen] = useState(false)
