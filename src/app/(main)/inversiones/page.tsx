@@ -5,7 +5,7 @@ import { DonutChart } from "@tremor/react"
 import { Plus, TrendingUp, TrendingDown, LineChart, FileDown, Target, Pencil, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFinance } from "@/lib/store"
-import { useInvestments, usePortfolioValue, assetClassOf, ASSET_CLASS_LABELS, type Position } from "@/lib/investments"
+import { useInvestments, usePortfolioValue, assetClassOf, ASSET_CLASS_LABELS, accountDisplayValue, type Position } from "@/lib/investments"
 import { PositionDialog } from "@/components/investments/position-dialog"
 import { PositionDetailPanel } from "@/components/investments/position-detail-panel"
 import { WatchlistRow } from "@/components/investments/watchlist"
@@ -71,7 +71,7 @@ function buildSeries(poss: Position[], hist: HistMap, isMonthly: boolean, slice:
 export default function InversionesPage() {
   const { state } = useFinance()
   const { remove } = useInvestments()
-  const { positions, quotes, loading, value, invested, pnl, pnlPct, valueByAccount } = usePortfolioValue()
+  const { positions, quotes, loading, value, invested, pnl, pnlPct, valueByAccount, investedByAccount } = usePortfolioValue()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Position | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
@@ -195,9 +195,14 @@ export default function InversionesPage() {
   const xrayInvestmentInflow = useMemo(() => getMonthlyInvestmentInflow(analysisTransactions, state.accounts, xrayMonthKey), [analysisTransactions, state.accounts, xrayMonthKey])
 
   // Evolución del patrimonio (6 meses) para el gráfico del informe: mismo cálculo
-  // que el Dashboard (cuentas históricas - saldo manual de inversión + valor de
-  // mercado actual de la cartera, que no se reconstruye retroactivamente).
-  const investmentAccountSaldo = useMemo(() => state.accounts.filter((a) => a.tipo === "inversion").reduce((s, a) => s + a.saldo, 0), [state.accounts])
+  // que el Dashboard (cuentas históricas - saldo bruto de inversión + valor
+  // real de esas cuentas hoy, que no se reconstruye retroactivamente).
+  const investmentAccounts = useMemo(() => state.accounts.filter((a) => a.tipo === "inversion"), [state.accounts])
+  const investmentAccountSaldo = useMemo(() => investmentAccounts.reduce((s, a) => s + a.saldo, 0), [investmentAccounts])
+  const investmentDisplayTotal = useMemo(
+    () => investmentAccounts.reduce((s, a) => s + accountDisplayValue(a, valueByAccount, investedByAccount), 0),
+    [investmentAccounts, valueByAccount, investedByAccount]
+  )
   const netWorthTrend = useMemo(() => Array.from({ length: 6 }, (_, i) => {
     const offset = 5 - i
     const d = new Date()
@@ -205,13 +210,13 @@ export default function InversionesPage() {
     d.setMonth(d.getMonth() - offset)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
     const label = d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" })
-    return { label, value: Math.round(getNetWorthAtMonth(state.accounts, state.transactions, key) - investmentAccountSaldo + value) }
-  }), [state.accounts, state.transactions, investmentAccountSaldo, value])
+    return { label, value: Math.round(getNetWorthAtMonth(state.accounts, state.transactions, key) - investmentAccountSaldo + investmentDisplayTotal) }
+  }), [state.accounts, state.transactions, investmentAccountSaldo, investmentDisplayTotal])
   // Patrimonio a cierre del mes elegido para el informe: mismo cálculo que el
   // histórico de arriba (para el mes actual coincide con `netWorth`).
   const xrayNetWorth = useMemo(
-    () => xrayMonthOffset === 0 ? netWorth : Math.round(getNetWorthAtMonth(state.accounts, state.transactions, xrayMonthKey) - investmentAccountSaldo + value),
-    [xrayMonthOffset, netWorth, state.accounts, state.transactions, xrayMonthKey, investmentAccountSaldo, value]
+    () => xrayMonthOffset === 0 ? netWorth : Math.round(getNetWorthAtMonth(state.accounts, state.transactions, xrayMonthKey) - investmentAccountSaldo + investmentDisplayTotal),
+    [xrayMonthOffset, netWorth, state.accounts, state.transactions, xrayMonthKey, investmentAccountSaldo, investmentDisplayTotal]
   )
 
   const exportXray = async () => {
@@ -298,7 +303,7 @@ export default function InversionesPage() {
           </section>
 
           {/* Fila superior: cuentas + seguimiento */}
-          <WatchlistRow leading={<AccountCards accounts={investAccounts} valueByAccount={valueByAccount} />} />
+          <WatchlistRow leading={<AccountCards accounts={investAccounts} valueByAccount={valueByAccount} investedByAccount={investedByAccount} />} />
 
           {/* Evolución (izq) + Posiciones / Detalle (der) */}
           <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">

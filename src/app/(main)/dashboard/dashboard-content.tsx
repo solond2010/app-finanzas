@@ -11,7 +11,7 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { usePortfolioValue } from "@/lib/investments"
+import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
@@ -100,11 +100,18 @@ export default function DashboardContent() {
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
-  const { value: portfolioValue, pnl: portfolioPnl, pnlPct: portfolioPnlPct } = usePortfolioValue()
-  // El saldo manual de las cuentas de inversión se sustituye por el valor de
-  // mercado de la cartera (si no, se contaría dos veces).
-  const investmentSaldo = useMemo(() => displayAccounts.filter((a) => a.tipo === "inversion").reduce((s, a) => s + a.saldo, 0), [displayAccounts])
-  const netWorthDisplay = netWorth - investmentSaldo + portfolioValue
+  const { value: portfolioValue, pnl: portfolioPnl, pnlPct: portfolioPnlPct, valueByAccount, investedByAccount } = usePortfolioValue()
+  // El saldo de las cuentas de inversión no baja al comprar una posición (no
+  // genera un gasto), así que solo se sustituye la parte ya invertida por el
+  // valor de mercado actual — el efectivo aún sin invertir se mantiene intacto
+  // en vez de perderse (ver accountDisplayValue).
+  const investmentAccounts = useMemo(() => displayAccounts.filter((a) => a.tipo === "inversion"), [displayAccounts])
+  const investmentSaldo = useMemo(() => investmentAccounts.reduce((s, a) => s + a.saldo, 0), [investmentAccounts])
+  const investmentDisplayTotal = useMemo(
+    () => investmentAccounts.reduce((s, a) => s + accountDisplayValue(a, valueByAccount, investedByAccount), 0),
+    [investmentAccounts, valueByAccount, investedByAccount]
+  )
+  const netWorthDisplay = netWorth - investmentSaldo + investmentDisplayTotal
 
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
 
@@ -174,7 +181,7 @@ export default function DashboardContent() {
       if (a.tipo === "inversion") continue
       groups[a.tipo] = (groups[a.tipo] ?? 0) + a.saldo
     }
-    if (portfolioValue > 0) groups.inversion = portfolioValue
+    if (investmentDisplayTotal > 0) groups.inversion = investmentDisplayTotal
     const total = Object.values(groups).reduce((s, v) => s + Math.max(v, 0), 0) || 1
     return Object.entries(groups)
       .filter(([, v]) => v > 0)
@@ -186,7 +193,7 @@ export default function DashboardContent() {
         color: typeConfig[tipo as Account["tipo"]]?.color ?? "var(--muted-foreground)",
       }))
       .sort((a, b) => b.value - a.value)
-  }, [displayAccounts, portfolioValue])
+  }, [displayAccounts, investmentDisplayTotal])
 
   // Racha de meses consecutivos con flujo de caja positivo, contando hacia
   // atrás desde el mes anterior al seleccionado (el mes en curso se excluye

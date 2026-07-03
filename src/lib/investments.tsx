@@ -377,6 +377,33 @@ export function usePortfolioValue() {
     if (p.accountId) m[p.accountId] = (m[p.accountId] ?? 0) + p.units * priceOf(p)
     return m
   }, {})
+  // Coste de compra de las posiciones de cada cuenta: junto con el saldo bruto,
+  // permite separar "efectivo aún sin invertir" del valor ya invertido (ver
+  // accountDisplayValue). Comprar una posición no descuenta su coste del saldo
+  // de la cuenta (no genera un gasto), así que sin esto el saldo bruto no dice
+  // nada por sí solo una vez hay posiciones de por medio.
+  const investedByAccount = positions.reduce<Record<string, number>>((m, p) => {
+    if (p.accountId) m[p.accountId] = (m[p.accountId] ?? 0) + p.units * p.buyPrice
+    return m
+  }, {})
 
-  return { positions, quotes, loading, value, invested, pnl, pnlPct: invested > 0 ? (pnl / invested) * 100 : 0, valueByAccount }
+  return { positions, quotes, loading, value, invested, pnl, pnlPct: invested > 0 ? (pnl / invested) * 100 : 0, valueByAccount, investedByAccount }
+}
+
+/**
+ * Valor real de una cuenta para patrimonio/listados: para cuentas normales, su
+ * saldo. Para cuentas de inversión con posiciones, el saldo NO refleja lo
+ * invertido (comprar una posición no lo descuenta), así que se sustituye la
+ * parte ya invertida por el valor de mercado actual, dejando intacto el
+ * efectivo restante que todavía no se ha invertido.
+ */
+export function accountDisplayValue(
+  account: { id: string; tipo: string; saldo: number },
+  valueByAccount: Record<string, number>,
+  investedByAccount: Record<string, number>
+): number {
+  if (account.tipo !== "inversion") return account.saldo
+  const invested = investedByAccount[account.id] ?? 0
+  const marketValue = valueByAccount[account.id] ?? invested
+  return account.saldo - invested + marketValue
 }

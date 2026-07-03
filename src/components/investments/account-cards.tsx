@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Star } from "lucide-react"
 import { type Account } from "@/lib/store"
+import { accountDisplayValue } from "@/lib/investments"
 import { getSetting, setSetting } from "@/lib/settings"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
@@ -11,7 +12,7 @@ import { cn } from "@/lib/utils"
 const FAV_KEY = "app-finanzas-fav-account"
 const TIPO_LABEL: Record<string, string> = { inversion: "Inversión", ahorro: "Ahorro", emergencia: "Emergencia", efectivo: "Efectivo", gastos: "Gastos" }
 
-export function AccountCards({ accounts, valueByAccount }: { accounts: Account[]; valueByAccount: Record<string, number> }) {
+export function AccountCards({ accounts, valueByAccount, investedByAccount }: { accounts: Account[]; valueByAccount: Record<string, number>; investedByAccount: Record<string, number> }) {
   const [fav, setFav] = useState<string | null>(null)
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export function AccountCards({ accounts, valueByAccount }: { accounts: Account[]
     <>
       {ordered.map((a) => {
         const isFav = a.id === fav
-        const val = valueByAccount[a.id] ?? a.saldo
+        const val = accountDisplayValue(a, valueByAccount, investedByAccount)
         return (
           <div
             key={a.id}

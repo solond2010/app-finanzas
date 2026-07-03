@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useFinance, type Account } from "@/lib/store"
-import { usePortfolioValue } from "@/lib/investments"
+import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import {
   Table,
   TableBody,
@@ -29,23 +29,24 @@ export default function CuentasPage() {
   const { state, loading, dispatch } = useFinance()
   const router = useRouter()
   const { toast } = useToast()
-  const { valueByAccount } = usePortfolioValue()
+  const { valueByAccount, investedByAccount } = usePortfolioValue()
   const [showNewAccount, setShowNewAccount] = useState(false)
 
-  // Para cuentas de inversión, el "saldo" real es el valor de mercado de sus
-  // posiciones (no el saldo manual, que queda obsoleto al registrar inversiones).
-  const accountValue = (a: Account) => (a.tipo === "inversion" && valueByAccount[a.id] != null ? valueByAccount[a.id] : a.saldo)
+  // Para cuentas de inversión, el saldo bruto no baja al comprar una posición
+  // (no genera un gasto): se sustituye solo la parte ya invertida por su valor
+  // de mercado, dejando intacto el efectivo restante aún sin invertir.
+  const accountValue = (a: Account) => accountDisplayValue(a, valueByAccount, investedByAccount)
   const netWorth = state.accounts.reduce((s, a) => s + accountValue(a), 0)
 
   // Cuenta con mayor saldo y cuenta más cerca de completar su objetivo, para
   // el ticker superior (solo cuando hay cuentas registradas).
-  const topAccount = useMemo(() => (state.accounts.length === 0 ? null : state.accounts.slice().sort((a, b) => accountValue(b) - accountValue(a))[0]), [state.accounts, valueByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
+  const topAccount = useMemo(() => (state.accounts.length === 0 ? null : state.accounts.slice().sort((a, b) => accountValue(b) - accountValue(a))[0]), [state.accounts, valueByAccount, investedByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
   const nearestGoal = useMemo(() => {
     return state.accounts
       .filter((a) => a.objetivo && a.objetivo > 0)
       .map((a) => ({ account: a, pct: Math.min((accountValue(a) / (a.objetivo as number)) * 100, 100) }))
       .sort((a, b) => b.pct - a.pct)[0] ?? null
-  }, [state.accounts, valueByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.accounts, valueByAccount, investedByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
   const liquidNetWorth = state.accounts.filter((a) => a.tipo !== "inversion").reduce((s, a) => s + accountValue(a), 0)
   const liquidPct = netWorth > 0 ? Math.round((liquidNetWorth / netWorth) * 100) : 0
 
