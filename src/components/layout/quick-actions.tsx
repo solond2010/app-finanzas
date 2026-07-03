@@ -22,6 +22,7 @@ import {
 import { useFinance, type Transaction, type Account, type Category, generateId } from "@/lib/store"
 import { formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
+import { AccountLogo } from "@/components/dashboard/account-logo"
 import { cn } from "@/lib/utils"
 
 type MovementType = "gasto" | "ingreso" | "traspaso"
@@ -44,12 +45,7 @@ function AccountSelectItem({ account, showBalance = true }: { account: Account; 
   const badge = typeBadge[account.tipo]
   return (
     <div className="flex w-full items-center gap-3">
-      <div
-        className="flex size-10 shrink-0 items-center justify-center rounded-xl text-xs font-semibold text-white shadow-sm"
-        style={{ backgroundColor: account.color }}
-      >
-        {account.nombre.slice(0, 2).toUpperCase()}
-      </div>
+      <AccountLogo account={account} className="h-10 w-10 rounded-xl" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-[15px] font-semibold leading-tight">{account.nombre}</span>
