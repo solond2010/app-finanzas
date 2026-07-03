@@ -180,8 +180,8 @@ export default function AnalyticsPage() {
       <>
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Patrimonio" value={<AnimatedNumber value={Math.round(currentNetWorth)} />} subtitle={<>{netWorthTrendPositive ? "Sube" : "Baja"} <Sensitive>{signedMoney(netWorthChange)}</Sensitive> vs mes previo</>} icon={Wallet} tone={netWorthTrendPositive ? "emerald" : "red"} delay={0} />
-        <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix="+" />} subtitle={`Registrados en ${formatMonth(selectedDate)}`} icon={ArrowUpRight} tone="emerald" delay={70} />
-        <MetricCard label="Gastos" value={<AnimatedNumber value={monthTotals.gastos} prefix="-" />} subtitle={topCategory ? `${topCategory.categoria} concentra el ${topCategoryPct}%` : "Sin gastos este mes"} icon={ArrowDownRight} tone="red" delay={140} />
+        <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix={monthTotals.ingresos > 0 ? "+" : ""} />} subtitle={`Registrados en ${formatMonth(selectedDate)}`} icon={ArrowUpRight} tone="emerald" delay={70} />
+        <MetricCard label="Gastos" value={<AnimatedNumber value={monthTotals.gastos} prefix={monthTotals.gastos > 0 ? "-" : ""} />} subtitle={topCategory ? `${topCategory.categoria} concentra el ${topCategoryPct}%` : "Sin gastos este mes"} icon={ArrowDownRight} tone="red" delay={140} />
         <MetricCard label="Neto" value={<AnimatedNumber value={monthTotals.neto} />} subtitle={`${positiveMonths}/6 meses con cash flow positivo`} icon={Activity} tone={monthTotals.neto >= 0 ? "blue" : "amber"} delay={210} />
       </section>
 
@@ -308,7 +308,7 @@ export default function AnalyticsPage() {
                     <TableRow key={month.mes}>
                       <TableCell className="font-medium capitalize">{month.mes}</TableCell>
                       <TableCell className="text-right font-semibold tabular-nums text-emerald-500"><Sensitive>+{money(month.ingresos)}</Sensitive></TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums text-red-500"><Sensitive>-{money(month.gastos)}</Sensitive></TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums text-red-500"><Sensitive>{month.gastos > 0 ? "-" : ""}{money(month.gastos)}</Sensitive></TableCell>
                       <TableCell className={`text-right font-bold tabular-nums ${month.neto >= 0 ? "text-emerald-500" : "text-red-500"}`}><Sensitive>{signedMoney(month.neto)}</Sensitive></TableCell>
                       <TableCell className="text-right">
                         <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${month.neto >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>

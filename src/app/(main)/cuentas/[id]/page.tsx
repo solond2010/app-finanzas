@@ -122,7 +122,7 @@ export default function AccountDetailPage() {
               <ArrowDownRight className="h-4 w-4 text-red-500" />
             </div>
               <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums text-red-500">
-                <Sensitive>-{totalGastos.toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive>
+                <Sensitive>{totalGastos > 0 ? "-" : ""}{totalGastos.toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive>
               </p>
           </div>
         </Card>

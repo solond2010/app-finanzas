@@ -232,8 +232,8 @@ export default function IngresosGastosPage() {
                     <p className="truncate text-xs font-semibold text-foreground">{item.descripcion || item.categoria}</p>
                     <p className={cn("text-[11px] font-medium", item.overdueDays > 0 ? "text-red-500" : "text-muted-foreground")}>{recurringDateLabel(item)}</p>
                   </div>
-                  <span className={cn("shrink-0 text-xs font-bold tabular-nums", item.tipo === "ingreso" ? "text-emerald-500" : "text-foreground")}>
-                    <Sensitive>{item.tipo === "ingreso" ? "+" : "-"}{formatMoney(item.monto, "EUR")}</Sensitive>
+                  <span className={cn("shrink-0 text-xs font-bold tabular-nums", (item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "text-emerald-500" : "text-foreground")}>
+                    <Sensitive>{(item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(item.monto), "EUR")}</Sensitive>
                   </span>
                   <button onClick={() => registerRecurring(item)} aria-label="Registrar pago" title="Registrar pago" className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-emerald-500/10 hover:text-emerald-500">
                     <Check className="h-4 w-4" />
@@ -277,14 +277,14 @@ export default function IngresosGastosPage() {
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ingresos</span>
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500"><ArrowUpRight className="h-4 w-4" /></span>
             </div>
-            <p className="mt-1 text-xl font-bold tabular-nums text-emerald-500"><Sensitive><AnimatedNumber value={monthTotals.ingresos} prefix="+" /></Sensitive></p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-emerald-500"><Sensitive><AnimatedNumber value={monthTotals.ingresos} prefix={monthTotals.ingresos > 0 ? "+" : ""} /></Sensitive></p>
           </div>
           <div className="rounded-2xl border border-border p-4">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Gastos</span>
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10 text-red-500"><ArrowDownRight className="h-4 w-4" /></span>
             </div>
-            <p className="mt-1 text-xl font-bold tabular-nums text-red-500"><Sensitive><AnimatedNumber value={monthTotals.gastos} prefix="-" /></Sensitive></p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-red-500"><Sensitive><AnimatedNumber value={monthTotals.gastos} prefix={monthTotals.gastos > 0 ? "-" : ""} /></Sensitive></p>
           </div>
         </div>
       </section>

@@ -514,12 +514,12 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                             {t.tipo === "ingreso" ? "Ingreso" : "Gasto"}
                           </span>
                         </TableCell>
-                        <TableCell className={`text-right tabular-nums font-bold text-xs sm:text-sm ${t.tipo === "ingreso" ? "text-emerald-500" : "text-foreground"}`}>
+                        <TableCell className={`text-right tabular-nums font-bold text-xs sm:text-sm ${(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "text-emerald-500" : "text-foreground"}`}>
                           {isEditing("monto") ? (
                             <InlineEditInput type="number" defaultValue={String(t.monto)} onDone={(ok, v) => handleInlineDone(t, "monto", ok, v)} />
                           ) : (
                             <button onClick={() => setEditingCell({ id: t.id, field: "monto" })} className="rounded px-1 py-0.5 -mx-1 hover:bg-muted/60" aria-label="Editar monto">
-                              <Sensitive>{t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, account?.currency ?? "EUR")}</Sensitive>
+                              <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(t.monto), account?.currency ?? "EUR")}</Sensitive>
                             </button>
                           )}
                         </TableCell>

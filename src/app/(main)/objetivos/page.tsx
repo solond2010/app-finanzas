@@ -65,8 +65,8 @@ export default function ObjetivosPage() {
       {hasMetas && (
         <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           <TickerTile label="Restante total" value={money(totalRestante)} valueColor="var(--accent-amber)" />
-          <TickerTile label="Meta más cerca" value={nearestFund ? `${nearestFund.nombre.slice(0, 14)} · ${Math.round(nearestFund.pct)}%` : "—"} valueColor="var(--accent-green)" />
-          <TickerTile label="Mayor esfuerzo" value={biggestEffortFund ? `${biggestEffortFund.nombre.slice(0, 14)} · ${money(biggestEffortFund.restante)}` : "—"} valueColor="var(--gold)" />
+          <TickerTile label="Meta más cerca" value={nearestFund ? nearestFund.nombre : "—"} suffix={nearestFund ? `· ${Math.round(nearestFund.pct)}%` : undefined} valueColor="var(--accent-green)" />
+          <TickerTile label="Mayor esfuerzo" value={biggestEffortFund ? biggestEffortFund.nombre : "—"} suffix={biggestEffortFund ? `· ${money(biggestEffortFund.restante)}` : undefined} valueColor="var(--gold)" />
           <TickerTile label="Completadas" value={`${completedCount}/${stats.count}`} valueColor="var(--primary)" />
         </section>
       )}

@@ -670,8 +670,8 @@ export default function DashboardContent() {
                         <p className="truncate text-xs text-muted-foreground">{accountName(t.cuenta_id)}</p>
                       </div>
                     </div>
-                    <span className={cn("shrink-0 text-sm font-semibold tabular-nums", t.tipo === "ingreso" ? "text-emerald-500" : "text-red-500")}>
-                      <Sensitive>{t.tipo === "ingreso" ? "+" : "-"}{formatMoney(t.monto, "EUR")}</Sensitive>
+                    <span className={cn("shrink-0 text-sm font-semibold tabular-nums", (t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "text-emerald-500" : "text-red-500")}>
+                      <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(t.monto), "EUR")}</Sensitive>
                     </span>
                   </div>
                 ))}
