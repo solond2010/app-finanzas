@@ -10,6 +10,17 @@ export function chartFormatter(value: number) {
   return money(value)
 }
 
+// Un % calculado contra una base pequeña (p.ej. patrimonio de 50€ hace 6 meses)
+// puede dispararse a miles de %. Por encima de este umbral se muestra ">CAP%"
+// en vez de la cifra exacta (falsa precisión) para no parecer un dato roto.
+export const PCT_CHANGE_CAP = 500
+
+export function formatCappedPct(value: number, cap = PCT_CHANGE_CAP) {
+  const sign = value >= 0 ? "+" : "-"
+  const magnitude = Math.round(Math.abs(value))
+  return magnitude > cap ? `${sign}>${cap}%` : `${sign}${magnitude}%`
+}
+
 export function formatMonth(date: Date) {
   return date.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
 }

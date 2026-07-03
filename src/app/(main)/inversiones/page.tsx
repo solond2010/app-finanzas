@@ -299,7 +299,7 @@ export default function InversionesPage() {
             <TickerTile label="Valor cartera" value={formatMoney(value, baseCurrency)} />
             <TickerTile label="Rentabilidad" value={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`} valueColor={pnlPct >= 0 ? "var(--accent-green)" : "var(--accent-red)"} />
             <TickerTile label="Invertido" value={formatMoney(invested, baseCurrency)} />
-            <TickerTile label="Mejor posición" value={bestPosition ? `${bestPosition.p.name.slice(0, 12)} ${bestPosition.plPct >= 0 ? "+" : ""}${bestPosition.plPct.toFixed(2)}%` : "—"} valueColor="var(--gold)" />
+            <TickerTile label="Mejor posición" value={bestPosition ? bestPosition.p.name : "—"} suffix={bestPosition ? `${bestPosition.plPct >= 0 ? "+" : ""}${bestPosition.plPct.toFixed(2)}%` : undefined} valueColor="var(--gold)" />
           </section>
 
           {/* Fila superior: cuentas + seguimiento */}

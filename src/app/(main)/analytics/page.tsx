@@ -189,7 +189,7 @@ export default function AnalyticsPage() {
         <TickerTile label="Tasa de ahorro" value={`${Math.round(savingsActual)}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
         <TickerTile label="Racha positiva" value={streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"} valueColor="var(--accent-amber)" />
         <TickerTile label="Cash flow medio" value={signedMoney(averageMonthlyNet)} valueColor={averageMonthlyNet >= 0 ? "var(--accent-green)" : "var(--accent-red)"} />
-        <TickerTile label="Categoría top" value={topCategory ? `${topCategory.categoria} · ${topCategoryPct}%` : "—"} valueColor="var(--gold)" />
+        <TickerTile label="Categoría top" value={topCategory ? topCategory.categoria : "—"} suffix={topCategory ? `· ${topCategoryPct}%` : undefined} valueColor="var(--gold)" />
       </section>
 
       <section className="grid grid-cols-12 gap-6">

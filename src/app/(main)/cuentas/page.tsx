@@ -96,8 +96,8 @@ export default function CuentasPage() {
         <>
           <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <TickerTile label="Cuentas" value={String(state.accounts.length)} valueColor="var(--primary)" />
-            <TickerTile label="Cuenta líder" value={topAccount ? `${topAccount.nombre.slice(0, 14)} · ${formatMoney(accountValue(topAccount), topAccount.currency)}` : "—"} valueColor="var(--gold)" />
-            <TickerTile label="Objetivo más cerca" value={nearestGoal ? `${nearestGoal.account.nombre.slice(0, 14)} · ${Math.round(nearestGoal.pct)}%` : "—"} valueColor="var(--accent-green)" />
+            <TickerTile label="Cuenta líder" value={topAccount ? topAccount.nombre : "—"} suffix={topAccount ? `· ${formatMoney(accountValue(topAccount), topAccount.currency)}` : undefined} valueColor="var(--gold)" />
+            <TickerTile label="Objetivo más cerca" value={nearestGoal ? nearestGoal.account.nombre : "—"} suffix={nearestGoal ? `· ${Math.round(nearestGoal.pct)}%` : undefined} valueColor="var(--accent-green)" />
             <TickerTile label="Liquidez" value={`${liquidPct}%`} valueColor="var(--accent-blue)" />
           </section>
 

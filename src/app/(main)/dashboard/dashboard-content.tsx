@@ -19,7 +19,7 @@ import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransaction
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
-import { formatMonth, isInitialBalanceTransaction, chartFormatter } from "@/lib/format"
+import { formatMonth, isInitialBalanceTransaction, chartFormatter, formatCappedPct } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
@@ -210,7 +210,7 @@ export default function DashboardContent() {
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
   const rangeDelta = netWorthDisplay - rangeStart
   const showPct = Math.abs(rangeStart) >= 100
-  const rangePct = showPct ? Math.round((rangeDelta / Math.abs(rangeStart)) * 100) : 0
+  const rangePct = showPct ? (rangeDelta / Math.abs(rangeStart)) * 100 : 0
   // Máximo histórico dentro del rango visible, para la insignia dorada del hero.
   const isAllTimeHigh = netWorthHasData && rangeDelta > 0 && netWorthDisplay >= Math.max(...netWorthTrend.map((t) => t.patrimonio))
 
@@ -433,7 +433,7 @@ export default function DashboardContent() {
                   <p className={cn("mt-1 inline-flex flex-wrap items-center gap-x-1.5 text-sm font-medium", rangeDelta >= 0 ? "text-emerald-500" : "text-red-500")}>
                     {rangeDelta >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                     <Sensitive>{rangeDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(rangeDelta), "EUR")}</Sensitive>
-                    <span className="text-muted-foreground">{showPct ? `· ${rangePct >= 0 ? "+" : ""}${rangePct}% ` : ""}{activeRange.id === "Hoy" ? "hoy" : `en ${activeRange.id}`}</span>
+                    <span className="text-muted-foreground">{showPct ? `· ${formatCappedPct(rangePct)} ` : ""}{activeRange.id === "Hoy" ? "hoy" : `en ${activeRange.id}`}</span>
                   </p>
                   {portfolioValue > 0 && (
                     <p className="mt-1 text-xs text-muted-foreground">
