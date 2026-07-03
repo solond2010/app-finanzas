@@ -29,11 +29,12 @@ export function AccountLogo({ account, className = "h-11 w-11" }: { account: Acc
   const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
   const Icon = cfg.icon
 
-  // El logo del banco tiene prioridad; si no hay banco pero la cuenta es de
-  // efectivo, usamos su imagen dedicada. En ambos casos, si la imagen falla,
-  // caemos al icono del tipo.
-  const logoSrc = bank ? `/banks/${bank.file}` : account.tipo === "efectivo" ? "/banks/efectivo.webp" : null
-  const logoAlt = bank?.name ?? "Efectivo"
+  // El logo subido por el usuario tiene prioridad sobre el de un banco
+  // reconocido; si no hay banco pero la cuenta es de efectivo, usamos su
+  // imagen dedicada. En todos los casos, si la imagen falla, caemos al icono
+  // del tipo.
+  const logoSrc = account.logoUrl || (bank ? `/banks/${bank.file}` : account.tipo === "efectivo" ? "/banks/efectivo.webp" : null)
+  const logoAlt = bank?.name ?? account.banco ?? "Efectivo"
 
   if (logoSrc && !failed) {
     return (

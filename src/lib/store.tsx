@@ -14,6 +14,8 @@ export interface Account {
   objetivo: number | null
   limite_mensual: number | null
   color: string
+  /** Logo subido por el usuario (Supabase Storage). Si no hay, se usa el logo de un banco reconocido o un icono por tipo. */
+  logoUrl?: string
 }
 
 export interface Transaction {
@@ -183,6 +185,7 @@ type AccountRow = {
   objetivo: number | string | null
   limite_mensual: number | string | null
   color: string | null
+  logo_url?: string | null
 }
 
 type TransactionRow = {
@@ -550,7 +553,7 @@ async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sin
 }
 
 function formatAccount(a: AccountRow): Account {
-  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco ?? "", saldo: Number(a.saldo), currency: a.currency ?? "EUR", objetivo: a.objetivo ? Number(a.objetivo) : null, limite_mensual: a.limite_mensual ? Number(a.limite_mensual) : null, color: a.color ?? "#3b82f6" }
+  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco ?? "", saldo: Number(a.saldo), currency: a.currency ?? "EUR", objetivo: a.objetivo ? Number(a.objetivo) : null, limite_mensual: a.limite_mensual ? Number(a.limite_mensual) : null, color: a.color ?? "#3b82f6", logoUrl: a.logo_url ?? undefined }
 }
 
 function normalizeFinanceState(state: FinanceState): FinanceState {
@@ -589,7 +592,16 @@ function formatSinkingFund(s: SinkingFundRow): SinkingFund {
 }
 
 function unformatAccount(a: Account) {
-  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco, saldo: a.saldo, objetivo: a.objetivo, limite_mensual: a.limite_mensual, color: a.color }
+  const base: Record<string, unknown> = { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco, saldo: a.saldo, objetivo: a.objetivo, limite_mensual: a.limite_mensual, color: a.color }
+  // Solo se envía si el valor viene de AccountDialog (que siempre manda un
+  // string, "" incluido al quitar el logo): así las cuentas que nunca han
+  // pasado por ahí siguen sincronizando aunque la migración SQL
+  // (supabase-account-logo.sql) no se haya ejecutado todavía (columna
+  // logo_url inexistente rompería el upsert entero). Comparar con `!= null`
+  // en vez de `!== undefined` haría que quitar el logo (string vacío) nunca
+  // se enviara, dejando el logo antiguo huérfano en Supabase.
+  if (a.logoUrl !== undefined) base.logo_url = a.logoUrl || null
+  return base
 }
 
 function unformatTransaction(t: Transaction): TransactionPayload {

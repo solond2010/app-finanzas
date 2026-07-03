@@ -1,13 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { type Account, generateId } from "@/lib/store"
+import { supabase } from "@/lib/supabase"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CURRENCY_OPTIONS, currencySymbol } from "@/lib/currency"
 import { BANKS, matchBank } from "@/components/dashboard/account-logo"
+import { useToast } from "@/components/ui/toast"
+import { Upload, X } from "lucide-react"
 
 const COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#14b8a6", "#f97316"]
 
@@ -32,6 +35,10 @@ export function AccountDialog({
   const [objetivo, setObjetivo] = useState(String(account?.objetivo ?? ""))
   const [limiteMensual, setLimiteMensual] = useState(String(account?.limite_mensual ?? ""))
   const [color, setColor] = useState(account?.color ?? COLORS[0])
+  const [logoUrl, setLogoUrl] = useState(account?.logoUrl ?? "")
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     if (!open) return
@@ -44,8 +51,25 @@ export function AccountDialog({
       setObjetivo(String(account?.objetivo ?? ""))
       setLimiteMensual(String(account?.limite_mensual ?? ""))
       setColor(account?.color ?? COLORS[0])
+      setLogoUrl(account?.logoUrl ?? "")
     })
   }, [account, open])
+
+  const handleLogoFile = async (file: File) => {
+    setUploading(true)
+    try {
+      const ext = file.name.split(".").pop() ?? "png"
+      const path = `${account?.id ?? generateId()}-${Date.now()}.${ext}`
+      const { error } = await supabase.storage.from("bank-logos").upload(path, file, { upsert: true })
+      if (error) throw error
+      const { data } = supabase.storage.from("bank-logos").getPublicUrl(path)
+      setLogoUrl(data.publicUrl)
+    } catch {
+      toast("No se pudo subir el logo. ¿Has creado el bucket \"bank-logos\" en Supabase?", "error")
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,6 +83,7 @@ export function AccountDialog({
       objetivo: objetivo ? Number(objetivo) : null,
       limite_mensual: limiteMensual ? Number(limiteMensual) : null,
       color,
+      logoUrl,
     })
   }
 
@@ -118,6 +143,30 @@ export function AccountDialog({
               {!matchBank(banco) && (
                 <Input value={banco} onChange={(e) => setBanco(e.target.value)} placeholder="Nombre del banco (opcional)" className="mt-2" />
               )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); e.target.value = "" }}
+              />
+              <div className="mt-2 flex items-center gap-3">
+                {logoUrl ? (
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-border/30">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={logoUrl} alt="Logo subido" className="h-full w-full object-contain" />
+                  </span>
+                ) : null}
+                <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="h-3.5 w-3.5" /> {uploading ? "Subiendo…" : logoUrl ? "Cambiar logo" : "Subir logo del banco"}
+                </Button>
+                {logoUrl && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setLogoUrl("")}>
+                    <X className="h-3.5 w-3.5" /> Quitar
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Saldo ({currencySymbol(currency)})</label>
