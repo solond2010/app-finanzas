@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation"
 import { useFinance } from "@/lib/store"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
-import { ArrowLeft, Pencil, SearchX, Wallet, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { ArrowLeft, Pencil, SearchX, Wallet, ArrowUpRight, ArrowDownRight, PiggyBank, TrendingUp } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,12 +12,14 @@ import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { currencySymbol, formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
+import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 
 export default function AccountDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { state, dispatch } = useFinance()
   const [editing, setEditing] = useState(false)
+  const { valueByAccount, investedByAccount } = usePortfolioValue()
 
   const account = state.accounts.find((a) => a.id === id)
   if (!account) return (
@@ -37,7 +39,16 @@ export default function AccountDetailPage() {
 
   const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
   const Icon = cfg.icon
-  const progress = account.objetivo && account.objetivo > 0 ? Math.min((account.saldo / account.objetivo) * 100, 100) : null
+  // Para cuentas de inversión, comprar una posición no descuenta su coste del
+  // saldo (no genera un gasto): el saldo bruto mezcla efectivo sin invertir +
+  // el dinero que ya está en posiciones. displaySaldo separa ambas partes (ver
+  // accountDisplayValue) para que el total cuadre con el resto de la app.
+  const isInvestment = account.tipo === "inversion"
+  const investedCost = investedByAccount[account.id] ?? 0
+  const marketValue = valueByAccount[account.id] ?? investedCost
+  const idleCash = account.saldo - investedCost
+  const displaySaldo = isInvestment ? accountDisplayValue(account, valueByAccount, investedByAccount) : account.saldo
+  const progress = account.objetivo && account.objetivo > 0 ? Math.min((displaySaldo / account.objetivo) * 100, 100) : null
   const budgetUsed = account.limite_mensual && account.limite_mensual > 0
     ? (() => {
         const now = new Date()
@@ -78,8 +89,8 @@ export default function AccountDetailPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Saldo actual</p>
               <p className="text-[32px] font-bold leading-none tracking-tight tabular-nums sm:text-[48px] lg:text-[56px]"
-                style={{ color: account.saldo >= 0 ? cfg.color : "var(--accent-red)" }}>
-                <Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive>
+                style={{ color: displaySaldo >= 0 ? cfg.color : "var(--accent-red)" }}>
+                <Sensitive>{formatMoney(displaySaldo, account.currency)}</Sensitive>
               </p>
             </div>
           </div>
@@ -147,7 +158,7 @@ export default function AccountDetailPage() {
               </div>
               <Progress value={progress} className="h-2" />
               <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground tabular-nums"><Sensitive as="strong">{formatMoney(account.saldo, account.currency)}</Sensitive></strong> de <span className="tabular-nums"><Sensitive>{formatMoney(account.objetivo!, account.currency)}</Sensitive></span>
+                <strong className="text-foreground tabular-nums"><Sensitive as="strong">{formatMoney(displaySaldo, account.currency)}</Sensitive></strong> de <span className="tabular-nums"><Sensitive>{formatMoney(account.objetivo!, account.currency)}</Sensitive></span>
               </p>
             </CardContent>
           </Card>
@@ -166,6 +177,53 @@ export default function AccountDetailPage() {
           </Card>
         )}
       </div>
+
+      {isInvestment && (
+        <Card className="rounded-[24px]">
+          <CardContent className="space-y-4 p-5 sm:p-6">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Desglose</p>
+              <h2 className="text-lg font-bold tracking-tight">De dónde sale el saldo de esta cuenta</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Comprar una posición no descuenta su coste del saldo (no genera un gasto), así que el efectivo sin invertir se calcula restando lo ya invertido.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="flex items-center gap-3 rounded-2xl bg-muted/30 p-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><Wallet className="h-4 w-4" /></span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Efectivo aportado (transacciones)</p>
+                  <p className="text-base font-bold tabular-nums"><Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive></p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl bg-muted/30 p-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><TrendingUp className="h-4 w-4" /></span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Invertido en posiciones (coste)</p>
+                  <p className="text-base font-bold tabular-nums">− <Sensitive>{formatMoney(investedCost, account.currency)}</Sensitive></p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl bg-muted/30 p-4">
+                <span className="gold-badge flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"><PiggyBank className="h-4 w-4" /></span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">= Efectivo sin invertir</p>
+                  <p className="text-base font-bold tabular-nums" style={{ color: "var(--gold)" }}><Sensitive>{formatMoney(idleCash, account.currency)}</Sensitive></p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl bg-muted/30 p-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><TrendingUp className="h-4 w-4" /></span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">+ Valor de mercado de lo invertido</p>
+                  <p className="text-base font-bold tabular-nums"><Sensitive>{formatMoney(marketValue, account.currency)}</Sensitive></p>
+                </div>
+              </div>
+            </div>
+            {idleCash < 0 && (
+              <p className="rounded-xl bg-[color-mix(in_oklch,var(--accent-red),transparent_88%)] p-3 text-xs text-[color-mix(in_oklch,var(--accent-red),black_10%)]">
+                El efectivo sin invertir sale negativo: has invertido más de lo que esta cuenta registra como aportado. Revisa el saldo de la cuenta o el precio/unidades de tus posiciones en Inversiones.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-1">
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Movimientos</p>
