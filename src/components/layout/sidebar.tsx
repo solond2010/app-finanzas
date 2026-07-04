@@ -30,7 +30,7 @@ import { useSidebar } from "@/lib/sidebar"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/transactions", label: "Ingresos y Gastos", icon: ArrowLeftRight },
+  { href: "/transactions", label: "Movimientos", icon: ArrowLeftRight },
   { href: "/cuentas", label: "Cuentas", icon: Wallet },
   { href: "/inversiones", label: "Inversiones", icon: LineChart },
   { href: "/analytics", label: "Analíticas", icon: BarChart3 },

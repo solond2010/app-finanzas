@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
 // en móvil; Objetivos ya se ve también en el Dashboard (metas de ahorro).
 const items = [
   { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
-  { href: "/transactions", label: "Ingresos", icon: ArrowLeftRight },
+  { href: "/transactions", label: "Movimientos", icon: ArrowLeftRight },
   { href: "/cuentas", label: "Cuentas", icon: Wallet },
   { href: "/inversiones", label: "Inversión", icon: LineChart },
   { href: "/analytics", label: "Analíticas", icon: BarChart3 },

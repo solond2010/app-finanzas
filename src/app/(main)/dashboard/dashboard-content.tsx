@@ -692,7 +692,7 @@ export default function DashboardContent() {
           )}
 
           {/* Últimos movimientos: vista rápida de los 5 más recientes. El
-              historial completo vive en Ingresos y Gastos. */}
+              historial completo vive en Movimientos. */}
           <div className={`${CARD} min-w-0`}>
             <div className="mb-4 flex items-center justify-between">
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Receipt className="h-4 w-4 text-primary" /> Últimos movimientos</p>

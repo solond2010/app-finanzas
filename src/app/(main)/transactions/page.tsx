@@ -148,7 +148,7 @@ export default function IngresosGastosPage() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="page-section-label">Control financiero</p>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Ingresos y Gastos</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Movimientos</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           <ImportCsvButton />
