@@ -1,22 +1,13 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useFinance, type Account } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Wallet as WalletIcon, Plus, Target, TrendingUp } from "lucide-react"
 import { formatMoney, currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
-import { typeConfig, typeLabels } from "@/lib/account-types"
+import { typeConfig } from "@/lib/account-types"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { useMemo, useState } from "react"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
@@ -172,61 +163,6 @@ export default function CuentasPage() {
               <span className="text-sm font-medium">Nueva Cuenta</span>
             </button>
           </div>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <WalletIcon className="h-4 w-4 text-muted-foreground" />
-                Resumen de cuentas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cuenta</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Banco</TableHead>
-                    <TableHead className="text-right">Saldo</TableHead>
-                    <TableHead className="text-right">Objetivo</TableHead>
-                    <TableHead className="text-right w-24">Progreso</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {state.accounts.map((a) => {
-                    const progress = a.objetivo && a.objetivo > 0 ? Math.min(Math.round((accountValue(a) / a.objetivo) * 100), 100) : null
-                    return (
-                      <TableRow key={a.id} className="cursor-pointer group transition-colors hover:bg-muted/20" onClick={() => router.push(`/cuentas/${a.id}`)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && router.push(`/cuentas/${a.id}`)} role="button">
-                        <TableCell className="font-medium">{a.nombre}</TableCell>
-                        <TableCell className="text-muted-foreground">{typeLabels[a.tipo]}</TableCell>
-                        <TableCell className="text-muted-foreground">{a.banco || "—"}</TableCell>
-                        <TableCell className="text-right tabular-nums font-semibold">
-                          <Sensitive>{formatMoney(accountValue(a), a.currency)}</Sensitive>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-muted-foreground">
-                          {a.objetivo ? <Sensitive>{a.objetivo.toLocaleString("es-ES")} {currencySymbol(a.currency)}</Sensitive> : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {progress !== null ? (
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${progress >= 80 ? "bg-emerald-500/10 text-emerald-500" : progress >= 40 ? "bg-amber-500/10 text-amber-500" : "bg-muted/60 text-muted-foreground"}`}>
-                              {progress}%
-                            </span>
-                          ) : "—"}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                  <TableRow>
-                    <TableCell colSpan={3} className="font-semibold">Total</TableCell>
-                    <TableCell className="text-right tabular-nums font-bold text-lg">
-                      <Sensitive>{Math.round(netWorth).toLocaleString("es-ES")}€</Sensitive>
-                    </TableCell>
-                    <TableCell colSpan={2} />
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
         </>
       )}
 
