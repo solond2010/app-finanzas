@@ -8,7 +8,6 @@ import { usePrivacy } from "@/lib/privacy"
 import {
   LayoutDashboard,
   ArrowLeftRight,
-  Target,
   Settings,
   BarChart3,
   LineChart,
@@ -34,7 +33,6 @@ const navItems = [
   { href: "/cuentas", label: "Cuentas", icon: Wallet },
   { href: "/inversiones", label: "Inversiones", icon: LineChart },
   { href: "/analytics", label: "Analíticas", icon: BarChart3 },
-  { href: "/objetivos", label: "Objetivos", icon: Target },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ]
 

@@ -5,9 +5,6 @@ import { usePathname } from "next/navigation"
 import { LayoutDashboard, ArrowLeftRight, Wallet, BarChart3, LineChart } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-// Objetivos se queda fuera de la barra (accesible desde el menú "Más") para
-// dejar sitio a Inversiones, que es una sección propia sin otro acceso directo
-// en móvil; Objetivos ya se ve también en el Dashboard (metas de ahorro).
 const items = [
   { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
   { href: "/transactions", label: "Movimientos", icon: ArrowLeftRight },

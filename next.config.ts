@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // /objetivos se fusionó dentro de /cuentas (misma página, sección "Metas de
+  // ahorro" al final); redirige por si queda algún enlace o marcador antiguo.
+  async redirects() {
+    return [{ source: "/objetivos", destination: "/cuentas", permanent: true }];
+  },
 };
 
 export default nextConfig;

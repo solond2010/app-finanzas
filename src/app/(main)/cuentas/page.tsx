@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AnimatedNumber } from "@/components/shared/animated-number"
-import { Wallet as WalletIcon, Plus } from "lucide-react"
+import { Wallet as WalletIcon, Plus, Target, TrendingUp } from "lucide-react"
 import { formatMoney, currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig, typeLabels } from "@/lib/account-types"
@@ -24,6 +24,9 @@ import { useToast } from "@/components/ui/toast"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
+import { MetricCard } from "@/components/dashboard/metric-card"
+import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
+import { money } from "@/lib/format"
 
 export default function CuentasPage() {
   const { state, loading, dispatch } = useFinance()
@@ -49,6 +52,23 @@ export default function CuentasPage() {
   }, [state.accounts, valueByAccount, investedByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
   const liquidNetWorth = state.accounts.filter((a) => a.tipo !== "inversion").reduce((s, a) => s + accountValue(a), 0)
   const liquidPct = netWorth > 0 ? Math.round((liquidNetWorth / netWorth) * 100) : 0
+
+  // Metas de ahorro (fusionado desde /objetivos): mismos cálculos que tenía esa página.
+  const goalStats = useMemo(() => {
+    const totalObjetivo = state.sinkingFunds.reduce((s, f) => s + f.cantidad_objetivo, 0)
+    const totalAhorrado = state.sinkingFunds.reduce((s, f) => s + f.ahorrado_actual, 0)
+    const overallProgress = totalObjetivo > 0 ? Math.round((totalAhorrado / totalObjetivo) * 100) : 0
+    return { totalObjetivo, totalAhorrado, overallProgress, count: state.sinkingFunds.length }
+  }, [state.sinkingFunds])
+  const fundsWithProgress = useMemo(
+    () => state.sinkingFunds.map((f) => ({ ...f, pct: f.cantidad_objetivo > 0 ? (f.ahorrado_actual / f.cantidad_objetivo) * 100 : 0, restante: Math.max(f.cantidad_objetivo - f.ahorrado_actual, 0) })),
+    [state.sinkingFunds]
+  )
+  const completedGoals = fundsWithProgress.filter((f) => f.pct >= 100).length
+  const nearestGoalFund = fundsWithProgress.filter((f) => f.pct < 100).sort((a, b) => b.pct - a.pct)[0] ?? null
+  const biggestEffortFund = fundsWithProgress.filter((f) => f.pct < 100).sort((a, b) => b.restante - a.restante)[0] ?? null
+  const totalRestante = Math.max(goalStats.totalObjetivo - goalStats.totalAhorrado, 0)
+  const hasMetas = state.sinkingFunds.length > 0
 
   return (
     <div className="content-fade space-y-6 sm:space-y-7">
@@ -209,6 +229,41 @@ export default function CuentasPage() {
           </Card>
         </>
       )}
+
+      <section className="space-y-6 border-t border-border pt-6 sm:space-y-7 sm:pt-7">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="page-section-label">Metas de ahorro</p>
+            <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">Objetivos</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Define objetivos, vincula cuentas y sigue tu progreso mes a mes.</p>
+          </div>
+          {hasMetas && (
+            <div className="flex items-center gap-2 self-start rounded-full border border-border bg-card px-4 py-2 sm:self-auto">
+              <span className="text-xs text-muted-foreground">Progreso global</span>
+              <span className="text-sm font-bold tabular-nums text-foreground"><AnimatedNumber value={goalStats.overallProgress} suffix="%" /></span>
+            </div>
+          )}
+        </div>
+
+        {hasMetas && (
+          <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+            <TickerTile label="Restante total" value={money(totalRestante)} valueColor="var(--accent-amber)" />
+            <TickerTile label="Meta más cerca" value={nearestGoalFund ? `${Math.round(nearestGoalFund.pct)}%` : "—"} detail={nearestGoalFund?.nombre} valueColor="var(--accent-green)" />
+            <TickerTile label="Mayor esfuerzo" value={biggestEffortFund ? money(biggestEffortFund.restante) : "—"} detail={biggestEffortFund?.nombre} valueColor="var(--gold)" />
+            <TickerTile label="Completadas" value={`${completedGoals}/${goalStats.count}`} valueColor="var(--primary)" />
+          </section>
+        )}
+
+        {hasMetas && (
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <MetricCard label="Metas activas" value={goalStats.count} subtitle="Objetivos en curso" icon={Target} tone="amber" delay={0} />
+            <MetricCard label="Total ahorrado" value={<AnimatedNumber value={Math.round(goalStats.totalAhorrado)} />} subtitle="Acumulado de todas las metas" icon={WalletIcon} tone="blue" delay={80} />
+            <MetricCard label="Objetivo total" value={<AnimatedNumber value={Math.round(goalStats.totalObjetivo)} />} subtitle="Suma de todas las metas" icon={TrendingUp} tone="violet" delay={160} />
+          </section>
+        )}
+
+        <SinkingFundsGrid />
+      </section>
 
       <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={(a) => { dispatch({ type: "ADD_ACCOUNT", payload: a }); setShowNewAccount(false); toast("Cuenta creada", "success") }} />
     </div>
