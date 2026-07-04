@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useFinance, type Account } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
+import { accountGoal } from "@/lib/calculations"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Wallet as WalletIcon, Plus, Target, TrendingUp } from "lucide-react"
 import { formatMoney, currencySymbol } from "@/lib/currency"
@@ -37,10 +38,11 @@ export default function CuentasPage() {
   const topAccount = useMemo(() => (state.accounts.length === 0 ? null : state.accounts.slice().sort((a, b) => accountValue(b) - accountValue(a))[0]), [state.accounts, valueByAccount, investedByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
   const nearestGoal = useMemo(() => {
     return state.accounts
-      .filter((a) => a.objetivo && a.objetivo > 0)
-      .map((a) => ({ account: a, pct: Math.min((accountValue(a) / (a.objetivo as number)) * 100, 100) }))
+      .map((a) => ({ account: a, goal: accountGoal(a, state.sinkingFunds) }))
+      .filter((a) => a.goal > 0)
+      .map((a) => ({ account: a.account, pct: Math.min((accountValue(a.account) / a.goal) * 100, 100) }))
       .sort((a, b) => b.pct - a.pct)[0] ?? null
-  }, [state.accounts, valueByAccount, investedByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.accounts, state.sinkingFunds, valueByAccount, investedByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
   const liquidNetWorth = state.accounts.filter((a) => a.tipo !== "inversion").reduce((s, a) => s + accountValue(a), 0)
   const liquidPct = netWorth > 0 ? Math.round((liquidNetWorth / netWorth) * 100) : 0
 
@@ -106,6 +108,7 @@ export default function CuentasPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {state.accounts.map((account, index) => {
               const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
+              const goal = accountGoal(account, state.sinkingFunds)
               return (
                 <button
                   key={account.id}
@@ -133,17 +136,17 @@ export default function CuentasPage() {
                       </p>
                     </div>
 
-                    {account.objetivo && account.objetivo > 0 && (
+                    {goal > 0 && (
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Objetivo: <Sensitive>{account.objetivo.toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive></span>
-                          <span>{Math.round((accountValue(account) / account.objetivo) * 100)}%</span>
+                          <span>Objetivo: <Sensitive>{goal.toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive></span>
+                          <span>{Math.round((accountValue(account) / goal) * 100)}%</span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-muted/50">
                           <div
                             className="h-full rounded-full transition-all duration-700 ease-out"
                             style={{
-                              width: `${Math.min((accountValue(account) / account.objetivo) * 100, 100)}%`,
+                              width: `${Math.min((accountValue(account) / goal) * 100, 100)}%`,
                               backgroundColor: cfg.color,
                             }}
                           />

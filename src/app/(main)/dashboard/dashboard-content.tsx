@@ -15,7 +15,7 @@ import { usePortfolioValue, accountDisplayValue, type Position } from "@/lib/inv
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring } from "@/lib/calculations"
+import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, accountGoal } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -612,7 +612,7 @@ export default function DashboardContent() {
 
               {currentAccount && (() => {
                 const cfg = typeConfig[currentAccount.tipo] ?? typeConfig.efectivo
-                const objetivo = currentAccount.objetivo ?? 0
+                const objetivo = accountGoal(currentAccount, state.sinkingFunds)
                 const pct = objetivo > 0 ? Math.min((currentAccount.saldo / objetivo) * 100, 100) : 0
                 return (
                   <button

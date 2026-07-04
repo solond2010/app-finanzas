@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import type { Account, Transaction } from "./store"
+import type { Account, SinkingFund, Transaction } from "./store"
 import {
   isTransfer,
   getSavingsRate,
@@ -9,6 +9,7 @@ import {
   getCategoryBreakdown,
   getUpcomingRecurring,
   calculateMonthlySaving,
+  accountGoal,
 } from "./calculations"
 
 function account(overrides: Partial<Account> = {}): Account {
@@ -22,6 +23,18 @@ function account(overrides: Partial<Account> = {}): Account {
     objetivo: null,
     limite_mensual: null,
     color: "#000",
+    ...overrides,
+  }
+}
+
+function fund(overrides: Partial<SinkingFund> = {}): SinkingFund {
+  return {
+    id: "fund_1",
+    nombre: "Meta",
+    cantidad_objetivo: 500,
+    fecha_limite: "2027-01-01",
+    ahorrado_actual: 100,
+    cuenta_id: "acc_1",
     ...overrides,
   }
 }
@@ -157,5 +170,26 @@ describe("getUpcomingRecurring", () => {
 describe("calculateMonthlySaving", () => {
   it("devuelve 0 si el plazo ya venció", () => {
     expect(calculateMonthlySaving(1000, 0, "2020-01-01")).toBe(0)
+  })
+})
+
+describe("accountGoal", () => {
+  it("usa el objetivo propio de la cuenta si lo tiene", () => {
+    expect(accountGoal(account({ objetivo: 300 }), [])).toBe(300)
+  })
+
+  it("si la cuenta no tiene objetivo propio, suma el de las metas vinculadas", () => {
+    const funds = [fund({ cantidad_objetivo: 500, cuenta_id: "acc_1" })]
+    expect(accountGoal(account({ objetivo: null }), funds)).toBe(500)
+  })
+
+  it("ignora metas vinculadas a otra cuenta", () => {
+    const funds = [fund({ cantidad_objetivo: 500, cuenta_id: "acc_2" })]
+    expect(accountGoal(account({ objetivo: null }), funds)).toBe(0)
+  })
+
+  it("el objetivo propio de la cuenta tiene prioridad sobre las metas vinculadas", () => {
+    const funds = [fund({ cantidad_objetivo: 500, cuenta_id: "acc_1" })]
+    expect(accountGoal(account({ objetivo: 300 }), funds)).toBe(300)
   })
 })

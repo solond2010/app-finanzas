@@ -49,6 +49,7 @@ create table if not exists sinking_funds (
   ahorrado numeric not null default 0,
   fecha_limite text,
   color text not null default '#10b981',
+  cuenta_id text,
   user_id uuid not null,
   created_at timestamptz default now(),
   updated_at timestamptz default now()

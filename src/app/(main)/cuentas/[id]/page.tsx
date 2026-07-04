@@ -14,6 +14,7 @@ import { currencySymbol, formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
+import { accountGoal } from "@/lib/calculations"
 
 export default function AccountDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -50,7 +51,8 @@ export default function AccountDetailPage() {
   const marketValue = valueByAccount[account.id] ?? investedCost
   const idleCash = account.saldo - investedCost
   const displaySaldo = isInvestment ? accountDisplayValue(account, valueByAccount, investedByAccount) : account.saldo
-  const progress = account.objetivo && account.objetivo > 0 ? Math.min((displaySaldo / account.objetivo) * 100, 100) : null
+  const goal = accountGoal(account, state.sinkingFunds)
+  const progress = goal > 0 ? Math.min((displaySaldo / goal) * 100, 100) : null
   const budgetUsed = account.limite_mensual && account.limite_mensual > 0
     ? (() => {
         const now = new Date()
@@ -150,7 +152,7 @@ export default function AccountDetailPage() {
               </div>
               <Progress value={progress} className="h-2" />
               <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground tabular-nums"><Sensitive as="strong">{formatMoney(displaySaldo, account.currency)}</Sensitive></strong> de <span className="tabular-nums"><Sensitive>{formatMoney(account.objetivo!, account.currency)}</Sensitive></span>
+                <strong className="text-foreground tabular-nums"><Sensitive as="strong">{formatMoney(displaySaldo, account.currency)}</Sensitive></strong> de <span className="tabular-nums"><Sensitive>{formatMoney(goal, account.currency)}</Sensitive></span>
               </p>
             </CardContent>
           </Card>

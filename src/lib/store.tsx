@@ -206,6 +206,7 @@ type SinkingFundRow = {
   objetivo: number | string | null
   ahorrado: number | string | null
   fecha_limite: string | null
+  cuenta_id?: string | null
 }
 
 type TransactionPayload = Omit<TransactionRow, "monto" | "tags" | "descripcion"> & { monto: number; tags: string[]; descripcion: string }
@@ -652,7 +653,7 @@ function formatTransaction(t: TransactionRow): Transaction {
 }
 
 function formatSinkingFund(s: SinkingFundRow): SinkingFund {
-  return { id: s.id, nombre: s.nombre ?? "", cantidad_objetivo: Number(s.objetivo) || 0, fecha_limite: s.fecha_limite ?? "", ahorrado_actual: Number(s.ahorrado) || 0, cuenta_id: "" }
+  return { id: s.id, nombre: s.nombre ?? "", cantidad_objetivo: Number(s.objetivo) || 0, fecha_limite: s.fecha_limite ?? "", ahorrado_actual: Number(s.ahorrado) || 0, cuenta_id: s.cuenta_id ?? "" }
 }
 
 function unformatAccount(a: Account) {
@@ -676,7 +677,13 @@ function unformatTransaction(t: Transaction): TransactionPayload {
 }
 
 function unformatSinkingFund(s: SinkingFund) {
-  return { id: s.id, nombre: s.nombre, objetivo: s.cantidad_objetivo, ahorrado: s.ahorrado_actual, fecha_limite: s.fecha_limite || null }
+  return {
+    id: s.id, nombre: s.nombre, objetivo: s.cantidad_objetivo, ahorrado: s.ahorrado_actual, fecha_limite: s.fecha_limite || null,
+    // Solo se envía cuando hay cuenta vinculada, para que una meta sin vincular
+    // siga sincronizando aunque supabase-sinkingfunds-cuenta.sql no se haya
+    // ejecutado todavía (la columna cuenta_id es nueva).
+    ...(s.cuenta_id ? { cuenta_id: s.cuenta_id } : {}),
+  }
 }
 
 export function useFinance() {

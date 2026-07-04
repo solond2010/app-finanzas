@@ -1,5 +1,17 @@
-import type { Account, Transaction, MonthlySummary, NetWorthSnapshot } from "./store"
+import type { Account, Transaction, MonthlySummary, NetWorthSnapshot, SinkingFund } from "./store"
 import { convertToEur } from "./currency"
+
+/**
+ * Objetivo efectivo de una cuenta: el que tenga puesto directamente en la
+ * cuenta, o si no tiene, la suma de los objetivos de las metas de ahorro
+ * vinculadas a ella (cuenta_id). Sin esto, vincular una cuenta a una meta en
+ * "Metas de ahorro" no hacía aparecer ninguna barra de progreso en las
+ * tarjetas/widgets de esa cuenta, porque son dos campos independientes.
+ */
+export function accountGoal(account: Account, sinkingFunds: SinkingFund[]): number {
+  if (account.objetivo && account.objetivo > 0) return account.objetivo
+  return sinkingFunds.filter((f) => f.cuenta_id === account.id).reduce((s, f) => s + f.cantidad_objetivo, 0)
+}
 
 function getMonthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
