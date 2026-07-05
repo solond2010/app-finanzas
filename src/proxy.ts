@@ -31,5 +31,8 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // api/shortcuts queda fuera del gate de contraseña: lo llama un Atajo de
+  // iOS, no un navegador, así que no puede mandar la cookie app-auth. Esa
+  // ruta se protege con su propio secreto (ver SHORTCUTS_SECRET).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/shortcuts).*)"],
 }

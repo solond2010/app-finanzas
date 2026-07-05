@@ -598,10 +598,18 @@ function loadLocalBackup(): FinanceState | null {
 }
 
 async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sinking_funds" | "budgets" | "categories", localIds: string[]) {
-  const data = await dbSelect<{ id: string }>(table, "id")
+  // Para "transactions" también se leen los tags: las filas con "apple-pay"
+  // las crea /api/shortcuts/expense directamente en Supabase, fuera de este
+  // reducer, así que ninguna pestaña abierta las tiene en su estado local
+  // todavía. Sin esta excepción, este borrado-espejo las trataba como "el
+  // usuario las borró" y las eliminaba a los pocos segundos de crearse.
+  type RowWithTags = { id: string; tags?: unknown }
+  const data = await dbSelect<RowWithTags>(table, table === "transactions" ? "id, tags" : "id")
   if (!data) throw new Error(`No se pudo leer "${table}" para sincronizar borrados`)
 
-  const remoteIds = data.map((row) => row.id)
+  const remoteIds = data
+    .filter((row) => !(Array.isArray(row.tags) && row.tags.includes("apple-pay")))
+    .map((row) => row.id)
   const localSet = new Set(localIds)
   const missing = remoteIds.filter((id) => !localSet.has(id))
   if (missing.length === 0) return
