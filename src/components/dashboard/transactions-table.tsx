@@ -26,7 +26,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Category, generateId } from "@/lib/store"
-import { dbDeleteEq } from "@/lib/db-client"
 import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle } from "lucide-react"
 import { parseAmount } from "@/lib/validation"
 import { cn } from "@/lib/utils"
@@ -638,18 +637,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
       <ConfirmDialog
         open={deleteConfirm !== null}
         onOpenChange={() => setDeleteConfirm(null)}
-        onConfirm={() => {
-          if (!deleteConfirm) return
-          dispatch({ type: "DELETE_TRANSACTION", payload: deleteConfirm.id })
-          // Borrado explícito e inmediato (no solo vía el borrado-espejo de
-          // syncToSupabase): las transacciones con tag "apple-pay" quedan
-          // excluidas de ese borrado-espejo (ver deleteRemoteMissingRows en
-          // store.tsx) para que /api/shortcuts/expense no las pierda por una
-          // sincronización con estado local desactualizado; sin esta llamada
-          // directa, esas transacciones nunca se borrarían de Supabase.
-          dbDeleteEq("transactions", "id", deleteConfirm.id).then(() => {}, () => {})
-          toast("Transacción eliminada", "success")
-        }}
+        onConfirm={() => { if (deleteConfirm) { dispatch({ type: "DELETE_TRANSACTION", payload: deleteConfirm.id }); toast("Transacción eliminada", "success") }}}
         title="¿Eliminar transacción?"
         description={<>Se eliminará la transacción &ldquo;{deleteConfirm?.descripcion || deleteConfirm?.categoria || ""}&rdquo; de <Sensitive>{deleteConfirm?.monto?.toLocaleString("es-ES")}€</Sensitive>. No se puede deshacer.</>}
         confirmLabel="Eliminar"
