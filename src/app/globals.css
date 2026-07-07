@@ -66,7 +66,11 @@
 }
 
 :root {
-  --mobile-header-h: 52px;
+  /* +env(safe-area-inset-top): en standalone (PWA anclada a inicio en iOS,
+     ver appleWebApp/status-bar-style en layout.tsx) el contenido se dibuja
+     bajo la barra de estado/notch — sin esto, la cabecera fija quedaba
+     demasiado baja y el título de cada página aparecía tapado arriba. */
+  --mobile-header-h: calc(52px + env(safe-area-inset-top));
   --bottom-nav-h: 64px;
   --background: oklch(0.967 0.002 264);
   --foreground: oklch(0.205 0 0);

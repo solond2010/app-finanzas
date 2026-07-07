@@ -106,7 +106,10 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile header */}
-      <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b bg-background/80 px-3 py-2.5 lg:hidden">
+      <div
+        className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b bg-background/80 px-3 py-2.5 lg:hidden"
+        style={{ paddingTop: "calc(0.625rem + env(safe-area-inset-top))" }}
+      >
         <div className="flex items-center gap-2">
           <button
             onClick={togglePrivacy}
