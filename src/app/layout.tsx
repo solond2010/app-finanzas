@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { cookies } from "next/headers"
 import "./globals.css"
@@ -16,6 +16,20 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Finanzas - Panel de Control",
   description: "Dashboard financiero personal",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Finanzas",
+  },
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Sin esto, env(safe-area-inset-*) vale 0 siempre: el padding de seguridad
+  // que ya usa la barra inferior móvil (mobile-bottom-nav.tsx) no hacía nada.
+  viewportFit: "cover",
+  themeColor: "#000001",
 }
 
 export default async function RootLayout({
