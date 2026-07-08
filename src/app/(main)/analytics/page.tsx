@@ -29,6 +29,7 @@ const BUDGET_WARNING_THRESHOLD = 80
 
 const SummaryTooltip = createChartTooltip(["ingresos", "gastos"], ["emerald", "red"])
 const CategoryTooltip = createChartTooltip(["monto"], ["violet"])
+const AccountTooltip = createChartTooltip(["monto"], ["blue"])
 const NeedsWantsTooltip = createChartTooltip(["Necesidades", "Deseos"], ["emerald", "amber"])
 
 const SectionTitle = memo(function SectionTitle({ label, title, text }: { label: string; title: string; text?: string }) {
@@ -151,6 +152,19 @@ export default function AnalyticsPage() {
   const firstWeekday = (new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1).getDay() + 6) % 7
   const { necesidades, deseos } = useMemo(() => getNeedsVsWantsForMonth(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const categoryBreakdown = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  // De qué cuenta sale el gasto del mes (no solo en qué categoría se va),
+  // para detectar qué cuenta se vacía más rápido.
+  const spendByAccount = useMemo(() => {
+    const accountById = new Map(state.accounts.map((a) => [a.id, a]))
+    const totals = new Map<string, number>()
+    for (const t of analysisTransactions) {
+      if (t.tipo !== "gasto" || isTransfer(t) || !t.fecha.startsWith(selectedMonth)) continue
+      totals.set(t.cuenta_id, (totals.get(t.cuenta_id) ?? 0) + t.monto)
+    }
+    return Array.from(totals.entries())
+      .map(([cuentaId, monto]) => ({ cuenta: accountById.get(cuentaId)?.nombre ?? "Cuenta eliminada", monto }))
+      .sort((a, b) => b.monto - a.monto)
+  }, [state.accounts, analysisTransactions, selectedMonth])
   const categoryInsights = useMemo(() => getCategoryInsights(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   // Mismo patrón que MonthlyBudget: un único pase agrupa el gasto por
   // categoría, en vez de recorrer transacciones una vez por presupuesto.
@@ -371,19 +385,35 @@ export default function AnalyticsPage() {
 
         <SectionTitle label="Gasto" title="Dónde se está yendo el dinero" text="El objetivo no es ver barras bonitas: es encontrar el agujero más grande primero." />
 
-        <Card className="stagger-fade col-span-full lg:col-span-7" style={{ animationDelay: "180ms" }}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold"><Layers3 className="h-4 w-4 text-violet-500" />Gastos por categoría</CardTitle>
-            {topCategory && <span className="text-xs text-muted-foreground">Top: <strong className="text-foreground">{topCategory.categoria}</strong></span>}
-          </CardHeader>
-          <CardContent>
-            {categoryBreakdown.length === 0 ? <EmptyState icon={Layers3} title="Sin gasto categorizado" description="Cuando registres gastos, aquí verás las categorías que más pesan." bordered className="h-full" /> : (
-              <div role="img" aria-label={`Gráfico de barras: gasto por categoría${topCategory ? `, encabezado por ${topCategory.categoria}` : ""}`}>
-                <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={72} customTooltip={CategoryTooltip} className="h-[340px]" showAnimation layout="vertical" />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <div className="col-span-full grid gap-6 lg:col-span-7">
+          <Card className="stagger-fade" style={{ animationDelay: "180ms" }}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold"><Layers3 className="h-4 w-4 text-violet-500" />Gastos por categoría</CardTitle>
+              {topCategory && <span className="text-xs text-muted-foreground">Top: <strong className="text-foreground">{topCategory.categoria}</strong></span>}
+            </CardHeader>
+            <CardContent>
+              {categoryBreakdown.length === 0 ? <EmptyState icon={Layers3} title="Sin gasto categorizado" description="Cuando registres gastos, aquí verás las categorías que más pesan." bordered className="h-full" /> : (
+                <div role="img" aria-label={`Gráfico de barras: gasto por categoría${topCategory ? `, encabezado por ${topCategory.categoria}` : ""}`}>
+                  <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={72} customTooltip={CategoryTooltip} className="h-[280px]" showAnimation layout="vertical" />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {spendByAccount.length > 0 && (
+            <Card className="stagger-fade" style={{ animationDelay: "190ms" }}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Wallet className="h-4 w-4 text-blue-500" />Gasto por cuenta</CardTitle>
+                <span className="text-xs text-muted-foreground">Top: <strong className="text-foreground">{spendByAccount[0].cuenta}</strong></span>
+              </CardHeader>
+              <CardContent>
+                <div role="img" aria-label={`Gráfico de barras: gasto por cuenta, encabezado por ${spendByAccount[0].cuenta}`}>
+                  <BarChart data={spendByAccount.slice(0, 8)} index="cuenta" categories={["monto"]} colors={["blue"]} valueFormatter={chartFormatter} yAxisWidth={72} customTooltip={AccountTooltip} className="h-[220px]" showAnimation layout="vertical" />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
         <div className="col-span-full grid gap-6 lg:col-span-5">
           {budgetProgress.length > 0 && (
