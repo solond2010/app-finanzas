@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Category, generateId } from "@/lib/store"
 import { dbDeleteEq } from "@/lib/db-client"
-import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle } from "lucide-react"
+import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X } from "lucide-react"
 import { parseAmount } from "@/lib/validation"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
@@ -308,6 +308,8 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const { state, loading, dispatch } = useFinance()
   const { toast } = useToast()
   const [filterAccount, setFilterAccount] = useState<string>(cuentaId ?? "all")
+  const [filterCategory, setFilterCategory] = useState<string>("all")
+  const [filterTipo, setFilterTipo] = useState<"all" | "ingreso" | "gasto">("all")
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(0)
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null)
@@ -318,6 +320,20 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
 
   const handleAccountFilter = (value: string | null) => {
     if (value) { setFilterAccount(value); setPage(0) }
+  }
+  const handleCategoryFilter = (value: string | null) => {
+    if (value) { setFilterCategory(value); setPage(0) }
+  }
+  const handleTipoFilter = (value: "all" | "ingreso" | "gasto") => {
+    setFilterTipo(value); setPage(0)
+  }
+  const hasActiveFilters = filterAccount !== "all" || filterCategory !== "all" || filterTipo !== "all" || search !== ""
+  const clearFilters = () => {
+    if (!cuentaId) setFilterAccount("all")
+    setFilterCategory("all")
+    setFilterTipo("all")
+    setSearch("")
+    setPage(0)
   }
 
   const exportCSV = () => {
@@ -373,6 +389,8 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
       const orderIndex = new Map(state.transactions.map((t, i) => [t.id, i] as const))
       return filterTransactionsByMonth(state.transactions, selectedMonth)
         .filter((t) => filterAccount === "all" || t.cuenta_id === filterAccount)
+        .filter((t) => filterCategory === "all" || t.categoria === filterCategory)
+        .filter((t) => filterTipo === "all" || t.tipo === filterTipo)
         .filter((t) => !search || t.descripcion.toLowerCase().includes(search.toLowerCase()) || t.categoria.toLowerCase().includes(search.toLowerCase()) || t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())))
         .sort((a, b) =>
           safeTime(b.fecha) - safeTime(a.fecha)
@@ -380,7 +398,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
           || (orderIndex.get(b.id) ?? 0) - (orderIndex.get(a.id) ?? 0)
         )
     },
-    [state.transactions, filterAccount, search, selectedMonth]
+    [state.transactions, filterAccount, filterCategory, filterTipo, search, selectedMonth]
   )
 
   const grouped = useMemo(() => {
@@ -396,6 +414,11 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
     return groups
   }, [sorted])
 
+  const categoryFilterOptions = useMemo(
+    () => [...state.categories].sort((a, b) => a.name.localeCompare(b.name, "es")),
+    [state.categories]
+  )
+
   const totalPages = Math.max(1, Math.ceil(grouped.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages - 1)
   const currentGrouped = useMemo(() => grouped.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE), [grouped, safePage])
@@ -408,11 +431,10 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
               <Download className="h-3.5 w-3.5" /> Exportar CSV
             </Button>
+            <Filter className="h-4 w-4 text-muted-foreground" />
             {!cuentaId && (
-              <>
-                <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={filterAccount} onValueChange={handleAccountFilter} items={{ all: "Todas las cuentas", ...Object.fromEntries(state.accounts.map((a) => [a.id, a.nombre])) }}>
-                <SelectTrigger className="w-48" aria-label="Filtrar por cuenta">
+                <SelectTrigger className="w-40" aria-label="Filtrar por cuenta">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent className="p-2">
@@ -422,8 +444,37 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                   ))}
                 </SelectContent>
               </Select>
-            </>
-          )}
+            )}
+            <Select value={filterCategory} onValueChange={handleCategoryFilter} items={{ all: "Todas las categorías", ...Object.fromEntries(categoryFilterOptions.map((c) => [c.name, c.name])) }}>
+              <SelectTrigger className="w-40" aria-label="Filtrar por categoría">
+                <SelectValue placeholder="Categoría" />
+              </SelectTrigger>
+              <SelectContent className="p-2">
+                <SelectItem value="all">Todas las categorías</SelectItem>
+                {categoryFilterOptions.map((c) => (
+                  <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+              {(["all", "ingreso", "gasto"] as const).map((tipo) => (
+                <button
+                  key={tipo}
+                  onClick={() => handleTipoFilter(tipo)}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                    filterTipo === tipo ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tipo === "all" ? "Todos" : tipo === "ingreso" ? "Ingreso" : "Gasto"}
+                </button>
+              ))}
+            </div>
+            {hasActiveFilters && (
+              <Button type="button" variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={clearFilters}>
+                <X className="h-3.5 w-3.5" /> Limpiar filtros
+              </Button>
+            )}
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             <Input
