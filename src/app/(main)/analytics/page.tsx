@@ -100,12 +100,17 @@ const DayHeatmap = memo(function DayHeatmap({ dailyTotals, firstWeekday }: { dai
       {dailyTotals.map((total, i) => {
         const level = intensity(total)
         return (
-          <div
-            key={i}
-            className={cn("flex aspect-square items-center justify-center rounded-lg text-[11px] font-semibold transition-colors", HEATMAP_BG[level], HEATMAP_TEXT[level])}
-            title={total > 0 ? money(total) : "Sin gasto"}
-          >
-            {i + 1}
+          <div key={i} className="group relative">
+            <div
+              className={cn("flex aspect-square items-center justify-center rounded-lg text-[11px] font-semibold transition-colors", HEATMAP_BG[level], HEATMAP_TEXT[level])}
+            >
+              {i + 1}
+            </div>
+            <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-1.5 text-xs opacity-0 shadow-lg transition-all duration-150 group-hover:scale-100 group-hover:opacity-100">
+              <p className="font-semibold text-foreground">Día {i + 1}</p>
+              <p className={total > 0 ? "text-red-500" : "text-muted-foreground"}>{total > 0 ? money(total) : "Sin gasto"}</p>
+              <div className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1 rotate-45 border-b border-r border-border bg-popover" />
+            </div>
           </div>
         )
       })}
@@ -198,17 +203,24 @@ export default function AnalyticsPage() {
   const topCategory = categoryBreakdown[0]
   const categoryTotal = categoryBreakdown.reduce((sum, item) => sum + item.monto, 0)
   const topCategoryPct = topCategory && categoryTotal > 0 ? Math.round((topCategory.monto / categoryTotal) * 100) : 0
-  const averageMonthlyNet = cashFlow.length > 0 ? Math.round(cashFlow.reduce((sum, item) => sum + item.neto, 0) / cashFlow.length) : 0
-  const positiveMonths = cashFlow.filter((item) => item.neto >= 0).length
+  // La ventana de cashFlow siempre tiene 6 meses aunque el usuario lleve
+  // menos tiempo usando la app; los meses sin ningún movimiento (ni ingresos
+  // ni gastos) no cuentan como "mes con cash flow positivo" ni entran en la
+  // media, o si no se infla la racha/promedio con meses que nunca existieron.
+  const activeCashFlow = useMemo(() => cashFlow.filter((item) => item.ingresos > 0 || item.gastos > 0), [cashFlow])
+  const averageMonthlyNet = activeCashFlow.length > 0 ? Math.round(activeCashFlow.reduce((sum, item) => sum + item.neto, 0) / activeCashFlow.length) : 0
+  const positiveMonths = activeCashFlow.filter((item) => item.neto >= 0).length
   const netWorthTrendPositive = netWorthChange >= 0
   const isAllTimeHigh = netWorthTrendPositive && netWorthHistory.length > 0 && currentNetWorth >= Math.max(...netWorthHistory.map((n) => n.patrimonio))
 
   // Racha de meses consecutivos con flujo de caja positivo, contando hacia
-  // atrás desde el mes seleccionado dentro de la ventana de 6 meses visible.
+  // atrás desde el mes seleccionado, ignorando los meses sin actividad.
   const streak = useMemo(() => {
     let count = 0
     for (let i = cashFlow.length - 1; i >= 0; i--) {
-      if (cashFlow[i].neto < 0) break
+      const month = cashFlow[i]
+      if (month.ingresos === 0 && month.gastos === 0) break
+      if (month.neto < 0) break
       count++
     }
     return count
@@ -288,7 +300,7 @@ export default function AnalyticsPage() {
         <MetricCard label="Patrimonio" value={<AnimatedNumber value={Math.round(currentNetWorth)} />} subtitle={<>{netWorthTrendPositive ? "Sube" : "Baja"} <Sensitive>{signedMoney(netWorthChange)}</Sensitive> vs mes previo</>} icon={Wallet} tone={netWorthTrendPositive ? "emerald" : "red"} delay={0} />
         <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix={monthTotals.ingresos > 0 ? "+" : ""} />} subtitle={`Registrados en ${formatMonth(selectedDate)}`} icon={ArrowUpRight} tone="emerald" delay={70} />
         <MetricCard label="Gastos" value={<AnimatedNumber value={monthTotals.gastos} prefix={monthTotals.gastos > 0 ? "-" : ""} />} subtitle={topCategory ? `${topCategory.categoria} concentra el ${topCategoryPct}%` : "Sin gastos este mes"} icon={ArrowDownRight} tone="red" delay={140} />
-        <MetricCard label="Neto" value={<AnimatedNumber value={monthTotals.neto} />} subtitle={`${positiveMonths}/6 meses con cash flow positivo`} icon={Activity} tone={monthTotals.neto >= 0 ? "blue" : "amber"} delay={210} />
+        <MetricCard label="Neto" value={<AnimatedNumber value={monthTotals.neto} />} subtitle={activeCashFlow.length > 0 ? `${positiveMonths}/${activeCashFlow.length} meses con cash flow positivo` : "Sin histórico todavía"} icon={Activity} tone={monthTotals.neto >= 0 ? "blue" : "amber"} delay={210} />
       </section>
 
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
