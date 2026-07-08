@@ -2,7 +2,7 @@
 
 import { useMemo, useState, memo } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
+import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, Target, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +15,7 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getMonthTotalsByString, getNeedsVsWantsForMonth, isTransfer } from "@/lib/calculations"
+import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getMonthTotalsByString, getNeedsVsWantsForMonth, isTransfer } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
@@ -180,6 +180,17 @@ export default function AnalyticsPage() {
   const summaries = useMemo(() => buildMonthlySummariesUpTo(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const cashFlow = useMemo(() => buildMonthlyCashFlow(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const { valueByAccount, investedByAccount } = usePortfolioValue()
+  // Objetivo consolidado por cuenta: propio (accountGoal ya combina objetivo
+  // directo + metas de ahorro vinculadas) frente al valor actual de la cuenta,
+  // reutilizando accountDisplayValue para que las cuentas de inversión usen
+  // su valor de mercado real igual que en el resto de la página.
+  const goalProgress = useMemo(() => {
+    return state.accounts
+      .map((a) => ({ account: a, goal: accountGoal(a, state.sinkingFunds), current: accountDisplayValue(a, valueByAccount, investedByAccount) }))
+      .filter((g) => g.goal > 0)
+      .map((g) => ({ ...g, pct: Math.min((g.current / g.goal) * 100, 100), restante: Math.max(g.goal - g.current, 0) }))
+      .sort((a, b) => b.pct - a.pct)
+  }, [state.accounts, state.sinkingFunds, valueByAccount, investedByAccount])
   // Las cuentas de inversión no bajan su saldo al comprar una posición (no
   // genera un gasto), así que el patrimonio en crudo mezcla efectivo sin
   // invertir con dinero ya invertido. Se sustituye la parte invertida por su
@@ -435,6 +446,36 @@ export default function AnalyticsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {goalProgress.length > 0 && (
+            <Card className="stagger-fade" style={{ animationDelay: "295ms" }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Target className="h-4 w-4 text-emerald-500" />Objetivos</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {goalProgress.map((g) => {
+                  const complete = g.pct >= 100
+                  return (
+                    <div key={g.account.id} className="space-y-2">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: g.account.color }} />
+                          <span className="truncate">{g.account.nombre}</span>
+                        </span>
+                        <span className={cn("shrink-0 font-semibold tabular-nums", complete ? "text-emerald-500" : "text-foreground")}>
+                          <Sensitive>{formatMoney(g.current, g.account.currency)}</Sensitive> / <Sensitive>{formatMoney(g.goal, g.account.currency)}</Sensitive>
+                        </span>
+                      </div>
+                      <Progress value={g.pct} className="[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-indicator]]:bg-emerald-500" />
+                      {!complete && (
+                        <p className="text-[11px] text-muted-foreground">Faltan <Sensitive as="span">{formatMoney(g.restante, g.account.currency)}</Sensitive> · {Math.round(g.pct)}% completado</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
 
           {categoryInsights.length > 0 && (
             <Card className="stagger-fade" style={{ animationDelay: "310ms" }}>
