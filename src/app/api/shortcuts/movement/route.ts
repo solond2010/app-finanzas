@@ -27,7 +27,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "tipo debe ser gasto, ingreso o traspaso" }, { status: 400 })
   }
 
-  const monto = Number(body.monto)
+  // El Atajo de iOS interpola el número como texto usando el formato del
+  // dispositivo (España = coma decimal, ej. "12,50"), así que Number()
+  // directamente daría NaN. Se normaliza la coma a punto antes de parsear.
+  const montoRaw = typeof body.monto === "string" ? body.monto.replace(",", ".") : body.monto
+  const monto = Number(montoRaw)
   if (!Number.isFinite(monto) || monto <= 0) {
     return NextResponse.json({ error: "monto debe ser un número mayor que 0" }, { status: 400 })
   }
