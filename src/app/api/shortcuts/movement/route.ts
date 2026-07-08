@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase-server"
 import { timingSafeEqualString } from "@/lib/auth"
+import { guessCategory } from "@/lib/guess-category"
 
 // Mismo USER_ID hardcodeado que usa el resto de la app (ver USER_ID en
 // src/lib/store.tsx) — duplicado como literal en vez de importado porque
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
     monto,
     fecha,
     tipo: body.tipo,
-    categoria: "Otros",
+    categoria: guessCategory(descripcion, body.tipo),
     es_necesidad: false,
     descripcion,
     tags: ["atajo"],
