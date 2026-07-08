@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation"
 import { useFinance } from "@/lib/store"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
-import { ArrowLeft, Pencil, SearchX, Wallet, ArrowUpRight, ArrowDownRight, PiggyBank, TrendingUp } from "lucide-react"
+import { ArrowLeft, Pencil, SearchX, Wallet, ArrowUpRight, ArrowDownRight, PiggyBank, TrendingUp, Copy } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -15,6 +15,7 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { accountGoal } from "@/lib/calculations"
+import { useToast } from "@/components/ui/toast"
 
 export default function AccountDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -23,6 +24,7 @@ export default function AccountDetailPage() {
   const [editing, setEditing] = useState(false)
   const [investing, setInvesting] = useState(false)
   const { valueByAccount, investedByAccount } = usePortfolioValue()
+  const { toast } = useToast()
 
   const account = state.accounts.find((a) => a.id === id)
   if (!account) return (
@@ -98,9 +100,20 @@ export default function AccountDetailPage() {
             </div>
           </div>
 
-          <Button variant="outline" size="sm" className="gap-1.5 rounded-[16px]" onClick={() => setEditing(true)}>
-            <Pencil className="h-3.5 w-3.5" /> Editar cuenta
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-[16px]"
+              onClick={() => { navigator.clipboard.writeText(account.id); toast("ID de cuenta copiado", "success") }}
+              title="Para usar esta cuenta en un Atajo de iOS"
+            >
+              <Copy className="h-3.5 w-3.5" /> Copiar ID
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5 rounded-[16px]" onClick={() => setEditing(true)}>
+              <Pencil className="h-3.5 w-3.5" /> Editar cuenta
+            </Button>
+          </div>
         </div>
       </section>
 
