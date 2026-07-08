@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Category, generateId } from "@/lib/store"
 import { dbDeleteEq } from "@/lib/db-client"
-import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X } from "lucide-react"
+import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X, ArrowLeftRight, Repeat } from "lucide-react"
 import { parseAmount } from "@/lib/validation"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
@@ -35,7 +35,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { formatMoney } from "@/lib/currency"
 import { dateLabel } from "@/lib/format"
 import { Sensitive } from "@/components/shared/sensitive"
-import { filterTransactionsByMonth, recurringFrequency, recurringTag, type RecurringFrequency } from "@/lib/calculations"
+import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurringFrequency, recurringTag, type RecurringFrequency } from "@/lib/calculations"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 
@@ -554,8 +554,11 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                       .filter((c) => !c.kind || c.kind === t.tipo || c.kind === "both")
                       .sort((a, b) => a.name.localeCompare(b.name, "es"))
                       .map((c) => ({ value: c.name, label: c.name }))
+                    const transfer = isTransfer(t)
+                    const recurring = isRecurringTransaction(t)
+                    const isSystemTag = (tag: string) => tag === "traspaso" || tag === "recurrente" || tag.startsWith("recurrente:")
                     return (
-                      <TableRow key={t.id} className="group transition-colors hover:bg-muted/20">
+                      <TableRow key={t.id} className={cn("group transition-colors hover:bg-muted/20", transfer && "bg-violet-500/[0.03]")}>
                         <TableCell className="tabular-nums text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                           {isEditing("fecha") ? (
                             <InlineEditInput type="date" defaultValue={t.fecha} onDone={(ok, v) => handleInlineDone(t, "fecha", ok, v)} />
@@ -596,18 +599,22 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                           </span>
                         </TableCell>
                         <TableCell className={`text-right tabular-nums font-bold text-xs sm:text-sm ${(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "text-emerald-500" : "text-foreground"}`}>
-                          {isEditing("monto") ? (
-                            <InlineEditInput type="number" defaultValue={String(t.monto)} onDone={(ok, v) => handleInlineDone(t, "monto", ok, v)} />
-                          ) : (
-                            <button onClick={() => setEditingCell({ id: t.id, field: "monto" })} className="rounded px-1 py-0.5 -mx-1 hover:bg-muted/60" aria-label="Editar monto">
-                              <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(t.monto), account?.currency ?? "EUR")}</Sensitive>
-                            </button>
-                          )}
+                          <div className="flex items-center justify-end gap-1.5">
+                            {transfer && <ArrowLeftRight className="h-3 w-3 shrink-0 text-violet-500" aria-label="Traspaso" />}
+                            {recurring && <Repeat className="h-3 w-3 shrink-0 text-[var(--gold)]" aria-label="Recurrente" />}
+                            {isEditing("monto") ? (
+                              <InlineEditInput type="number" defaultValue={String(t.monto)} onDone={(ok, v) => handleInlineDone(t, "monto", ok, v)} />
+                            ) : (
+                              <button onClick={() => setEditingCell({ id: t.id, field: "monto" })} className="rounded px-1 py-0.5 -mx-1 hover:bg-muted/60" aria-label="Editar monto">
+                                <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(t.monto), account?.currency ?? "EUR")}</Sensitive>
+                              </button>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <div className="flex gap-1">
                             {t.tags.slice(0, 2).map((tag) => (
-                              <span key={tag} className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border/20">{tag}</span>
+                              <span key={tag} className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-medium", isSystemTag(tag) ? "gold-badge" : "bg-muted/60 text-muted-foreground ring-1 ring-border/20")}>{tag}</span>
                             ))}
                             {t.tags.length > 2 && (
                               <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border/20">+{t.tags.length - 2}</span>

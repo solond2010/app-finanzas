@@ -347,7 +347,7 @@ export type RecurringFrequency = "semanal" | "mensual" | "anual"
 // Cadencia guardada como tag: "recurrente" a secas (dato histórico, antes de
 // que existieran más cadencias) siempre significa mensual; "recurrente:X"
 // guarda la cadencia explícita. Mantenerlo así evita una migración de datos.
-function isRecurringTransaction(t: Transaction) {
+export function isRecurringTransaction(t: Transaction) {
   return t.tags?.some((tag) => tag === "recurrente" || tag.startsWith("recurrente:")) ?? false
 }
 
