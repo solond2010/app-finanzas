@@ -317,26 +317,26 @@ function formatMonth(d: Date) {
   return d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" })
 }
 
-export function buildMonthlySummariesUpTo(transactions: Transaction[], endMonthKey?: string): MonthlySummary[] {
-  return getMonthWindow(endMonthKey).map((month) => {
+export function buildMonthlySummariesUpTo(transactions: Transaction[], endMonthKey?: string, monthCount = 6): MonthlySummary[] {
+  return getMonthWindow(endMonthKey, monthCount).map((month) => {
     const { ingresos, gastos } = getMonthTotalsByString(transactions, month)
     return { mes: formatMonth(parseMonthKey(month)), ingresos, gastos }
   })
 }
 
-export function buildMonthlyCashFlow(transactions: Transaction[], endMonthKey?: string): { mes: string; ingresos: number; gastos: number; neto: number }[] {
-  return getMonthWindow(endMonthKey).map((month) => {
+export function buildMonthlyCashFlow(transactions: Transaction[], endMonthKey?: string, monthCount = 6): { mes: string; ingresos: number; gastos: number; neto: number }[] {
+  return getMonthWindow(endMonthKey, monthCount).map((month) => {
     const { ingresos, gastos, neto } = getMonthTotalsByString(transactions, month)
     return { mes: formatMonth(parseMonthKey(month)), ingresos, gastos, neto }
   })
 }
 
-export function buildNetWorthHistory(transactions: Transaction[], accounts: Account[], endMonthKey?: string): NetWorthSnapshot[] {
+export function buildNetWorthHistory(transactions: Transaction[], accounts: Account[], endMonthKey?: string, monthCount = 6): NetWorthSnapshot[] {
   // Agrupar una vez fuera del bucle: getNetWorthAtMonth por sí sola ya agrupa
   // internamente, pero llamada hasta 24 veces (una por mes de la ventana)
   // repetiría el agrupado 24 veces sobre el mismo array si no se reutiliza.
   const txByAccount = groupByAccount(transactions)
-  return getMonthWindow(endMonthKey).map((month) => ({
+  return getMonthWindow(endMonthKey, monthCount).map((month) => ({
     mes: formatMonth(parseMonthKey(month)),
     patrimonio: getNetWorth(accountsWithDelta(accounts, txByAccount, (t) => isAfterMonth(t.fecha, month))),
   }))

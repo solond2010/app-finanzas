@@ -127,6 +127,7 @@ const DayHeatmap = memo(function DayHeatmap({ dailyTotals, firstWeekday }: { dai
 export default function AnalyticsPage() {
   const { state, loading, dispatch } = useFinance()
   const [monthOffset, setMonthOffset] = useState(0)
+  const [trendMonths, setTrendMonths] = useState<6 | 12>(6)
 
   const today = new Date()
   const selectedDate = new Date(today.getFullYear(), today.getMonth() - monthOffset, 1)
@@ -191,8 +192,8 @@ export default function AnalyticsPage() {
       })
       .sort((a, b) => b.percentage - a.percentage)
   }, [state.budgets, state.categories, analysisTransactions, selectedMonth])
-  const summaries = useMemo(() => buildMonthlySummariesUpTo(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
-  const cashFlow = useMemo(() => buildMonthlyCashFlow(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const summaries = useMemo(() => buildMonthlySummariesUpTo(analysisTransactions, selectedMonth, trendMonths), [analysisTransactions, selectedMonth, trendMonths])
+  const cashFlow = useMemo(() => buildMonthlyCashFlow(analysisTransactions, selectedMonth, trendMonths), [analysisTransactions, selectedMonth, trendMonths])
   const { valueByAccount, investedByAccount } = usePortfolioValue()
   // Objetivo consolidado por cuenta: propio (accountGoal ya combina objetivo
   // directo + metas de ahorro vinculadas) frente al valor actual de la cuenta,
@@ -229,7 +230,7 @@ export default function AnalyticsPage() {
     () => investmentAccounts.reduce((s, a) => s + accountDisplayValue(a, valueByAccount, investedByAccount), 0),
     [investmentAccounts, valueByAccount, investedByAccount]
   )
-  const rawNetWorthHistory = useMemo(() => buildNetWorthHistory(state.transactions, state.accounts, selectedMonth), [state.transactions, state.accounts, selectedMonth])
+  const rawNetWorthHistory = useMemo(() => buildNetWorthHistory(state.transactions, state.accounts, selectedMonth, trendMonths), [state.transactions, state.accounts, selectedMonth, trendMonths])
   const netWorthHistory = useMemo(
     () => rawNetWorthHistory.map((point) => ({ ...point, patrimonio: point.patrimonio - investmentSaldo + investmentDisplayTotal })),
     [rawNetWorthHistory, investmentSaldo, investmentDisplayTotal]
@@ -353,15 +354,22 @@ export default function AnalyticsPage() {
       </section>
 
       <section className="grid grid-cols-12 gap-6">
-        <SectionTitle label="Tendencia" title="El pulso de los últimos 6 meses" text="Patrimonio histórico y evolución mensual para detectar si estás acumulando o drenando capital." />
+        <SectionTitle label="Tendencia" title={`El pulso de los últimos ${trendMonths} meses`} text="Patrimonio histórico y evolución mensual para detectar si estás acumulando o drenando capital." />
 
         <Card className="stagger-fade hero-panel col-span-full xl:col-span-7" style={{ animationDelay: "80ms" }}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <TrendingUp className="h-4 w-4 text-emerald-500" />Patrimonio neto
               {isAllTimeHigh && <span className="gold-badge rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">Máximo histórico</span>}
             </CardTitle>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${netWorthTrendPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}><Sensitive>{signedMoney(netWorthChange)}</Sensitive></span>
+            <div className="flex items-center gap-2">
+              <div className="range-tabs">
+                {([6, 12] as const).map((m) => (
+                  <button key={m} onClick={() => setTrendMonths(m)} data-active={trendMonths === m} className="range-tab">{m}M</button>
+                ))}
+              </div>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${netWorthTrendPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}><Sensitive>{signedMoney(netWorthChange)}</Sensitive></span>
+            </div>
           </CardHeader>
           <CardContent>
             {state.accounts.length === 0 ? <EmptyState icon={Wallet} title="Sin patrimonio registrado" description="Crea cuentas para ver la evolución de tu riqueza neta." bordered className="h-full" /> : (
@@ -479,7 +487,7 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="rounded-2xl bg-muted/35 p-4 ring-1 ring-border/20">
-                <p className="text-xs text-muted-foreground">Cash flow medio 6 meses</p>
+                <p className="text-xs text-muted-foreground">Cash flow medio {trendMonths} meses</p>
                 <p className={`mt-1 text-2xl font-bold tabular-nums ${averageMonthlyNet >= 0 ? "text-emerald-500" : "text-red-500"}`}><Sensitive>{signedMoney(averageMonthlyNet)}</Sensitive></p>
               </div>
               <div className="rounded-2xl bg-muted/35 p-4 ring-1 ring-border/20">
