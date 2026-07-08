@@ -2,7 +2,7 @@
 
 import { useMemo, useState, memo } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, Target, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
+import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, Target, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +15,7 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getMonthTotalsByString, getNeedsVsWantsForMonth, isTransfer } from "@/lib/calculations"
+import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
@@ -191,6 +191,18 @@ export default function AnalyticsPage() {
       .map((g) => ({ ...g, pct: Math.min((g.current / g.goal) * 100, 100), restante: Math.max(g.goal - g.current, 0) }))
       .sort((a, b) => b.pct - a.pct)
   }, [state.accounts, state.sinkingFunds, valueByAccount, investedByAccount])
+
+  // Previsión de recurrentes: siempre mira hacia el próximo vencimiento real
+  // (no depende del mes que se esté navegando en el resto de la página), como
+  // ya hace la misma tarjeta en Movimientos.
+  const upcomingRecurring = useMemo(() => getUpcomingRecurring(state.transactions), [state.transactions])
+  const upcomingRecurringMonthTotal = useMemo(() => {
+    const now = new Date()
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    return upcomingRecurring
+      .filter((item) => item.tipo === "gasto" && item.nextDate.startsWith(monthKey))
+      .reduce((s, item) => s + item.monto, 0)
+  }, [upcomingRecurring])
   // Las cuentas de inversión no bajan su saldo al comprar una posición (no
   // genera un gasto), así que el patrimonio en crudo mezcla efectivo sin
   // invertir con dinero ya invertido. Se sustituye la parte invertida por su
@@ -473,6 +485,37 @@ export default function AnalyticsPage() {
                     </div>
                   )
                 })}
+              </CardContent>
+            </Card>
+          )}
+
+          {upcomingRecurring.length > 0 && (
+            <Card className="stagger-fade" style={{ animationDelay: "300ms" }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold"><CalendarClock className="h-4 w-4 text-primary" />Próximos pagos</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {upcomingRecurringMonthTotal > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Recurrente previsto este mes: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(upcomingRecurringMonthTotal, "EUR")}</Sensitive>
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {upcomingRecurring.slice(0, 4).map((item) => (
+                    <div key={item.key} className="flex items-center gap-2 rounded-xl border border-border p-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold text-foreground">{item.descripcion || item.categoria}</p>
+                        <p className={cn("text-[11px] font-medium", item.overdueDays > 0 ? "text-red-500" : "text-muted-foreground")}>
+                          {item.overdueDays > 0 ? `Atrasado ${item.overdueDays}d` : item.overdueDays === 0 ? "Hoy" : new Date(item.nextDate).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
+                          {item.frequency !== "mensual" && ` · ${item.frequency === "semanal" ? "Semanal" : "Anual"}`}
+                        </p>
+                      </div>
+                      <span className={cn("shrink-0 text-xs font-bold tabular-nums", (item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "text-emerald-500" : "text-foreground")}>
+                        <Sensitive>{(item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(item.monto), "EUR")}</Sensitive>
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}
