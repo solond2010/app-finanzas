@@ -665,7 +665,7 @@ function formatSinkingFund(s: SinkingFundRow): SinkingFund {
 }
 
 function unformatAccount(a: Account) {
-  const base: Record<string, unknown> = { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco, saldo: a.saldo, objetivo: a.objetivo, limite_mensual: a.limite_mensual, color: a.color }
+  const base: Record<string, unknown> = { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco, saldo: a.saldo, currency: a.currency, objetivo: a.objetivo, limite_mensual: a.limite_mensual, color: a.color }
   // Solo se envía si el valor viene de AccountDialog (que siempre manda un
   // string, "" incluido al quitar el logo): así las cuentas que nunca han
   // pasado por ahí siguen sincronizando aunque la migración SQL
