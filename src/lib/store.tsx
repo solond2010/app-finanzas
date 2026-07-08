@@ -432,6 +432,35 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // Una PWA anclada a la pantalla de inicio no se recarga al reabrirla: iOS
+  // mantiene el mismo proceso web en segundo plano indefinidamente, así que
+  // este componente nunca se vuelve a montar y loadedRef.current sigue en
+  // true. Sin esto, cualquier cambio hecho desde otro sitio (otra pestaña,
+  // el Atajo, otro dispositivo) se queda invisible hasta forzar una recarga
+  // manual. Al recuperar el foco/visibilidad se vuelve a pedir todo a
+  // Supabase, igual que en la carga inicial.
+  // Solo "visibilitychange" (no "focus" ni "pageshow": disparan con mucha más
+  // facilidad — p. ej. cada vez que un diálogo o input roba el foco — y aquí
+  // solo interesa la transición real de app en segundo plano a primer plano).
+  // El propio evento ya solo se dispara en transiciones reales según spec,
+  // pero se añade además un margen mínimo entre refetch por seguridad.
+  const lastRefetchRef = useRef(0)
+  useEffect(() => {
+    const refetchIfVisible = () => {
+      if (document.visibilityState !== "visible") return
+      const now = Date.now()
+      if (now - lastRefetchRef.current < 10000) return
+      lastRefetchRef.current = now
+      loadFromSupabase().then((remote) => {
+        if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
+          dispatch({ type: "SET_STATE", payload: { ...remote, categories: mergeDefaultCategories(remote.categories) } })
+        }
+      })
+    }
+    document.addEventListener("visibilitychange", refetchIfVisible)
+    return () => document.removeEventListener("visibilitychange", refetchIfVisible)
+  }, [])
+
   // state en un ref: los reintentos disparados por setTimeout/eventos 'online'
   // deben sincronizar siempre el estado MÁS RECIENTE, no el que había en el
   // closure cuando se programó el reintento.
