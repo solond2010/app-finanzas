@@ -374,7 +374,11 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
       return filterTransactionsByMonth(state.transactions, selectedMonth)
         .filter((t) => filterAccount === "all" || t.cuenta_id === filterAccount)
         .filter((t) => !search || t.descripcion.toLowerCase().includes(search.toLowerCase()) || t.categoria.toLowerCase().includes(search.toLowerCase()) || t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())))
-        .sort((a, b) => safeTime(b.fecha) - safeTime(a.fecha) || (orderIndex.get(b.id) ?? 0) - (orderIndex.get(a.id) ?? 0))
+        .sort((a, b) =>
+          safeTime(b.fecha) - safeTime(a.fecha)
+          || safeTime(b.created_at ?? "") - safeTime(a.created_at ?? "")
+          || (orderIndex.get(b.id) ?? 0) - (orderIndex.get(a.id) ?? 0)
+        )
     },
     [state.transactions, filterAccount, search, selectedMonth]
   )
