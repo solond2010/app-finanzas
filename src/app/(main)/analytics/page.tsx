@@ -2,7 +2,7 @@
 
 import { useMemo, useState, memo } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
+import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -166,6 +166,33 @@ export default function AnalyticsPage() {
     { name: "Deseos", value: deseos },
   ]
 
+  const [exportingPdf, setExportingPdf] = useState(false)
+  const handleExportPdf = async () => {
+    setExportingPdf(true)
+    try {
+      const { generateAnalyticsPdf } = await import("@/lib/analytics-pdf")
+      generateAnalyticsPdf({
+        owner: "Mohamed",
+        month: formatMonth(selectedDate),
+        netWorth: currentNetWorth,
+        netWorthChange,
+        ingresos: monthTotals.ingresos,
+        gastos: monthTotals.gastos,
+        neto: monthTotals.neto,
+        savingsRate: Math.round(savingsActual),
+        netWorthTrend: netWorthHistory.map((d) => ({ label: d.mes, value: Math.round(d.patrimonio) })),
+        categoryBreakdown,
+        necesidadesPct: needsPct,
+        deseosPct: wantsPct,
+        ahorroPct: savingsActual,
+        budgets: budgetProgress.map((b) => ({ categoria: b.categoryName, gastado: b.spent, limite: b.amount })),
+        insights: categoryInsights,
+      })
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
   return (
     <div className="content-fade space-y-6 sm:space-y-7">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -183,6 +210,11 @@ export default function AnalyticsPage() {
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
+          {hasData && (
+            <Button variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={handleExportPdf} disabled={exportingPdf}>
+              <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Descargar PDF"}
+            </Button>
+          )}
           {hasData && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmReset(true)}>Limpiar</Button>}
         </div>
       </header>
