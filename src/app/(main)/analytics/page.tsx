@@ -102,13 +102,18 @@ const DayHeatmap = memo(function DayHeatmap({ dailyTotals, firstWeekday }: { dai
         return (
           <div key={i} className="group relative">
             <div
-              className={cn("flex aspect-square items-center justify-center rounded-lg text-[11px] font-semibold transition-colors", HEATMAP_BG[level], HEATMAP_TEXT[level])}
+              className={cn(
+                "flex aspect-square items-center justify-center rounded-lg text-[11px] font-semibold ring-1 ring-inset transition-all group-hover:scale-110",
+                HEATMAP_BG[level],
+                HEATMAP_TEXT[level],
+                level === 0 ? "ring-border/40" : "ring-black/10"
+              )}
             >
               {i + 1}
             </div>
             <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-1.5 text-xs opacity-0 shadow-lg transition-all duration-150 group-hover:scale-100 group-hover:opacity-100">
               <p className="font-semibold text-foreground">Día {i + 1}</p>
-              <p className={total > 0 ? "text-red-500" : "text-muted-foreground"}>{total > 0 ? money(total) : "Sin gasto"}</p>
+              <p className={total > 0 ? "text-red-500" : "text-muted-foreground"}>{total > 0 ? <Sensitive>{money(total)}</Sensitive> : "Sin gasto"}</p>
               <div className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1 rotate-45 border-b border-r border-border bg-popover" />
             </div>
           </div>
