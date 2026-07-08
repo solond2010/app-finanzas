@@ -587,20 +587,32 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             {loading ? (
               <TableRow>
                 <TableCell colSpan={9} className="py-10">
-                  <div className="space-y-2">
-                    <Skeleton className="h-10 rounded-xl" /><Skeleton className="h-10 rounded-xl" /><Skeleton className="h-10 rounded-xl" />
+                  <div className="space-y-3">
+                    <Skeleton className="h-5 w-24 rounded-md" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-10 rounded-xl" /><Skeleton className="h-10 rounded-xl" /><Skeleton className="h-10 rounded-xl" />
+                    </div>
                   </div>
                 </TableCell>
               </TableRow>
             ) : sorted.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="py-10">
-                  <EmptyState
-                    icon={Search}
-                    title="No hay transacciones"
-                    description="Registra tu primer movimiento para verlo aquí."
-                    action={{ label: "Nueva transacción", icon: Plus, onClick: () => setShowNew(true) }}
-                  />
+                  {hasActiveFilters ? (
+                    <EmptyState
+                      icon={Filter}
+                      title="Ningún movimiento coincide con los filtros"
+                      description="Prueba a cambiar la cuenta, categoría, tipo o el texto de búsqueda."
+                      action={{ label: "Limpiar filtros", icon: X, onClick: clearFilters }}
+                    />
+                  ) : (
+                    <EmptyState
+                      icon={Search}
+                      title="No hay transacciones este mes"
+                      description="Registra tu primer movimiento para verlo aquí."
+                      action={{ label: "Nueva transacción", icon: Plus, onClick: () => setShowNew(true) }}
+                    />
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
