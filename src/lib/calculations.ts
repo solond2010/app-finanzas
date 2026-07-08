@@ -250,6 +250,60 @@ export function getCategoryBreakdown(transactions: Transaction[], monthKey?: str
     .sort((a, b) => b.monto - a.monto)
 }
 
+export interface CategoryInsight {
+  categoria: string
+  current: number
+  average: number
+  deltaPct: number
+  deltaAbs: number
+  /** Sin gasto ninguno de los 5 meses anteriores: es una categoría nueva, no una subida. */
+  isNew: boolean
+}
+
+// Umbral mínimo en € para no destacar ruido en categorías de poco gasto
+// (ej. "Regalos" pasando de 3€ a 9€ es un 200% pero es irrelevante), y
+// variación mínima en % para no destacar fluctuaciones normales mes a mes.
+const INSIGHT_MIN_AMOUNT = 20
+const INSIGHT_MIN_PCT = 15
+
+/**
+ * Compara el gasto por categoría del mes seleccionado contra la media de los
+ * 5 meses anteriores (misma ventana de 6 meses que buildMonthlyCashFlow), y
+ * devuelve las mayores desviaciones — para la tarjeta "Lo que ha cambiado
+ * este mes" de Analíticas.
+ */
+export function getCategoryInsights(transactions: Transaction[], selectedMonth: string, maxInsights = 3): CategoryInsight[] {
+  const window = getMonthWindow(selectedMonth, 6)
+  const currentMonth = window[window.length - 1]
+  const priorMonths = window.slice(0, -1)
+
+  const currentBreakdown = new Map(getCategoryBreakdown(transactions, currentMonth).map((c) => [c.categoria, c.monto]))
+
+  const priorTotals = new Map<string, number>()
+  for (const m of priorMonths) {
+    for (const c of getCategoryBreakdown(transactions, m)) {
+      priorTotals.set(c.categoria, (priorTotals.get(c.categoria) ?? 0) + c.monto)
+    }
+  }
+
+  const categorias = new Set([...currentBreakdown.keys(), ...priorTotals.keys()])
+  const insights: CategoryInsight[] = []
+  for (const categoria of categorias) {
+    const current = currentBreakdown.get(categoria) ?? 0
+    const average = (priorTotals.get(categoria) ?? 0) / (priorMonths.length || 1)
+    if (current < INSIGHT_MIN_AMOUNT && average < INSIGHT_MIN_AMOUNT) continue
+
+    const deltaAbs = current - average
+    const isNew = average === 0 && current > 0
+    const deltaPct = average > 0 ? (deltaAbs / average) * 100 : 100
+    if (!isNew && Math.abs(deltaPct) < INSIGHT_MIN_PCT) continue
+
+    insights.push({ categoria, current, average, deltaPct, deltaAbs, isNew })
+  }
+
+  return insights.sort((a, b) => Math.abs(b.deltaAbs) - Math.abs(a.deltaAbs)).slice(0, maxInsights)
+}
+
 export function calculateMonthlySaving(amountTarget: number, current: number, deadline: string): number {
   const now = new Date()
   const end = new Date(deadline)

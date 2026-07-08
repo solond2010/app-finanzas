@@ -2,7 +2,7 @@
 
 import { useMemo, useState, memo } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Layers3, PiggyBank, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
+import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +15,7 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
+import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
@@ -87,6 +87,7 @@ export default function AnalyticsPage() {
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const { necesidades, deseos } = useMemo(() => getNeedsVsWantsForMonth(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const categoryBreakdown = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const categoryInsights = useMemo(() => getCategoryInsights(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   // Mismo patrón que MonthlyBudget: un único pase agrupa el gasto por
   // categoría, en vez de recorrer transacciones una vez por presupuesto.
   const budgetProgress = useMemo(() => {
@@ -331,6 +332,32 @@ export default function AnalyticsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {categoryInsights.length > 0 && (
+            <Card className="stagger-fade" style={{ animationDelay: "310ms" }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Sparkles className="h-4 w-4 text-violet-500" />Lo que ha cambiado este mes</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {categoryInsights.map((insight) => {
+                  const up = insight.isNew || insight.deltaPct > 0
+                  return (
+                    <div key={insight.categoria} className="flex items-start gap-3 rounded-2xl bg-muted/35 p-3.5 ring-1 ring-border/20">
+                      <Lightbulb className={cn("mt-0.5 h-4 w-4 shrink-0", up ? "text-amber-500" : "text-emerald-500")} />
+                      <p className="text-sm leading-6">
+                        <strong className="font-semibold">{insight.categoria}</strong>{" "}
+                        {insight.isNew ? (
+                          <>es nuevo este mes: <Sensitive as="span">{money(insight.current)}</Sensitive>, antes no gastabas aquí.</>
+                        ) : (
+                          <>{up ? "subió" : "bajó"} un <strong className={up ? "text-amber-500" : "text-emerald-500"}>{Math.round(Math.abs(insight.deltaPct))}%</strong> frente a tu media (<Sensitive as="span">{money(Math.round(insight.average))}</Sensitive> → <Sensitive as="span">{money(insight.current)}</Sensitive>).</>
+                        )}
+                      </p>
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <SectionTitle label="Sistema" title="Regla 50/30/20" text="No es una ley, es un mapa rápido para saber si el mes está equilibrado." />

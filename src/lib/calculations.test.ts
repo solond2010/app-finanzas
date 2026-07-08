@@ -10,6 +10,7 @@ import {
   getUpcomingRecurring,
   calculateMonthlySaving,
   accountGoal,
+  getCategoryInsights,
 } from "./calculations"
 
 function account(overrides: Partial<Account> = {}): Account {
@@ -191,5 +192,60 @@ describe("accountGoal", () => {
   it("el objetivo propio de la cuenta tiene prioridad sobre las metas vinculadas", () => {
     const funds = [fund({ cantidad_objetivo: 500, cuenta_id: "acc_1" })]
     expect(accountGoal(account({ objetivo: 300 }), funds)).toBe(300)
+  })
+})
+
+describe("getCategoryInsights", () => {
+  const months = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"]
+
+  it("detecta una subida significativa frente a la media de los 5 meses anteriores", () => {
+    const txns = [
+      ...months.map((m, i) => tx({ id: `r${i}`, categoria: "Restaurantes", monto: 120, fecha: `${m}-15` })),
+      tx({ id: "r-jun", categoria: "Restaurantes", monto: 174, fecha: "2026-06-15" }),
+    ]
+    const [insight] = getCategoryInsights(txns, "2026-06", 1)
+    expect(insight.categoria).toBe("Restaurantes")
+    expect(insight.average).toBe(120)
+    expect(insight.current).toBe(174)
+    expect(insight.deltaPct).toBeCloseTo(45, 0)
+    expect(insight.isNew).toBe(false)
+  })
+
+  it("detecta una bajada significativa", () => {
+    const txns = [
+      ...months.map((m, i) => tx({ id: `t${i}`, categoria: "Transporte", monto: 100, fecha: `${m}-10` })),
+      tx({ id: "t-jun", categoria: "Transporte", monto: 80, fecha: "2026-06-10" }),
+    ]
+    const [insight] = getCategoryInsights(txns, "2026-06", 1)
+    expect(insight.categoria).toBe("Transporte")
+    expect(insight.deltaPct).toBeCloseTo(-20, 0)
+  })
+
+  it("ignora categorías con importes pequeños (ruido)", () => {
+    const txns = [
+      ...months.map((m, i) => tx({ id: `g${i}`, categoria: "Regalos", monto: 5, fecha: `${m}-05` })),
+      tx({ id: "g-jun", categoria: "Regalos", monto: 9, fecha: "2026-06-05" }),
+    ]
+    expect(getCategoryInsights(txns, "2026-06")).toHaveLength(0)
+  })
+
+  it("marca isNew cuando no hubo gasto en los 5 meses anteriores", () => {
+    const txns = [tx({ id: "v-jun", categoria: "Viajes", monto: 200, fecha: "2026-06-20" })]
+    const [insight] = getCategoryInsights(txns, "2026-06", 1)
+    expect(insight.categoria).toBe("Viajes")
+    expect(insight.average).toBe(0)
+    expect(insight.isNew).toBe(true)
+  })
+
+  it("ordena por mayor desviación absoluta y respeta maxInsights", () => {
+    const txns = [
+      ...months.map((m, i) => tx({ id: `a${i}`, categoria: "Ocio", monto: 50, fecha: `${m}-01` })),
+      tx({ id: "a-jun", categoria: "Ocio", monto: 100, fecha: "2026-06-01" }), // +50 abs
+      ...months.map((m, i) => tx({ id: `b${i}`, categoria: "Salud", monto: 200, fecha: `${m}-02` })),
+      tx({ id: "b-jun", categoria: "Salud", monto: 400, fecha: "2026-06-02" }), // +200 abs
+    ]
+    const insights = getCategoryInsights(txns, "2026-06", 1)
+    expect(insights).toHaveLength(1)
+    expect(insights[0].categoria).toBe("Salud")
   })
 })
