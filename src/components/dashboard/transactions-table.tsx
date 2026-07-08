@@ -269,7 +269,7 @@ function InlineEditInput({
       step={type === "number" ? "0.01" : undefined}
       min={type === "number" ? "0" : undefined}
       defaultValue={defaultValue}
-      className="w-full min-w-0 rounded-md border border-primary/40 bg-background px-1.5 py-0.5 text-xs outline-none ring-2 ring-primary/15 sm:text-sm"
+      className="w-full min-w-0 rounded-md border border-ring bg-background px-1.5 py-0.5 text-xs outline-none ring-2 ring-ring/25 transition-shadow sm:text-sm"
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
         if (e.key === "Enter") { shouldCommit.current = true; e.currentTarget.blur() }
@@ -293,7 +293,7 @@ function InlineEditSelect({
     <select
       autoFocus
       defaultValue={defaultValue}
-      className="w-full min-w-0 rounded-md border border-primary/40 bg-background px-1.5 py-0.5 text-xs outline-none ring-2 ring-primary/15"
+      className="w-full min-w-0 rounded-md border border-ring bg-background px-1.5 py-0.5 text-xs outline-none ring-2 ring-ring/25 transition-shadow"
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => { if (e.key === "Escape") { e.currentTarget.blur(); onDone(false, defaultValue) } }}
       onChange={(e) => onDone(true, e.target.value)}
@@ -450,6 +450,9 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const safePage = Math.min(page, totalPages - 1)
   const currentGrouped = useMemo(() => grouped.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE), [grouped, safePage])
   const currentPageIds = useMemo(() => currentGrouped.flatMap((g) => g.transactions.map((t) => t.id)), [currentGrouped])
+  // Delay incremental (acotado) para que las filas entren en cascada al
+  // cambiar de mes/filtro/página, en vez de aparecer todas de golpe.
+  const rowDelay = useMemo(() => new Map(currentPageIds.map((id, i) => [id, Math.min(i, 14) * 18])), [currentPageIds])
 
   return (
     <Card className="col-span-full">
@@ -621,7 +624,11 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                     const recurring = isRecurringTransaction(t)
                     const isSystemTag = (tag: string) => tag === "traspaso" || tag === "recurrente" || tag.startsWith("recurrente:")
                     return (
-                      <TableRow key={t.id} className={cn("group transition-colors hover:bg-muted/20", transfer && "bg-violet-500/[0.03]", selectedIds.has(t.id) && "bg-primary/[0.05]")}>
+                      <TableRow
+                        key={t.id}
+                        className={cn("group stagger-fade-fast transition-colors hover:bg-muted/40", transfer && "bg-violet-500/[0.03]", selectedIds.has(t.id) && "bg-primary/[0.05]")}
+                        style={{ animationDelay: `${rowDelay.get(t.id) ?? 0}ms` }}
+                      >
                         <TableCell>
                           <input
                             type="checkbox"
