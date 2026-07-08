@@ -2,10 +2,11 @@
 
 import { useMemo, useState, memo } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Layers3, PiggyBank, TrendingDown, TrendingUp, Wallet } from "lucide-react"
+import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Layers3, PiggyBank, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { MetricCard } from "@/components/dashboard/metric-card"
@@ -17,9 +18,14 @@ import { TickerTile } from "@/components/shared/ticker-tile"
 import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
+import { formatMoney } from "@/lib/currency"
 import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
+import { cn } from "@/lib/utils"
+
+// Mismo umbral que MonthlyBudget (src/components/dashboard/monthly-budget.tsx).
+const BUDGET_WARNING_THRESHOLD = 80
 
 const SummaryTooltip = createChartTooltip(["ingresos", "gastos"], ["emerald", "red"])
 const CategoryTooltip = createChartTooltip(["monto"], ["violet"])
@@ -81,6 +87,31 @@ export default function AnalyticsPage() {
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const { necesidades, deseos } = useMemo(() => getNeedsVsWantsForMonth(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const categoryBreakdown = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  // Mismo patrón que MonthlyBudget: un único pase agrupa el gasto por
+  // categoría, en vez de recorrer transacciones una vez por presupuesto.
+  const budgetProgress = useMemo(() => {
+    const categoryById = new Map(state.categories.map((c) => [c.id, c]))
+    const spentByCategory = new Map<string, number>()
+    for (const t of analysisTransactions) {
+      if (t.tipo !== "gasto" || !t.fecha.startsWith(selectedMonth)) continue
+      spentByCategory.set(t.categoria, (spentByCategory.get(t.categoria) ?? 0) + t.monto)
+    }
+    return state.budgets
+      .filter((b) => b.month === selectedMonth)
+      .map((budget) => {
+        const category = categoryById.get(budget.category_id)
+        const spent = spentByCategory.get(category?.name ?? "") ?? 0
+        return {
+          id: budget.id,
+          categoryName: category?.name ?? "Sin categoría",
+          categoryColor: category?.color ?? "var(--muted-foreground)",
+          amount: budget.amount,
+          spent,
+          percentage: budget.amount > 0 ? Math.min((spent / budget.amount) * 100, 100) : 0,
+        }
+      })
+      .sort((a, b) => b.percentage - a.percentage)
+  }, [state.budgets, state.categories, analysisTransactions, selectedMonth])
   const summaries = useMemo(() => buildMonthlySummariesUpTo(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const cashFlow = useMemo(() => buildMonthlyCashFlow(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const { valueByAccount, investedByAccount } = usePortfolioValue()
@@ -228,6 +259,38 @@ export default function AnalyticsPage() {
         </Card>
 
         <div className="col-span-full grid gap-6 lg:col-span-5">
+          {budgetProgress.length > 0 && (
+            <Card className="stagger-fade" style={{ animationDelay: "200ms" }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Wallet2 className="h-4 w-4 text-primary" />Presupuesto vs real</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {budgetProgress.map((b) => {
+                  const over = b.percentage >= 100
+                  const warning = !over && b.percentage >= BUDGET_WARNING_THRESHOLD
+                  return (
+                    <div key={b.id} className="space-y-2">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: b.categoryColor }} />
+                          <span className="truncate">{b.categoryName}</span>
+                          {(over || warning) && <AlertTriangle className={cn("h-3 w-3 shrink-0", over ? "text-red-500" : "text-amber-500")} />}
+                        </span>
+                        <span className={cn("shrink-0 font-semibold tabular-nums", over ? "text-red-500" : warning ? "text-amber-500" : "text-foreground")}>
+                          <Sensitive>{formatMoney(b.spent, "EUR")}</Sensitive> / <Sensitive>{formatMoney(b.amount, "EUR")}</Sensitive>
+                        </span>
+                      </div>
+                      <Progress value={b.percentage} className={cn(
+                        "[&_[data-slot=progress-track]]:h-2",
+                        over ? "[&_[data-slot=progress-indicator]]:bg-red-500" : warning ? "[&_[data-slot=progress-indicator]]:bg-amber-500" : "[&_[data-slot=progress-indicator]]:bg-foreground"
+                      )} />
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="stagger-fade" style={{ animationDelay: "230ms" }}>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base font-semibold"><Gauge className="h-4 w-4 text-amber-500" />Necesidades vs deseos</CardTitle>
