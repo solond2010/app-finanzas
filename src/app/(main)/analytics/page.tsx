@@ -2,7 +2,7 @@
 
 import { useMemo, useState, memo } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
+import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +15,7 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getMonthTotalsByString, getNeedsVsWantsForMonth } from "@/lib/calculations"
+import { buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getMonthTotalsByString, getNeedsVsWantsForMonth, isTransfer } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
@@ -72,6 +72,47 @@ const RuleCard = memo(function RuleCard({ label, target, actual, value, tone, de
   )
 })
 
+const HEATMAP_BG = ["bg-muted/40", "bg-red-500/20", "bg-red-500/40", "bg-red-500/65", "bg-red-500/90"]
+const HEATMAP_TEXT = ["text-muted-foreground", "text-red-700 dark:text-red-300", "text-white", "text-white", "text-white"]
+const WEEKDAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"]
+
+// Cuadrícula tipo "contribution graph": un cuadro por día del mes, intensidad
+// según el gasto de ese día (normalizado contra el día de mayor gasto), para
+// detectar de un vistazo si el gasto se concentra en fines de semana o en
+// fechas concretas.
+const DayHeatmap = memo(function DayHeatmap({ dailyTotals, firstWeekday }: { dailyTotals: number[]; firstWeekday: number }) {
+  const maxDay = Math.max(...dailyTotals, 0)
+  const intensity = (total: number) => {
+    if (total <= 0 || maxDay === 0) return 0
+    const ratio = total / maxDay
+    if (ratio > 0.75) return 4
+    if (ratio > 0.5) return 3
+    if (ratio > 0.25) return 2
+    return 1
+  }
+
+  return (
+    <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+      {WEEKDAY_LABELS.map((d) => (
+        <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground">{d}</div>
+      ))}
+      {Array.from({ length: firstWeekday }).map((_, i) => <div key={`empty-${i}`} />)}
+      {dailyTotals.map((total, i) => {
+        const level = intensity(total)
+        return (
+          <div
+            key={i}
+            className={cn("flex aspect-square items-center justify-center rounded-lg text-[11px] font-semibold transition-colors", HEATMAP_BG[level], HEATMAP_TEXT[level])}
+            title={total > 0 ? money(total) : "Sin gasto"}
+          >
+            {i + 1}
+          </div>
+        )
+      })}
+    </div>
+  )
+})
+
 export default function AnalyticsPage() {
   const { state, loading, dispatch } = useFinance()
   const [monthOffset, setMonthOffset] = useState(0)
@@ -85,6 +126,19 @@ export default function AnalyticsPage() {
   const [confirmReset, setConfirmReset] = useState(false)
 
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const dailyTotals = useMemo(() => {
+    const [year, month] = selectedMonth.split("-").map(Number)
+    const daysInMonth = new Date(year, month, 0).getDate()
+    const totals = new Array(daysInMonth).fill(0)
+    for (const t of analysisTransactions) {
+      if (t.tipo !== "gasto" || isTransfer(t) || !t.fecha.startsWith(selectedMonth)) continue
+      const day = new Date(t.fecha).getDate()
+      totals[day - 1] += t.monto
+    }
+    return totals
+  }, [analysisTransactions, selectedMonth])
+  // getDay() da 0=domingo..6=sábado; se convierte a semana de lunes a domingo.
+  const firstWeekday = (new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1).getDay() + 6) % 7
   const { necesidades, deseos } = useMemo(() => getNeedsVsWantsForMonth(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const categoryBreakdown = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const categoryInsights = useMemo(() => getCategoryInsights(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
@@ -391,6 +445,19 @@ export default function AnalyticsPage() {
             </Card>
           )}
         </div>
+
+        {monthTotals.gastos > 0 && (
+          <Card className="stagger-fade col-span-full" style={{ animationDelay: "330ms" }}>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold"><Calendar className="h-4 w-4 text-red-500" />Gasto por día</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mx-auto max-w-md">
+                <DayHeatmap dailyTotals={dailyTotals} firstWeekday={firstWeekday} />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <SectionTitle label="Sistema" title="Regla 50/30/20" text="No es una ley, es un mapa rápido para saber si el mes está equilibrado." />
 
