@@ -316,7 +316,34 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const [editingCell, setEditingCell] = useState<{ id: string; field: EditField } | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<Transaction | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const PAGE_SIZE = 25
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+  const clearSelection = () => setSelectedIds(new Set())
+  const bulkDelete = () => {
+    for (const id of selectedIds) {
+      dispatch({ type: "DELETE_TRANSACTION", payload: id })
+      dbDeleteEq("transactions", "id", id).then(() => {}, () => {})
+    }
+    toast(`${selectedIds.size} transacciones eliminadas`, "success")
+    clearSelection()
+    setBulkDeleteConfirm(false)
+  }
+  const bulkRecategorize = (categoria: string) => {
+    for (const t of state.transactions) {
+      if (selectedIds.has(t.id)) dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, categoria } })
+    }
+    toast(`${selectedIds.size} transacciones recategorizadas`, "success")
+    clearSelection()
+  }
 
   const handleAccountFilter = (value: string | null) => {
     if (value) { setFilterAccount(value); setPage(0) }
@@ -422,6 +449,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const totalPages = Math.max(1, Math.ceil(grouped.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages - 1)
   const currentGrouped = useMemo(() => grouped.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE), [grouped, safePage])
+  const currentPageIds = useMemo(() => currentGrouped.flatMap((g) => g.transactions.map((t) => t.id)), [currentGrouped])
 
   return (
     <Card className="col-span-full">
@@ -503,10 +531,45 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
           </Dialog>
         </div>
       </CardHeader>
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border-y border-primary/20 bg-primary/5 px-4 py-2 animate-fade-in">
+          <span className="text-xs font-semibold text-foreground">{selectedIds.size} seleccionada{selectedIds.size === 1 ? "" : "s"}</span>
+          <Select value="" onValueChange={(v) => v && bulkRecategorize(v)}>
+            <SelectTrigger className="h-8 w-40 text-xs" aria-label="Recategorizar seleccionadas">
+              <SelectValue placeholder="Recategorizar…" />
+            </SelectTrigger>
+            <SelectContent className="p-2">
+              {categoryFilterOptions.map((c) => (
+                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button type="button" variant="outline" size="sm" className="gap-1.5 text-red-500 hover:text-red-500" onClick={() => setBulkDeleteConfirm(true)}>
+            <Trash2 className="h-3.5 w-3.5" /> Eliminar
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>Cancelar</Button>
+        </div>
+      )}
       <CardContent className="p-0">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-9">
+                <input
+                  type="checkbox"
+                  className="rounded border-muted-foreground"
+                  aria-label="Seleccionar todas las transacciones visibles"
+                  checked={currentPageIds.length > 0 && currentPageIds.every((id) => selectedIds.has(id))}
+                  onChange={(e) => {
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev)
+                      if (e.target.checked) currentPageIds.forEach((id) => next.add(id))
+                      else currentPageIds.forEach((id) => next.delete(id))
+                      return next
+                    })
+                  }}
+                />
+              </TableHead>
               <TableHead>Fecha</TableHead>
               <TableHead>Descripción</TableHead>
               <TableHead className="hidden md:table-cell">Cuenta</TableHead>
@@ -520,7 +583,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-10">
+                <TableCell colSpan={9} className="py-10">
                   <div className="space-y-2">
                     <Skeleton className="h-10 rounded-xl" /><Skeleton className="h-10 rounded-xl" /><Skeleton className="h-10 rounded-xl" />
                   </div>
@@ -528,7 +591,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
               </TableRow>
             ) : sorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-10">
+                <TableCell colSpan={9} className="py-10">
                   <EmptyState
                     icon={Search}
                     title="No hay transacciones"
@@ -541,7 +604,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
               currentGrouped.map((group) => (
                 <Fragment key={group.date}>
                   <TableRow>
-                    <TableCell colSpan={8} className="px-3 py-2 bg-card/90 backdrop-blur-sm text-[11px] sm:text-xs font-bold text-muted-foreground tracking-[0.08em] border-b border-border/40">
+                    <TableCell colSpan={9} className="px-3 py-2 bg-card/90 backdrop-blur-sm text-[11px] sm:text-xs font-bold text-muted-foreground tracking-[0.08em] border-b border-border/40">
                       {group.label}
                     </TableCell>
                   </TableRow>
@@ -558,7 +621,16 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                     const recurring = isRecurringTransaction(t)
                     const isSystemTag = (tag: string) => tag === "traspaso" || tag === "recurrente" || tag.startsWith("recurrente:")
                     return (
-                      <TableRow key={t.id} className={cn("group transition-colors hover:bg-muted/20", transfer && "bg-violet-500/[0.03]")}>
+                      <TableRow key={t.id} className={cn("group transition-colors hover:bg-muted/20", transfer && "bg-violet-500/[0.03]", selectedIds.has(t.id) && "bg-primary/[0.05]")}>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            className="rounded border-muted-foreground"
+                            aria-label="Seleccionar transacción"
+                            checked={selectedIds.has(t.id)}
+                            onChange={() => toggleSelected(t.id)}
+                          />
+                        </TableCell>
                         <TableCell className="tabular-nums text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                           {isEditing("fecha") ? (
                             <InlineEditInput type="date" defaultValue={t.fecha} onDone={(ok, v) => handleInlineDone(t, "fecha", ok, v)} />
@@ -714,6 +786,15 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
         }}
         title="¿Eliminar transacción?"
         description={<>Se eliminará la transacción &ldquo;{deleteConfirm?.descripcion || deleteConfirm?.categoria || ""}&rdquo; de <Sensitive>{deleteConfirm?.monto?.toLocaleString("es-ES")}€</Sensitive>. No se puede deshacer.</>}
+        confirmLabel="Eliminar"
+        destructive
+      />
+      <ConfirmDialog
+        open={bulkDeleteConfirm}
+        onOpenChange={setBulkDeleteConfirm}
+        onConfirm={bulkDelete}
+        title="¿Eliminar transacciones seleccionadas?"
+        description={<>Se eliminarán <strong>{selectedIds.size}</strong> transacciones. No se puede deshacer.</>}
         confirmLabel="Eliminar"
         destructive
       />
