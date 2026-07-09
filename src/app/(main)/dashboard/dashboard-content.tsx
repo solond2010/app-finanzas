@@ -15,7 +15,7 @@ import { usePortfolioValue, accountDisplayValue, type Position } from "@/lib/inv
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getFinancialScore, getMonthTotalsByString, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, accountGoal } from "@/lib/calculations"
+import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, accountGoal } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -226,6 +226,9 @@ export default function DashboardContent() {
   const spendTotal = spending.reduce((s, c) => s + c.monto, 0)
   const topSpending = spending.slice(0, 6)
   const maxSpend = topSpending[0]?.monto ?? 1
+  const needsVsWants = useMemo(() => getNeedsVsWantsForMonth(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const needsVsWantsTotal = needsVsWants.necesidades + needsVsWants.deseos
+  const needsPct = needsVsWantsTotal > 0 ? Math.round((needsVsWants.necesidades / needsVsWantsTotal) * 100) : 0
   const catColor = (name: string) => state.categories.find((c) => c.name === name)?.color ?? "var(--accent-blue)"
 
   // Composición del patrimonio por tipo de cuenta. Las cuentas de inversión
@@ -655,6 +658,18 @@ export default function DashboardContent() {
                 <p className="text-sm font-semibold text-foreground">Distribución de gastos</p>
                 <p className="text-sm tabular-nums text-muted-foreground"><Sensitive>{formatMoney(spendTotal, "EUR")}</Sensitive></p>
               </div>
+              {needsVsWantsTotal > 0 && (
+                <div className="mb-5 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+                    <span>Necesidades <span className="text-foreground">{needsPct}%</span></span>
+                    <span>Deseos <span className="text-foreground">{100 - needsPct}%</span></span>
+                  </div>
+                  <div className="flex h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full bg-[var(--accent-blue)] transition-all duration-700" style={{ width: `${needsPct}%` }} />
+                    <div className="h-full bg-[var(--accent-amber)] transition-all duration-700" style={{ width: `${100 - needsPct}%` }} />
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-1 gap-x-8 gap-y-3.5 sm:grid-cols-2">
                 {topSpending.map((c) => (
                   <div key={c.categoria} className="space-y-1.5">
