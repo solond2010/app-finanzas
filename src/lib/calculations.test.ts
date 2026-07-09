@@ -10,6 +10,7 @@ import {
   getUpcomingRecurring,
   calculateMonthlySaving,
   accountGoal,
+  fundCurrentAmount,
   getCategoryInsights,
   getFinancialScore,
   getFinancialTips,
@@ -197,6 +198,17 @@ describe("accountGoal", () => {
   })
 })
 
+describe("fundCurrentAmount", () => {
+  it("usa el saldo real de la cuenta vinculada, no el ahorrado_actual guardado", () => {
+    const accounts = [account({ id: "acc_1", saldo: 750 })]
+    expect(fundCurrentAmount(fund({ cuenta_id: "acc_1", ahorrado_actual: 100 }), accounts)).toBe(750)
+  })
+
+  it("recurre a ahorrado_actual si la cuenta vinculada ya no existe", () => {
+    expect(fundCurrentAmount(fund({ cuenta_id: "acc_borrada", ahorrado_actual: 250 }), [])).toBe(250)
+  })
+})
+
 describe("getCategoryInsights", () => {
   const months = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"]
 
@@ -356,8 +368,10 @@ describe("getFinancialTips", () => {
   it("detecta una meta de ahorro con fecha límite próxima sin completar", () => {
     const soon = new Date()
     soon.setDate(soon.getDate() + 10)
-    const funds = [fund({ cantidad_objetivo: 1000, ahorrado_actual: 200, fecha_limite: soon.toISOString().slice(0, 10) })]
-    const tips = getFinancialTips([], [account()], funds)
+    const funds = [fund({ cantidad_objetivo: 1000, fecha_limite: soon.toISOString().slice(0, 10) })]
+    // El saldo real de la cuenta vinculada (200) es lo que cuenta, no un
+    // ahorrado_actual manual desactualizado.
+    const tips = getFinancialTips([], [account({ saldo: 200 })], funds)
     expect(tips.some((t) => t.id === "goal-deadline-fund_1")).toBe(true)
   })
 
@@ -377,8 +391,8 @@ describe("getFinancialTips", () => {
     ]
     const soon = new Date()
     soon.setDate(soon.getDate() + 10)
-    const funds = [fund({ cantidad_objetivo: 1000, ahorrado_actual: 200, fecha_limite: soon.toISOString().slice(0, 10) })] // warning
-    const tips = getFinancialTips(txns, [account({ saldo: 5000 })], funds, "2026-06", 1)
+    const funds = [fund({ cantidad_objetivo: 1000, cuenta_id: "acc_1", fecha_limite: soon.toISOString().slice(0, 10) })] // warning
+    const tips = getFinancialTips(txns, [account({ saldo: 200 })], funds, "2026-06", 1)
     expect(tips).toHaveLength(1)
     expect(tips[0].severity).toBe("critical")
   })

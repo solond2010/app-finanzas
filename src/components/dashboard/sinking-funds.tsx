@@ -20,14 +20,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useFinance, type SinkingFund, generateId } from "@/lib/store"
-import { calculateMonthlySaving } from "@/lib/calculations"
+import { calculateMonthlySaving, fundCurrentAmount } from "@/lib/calculations"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { PiggyBank, Plus, Pencil, Trash2, Target, TrendingUp, Clock, AlertCircle } from "lucide-react"
 import { currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
-import { parseAmount, parseAmountOrZero } from "@/lib/validation"
+import { parseAmount } from "@/lib/validation"
 
 function SinkingFundForm({
   fund,
@@ -42,10 +42,8 @@ function SinkingFundForm({
 }) {
   const [nombre, setNombre] = useState(fund?.nombre ?? "")
   const [objetivo, setObjetivo] = useState(String(fund?.cantidad_objetivo ?? ""))
-  const [ahorrado, setAhorrado] = useState(String(fund?.ahorrado_actual ?? ""))
   const [fechaLimite, setFechaLimite] = useState(fund?.fecha_limite ?? "")
   const [cuentaId, setCuentaId] = useState(fund?.cuenta_id ?? accounts[0]?.id ?? "")
-  const [ahorradoTocado, setAhorradoTocado] = useState(!!fund?.ahorrado_actual)
   const [error, setError] = useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -58,8 +56,11 @@ function SinkingFundForm({
     const cantidadObjetivo = parseAmount(objetivo)
     if (!cantidadObjetivo) { setError("El objetivo debe ser un importe mayor que 0."); return }
 
-    const ahorradoActual = parseAmountOrZero(ahorrado)
-    if (Number.isNaN(ahorradoActual)) { setError("La cantidad ahorrada no es un importe válido."); return }
+    // ahorrado_actual ya no se edita a mano: el progreso siempre se calcula en
+    // vivo a partir del saldo real de la cuenta vinculada (fundCurrentAmount).
+    // Se guarda una foto del saldo actual solo como respaldo por si la cuenta
+    // llegara a borrarse más adelante.
+    const ahorradoActual = accounts.find((a) => a.id === cuentaId)?.saldo ?? 0
 
     onSave({
       id: fund?.id ?? generateId(),
@@ -69,14 +70,6 @@ function SinkingFundForm({
       fecha_limite: fechaLimite,
       cuenta_id: cuentaId,
     })
-  }
-
-  const syncAhorradoFromCuenta = (id: string) => {
-    setCuentaId(id)
-    if (!ahorradoTocado) {
-      const account = accounts.find((a) => a.id === id)
-      if (account) setAhorrado(String(account.saldo))
-    }
   }
 
   return (
@@ -91,16 +84,12 @@ function SinkingFundForm({
           <Input type="number" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} required />
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Ahorrado actual (€)</label>
-          <Input type="number" value={ahorrado} onChange={(e) => { setAhorradoTocado(true); setAhorrado(e.target.value) }} />
-        </div>
-        <div className="space-y-1.5">
           <label className="text-xs text-muted-foreground">Fecha límite</label>
           <Input type="date" value={fechaLimite} onChange={(e) => setFechaLimite(e.target.value)} required />
         </div>
-        <div className="space-y-1.5">
+        <div className="sm:col-span-2 space-y-1.5">
           <label className="text-xs text-muted-foreground">Cuenta vinculada</label>
-          <Select value={cuentaId} onValueChange={(v) => v && syncAhorradoFromCuenta(v)}>
+          <Select value={cuentaId} onValueChange={(v) => v && setCuentaId(v)} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {accounts.map((a) => (
@@ -108,6 +97,7 @@ function SinkingFundForm({
               ))}
             </SelectContent>
           </Select>
+          <p className="text-[11px] text-muted-foreground">El progreso se calcula solo con el saldo real de esta cuenta.</p>
         </div>
       </div>
       {error && (
@@ -213,11 +203,12 @@ export function SinkingFundsGrid() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {state.sinkingFunds.map((fund) => {
-              const progress = fund.cantidad_objetivo > 0 ? Math.min(Math.round((fund.ahorrado_actual / fund.cantidad_objetivo) * 100), 100) : 0
-              const monthly = calculateMonthlySaving(fund.cantidad_objetivo, fund.ahorrado_actual, fund.fecha_limite)
+              const ahorradoActual = fundCurrentAmount(fund, state.accounts)
+              const progress = fund.cantidad_objetivo > 0 ? Math.min(Math.round((ahorradoActual / fund.cantidad_objetivo) * 100), 100) : 0
+              const monthly = calculateMonthlySaving(fund.cantidad_objetivo, ahorradoActual, fund.fecha_limite)
               const account = state.accounts.find((a) => a.id === fund.cuenta_id)
               const symbol = currencySymbol(account?.currency ?? "EUR")
-              const remaining = fund.cantidad_objetivo - fund.ahorrado_actual
+              const remaining = fund.cantidad_objetivo - ahorradoActual
               const circleColor = progress >= 100 ? "var(--accent-green)" : progress >= 50 ? "var(--accent-amber)" : "var(--accent-blue)"
 
               return (
@@ -246,7 +237,7 @@ export function SinkingFundsGrid() {
                     </h3>
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground">
-                        <Sensitive>{fund.ahorrado_actual.toLocaleString("es-ES")} {symbol}</Sensitive>
+                        <Sensitive>{ahorradoActual.toLocaleString("es-ES")} {symbol}</Sensitive>
                       </p>
                       <p className="text-[11px] text-muted-foreground/60">
                         de <Sensitive>{fund.cantidad_objetivo.toLocaleString("es-ES")} {symbol}</Sensitive>

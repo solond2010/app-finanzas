@@ -15,7 +15,7 @@ import { usePortfolioValue, accountDisplayValue, type Position } from "@/lib/inv
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, accountGoal } from "@/lib/calculations"
+import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, accountGoal } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -280,10 +280,10 @@ export default function DashboardContent() {
 
   const nextGoal = useMemo(() => {
     return state.sinkingFunds
-      .map((f) => ({ nombre: f.nombre, pct: f.cantidad_objetivo > 0 ? (f.ahorrado_actual / f.cantidad_objetivo) * 100 : 0, objetivo: f.cantidad_objetivo }))
+      .map((f) => ({ nombre: f.nombre, pct: f.cantidad_objetivo > 0 ? (fundCurrentAmount(f, state.accounts) / f.cantidad_objetivo) * 100 : 0, objetivo: f.cantidad_objetivo }))
       .filter((f) => f.pct < 100)
       .sort((a, b) => b.pct - a.pct)[0] ?? null
-  }, [state.sinkingFunds])
+  }, [state.sinkingFunds, state.accounts])
 
   const recentTransactions = useMemo(
     () => analysisTransactions.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5),

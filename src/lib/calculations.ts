@@ -13,6 +13,16 @@ export function accountGoal(account: Account, sinkingFunds: SinkingFund[]): numb
   return sinkingFunds.filter((f) => f.cuenta_id === account.id).reduce((s, f) => s + f.cantidad_objetivo, 0)
 }
 
+// El campo ahorrado_actual guardado en la meta es solo una foto fija del día
+// en que se creó/editó — no se actualizaba sola con cada ingreso/gasto/
+// traspaso de la cuenta vinculada. Como esa cuenta es obligatoria al crear la
+// meta, el saldo real de la cuenta es siempre la fuente de verdad; el campo
+// guardado solo sirve de respaldo si la cuenta llegó a borrarse.
+export function fundCurrentAmount(fund: SinkingFund, accounts: Account[]): number {
+  const account = accounts.find((a) => a.id === fund.cuenta_id)
+  return account ? account.saldo : fund.ahorrado_actual
+}
+
 function getMonthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
 }
@@ -413,7 +423,7 @@ export function getFinancialTips(
   }
 
   for (const fund of sinkingFunds) {
-    if (fund.ahorrado_actual >= fund.cantidad_objetivo) continue
+    if (fundCurrentAmount(fund, accounts) >= fund.cantidad_objetivo) continue
     const daysLeft = (new Date(fund.fecha_limite).getTime() - Date.now()) / 86400000
     if (daysLeft > 0 && daysLeft <= GOAL_DEADLINE_SOON_DAYS) {
       tips.push({ id: `goal-deadline-${fund.id}`, severity: "warning", message: `Tu meta "${fund.nombre}" vence en menos de un mes y todavía no está completa.` })

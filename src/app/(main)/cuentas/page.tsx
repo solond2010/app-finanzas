@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useFinance, type Account } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
-import { accountGoal, getFinancialTips } from "@/lib/calculations"
+import { accountGoal, fundCurrentAmount, getFinancialTips } from "@/lib/calculations"
 import { TipsCard } from "@/components/shared/tips-card"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Wallet as WalletIcon, Plus, Target, TrendingUp } from "lucide-react"
@@ -54,13 +54,16 @@ export default function CuentasPage() {
   // Metas de ahorro (fusionado desde /objetivos): mismos cálculos que tenía esa página.
   const goalStats = useMemo(() => {
     const totalObjetivo = state.sinkingFunds.reduce((s, f) => s + f.cantidad_objetivo, 0)
-    const totalAhorrado = state.sinkingFunds.reduce((s, f) => s + f.ahorrado_actual, 0)
+    const totalAhorrado = state.sinkingFunds.reduce((s, f) => s + fundCurrentAmount(f, state.accounts), 0)
     const overallProgress = totalObjetivo > 0 ? Math.round((totalAhorrado / totalObjetivo) * 100) : 0
     return { totalObjetivo, totalAhorrado, overallProgress, count: state.sinkingFunds.length }
-  }, [state.sinkingFunds])
+  }, [state.sinkingFunds, state.accounts])
   const fundsWithProgress = useMemo(
-    () => state.sinkingFunds.map((f) => ({ ...f, pct: f.cantidad_objetivo > 0 ? (f.ahorrado_actual / f.cantidad_objetivo) * 100 : 0, restante: Math.max(f.cantidad_objetivo - f.ahorrado_actual, 0) })),
-    [state.sinkingFunds]
+    () => state.sinkingFunds.map((f) => {
+      const ahorradoActual = fundCurrentAmount(f, state.accounts)
+      return { ...f, pct: f.cantidad_objetivo > 0 ? (ahorradoActual / f.cantidad_objetivo) * 100 : 0, restante: Math.max(f.cantidad_objetivo - ahorradoActual, 0) }
+    }),
+    [state.sinkingFunds, state.accounts]
   )
   const completedGoals = fundsWithProgress.filter((f) => f.pct >= 100).length
   const nearestGoalFund = fundsWithProgress.filter((f) => f.pct < 100).sort((a, b) => b.pct - a.pct)[0] ?? null
