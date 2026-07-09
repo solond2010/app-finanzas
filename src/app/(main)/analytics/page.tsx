@@ -15,7 +15,7 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer } from "@/lib/calculations"
+import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
@@ -138,6 +138,14 @@ export default function AnalyticsPage() {
   const [confirmReset, setConfirmReset] = useState(false)
 
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  // Misma fuente de reglas que Cuentas/Inversiones (getFinancialTips): la
+  // recomendación del diagnóstico rápido deja de ser un único if/else propio
+  // de esta página y pasa a ser el consejo de mayor severidad del motor.
+  const tips = useMemo(
+    () => getFinancialTips(analysisTransactions, state.accounts, state.sinkingFunds, selectedMonth),
+    [analysisTransactions, state.accounts, state.sinkingFunds, selectedMonth]
+  )
+  const topTip = tips[0]
   const dailyTotals = useMemo(() => {
     const [year, month] = selectedMonth.split("-").map(Number)
     const daysInMonth = new Date(year, month, 0).getDate()
@@ -492,7 +500,7 @@ export default function AnalyticsPage() {
               </div>
               <div className="rounded-2xl bg-muted/35 p-4 ring-1 ring-border/20">
                 <p className="text-xs text-muted-foreground">Recomendación</p>
-                <p className="mt-1 text-sm font-medium leading-6">{monthTotals.neto >= 0 ? "Buen mes. Mantén el ahorro automático y revisa si puedes subir aportaciones." : "Mes negativo. Revisa categorías grandes y congela gastos variables unos días."}</p>
+                <p className="mt-1 text-sm font-medium leading-6">{topTip?.message ?? (monthTotals.neto >= 0 ? "Buen mes. Mantén el ahorro automático y revisa si puedes subir aportaciones." : "Mes negativo. Revisa categorías grandes y congela gastos variables unos días.")}</p>
               </div>
             </CardContent>
           </Card>
