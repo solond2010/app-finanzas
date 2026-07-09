@@ -445,7 +445,7 @@ export default function DashboardContent() {
       ) : (
         <div className="space-y-5 sm:space-y-6">
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
-          <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3" style={{ animationDelay: "0ms" }}>
             {/* Patrimonio + rango */}
             <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -514,7 +514,7 @@ export default function DashboardContent() {
           </section>
 
           {/* Ticker: pulso del mes con mini-tendencia de 6 meses */}
-          <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <section className="stagger-fade grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" style={{ animationDelay: "40ms" }}>
             <TickerTile label="Ingresos" value={`+${formatMoney(monthTotals.ingresos, "EUR")}`} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push("/transactions?tipo=ingreso")} />
             <TickerTile label="Gastos" value={`-${formatMoney(monthTotals.gastos, "EUR")}`} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" onClick={() => router.push("/transactions?tipo=gasto")} />
             <TickerTile
@@ -528,7 +528,7 @@ export default function DashboardContent() {
           </section>
 
           {/* Composición del patrimonio + racha de ahorro */}
-          <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3" style={{ animationDelay: "80ms" }}>
             <div className={`${CARD} min-w-0 lg:col-span-2`}>
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Layers3 className="h-4 w-4 text-primary" /> Composición del patrimonio</p>
               {composicion.length === 0 ? (
@@ -570,7 +570,7 @@ export default function DashboardContent() {
           </section>
 
           {/* Acumulado anual */}
-          <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3" style={{ animationDelay: "120ms" }}>
             <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="var(--accent-green)" icon={ArrowUpRight}>
               <MiniBars values={monthlyYear.map((m) => m.ingresos)} color="var(--accent-green)" />
             </AnnualStat>
@@ -583,7 +583,7 @@ export default function DashboardContent() {
           </section>
 
           {/* Cuentas (carrusel) + Presupuesto */}
-          <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3" style={{ animationDelay: "160ms" }}>
             <div className={`${CARD} min-w-0 lg:col-span-2`}>
               <div className="mb-5 flex items-center justify-between">
                 <p className="text-sm font-semibold text-foreground">Mis cuentas</p>
@@ -653,7 +653,7 @@ export default function DashboardContent() {
           </section>
 
           {topSpending.length > 0 && (
-            <div className={`${CARD} min-w-0`}>
+            <div className={`${CARD} stagger-fade min-w-0`} style={{ animationDelay: "200ms" }}>
               <div className="mb-5 flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-foreground">Distribución de gastos</p>
                 <p className="text-sm tabular-nums text-muted-foreground"><Sensitive>{formatMoney(spendTotal, "EUR")}</Sensitive></p>
@@ -693,7 +693,7 @@ export default function DashboardContent() {
 
           {/* Últimos movimientos: vista rápida de los 5 más recientes. El
               historial completo vive en Movimientos. */}
-          <div className={`${CARD} min-w-0`}>
+          <div className={`${CARD} stagger-fade min-w-0`} style={{ animationDelay: "240ms" }}>
             <div className="mb-4 flex items-center justify-between">
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Receipt className="h-4 w-4 text-primary" /> Últimos movimientos</p>
               <button onClick={() => router.push("/transactions")} className="text-xs font-medium text-primary transition-colors hover:opacity-70">Ver todos</button>
@@ -723,7 +723,9 @@ export default function DashboardContent() {
               </div>
             )}
           </div>
-          <SinkingFundsGrid />
+          <div className="stagger-fade" style={{ animationDelay: "280ms" }}>
+            <SinkingFundsGrid />
+          </div>
         </div>
       )}
 
