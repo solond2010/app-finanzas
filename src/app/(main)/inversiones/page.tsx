@@ -302,9 +302,9 @@ export default function InversionesPage() {
         <>
           {/* Ticker: pulso de la cartera */}
           <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <TickerTile label="Valor cartera" value={formatMoney(value, baseCurrency)} />
+            <TickerTile label="Valor cartera" value={<Sensitive>{formatMoney(value, baseCurrency)}</Sensitive>} />
             <TickerTile label="Rentabilidad" value={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`} valueColor={pnlPct >= 0 ? "var(--accent-green)" : "var(--accent-red)"} />
-            <TickerTile label="Invertido" value={formatMoney(invested, baseCurrency)} />
+            <TickerTile label="Invertido" value={<Sensitive>{formatMoney(invested, baseCurrency)}</Sensitive>} />
             <TickerTile label="Mejor posición" value={bestPosition ? `${bestPosition.plPct >= 0 ? "+" : ""}${bestPosition.plPct.toFixed(2)}%` : "—"} detail={bestPosition?.p.name} valueColor="var(--gold)" />
           </section>
 

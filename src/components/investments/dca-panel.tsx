@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { useInvestments, dcaPendingDates, dcaNextDate, planOf } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
+import { Sensitive } from "@/components/shared/sensitive"
 
 interface Quote { price: number; currency: string; changePct?: number | null }
 
@@ -56,7 +57,7 @@ export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-foreground">{p.name}</p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {formatMoney(plan.amount, cur)} · {plan.freq === "monthly" ? "mensual" : "semanal"}
+                  <Sensitive as="span">{formatMoney(plan.amount, cur)}</Sensitive> · {plan.freq === "monthly" ? "mensual" : "semanal"}
                 </p>
               </div>
               <div className="shrink-0 text-right">
@@ -68,7 +69,7 @@ export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
               </div>
               {hasPending && (
                 <Button size="sm" className="shrink-0 rounded-full" onClick={() => handleApply(p.id, price)}>
-                  Aplicar {formatMoney(pending.length * plan.amount, cur)}
+                  Aplicar <Sensitive as="span">{formatMoney(pending.length * plan.amount, cur)}</Sensitive>
                 </Button>
               )}
             </div>

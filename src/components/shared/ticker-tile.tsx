@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { SparkLineChart } from "@tremor/react"
 
 // Tarjeta compacta estilo "ticker" con un mini-gráfico de tendencia opcional
@@ -8,7 +9,7 @@ import { SparkLineChart } from "@tremor/react"
 // asociado (cuenta, categoría, posición) va en `detail`, que se pinta en una
 // segunda línea truncable. Antes iban juntos en una línea ("Nombre · 20%") y
 // en pantallas estrechas el nombre truncado dejaba restos como "Co… · 20%".
-export function TickerTile({ label, value, detail, valueColor, trend, trendColor, onClick }: { label: string; value: string; detail?: string; valueColor?: string; trend?: number[]; trendColor?: string; onClick?: () => void }) {
+export function TickerTile({ label, value, detail, valueColor, trend, trendColor, onClick }: { label: string; value: ReactNode; detail?: string; valueColor?: string; trend?: number[]; trendColor?: string; onClick?: () => void }) {
   const data = trend?.map((v, i) => ({ i, v }))
   const content = (
     <>

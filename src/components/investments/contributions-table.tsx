@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useInvestments, type Position } from "@/lib/investments"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { cn } from "@/lib/utils"
+import { Sensitive } from "@/components/shared/sensitive"
 
 interface Quote { price: number; currency: string; changePct?: number | null }
 
@@ -89,9 +90,9 @@ function ContributionsGrid({ months, positions, cur }: { months: [string, Map<st
                 <td className={cn("p-2.5 whitespace-nowrap", isCurrent ? "font-bold" : "text-muted-foreground")} style={isCurrent ? { color: "var(--gold)" } : undefined}>{monthLabel(mk)}</td>
                 {positions.map((p) => {
                   const v = row.get(p.id)
-                  return <td key={p.id} className="p-2.5 text-right tabular-nums">{v ? formatMoney(v, cur) : <span className="text-muted-foreground/50">–</span>}</td>
+                  return <td key={p.id} className="p-2.5 text-right tabular-nums">{v ? <Sensitive>{formatMoney(v, cur)}</Sensitive> : <span className="text-muted-foreground/50">–</span>}</td>
                 })}
-                <td className={cn("p-2.5 text-right font-semibold tabular-nums", isCurrent && "text-gold")} style={isCurrent ? { color: "var(--gold)" } : undefined}>{formatMoney(total, cur)}</td>
+                <td className={cn("p-2.5 text-right font-semibold tabular-nums", isCurrent && "text-gold")} style={isCurrent ? { color: "var(--gold)" } : undefined}><Sensitive>{formatMoney(total, cur)}</Sensitive></td>
               </tr>
             )
           })}
@@ -99,8 +100,8 @@ function ContributionsGrid({ months, positions, cur }: { months: [string, Map<st
         <tfoot>
           <tr className="border-t border-border">
             <td className="p-2.5 font-bold">Total aportado</td>
-            {totalsByPosition.map((t, i) => <td key={positions[i].id} className="p-2.5 text-right font-bold tabular-nums">{formatMoney(t, cur)}</td>)}
-            <td className="p-2.5 text-right font-bold tabular-nums">{formatMoney(grandTotal, cur)}</td>
+            {totalsByPosition.map((t, i) => <td key={positions[i].id} className="p-2.5 text-right font-bold tabular-nums"><Sensitive>{formatMoney(t, cur)}</Sensitive></td>)}
+            <td className="p-2.5 text-right font-bold tabular-nums"><Sensitive>{formatMoney(grandTotal, cur)}</Sensitive></td>
           </tr>
         </tfoot>
       </table>
@@ -164,16 +165,16 @@ export function ContributionsTable({ quotes }: { quotes: Record<string, Quote> }
       <div className="mt-4 grid grid-cols-3 gap-3">
         <div className="rounded-2xl bg-muted/30 p-3">
           <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Aportado</p>
-          <p className="mt-1 text-base font-bold tabular-nums">{formatMoney(invested, cur)}</p>
+          <p className="mt-1 text-base font-bold tabular-nums"><Sensitive>{formatMoney(invested, cur)}</Sensitive></p>
         </div>
         <div className="rounded-2xl bg-muted/30 p-3">
           <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Valor actual</p>
-          <p className="mt-1 text-base font-bold tabular-nums">{formatMoney(value, cur)}</p>
+          <p className="mt-1 text-base font-bold tabular-nums"><Sensitive>{formatMoney(value, cur)}</Sensitive></p>
         </div>
         <div className="rounded-2xl bg-muted/30 p-3">
           <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Ganancias</p>
           <p className="mt-1 text-base font-bold tabular-nums" style={{ color: pnl >= 0 ? "var(--accent-green)" : "var(--accent-red)" }}>
-            {pnl >= 0 ? "+" : ""}{formatMoney(pnl, cur)} ({pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%)
+            <Sensitive as="span">{pnl >= 0 ? "+" : ""}{formatMoney(pnl, cur)}</Sensitive> ({pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%)
           </p>
         </div>
       </div>
