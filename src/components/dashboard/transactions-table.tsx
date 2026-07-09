@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useRef, Fragment } from "react"
+import { useSearchParams } from "next/navigation"
 import {
   Table,
   TableBody,
@@ -307,9 +308,15 @@ function InlineEditSelect({
 export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: string; selectedMonth?: string }) {
   const { state, loading, dispatch } = useFinance()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
   const [filterAccount, setFilterAccount] = useState<string>(cuentaId ?? "all")
   const [filterCategory, setFilterCategory] = useState<string>("all")
-  const [filterTipo, setFilterTipo] = useState<"all" | "ingreso" | "gasto">("all")
+  // Permite llegar aquí desde otra página con el tipo ya filtrado, ej. al
+  // pinchar el ticker "Ingresos"/"Gastos" del Dashboard (/transactions?tipo=...).
+  const [filterTipo, setFilterTipo] = useState<"all" | "ingreso" | "gasto">(() => {
+    const tipo = searchParams.get("tipo")
+    return tipo === "ingreso" || tipo === "gasto" ? tipo : "all"
+  })
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(0)
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null)

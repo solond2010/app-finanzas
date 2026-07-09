@@ -8,10 +8,10 @@ import { SparkLineChart } from "@tremor/react"
 // asociado (cuenta, categoría, posición) va en `detail`, que se pinta en una
 // segunda línea truncable. Antes iban juntos en una línea ("Nombre · 20%") y
 // en pantallas estrechas el nombre truncado dejaba restos como "Co… · 20%".
-export function TickerTile({ label, value, detail, valueColor, trend, trendColor }: { label: string; value: string; detail?: string; valueColor?: string; trend?: number[]; trendColor?: string }) {
+export function TickerTile({ label, value, detail, valueColor, trend, trendColor, onClick }: { label: string; value: string; detail?: string; valueColor?: string; trend?: number[]; trendColor?: string; onClick?: () => void }) {
   const data = trend?.map((v, i) => ({ i, v }))
-  return (
-    <div className="min-w-0 rounded-2xl border border-border bg-card p-3.5 transition-colors card-glow">
+  const content = (
+    <>
       <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <div className="mt-1.5 flex items-end justify-between gap-2">
         <span className="truncate text-lg font-bold tabular-nums" style={{ color: valueColor }}>{value}</span>
@@ -24,6 +24,14 @@ export function TickerTile({ label, value, detail, valueColor, trend, trendColor
         )}
       </div>
       {detail && <p className="mt-0.5 truncate text-xs text-muted-foreground">{detail}</p>}
-    </div>
+    </>
   )
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className="min-w-0 w-full rounded-2xl border border-border bg-card p-3.5 text-left transition-all card-glow hover:border-primary/40 active:scale-[0.98]">
+        {content}
+      </button>
+    )
+  }
+  return <div className="min-w-0 rounded-2xl border border-border bg-card p-3.5 transition-colors card-glow">{content}</div>
 }

@@ -512,15 +512,16 @@ export default function DashboardContent() {
 
           {/* Ticker: pulso del mes con mini-tendencia de 6 meses */}
           <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <TickerTile label="Ingresos" value={`+${formatMoney(monthTotals.ingresos, "EUR")}`} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" />
-            <TickerTile label="Gastos" value={`-${formatMoney(monthTotals.gastos, "EUR")}`} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" />
+            <TickerTile label="Ingresos" value={`+${formatMoney(monthTotals.ingresos, "EUR")}`} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push("/transactions?tipo=ingreso")} />
+            <TickerTile label="Gastos" value={`-${formatMoney(monthTotals.gastos, "EUR")}`} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" onClick={() => router.push("/transactions?tipo=gasto")} />
             <TickerTile
               label="Disponible este mes"
               value={budgetTotals.limite > 0 ? formatMoney(budgetTotals.disponible, "EUR") : "—"}
               detail={budgetTotals.limite > 0 ? `de ${formatMoney(budgetTotals.limite, "EUR")} presupuestados` : "Sin presupuesto definido"}
               valueColor={budgetTotals.limite > 0 ? (budgetTotals.disponible >= 0 ? "var(--gold)" : "var(--accent-red)") : undefined}
+              onClick={() => router.push("/transactions?tipo=gasto")}
             />
-            <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" />
+            <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" onClick={() => router.push("/analytics")} />
           </section>
 
           {/* Composición del patrimonio + racha de ahorro */}
