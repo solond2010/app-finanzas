@@ -11,6 +11,7 @@ import {
   calculateMonthlySaving,
   accountGoal,
   getCategoryInsights,
+  getFinancialScore,
 } from "./calculations"
 
 function account(overrides: Partial<Account> = {}): Account {
@@ -247,5 +248,62 @@ describe("getCategoryInsights", () => {
     const insights = getCategoryInsights(txns, "2026-06", 1)
     expect(insights).toHaveLength(1)
     expect(insights[0].categoria).toBe("Salud")
+  })
+})
+
+describe("getFinancialScore", () => {
+  it("puntúa 100 y Excelente cuando se cumplen los 4 factores", () => {
+    const result = getFinancialScore({
+      savingsRate: 35,
+      monthlyNeto: 150,
+      netWorthCurrent: 1020,
+      netWorthBaseline: 1000,
+      hasActiveEmergencyFund: true,
+    })
+    expect(result.score).toBe(100)
+    expect(result.tier.label).toBe("Excelente")
+    expect(result.factors).toEqual([
+      { label: "Tasa de ahorro ≥ 20%", ok: true },
+      { label: "Flujo del mes positivo", ok: true },
+      { label: "Patrimonio en crecimiento", ok: true },
+      { label: "Fondo de emergencia activo", ok: true },
+    ])
+  })
+
+  it("puntúa 0 y Frágil cuando no se cumple ningún factor", () => {
+    const result = getFinancialScore({
+      savingsRate: 0,
+      monthlyNeto: -150,
+      netWorthCurrent: 980,
+      netWorthBaseline: 1000,
+      hasActiveEmergencyFund: false,
+    })
+    expect(result.score).toBe(0)
+    expect(result.tier.label).toBe("Frágil")
+    expect(result.factors.every((f) => !f.ok)).toBe(true)
+  })
+
+  it("usa una zona de transición en vez de un corte seco en 0 para flujo y crecimiento", () => {
+    const result = getFinancialScore({
+      savingsRate: 15,
+      monthlyNeto: 0,
+      netWorthCurrent: 1000,
+      netWorthBaseline: 1000,
+      hasActiveEmergencyFund: false,
+    })
+    // savingsRate 15/30*40=20, neto en el centro de su zona = 10, crecimiento en el centro de su zona = 10
+    expect(result.score).toBe(40)
+    expect(result.tier.label).toBe("Mejorable")
+  })
+
+  it("da el máximo de puntos de crecimiento si el patrimonio de referencia era 0 o negativo y el actual es positivo", () => {
+    const result = getFinancialScore({
+      savingsRate: 0,
+      monthlyNeto: -150,
+      netWorthCurrent: 500,
+      netWorthBaseline: 0,
+      hasActiveEmergencyFund: false,
+    })
+    expect(result.factors[2]).toEqual({ label: "Patrimonio en crecimiento", ok: true })
   })
 })

@@ -15,7 +15,7 @@ import { usePortfolioValue, accountDisplayValue, type Position } from "@/lib/inv
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getMonthTotalsByString, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, accountGoal } from "@/lib/calculations"
+import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, getAccountsAtMonth, getCategoryBreakdown, getFinancialScore, getMonthTotalsByString, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, accountGoal } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -301,32 +301,16 @@ export default function DashboardContent() {
     [state.accounts, state.transactions, scoreBaselineKey, investmentSaldo, investmentDisplayTotal]
   )
 
-  const score = useMemo(() => {
-    let s = 0
-    s += (Math.max(0, Math.min(savingsRate, 30)) / 30) * 40
-    // Los dos factores de abajo usan una zona de transición (en vez de un
-    // corte seco en 0) para que un único movimiento pequeño (un ajuste, un
-    // ingreso puntual) no dispare la puntuación de golpe ±20 puntos: solo
-    // cambios claramente positivos o negativos mueven el factor entero.
-    s += Math.max(0, Math.min(1, (monthTotals.neto + 100) / 200)) * 20
-    const growthPct = scoreBaseline > 0 ? ((netWorthDisplay - scoreBaseline) / scoreBaseline) * 100 : netWorthDisplay > 0 ? 100 : 0
-    s += Math.max(0, Math.min(1, (growthPct + 2) / 4)) * 20
-    if (displayAccounts.some((a) => a.tipo === "emergencia" && a.saldo > 0)) s += 20
-    return Math.round(Math.max(0, Math.min(100, s)))
-  }, [savingsRate, monthTotals.neto, netWorthDisplay, scoreBaseline, displayAccounts])
-
-  const scoreTier =
-    score >= 80 ? { label: "Excelente", color: "var(--accent-green)" }
-    : score >= 60 ? { label: "Sólido", color: "var(--accent-blue)" }
-    : score >= 40 ? { label: "Mejorable", color: "var(--accent-amber)" }
-    : { label: "Frágil", color: "var(--accent-red)" }
-
-  const scoreFactors = [
-    { label: "Tasa de ahorro ≥ 20%", ok: savingsRate >= 20 },
-    { label: "Flujo del mes positivo", ok: monthTotals.neto > 0 },
-    { label: "Patrimonio en crecimiento", ok: netWorthDisplay > scoreBaseline },
-    { label: "Fondo de emergencia activo", ok: displayAccounts.some((a) => a.tipo === "emergencia" && a.saldo > 0) },
-  ]
+  const { score, tier: scoreTier, factors: scoreFactors } = useMemo(
+    () => getFinancialScore({
+      savingsRate,
+      monthlyNeto: monthTotals.neto,
+      netWorthCurrent: netWorthDisplay,
+      netWorthBaseline: scoreBaseline,
+      hasActiveEmergencyFund: displayAccounts.some((a) => a.tipo === "emergencia" && a.saldo > 0),
+    }),
+    [savingsRate, monthTotals.neto, netWorthDisplay, scoreBaseline, displayAccounts]
+  )
 
   const sortedAccounts = useMemo(() => displayAccounts.slice().sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo)), [displayAccounts])
   const accCount = sortedAccounts.length
@@ -478,7 +462,7 @@ export default function DashboardContent() {
                   {portfolioValue > 0 && (
                     <p className="mt-1 text-xs text-muted-foreground">
                       Incluye <Sensitive>{formatMoney(portfolioValue, "EUR")}</Sensitive> en inversiones
-                      <span className={cn("ml-1 font-semibold", portfolioPnl >= 0 ? "text-emerald-500" : "text-red-500")}>({portfolioPnl >= 0 ? "+" : "−"}{formatMoney(Math.abs(portfolioPnl), "EUR")})</span>
+                      <Sensitive as="span" className={cn("ml-1 font-semibold", portfolioPnl >= 0 ? "text-emerald-500" : "text-red-500")}>({portfolioPnl >= 0 ? "+" : "−"}{formatMoney(Math.abs(portfolioPnl), "EUR")})</Sensitive>
                     </p>
                   )}
                 </div>

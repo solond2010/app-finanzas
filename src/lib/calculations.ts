@@ -304,6 +304,56 @@ export function getCategoryInsights(transactions: Transaction[], selectedMonth: 
   return insights.sort((a, b) => Math.abs(b.deltaAbs) - Math.abs(a.deltaAbs)).slice(0, maxInsights)
 }
 
+export interface FinancialScoreFactor {
+  label: string
+  ok: boolean
+}
+
+export interface FinancialScoreResult {
+  score: number
+  tier: { label: string; color: string }
+  factors: FinancialScoreFactor[]
+}
+
+/**
+ * Puntuación financiera (0-100) de la tarjeta "Puntuación financiera" del
+ * Dashboard: cuatro factores ponderados. Los dos factores de flujo/crecimiento
+ * usan una zona de transición (en vez de un corte seco en 0) para que un único
+ * movimiento pequeño no dispare la puntuación de golpe ±20 puntos.
+ */
+export function getFinancialScore(params: {
+  savingsRate: number
+  monthlyNeto: number
+  netWorthCurrent: number
+  netWorthBaseline: number
+  hasActiveEmergencyFund: boolean
+}): FinancialScoreResult {
+  const { savingsRate, monthlyNeto, netWorthCurrent, netWorthBaseline, hasActiveEmergencyFund } = params
+
+  let s = 0
+  s += (Math.max(0, Math.min(savingsRate, 30)) / 30) * 40
+  s += Math.max(0, Math.min(1, (monthlyNeto + 100) / 200)) * 20
+  const growthPct = netWorthBaseline > 0 ? ((netWorthCurrent - netWorthBaseline) / netWorthBaseline) * 100 : netWorthCurrent > 0 ? 100 : 0
+  s += Math.max(0, Math.min(1, (growthPct + 2) / 4)) * 20
+  if (hasActiveEmergencyFund) s += 20
+  const score = Math.round(Math.max(0, Math.min(100, s)))
+
+  const tier =
+    score >= 80 ? { label: "Excelente", color: "var(--accent-green)" }
+    : score >= 60 ? { label: "Sólido", color: "var(--accent-blue)" }
+    : score >= 40 ? { label: "Mejorable", color: "var(--accent-amber)" }
+    : { label: "Frágil", color: "var(--accent-red)" }
+
+  const factors: FinancialScoreFactor[] = [
+    { label: "Tasa de ahorro ≥ 20%", ok: savingsRate >= 20 },
+    { label: "Flujo del mes positivo", ok: monthlyNeto > 0 },
+    { label: "Patrimonio en crecimiento", ok: netWorthCurrent > netWorthBaseline },
+    { label: "Fondo de emergencia activo", ok: hasActiveEmergencyFund },
+  ]
+
+  return { score, tier, factors }
+}
+
 export function calculateMonthlySaving(amountTarget: number, current: number, deadline: string): number {
   const now = new Date()
   const end = new Date(deadline)
