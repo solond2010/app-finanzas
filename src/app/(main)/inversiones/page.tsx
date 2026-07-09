@@ -6,7 +6,7 @@ import { Plus, TrendingUp, TrendingDown, LineChart, FileDown, Target, Pencil, Ch
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { useFinance } from "@/lib/store"
-import { useInvestments, usePortfolioValue, assetClassOf, ASSET_CLASS_LABELS, accountDisplayValue, type Position } from "@/lib/investments"
+import { useInvestments, usePortfolioValue, assetClassOf, ASSET_CLASS_LABELS, accountDisplayValue, planOf, dcaPendingDates, type Position } from "@/lib/investments"
 import { PositionDialog } from "@/components/investments/position-dialog"
 import { PositionDetailPanel } from "@/components/investments/position-detail-panel"
 import { WatchlistRow } from "@/components/investments/watchlist"
@@ -21,7 +21,8 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
-import { accountGoal, getMonthTotalsByString, getMonthlyInvestmentInflow, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount } from "@/lib/calculations"
+import { accountGoal, getFinancialTips, getMonthTotalsByString, getMonthlyInvestmentInflow, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, type FinancialTip } from "@/lib/calculations"
+import { TipsCard } from "@/components/shared/tips-card"
 import { getSetting, setSetting } from "@/lib/settings"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
@@ -118,6 +119,25 @@ export default function InversionesPage() {
       .map((g) => ({ ...g, pct: Math.min((g.current / g.goal) * 100, 100), restante: Math.max(g.goal - g.current, 0) }))
       .sort((a, b) => b.pct - a.pct)
   }, [investAccounts, state.sinkingFunds, valueByAccount, investedByAccount])
+
+  // Aviso propio de esta página (aportes DCA acumulados sin aplicar) delante
+  // de los consejos generales del motor de reglas (getFinancialTips).
+  const dcaOverdueTips = useMemo(() => {
+    const tips: FinancialTip[] = []
+    for (const p of positions) {
+      const plan = planOf(p)
+      if (!plan) continue
+      const pending = dcaPendingDates(plan)
+      if (pending.length >= 2) {
+        tips.push({ id: `dca-overdue-${p.id}`, severity: "warning", message: `Llevas ${pending.length} aportes sin aplicar en "${p.name}".` })
+      }
+    }
+    return tips
+  }, [positions])
+  const tips = useMemo(
+    () => [...dcaOverdueTips, ...getFinancialTips(state.transactions, state.accounts, state.sinkingFunds)].slice(0, 4),
+    [dcaOverdueTips, state.transactions, state.accounts, state.sinkingFunds]
+  )
 
   const symbolsKey = useMemo(
     () => [...new Set(positions.filter((p) => p.kind !== "custom").map((p) => p.symbol))].sort().join(","),
@@ -346,6 +366,8 @@ export default function InversionesPage() {
               </div>
             </div>
           )}
+
+          <TipsCard tips={tips} />
 
           {/* Fila superior: cuentas + seguimiento */}
           <WatchlistRow leading={<AccountCards accounts={investAccounts} valueByAccount={valueByAccount} investedByAccount={investedByAccount} />} />

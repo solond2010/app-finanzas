@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation"
 import { useFinance, type Account } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
-import { accountGoal } from "@/lib/calculations"
+import { accountGoal, getFinancialTips } from "@/lib/calculations"
+import { TipsCard } from "@/components/shared/tips-card"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Wallet as WalletIcon, Plus, Target, TrendingUp } from "lucide-react"
 import { formatMoney, currencySymbol } from "@/lib/currency"
@@ -26,6 +27,10 @@ export default function CuentasPage() {
   const { toast } = useToast()
   const { valueByAccount, investedByAccount } = usePortfolioValue()
   const [showNewAccount, setShowNewAccount] = useState(false)
+  const tips = useMemo(
+    () => getFinancialTips(state.transactions, state.accounts, state.sinkingFunds),
+    [state.transactions, state.accounts, state.sinkingFunds]
+  )
 
   // Para cuentas de inversión, el saldo bruto no baja al comprar una posición
   // (no genera un gasto): se sustituye solo la parte ya invertida por su valor
@@ -168,6 +173,8 @@ export default function CuentasPage() {
           </div>
         </>
       )}
+
+      <TipsCard tips={tips} />
 
       <section className="space-y-6 border-t border-border pt-6 sm:space-y-7 sm:pt-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
