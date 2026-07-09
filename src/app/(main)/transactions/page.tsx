@@ -16,7 +16,7 @@ import { useFinance, generateId } from "@/lib/store"
 import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, getUpcomingRecurring } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
 import { formatMonth, isInitialBalanceTransaction, chartFormatter } from "@/lib/format"
-import { formatMoney } from "@/lib/currency"
+import { formatMoney, convertToEur } from "@/lib/currency"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
@@ -113,7 +113,9 @@ export default function IngresosGastosPage() {
     return new Date(item.nextDate).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
   }
 
-  const totalBalance = state.accounts.reduce((s, a) => s + a.saldo, 0)
+  // Convertir a EUR antes de sumar: sumar saldos en crudo daría un total sin
+  // sentido en cuanto una cuenta no está en EUR (ej. la cuenta de Suiza en CHF).
+  const totalBalance = state.accounts.reduce((s, a) => s + convertToEur(a.saldo, a.currency), 0)
   const accCount = state.accounts.length
   const safeAccIdx = accCount > 0 ? ((accIdx % accCount) + accCount) % accCount : 0
   const currentAccount = state.accounts[safeAccIdx]

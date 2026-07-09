@@ -1,13 +1,13 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useFinance, type Account } from "@/lib/store"
+import { useFinance, type Account, type SinkingFund } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { accountGoal, fundCurrentAmount, getFinancialTips } from "@/lib/calculations"
 import { TipsCard } from "@/components/shared/tips-card"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Wallet as WalletIcon, Plus, Target, TrendingUp } from "lucide-react"
-import { formatMoney, currencySymbol } from "@/lib/currency"
+import { formatMoney, currencySymbol, convertToEur } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
 import { AccountLogo } from "@/components/dashboard/account-logo"
@@ -36,11 +36,16 @@ export default function CuentasPage() {
   // (no genera un gasto): se sustituye solo la parte ya invertida por su valor
   // de mercado, dejando intacto el efectivo restante aún sin invertir.
   const accountValue = (a: Account) => accountDisplayValue(a, valueByAccount, investedByAccount)
-  const netWorth = state.accounts.reduce((s, a) => s + accountValue(a), 0)
+  // Para sumar o comparar entre cuentas hace falta pasar todo a la misma
+  // divisa primero (ej. la cuenta de Suiza en CHF); accountValue por sí solo
+  // da el valor en la divisa propia de la cuenta, válido solo para mostrar
+  // una cuenta individual, no para totales conjuntos.
+  const accountValueEur = (a: Account) => convertToEur(accountValue(a), a.currency)
+  const netWorth = state.accounts.reduce((s, a) => s + accountValueEur(a), 0)
 
   // Cuenta con mayor saldo y cuenta más cerca de completar su objetivo, para
   // el ticker superior (solo cuando hay cuentas registradas).
-  const topAccount = useMemo(() => (state.accounts.length === 0 ? null : state.accounts.slice().sort((a, b) => accountValue(b) - accountValue(a))[0]), [state.accounts, valueByAccount, investedByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
+  const topAccount = useMemo(() => (state.accounts.length === 0 ? null : state.accounts.slice().sort((a, b) => accountValueEur(b) - accountValueEur(a))[0]), [state.accounts, valueByAccount, investedByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
   const nearestGoal = useMemo(() => {
     return state.accounts
       .map((a) => ({ account: a, goal: accountGoal(a, state.sinkingFunds) }))
@@ -48,13 +53,17 @@ export default function CuentasPage() {
       .map((a) => ({ account: a.account, pct: Math.min((accountValue(a.account) / a.goal) * 100, 100) }))
       .sort((a, b) => b.pct - a.pct)[0] ?? null
   }, [state.accounts, state.sinkingFunds, valueByAccount, investedByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
-  const liquidNetWorth = state.accounts.filter((a) => a.tipo !== "inversion").reduce((s, a) => s + accountValue(a), 0)
+  const liquidNetWorth = state.accounts.filter((a) => a.tipo !== "inversion").reduce((s, a) => s + accountValueEur(a), 0)
   const liquidPct = netWorth > 0 ? Math.round((liquidNetWorth / netWorth) * 100) : 0
 
   // Metas de ahorro (fusionado desde /objetivos): mismos cálculos que tenía esa página.
+  // El objetivo de una meta está en la divisa de su cuenta vinculada (ej. una
+  // meta en la cuenta de Suiza está en CHF): hay que convertir antes de sumar
+  // objetivos/ahorrado de metas en distintas cuentas/divisas.
   const goalStats = useMemo(() => {
-    const totalObjetivo = state.sinkingFunds.reduce((s, f) => s + f.cantidad_objetivo, 0)
-    const totalAhorrado = state.sinkingFunds.reduce((s, f) => s + fundCurrentAmount(f, state.accounts), 0)
+    const fundCurrency = (f: SinkingFund) => state.accounts.find((a) => a.id === f.cuenta_id)?.currency ?? "EUR"
+    const totalObjetivo = state.sinkingFunds.reduce((s, f) => s + convertToEur(f.cantidad_objetivo, fundCurrency(f)), 0)
+    const totalAhorrado = state.sinkingFunds.reduce((s, f) => s + convertToEur(fundCurrentAmount(f, state.accounts), fundCurrency(f)), 0)
     const overallProgress = totalObjetivo > 0 ? Math.round((totalAhorrado / totalObjetivo) * 100) : 0
     return { totalObjetivo, totalAhorrado, overallProgress, count: state.sinkingFunds.length }
   }, [state.sinkingFunds, state.accounts])
@@ -108,7 +117,7 @@ export default function CuentasPage() {
         <>
           <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <TickerTile label="Cuentas" value={String(state.accounts.length)} valueColor="var(--primary)" />
-            <TickerTile label="Cuenta líder" value={topAccount ? formatMoney(accountValue(topAccount), topAccount.currency) : "—"} detail={topAccount?.nombre} valueColor="var(--gold)" />
+            <TickerTile label="Cuenta líder" value={topAccount ? <Sensitive>{formatMoney(accountValue(topAccount), topAccount.currency)}</Sensitive> : "—"} detail={topAccount?.nombre} valueColor="var(--gold)" />
             <TickerTile label="Objetivo más cerca" value={nearestGoal ? `${Math.round(nearestGoal.pct)}%` : "—"} detail={nearestGoal?.account.nombre} valueColor="var(--accent-green)" />
             <TickerTile label="Liquidez" value={`${liquidPct}%`} valueColor="var(--accent-blue)" />
           </section>
