@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { DonutChart } from "@tremor/react"
 import { Plus, TrendingUp, TrendingDown, LineChart, FileDown, Target, Pencil, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
 import { useFinance } from "@/lib/store"
 import { useInvestments, usePortfolioValue, assetClassOf, ASSET_CLASS_LABELS, accountDisplayValue, type Position } from "@/lib/investments"
 import { PositionDialog } from "@/components/investments/position-dialog"
@@ -20,7 +21,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
-import { getMonthTotalsByString, getMonthlyInvestmentInflow, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount } from "@/lib/calculations"
+import { accountGoal, getMonthTotalsByString, getMonthlyInvestmentInflow, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount } from "@/lib/calculations"
 import { getSetting, setSetting } from "@/lib/settings"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
@@ -107,6 +108,16 @@ export default function InversionesPage() {
   const openNew = () => { setEditing(null); setOpen(true) }
   const detailPosition = positions.find((p) => p.id === detailId) ?? null
   const investAccounts = useMemo(() => state.accounts.filter((a) => a.tipo === "inversion"), [state.accounts])
+  // Mismo patrón que la sección "Objetivos" de Analíticas (accountGoal ya
+  // combina objetivo propio + metas vinculadas), aquí filtrado a cuentas de
+  // inversión y usando su valor de mercado real en vez del saldo bruto.
+  const investGoalProgress = useMemo(() => {
+    return investAccounts
+      .map((a) => ({ account: a, goal: accountGoal(a, state.sinkingFunds), current: accountDisplayValue(a, valueByAccount, investedByAccount) }))
+      .filter((g) => g.goal > 0)
+      .map((g) => ({ ...g, pct: Math.min((g.current / g.goal) * 100, 100), restante: Math.max(g.goal - g.current, 0) }))
+      .sort((a, b) => b.pct - a.pct)
+  }, [investAccounts, state.sinkingFunds, valueByAccount, investedByAccount])
 
   const symbolsKey = useMemo(
     () => [...new Set(positions.filter((p) => p.kind !== "custom").map((p) => p.symbol))].sort().join(","),
@@ -307,6 +318,34 @@ export default function InversionesPage() {
             <TickerTile label="Invertido" value={<Sensitive>{formatMoney(invested, baseCurrency)}</Sensitive>} />
             <TickerTile label="Mejor posición" value={bestPosition ? `${bestPosition.plPct >= 0 ? "+" : ""}${bestPosition.plPct.toFixed(2)}%` : "—"} detail={bestPosition?.p.name} valueColor="var(--gold)" />
           </section>
+
+          {investGoalProgress.length > 0 && (
+            <div className={CARD}>
+              <p className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground"><Target className="h-4 w-4 text-emerald-500" />Objetivos de inversión</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {investGoalProgress.map((g) => {
+                  const complete = g.pct >= 100
+                  return (
+                    <div key={g.account.id} className="space-y-2">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: g.account.color }} />
+                          <span className="truncate">{g.account.nombre}</span>
+                        </span>
+                        <span className={cn("shrink-0 font-semibold tabular-nums", complete ? "text-emerald-500" : "text-foreground")}>
+                          <Sensitive>{formatMoney(g.current, g.account.currency)}</Sensitive> / <Sensitive>{formatMoney(g.goal, g.account.currency)}</Sensitive>
+                        </span>
+                      </div>
+                      <Progress value={g.pct} className="[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-indicator]]:bg-emerald-500" />
+                      {!complete && (
+                        <p className="text-[11px] text-muted-foreground">Faltan <Sensitive as="span">{formatMoney(g.restante, g.account.currency)}</Sensitive> · {Math.round(g.pct)}% completado</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Fila superior: cuentas + seguimiento */}
           <WatchlistRow leading={<AccountCards accounts={investAccounts} valueByAccount={valueByAccount} investedByAccount={investedByAccount} />} />
