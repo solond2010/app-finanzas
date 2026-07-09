@@ -12,6 +12,7 @@ import {
   accountGoal,
   getCategoryInsights,
   getFinancialScore,
+  getFinancialTips,
 } from "./calculations"
 
 function account(overrides: Partial<Account> = {}): Account {
@@ -305,5 +306,80 @@ describe("getFinancialScore", () => {
       hasActiveEmergencyFund: false,
     })
     expect(result.factors[2]).toEqual({ label: "Patrimonio en crecimiento", ok: true })
+  })
+})
+
+describe("getFinancialTips", () => {
+  it("detecta flujo de caja negativo del mes", () => {
+    const txns = [
+      tx({ tipo: "ingreso", monto: 100, fecha: "2026-06-01" }),
+      tx({ tipo: "gasto", monto: 500, fecha: "2026-06-02" }),
+    ]
+    const tips = getFinancialTips(txns, [account()], [], "2026-06")
+    expect(tips.some((t) => t.id === "cashflow-negative")).toBe(true)
+  })
+
+  it("detecta tasa de ahorro por debajo del 20%", () => {
+    const txns = [
+      tx({ tipo: "ingreso", monto: 1000, fecha: "2026-06-01" }),
+      tx({ tipo: "gasto", monto: 950, fecha: "2026-06-02" }),
+    ]
+    const tips = getFinancialTips(txns, [account()], [], "2026-06")
+    expect(tips.some((t) => t.id === "low-savings-rate")).toBe(true)
+  })
+
+  it("detecta patrimonio estancado 3 meses seguidos", () => {
+    // Sin transacciones, el patrimonio (solo el saldo de la cuenta) no cambia
+    // en ningún mes de la ventana.
+    const tips = getFinancialTips([], [account({ saldo: 1000 })], [], "2026-06")
+    expect(tips.some((t) => t.id === "net-worth-stagnant")).toBe(true)
+  })
+
+  it("detecta un pago recurrente que vence pronto sin fondos suficientes en la cuenta", () => {
+    const today = new Date()
+    const lastDue = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate() - 2)
+    const fecha = lastDue.toISOString().slice(0, 10)
+    const txns = [tx({ tags: ["recurrente"], categoria: "Alquiler", descripcion: "Piso", monto: 700, fecha })]
+    const tips = getFinancialTips(txns, [account({ saldo: 100 })], [])
+    expect(tips.some((t) => t.id.startsWith("recurring-risk-"))).toBe(true)
+  })
+
+  it("no avisa de un recurrente si la cuenta sí llega para cubrirlo", () => {
+    const today = new Date()
+    const lastDue = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate() - 2)
+    const fecha = lastDue.toISOString().slice(0, 10)
+    const txns = [tx({ tags: ["recurrente"], categoria: "Alquiler", descripcion: "Piso", monto: 700, fecha })]
+    const tips = getFinancialTips(txns, [account({ saldo: 5000 })], [])
+    expect(tips.some((t) => t.id.startsWith("recurring-risk-"))).toBe(false)
+  })
+
+  it("detecta una meta de ahorro con fecha límite próxima sin completar", () => {
+    const soon = new Date()
+    soon.setDate(soon.getDate() + 10)
+    const funds = [fund({ cantidad_objetivo: 1000, ahorrado_actual: 200, fecha_limite: soon.toISOString().slice(0, 10) })]
+    const tips = getFinancialTips([], [account()], funds)
+    expect(tips.some((t) => t.id === "goal-deadline-fund_1")).toBe(true)
+  })
+
+  it("no genera ningún consejo cuando todo está en orden", () => {
+    const txns = [
+      tx({ tipo: "ingreso", monto: 2000, fecha: "2026-06-01" }),
+      tx({ tipo: "gasto", monto: 500, fecha: "2026-06-02" }),
+    ]
+    const tips = getFinancialTips(txns, [account({ saldo: 5000 })], [], "2026-06")
+    expect(tips).toHaveLength(0)
+  })
+
+  it("prioriza por severidad y respeta maxTips", () => {
+    const txns = [
+      tx({ tipo: "ingreso", monto: 100, fecha: "2026-06-01" }),
+      tx({ tipo: "gasto", monto: 500, fecha: "2026-06-02" }), // flujo negativo -> critical
+    ]
+    const soon = new Date()
+    soon.setDate(soon.getDate() + 10)
+    const funds = [fund({ cantidad_objetivo: 1000, ahorrado_actual: 200, fecha_limite: soon.toISOString().slice(0, 10) })] // warning
+    const tips = getFinancialTips(txns, [account({ saldo: 5000 })], funds, "2026-06", 1)
+    expect(tips).toHaveLength(1)
+    expect(tips[0].severity).toBe("critical")
   })
 })

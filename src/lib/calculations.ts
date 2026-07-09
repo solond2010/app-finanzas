@@ -362,6 +362,67 @@ export function calculateMonthlySaving(amountTarget: number, current: number, de
   return Math.round((amountTarget - current) / monthsLeft)
 }
 
+export interface FinancialTip {
+  id: string
+  severity: "critical" | "warning" | "info"
+  message: string
+}
+
+const SEVERITY_RANK: Record<FinancialTip["severity"], number> = { critical: 0, warning: 1, info: 2 }
+const GOAL_DEADLINE_SOON_DAYS = 30
+const RECURRING_DUE_SOON_DAYS = 3
+
+/**
+ * Motor de consejos basado en reglas deterministas sobre los propios datos
+ * (sin IA ni servicio externo — nada que mantener ni que deje de ser gratis).
+ * Cada regla es una comprobación pequeña y aislada; se devuelven las de mayor
+ * severidad primero, como máximo `maxTips`.
+ */
+export function getFinancialTips(
+  transactions: Transaction[],
+  accounts: Account[],
+  sinkingFunds: SinkingFund[],
+  selectedMonth?: string,
+  maxTips = 4
+): FinancialTip[] {
+  const tips: FinancialTip[] = []
+  const monthKey = selectedMonth ?? getMonthKey(new Date())
+  const monthTotals = getMonthTotalsByString(transactions, monthKey)
+  const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
+
+  if (monthTotals.neto < 0) {
+    tips.push({ id: "cashflow-negative", severity: "critical", message: `Este mes vas negativo: revisa tus gastos más grandes antes de que se acumule más.` })
+  }
+
+  if (monthTotals.ingresos > 0 && savingsRate < 20) {
+    tips.push({ id: "low-savings-rate", severity: "warning", message: `Tu tasa de ahorro este mes es del ${Math.round(savingsRate)}%, por debajo del 20% recomendado.` })
+  }
+
+  const netWorthWindow = buildNetWorthHistory(transactions, accounts, selectedMonth, 3)
+  if (netWorthWindow.length === 3 && netWorthWindow.every((m) => m.patrimonio !== 0) && netWorthWindow[2].patrimonio <= netWorthWindow[0].patrimonio) {
+    tips.push({ id: "net-worth-stagnant", severity: "info", message: "Tu patrimonio lleva 3 meses sin crecer. Revisa si puedes automatizar algún ahorro." })
+  }
+
+  const accountById = new Map(accounts.map((a) => [a.id, a]))
+  for (const item of getUpcomingRecurring(transactions)) {
+    if (item.tipo !== "gasto" || item.overdueDays < -RECURRING_DUE_SOON_DAYS) continue
+    const account = accountById.get(item.cuenta_id)
+    if (account && account.saldo < item.monto) {
+      tips.push({ id: `recurring-risk-${item.key}`, severity: "critical", message: `"${item.descripcion || item.categoria}" vence pronto y tu cuenta ${account.nombre} no llega para cubrirlo.` })
+    }
+  }
+
+  for (const fund of sinkingFunds) {
+    if (fund.ahorrado_actual >= fund.cantidad_objetivo) continue
+    const daysLeft = (new Date(fund.fecha_limite).getTime() - Date.now()) / 86400000
+    if (daysLeft > 0 && daysLeft <= GOAL_DEADLINE_SOON_DAYS) {
+      tips.push({ id: `goal-deadline-${fund.id}`, severity: "warning", message: `Tu meta "${fund.nombre}" vence en menos de un mes y todavía no está completa.` })
+    }
+  }
+
+  return tips.sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]).slice(0, maxTips)
+}
+
 // Etiqueta corta de mes para ejes de gráficos ("jul 26").
 function formatMonth(d: Date) {
   return d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" })
