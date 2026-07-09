@@ -122,6 +122,26 @@ export function planOf(p: Position): DcaPlan | null {
   return { amount: p.dcaAmount, freq: p.dcaFreq ?? "monthly", last: p.dcaLast ?? p.date }
 }
 
+// Racha de constancia aportando: periodos consecutivos (meses o semanas,
+// según la cadencia del plan) con al menos un aporte registrado, contando
+// hacia atrás desde el periodo actual (o el anterior, si el actual todavía no
+// tiene aporte). Mismo principio que la racha de ahorro del Dashboard.
+export function dcaStreak(contributions: Contribution[], positionId: string, freq: DcaFreq, today: Date = new Date()): number {
+  const bucketKey = (d: Date) => format(d, freq === "weekly" ? "RRRR-II" : "yyyy-MM")
+  const buckets = new Set(contributions.filter((c) => c.positionId === positionId).map((c) => bucketKey(parseISO(c.date))))
+  if (buckets.size === 0) return 0
+
+  let cursor = today
+  if (!buckets.has(bucketKey(cursor))) cursor = freq === "weekly" ? addWeeks(cursor, -1) : addMonths(cursor, -1)
+
+  let count = 0
+  while (buckets.has(bucketKey(cursor))) {
+    count++
+    cursor = freq === "weekly" ? addWeeks(cursor, -1) : addMonths(cursor, -1)
+  }
+  return count
+}
+
 /** Fusiona una nueva compra en una posición existente del mismo activo/cuenta, recalculando el precio medio ponderado. */
 export function mergedPosition(existing: Position, incoming: Omit<Position, "id">): Position {
   const addedCost = incoming.units * incoming.buyPrice

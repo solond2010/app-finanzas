@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { mergedPosition, type Position } from "./investments"
+import { mergedPosition, dcaStreak, type Position, type Contribution } from "./investments"
 
 function position(overrides: Partial<Position> = {}): Position {
   return {
@@ -43,5 +43,43 @@ describe("mergedPosition", () => {
 
     expect(merged.dca).toBe(true)
     expect(merged.dcaAmount).toBe(50)
+  })
+})
+
+function contribution(overrides: Partial<Contribution> = {}): Contribution {
+  return { id: "c_1", positionId: "pos_1", amount: 100, date: "2026-06-01", ...overrides }
+}
+
+describe("dcaStreak", () => {
+  const today = new Date("2026-06-15")
+
+  it("cuenta los meses consecutivos hasta el mes actual (incluido)", () => {
+    const contributions = [
+      contribution({ id: "a", date: "2026-04-10" }),
+      contribution({ id: "b", date: "2026-05-05" }),
+      contribution({ id: "c", date: "2026-06-01" }),
+    ]
+    expect(dcaStreak(contributions, "pos_1", "monthly", today)).toBe(3)
+  })
+
+  it("si el mes actual todavía no tiene aporte, cuenta desde el mes anterior", () => {
+    const contributions = [
+      contribution({ id: "a", date: "2026-04-10" }),
+      contribution({ id: "b", date: "2026-05-05" }),
+    ]
+    expect(dcaStreak(contributions, "pos_1", "monthly", today)).toBe(2)
+  })
+
+  it("corta en el primer hueco", () => {
+    const contributions = [
+      contribution({ id: "a", date: "2026-04-10" }), // hueco en mayo
+      contribution({ id: "b", date: "2026-06-01" }),
+    ]
+    expect(dcaStreak(contributions, "pos_1", "monthly", today)).toBe(1)
+  })
+
+  it("devuelve 0 sin aportes para esa posición", () => {
+    expect(dcaStreak([], "pos_1", "monthly", today)).toBe(0)
+    expect(dcaStreak([contribution({ positionId: "otra" })], "pos_1", "monthly", today)).toBe(0)
   })
 })

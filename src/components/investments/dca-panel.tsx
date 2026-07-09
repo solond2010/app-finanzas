@@ -1,8 +1,8 @@
 "use client"
 
-import { CalendarClock, Repeat } from "lucide-react"
+import { CalendarClock, Flame, Repeat } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useInvestments, dcaPendingDates, dcaNextDate, planOf } from "@/lib/investments"
+import { useInvestments, dcaPendingDates, dcaNextDate, dcaStreak, planOf } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
@@ -12,7 +12,7 @@ interface Quote { price: number; currency: string; changePct?: number | null }
 const CARD = "rounded-[16px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
 
 export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
-  const { positions, applyDca } = useInvestments()
+  const { positions, contributions, applyDca } = useInvestments()
   const { toast } = useToast()
 
   const plans = positions
@@ -22,7 +22,8 @@ export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
       const pending = dcaPendingDates(plan)
       const next = dcaNextDate(plan)
       const price = p.kind === "custom" ? p.buyPrice : quotes[p.symbol]?.price ?? p.buyPrice
-      return { p, plan, pending, next, price }
+      const streak = dcaStreak(contributions, p.id, plan.freq)
+      return { p, plan, pending, next, price, streak }
     })
 
   if (plans.length === 0) return null
@@ -48,7 +49,7 @@ export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
       </p>
 
       <div className="mt-4 space-y-3">
-        {plans.map(({ p, plan, pending, next, price }) => {
+        {plans.map(({ p, plan, pending, next, price, streak }) => {
           const cur = p.currency as CurrencyCode
           const hasPending = pending.length > 0
           return (
@@ -58,6 +59,11 @@ export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
                 <p className="truncate text-sm font-semibold text-foreground">{p.name}</p>
                 <p className="truncate text-xs text-muted-foreground">
                   <Sensitive as="span">{formatMoney(plan.amount, cur)}</Sensitive> · {plan.freq === "monthly" ? "mensual" : "semanal"}
+                  {streak > 0 && (
+                    <span className="ml-2 inline-flex items-center gap-1 font-semibold" style={{ color: "var(--gold)" }}>
+                      <Flame className="h-3 w-3" /> {streak} {plan.freq === "monthly" ? (streak === 1 ? "mes seguido" : "meses seguidos") : (streak === 1 ? "semana seguida" : "semanas seguidas")}
+                    </span>
+                  )}
                 </p>
               </div>
               <div className="shrink-0 text-right">
