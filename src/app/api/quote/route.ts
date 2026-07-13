@@ -35,7 +35,7 @@ async function fetchQuote(symbol: string): Promise<Quote | null> {
     return {
       price: meta.regularMarketPrice,
       currency: meta.currency ?? "EUR",
-      name: meta.shortName || meta.longName || symbol,
+      name: meta.longName || meta.shortName || symbol,
       time: meta.regularMarketTime ?? null,
       changePct,
     }

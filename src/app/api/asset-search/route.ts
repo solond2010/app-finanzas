@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       .filter((x) => x.symbol && x.quoteType)
       .map((x) => ({
         symbol: x.symbol as string,
-        name: x.shortname || x.longname || (x.symbol as string),
+        name: x.longname || x.shortname || (x.symbol as string),
         type: x.quoteType as string,
         exchange: x.exchange ?? "",
       }))
