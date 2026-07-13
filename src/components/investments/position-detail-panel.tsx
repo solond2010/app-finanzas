@@ -8,7 +8,7 @@ import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 
-interface Quote { price: number; changePct?: number | null }
+interface Quote { price: number; changePct?: number | null; name?: string }
 
 function Metric({ label, value, tone }: { label: string; value: React.ReactNode; tone?: "up" | "down" }) {
   return (
@@ -39,6 +39,7 @@ export function PositionDetailPanel({
   const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0
   const dayChange = value - value / (1 + changePct / 100)
   const account = state.accounts.find((a) => a.id === position.accountId)
+  const displayName = quote?.name && quote.name !== position.symbol ? quote.name : position.name
 
   return (
     <div className="space-y-4">
@@ -47,7 +48,7 @@ export function PositionDetailPanel({
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">{position.symbol.replace("custom:", "").slice(0, 2).toUpperCase()}</span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-foreground">{position.name}</p>
+            <p className="truncate text-sm font-bold text-foreground">{displayName}</p>
             <p className="truncate text-xs text-muted-foreground">{position.isin ?? position.symbol}</p>
           </div>
         </div>

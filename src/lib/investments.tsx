@@ -387,7 +387,7 @@ export function useInvestments() {
   return ctx
 }
 
-interface Quote { price: number; currency: string; changePct?: number | null }
+interface Quote { price: number; currency: string; changePct?: number | null; name?: string }
 
 export function usePortfolioValue() {
   const { positions } = useInvestments()

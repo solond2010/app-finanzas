@@ -175,7 +175,9 @@ export default function InversionesPage() {
     const plPct = invested > 0 ? (pl / invested) * 100 : 0
     const live = p.kind !== "custom" && quotes[p.symbol] !== undefined
     const changePct = p.kind === "custom" ? null : quotes[p.symbol]?.changePct ?? null
-    return { p, value, pl, plPct, live, changePct }
+    const quoteName = quotes[p.symbol]?.name
+    const displayName = quoteName && quoteName !== p.symbol ? quoteName : p.name
+    return { p, value, pl, plPct, live, changePct, displayName }
   }), [positions, quotes])
 
   const baseCurrency = (positions[0]?.currency ?? "EUR") as CurrencyCode
@@ -185,7 +187,7 @@ export default function InversionesPage() {
   const ahorros0 = state.accounts.filter((a) => a.tipo === "ahorro").reduce((s, a) => s + a.saldo, 0)
 
   const activosData = useMemo(
-    () => rows.map((r) => ({ name: r.p.name, value: Math.round(r.value) })).filter((d) => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 8),
+    () => rows.map((r) => ({ name: r.displayName, value: Math.round(r.value) })).filter((d) => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 8),
     [rows]
   )
   const tipologiaData = useMemo(() => {
@@ -270,7 +272,7 @@ export default function InversionesPage() {
         byType: byTypeForReport,
         netWorthTrend,
         positions: rows.map((r) => ({
-          name: r.p.name,
+          name: r.displayName,
           kind: ASSET_CLASS_LABELS[assetClassOf(r.p)],
           account: state.accounts.find((a) => a.id === r.p.accountId)?.nombre ?? "—",
           units: r.p.units,
@@ -336,7 +338,7 @@ export default function InversionesPage() {
             <TickerTile label="Valor cartera" value={<Sensitive>{formatMoney(value, baseCurrency)}</Sensitive>} />
             <TickerTile label="Rentabilidad" value={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`} valueColor={pnlPct >= 0 ? "var(--accent-green)" : "var(--accent-red)"} />
             <TickerTile label="Invertido" value={<Sensitive>{formatMoney(invested, baseCurrency)}</Sensitive>} />
-            <TickerTile label="Mejor posición" value={bestPosition ? `${bestPosition.plPct >= 0 ? "+" : ""}${bestPosition.plPct.toFixed(2)}%` : "—"} detail={bestPosition?.p.name} valueColor="var(--gold)" />
+            <TickerTile label="Mejor posición" value={bestPosition ? `${bestPosition.plPct >= 0 ? "+" : ""}${bestPosition.plPct.toFixed(2)}%` : "—"} detail={bestPosition?.displayName} valueColor="var(--gold)" />
           </section>
 
           {investGoalProgress.length > 0 && (
@@ -377,7 +379,7 @@ export default function InversionesPage() {
             <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="page-section-label">{detailPosition ? `Rendimiento · ${detailPosition.name}` : "Evolución cartera"}</p>
+                  <p className="page-section-label">{detailPosition ? `Rendimiento · ${(quotes[detailPosition.symbol]?.name && quotes[detailPosition.symbol]!.name !== detailPosition.symbol) ? quotes[detailPosition.symbol]!.name : detailPosition.name}` : "Evolución cartera"}</p>
                   <p className="hero-figure mt-2 text-3xl font-bold tabular-nums tracking-tight sm:text-4xl">
                     <Sensitive>{formatMoney(detailPosition ? detailPosition.units * (detailPosition.kind === "custom" ? detailPosition.buyPrice : quotes[detailPosition.symbol]?.price ?? detailPosition.buyPrice) : value, baseCurrency)}</Sensitive>
                   </p>
@@ -454,7 +456,7 @@ export default function InversionesPage() {
                     {filteredRows.length === 0 && (
                       <p className="rounded-2xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">Sin posiciones en esta categoría.</p>
                     )}
-                    {filteredRows.map(({ p, value, plPct, pl, live, changePct }) => (
+                    {filteredRows.map(({ p, value, plPct, pl, live, changePct, displayName }) => (
                       <button
                         key={p.id}
                         onClick={() => setDetailId(p.id)}
@@ -462,7 +464,7 @@ export default function InversionesPage() {
                       >
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">{p.symbol.replace("custom:", "").slice(0, 2).toUpperCase()}</span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-foreground">{p.name}</p>
+                          <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
                           <p className="truncate text-xs text-muted-foreground">
                             <Sensitive>{formatMoney(value, p.currency as CurrencyCode)}</Sensitive>
                             {totalValue > 0 && value > 0 && ` · ${((value / totalValue) * 100).toFixed(1)}% de la cartera`}
