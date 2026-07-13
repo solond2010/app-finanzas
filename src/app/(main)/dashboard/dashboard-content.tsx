@@ -244,10 +244,11 @@ export default function DashboardContent() {
   // Punto más alto del rango visible y su etiqueta, para poder mostrar no solo
   // cuánto se ha caído desde el máximo sino la cifra total que se llegó a
   // tener (p.ej. "Máximo: 5.636 € el 8 jul"), sin tener que ir a Movimientos.
+  // Se muestra en todos los rangos, incluso si hoy es el propio máximo.
   const rangeMaxPoint = netWorthHasData
     ? netWorthTrend.reduce((best, t) => (t.patrimonio > best.patrimonio ? t : best), netWorthTrend[0])
     : null
-  const showRangeMax = !!rangeMaxPoint && !isAllTimeHigh && rangeMaxPoint.patrimonio > netWorthDisplay
+  const showRangeMax = !!rangeMaxPoint
 
   const spending = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const spendTotal = spending.reduce((s, c) => s + c.monto, 0)
