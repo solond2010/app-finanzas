@@ -231,6 +231,22 @@ export default function DashboardContent() {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRange, selectedDate, monthOffset, today, state.accounts, state.transactions, portfolioValue, investedTotal, investPositions, priceHistory])
+
+  // En los rangos por mes (6M/12M/24M) el mes en curso solo aporta UN punto a
+  // netWorthTrend: el valor de HOY. Si dentro de ese mismo mes hubo un pico
+  // más alto y ya bajó (p.ej. el día 8 vs hoy día 14), ese pico no aparece —
+  // "el máximo del periodo" acababa siendo simplemente "el valor de hoy",
+  // aunque el pico real (visible en 7D/30D, que sí tienen un punto por día)
+  // fuera mayor. Se reconstruye el mes en curso día a día (misma fórmula que
+  // el rango "days") solo para hallar el pico real, sin tocar el propio
+  // gráfico mensual.
+  const currentMonthDailyPeak = useMemo(() => {
+    if (monthOffset !== 0) return null
+    const daily = buildNetWorthHistoryDaily(state.accounts, state.transactions, today.getDate(), today)
+      .map((d) => ({ ...d, patrimonio: d.patrimonio - investedTotal + portfolioValue }))
+    return daily.length === 0 ? null : daily.reduce((best, d) => (d.patrimonio > best.patrimonio ? d : best), daily[0])
+  }, [monthOffset, today, state.accounts, state.transactions, portfolioValue, investedTotal])
+
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
   const rangeDelta = netWorthDisplay - rangeStart
@@ -239,14 +255,17 @@ export default function DashboardContent() {
   // ese caso la cifra absoluta ya cuenta la historia completa.
   const rangePct = Math.abs(rangeStart) >= 100 ? (rangeDelta / Math.abs(rangeStart)) * 100 : 0
   const showPct = Math.abs(rangeStart) >= 100 && Math.abs(rangePct) <= PCT_CHANGE_CAP
+  // Candidatos al máximo del rango: los puntos del propio gráfico, más (solo
+  // para rangos por mes) el pico diario real del mes en curso.
+  const maxCandidates = activeRange.unit === "months" && currentMonthDailyPeak ? [...netWorthTrend, currentMonthDailyPeak] : netWorthTrend
   // Máximo histórico dentro del rango visible, para la insignia dorada del hero.
-  const isAllTimeHigh = netWorthHasData && rangeDelta > 0 && netWorthDisplay >= Math.max(...netWorthTrend.map((t) => t.patrimonio))
+  const isAllTimeHigh = netWorthHasData && rangeDelta > 0 && netWorthDisplay >= Math.max(...maxCandidates.map((t) => t.patrimonio))
   // Punto más alto del rango visible y su etiqueta, para poder mostrar no solo
   // cuánto se ha caído desde el máximo sino la cifra total que se llegó a
   // tener (p.ej. "Máximo: 5.636 € el 8 jul"), sin tener que ir a Movimientos.
   // Se muestra en todos los rangos, incluso si hoy es el propio máximo.
   const rangeMaxPoint = netWorthHasData
-    ? netWorthTrend.reduce((best, t) => (t.patrimonio > best.patrimonio ? t : best), netWorthTrend[0])
+    ? maxCandidates.reduce((best, t) => (t.patrimonio > best.patrimonio ? t : best), maxCandidates[0])
     : null
   const showRangeMax = !!rangeMaxPoint
 
