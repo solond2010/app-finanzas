@@ -53,6 +53,10 @@ export interface MonthlySummary {
 export interface NetWorthSnapshot {
   mes: string
   patrimonio: number
+  /** Fecha (ISO, solo día) del punto, cuando aplica — permite sustituir el
+   * ledger de inversión por su valor de mercado DE ESE DÍA en vez de uno
+   * constante de hoy (ver dashboard-content.tsx). */
+  date?: string
 }
 
 export type CategoryKind = "ingreso" | "gasto" | "both"

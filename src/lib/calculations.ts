@@ -205,9 +205,9 @@ export function buildNetWorthHistoryDaily(accounts: Account[], transactions: Tra
       .reduce((sum, t) => sum + convertToEur(t.monto, currencyByAccount.get(t.cuenta_id) ?? "EUR"), 0)
     const hasInflow = todaysTransactions.some((t) => t.tipo === "ingreso")
     if (hasInflow && outflow > 0) {
-      points.push({ mes: `${dayLabel} · pico`, patrimonio: dayEnd + outflow })
+      points.push({ mes: `${dayLabel} · pico`, patrimonio: dayEnd + outflow, date: dateKey })
     }
-    points.push({ mes: dayLabel, patrimonio: dayEnd })
+    points.push({ mes: dayLabel, patrimonio: dayEnd, date: dateKey })
   }
   return points
 }
@@ -239,10 +239,10 @@ export function buildNetWorthHistoryToday(accounts: Account[], transactions: Tra
     .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""))
 
   const txByAccount = groupByAccount(transactions)
-  const points: NetWorthSnapshot[] = [{ mes: "Inicio", patrimonio: getNetWorthAtDate(accounts, txByAccount, yesterdayKey) }]
+  const points: NetWorthSnapshot[] = [{ mes: "Inicio", patrimonio: getNetWorthAtDate(accounts, txByAccount, yesterdayKey), date: yesterdayKey }]
   for (const t of todaysTransactions) {
     const label = t.created_at ? new Date(t.created_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "—"
-    points.push({ mes: label, patrimonio: getNetWorthAtMoment(accounts, txByAccount, todayKey, t.created_at ?? "") })
+    points.push({ mes: label, patrimonio: getNetWorthAtMoment(accounts, txByAccount, todayKey, t.created_at ?? ""), date: todayKey })
   }
   return points
 }

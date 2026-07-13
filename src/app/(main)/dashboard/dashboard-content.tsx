@@ -41,6 +41,12 @@ const RANGES = [
   { id: "24M", count: 24, unit: "months" as const },
 ]
 
+// Misma clave de fecha (YYYY-MM-DD, en huso local) que toDateKey en
+// calculations.ts, para comparar con el campo `date` de NetWorthSnapshot.
+function toLocalDateKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
   const max = Math.max(...values.map((v) => Math.abs(v)), 1)
   return (
@@ -174,6 +180,20 @@ export default function DashboardContent() {
     }, 0)
   }
 
+  // Sustituye el ledger de inversión por su valor de mercado EN LA FECHA de
+  // ese punto (no una constante de hoy aplicada a todos los días del rango):
+  // sin esto, un día de hace 2-4 semanas —antes de que la cuenta de inversión
+  // tuviera el saldo/coste actual— arrastraba el mismo hueco fantasma que ya
+  // se corrigió para los rangos por mes, inflando artificialmente la subida
+  // de 7D/30D hasta casi igualar la de 6M/12M/24M.
+  const netWorthPointAdjustment = (dateKey: string | undefined) => {
+    if (!dateKey) return { invested: investedTotal, portfolio: portfolioValue }
+    if (monthOffset === 0 && dateKey === toLocalDateKey(today)) return { invested: investedTotal, portfolio: portfolioValue }
+    const [y, m, day] = dateKey.split("-").map(Number)
+    const atDate = new Date(y, m - 1, day)
+    return { invested: estimateHistoricalInvested(atDate), portfolio: estimateHistoricalPortfolioValue(atDate) }
+  }
+
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
 
   // Últimos 6 meses de ingresos/gastos/tasa de ahorro, para los mini-gráficos
@@ -200,16 +220,21 @@ export default function DashboardContent() {
 
   const netWorthTrend = useMemo(() => {
     if (activeRange.unit === "today") {
-      return buildNetWorthHistoryToday(state.accounts, state.transactions, today).map((d) => ({ ...d, patrimonio: d.patrimonio - investedTotal + portfolioValue }))
+      return buildNetWorthHistoryToday(state.accounts, state.transactions, today).map((d) => {
+        const { invested, portfolio } = netWorthPointAdjustment(d.date)
+        return { ...d, patrimonio: d.patrimonio - invested + portfolio }
+      })
     }
     if (activeRange.unit === "days") {
       // Termina hoy si se mira el mes en curso; si se navegó a un mes
       // anterior, termina en el último día de ese mes.
       const dailyEndDate = monthOffset === 0 ? today : new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0)
-      // Ajusta cada día por el mismo delta cartera-vs-inversión que el mes
-      // actual: no tenemos precio histórico de la cartera día a día, así que
-      // se mantiene constante (misma simplificación que ya se hacía por mes).
-      return buildNetWorthHistoryDaily(state.accounts, state.transactions, activeRange.count, dailyEndDate).map((d) => ({ ...d, patrimonio: d.patrimonio - investedTotal + portfolioValue }))
+      // Cada día sustituye el ledger de inversión por su valor de mercado DE
+      // ESE día (ver netWorthPointAdjustment), no uno constante de hoy.
+      return buildNetWorthHistoryDaily(state.accounts, state.transactions, activeRange.count, dailyEndDate).map((d) => {
+        const { invested, portfolio } = netWorthPointAdjustment(d.date)
+        return { ...d, patrimonio: d.patrimonio - invested + portfolio }
+      })
     }
     // Agrupado una vez fuera del bucle (hasta 24 meses): ver comentario en
     // groupTransactionsByAccount.
@@ -243,8 +268,12 @@ export default function DashboardContent() {
   const currentMonthDailyPeak = useMemo(() => {
     if (monthOffset !== 0) return null
     const daily = buildNetWorthHistoryDaily(state.accounts, state.transactions, today.getDate(), today)
-      .map((d) => ({ ...d, patrimonio: d.patrimonio - investedTotal + portfolioValue }))
+      .map((d) => {
+        const { invested, portfolio } = netWorthPointAdjustment(d.date)
+        return { ...d, patrimonio: d.patrimonio - invested + portfolio }
+      })
     return daily.length === 0 ? null : daily.reduce((best, d) => (d.patrimonio > best.patrimonio ? d : best), daily[0])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthOffset, today, state.accounts, state.transactions, portfolioValue, investedTotal])
 
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
