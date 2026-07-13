@@ -27,8 +27,17 @@ export function MountainChart<T extends object>({
   const PAD_BOTTOM = 8
 
   const values = data.map((d) => Number(d[category]) || 0)
-  const max = Math.max(...values, 0)
-  const min = Math.min(...values, 0)
+  const rawMax = Math.max(...values)
+  const rawMin = Math.min(...values)
+  const rawSpan = rawMax - rawMin
+  // Anclar siempre el eje a 0 aplastaba visualmente cualquier subida/bajada
+  // reciente cuando los valores son grandes (p.ej. un patrimonio de ~5000€
+  // cayendo 200€ se veía como una línea plana). En vez de eso, se escala al
+  // rango real de los datos visibles, con un margen para que el trazo no
+  // toque los bordes (o uno mínimo si todos los puntos son casi iguales).
+  const pad = rawSpan > 0 ? rawSpan * 0.12 : Math.max(Math.abs(rawMax), 1) * 0.05
+  const max = rawMax + pad
+  const min = rawMin - pad
   const span = max - min || 1
 
   const points = useMemo(
