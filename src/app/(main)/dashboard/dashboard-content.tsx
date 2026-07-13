@@ -241,6 +241,13 @@ export default function DashboardContent() {
   const showPct = Math.abs(rangeStart) >= 100 && Math.abs(rangePct) <= PCT_CHANGE_CAP
   // Máximo histórico dentro del rango visible, para la insignia dorada del hero.
   const isAllTimeHigh = netWorthHasData && rangeDelta > 0 && netWorthDisplay >= Math.max(...netWorthTrend.map((t) => t.patrimonio))
+  // Punto más alto del rango visible y su etiqueta, para poder mostrar no solo
+  // cuánto se ha caído desde el máximo sino la cifra total que se llegó a
+  // tener (p.ej. "Máximo: 5.636 € el 8 jul"), sin tener que ir a Movimientos.
+  const rangeMaxPoint = netWorthHasData
+    ? netWorthTrend.reduce((best, t) => (t.patrimonio > best.patrimonio ? t : best), netWorthTrend[0])
+    : null
+  const showRangeMax = !!rangeMaxPoint && !isAllTimeHigh && rangeMaxPoint.patrimonio > netWorthDisplay
 
   const spending = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const spendTotal = spending.reduce((s, c) => s + c.monto, 0)
@@ -482,6 +489,11 @@ export default function DashboardContent() {
                     <Sensitive>{rangeDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(rangeDelta), "EUR")}</Sensitive>
                     <span className="text-muted-foreground">{showPct ? `· ${formatCappedPct(rangePct)} ` : ""}{activeRange.id === "Hoy" ? "hoy" : `en ${activeRange.id}`}</span>
                   </p>
+                  {showRangeMax && rangeMaxPoint && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Máximo del periodo: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive> ({rangeMaxPoint.mes.replace(" · pico", "")})
+                    </p>
+                  )}
                   {portfolioValue > 0 && (
                     <p className="mt-1 text-xs text-muted-foreground">
                       Incluye <Sensitive>{formatMoney(portfolioValue, "EUR")}</Sensitive> en inversiones
