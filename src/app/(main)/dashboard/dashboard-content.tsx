@@ -101,7 +101,7 @@ export default function DashboardContent() {
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
-  const { positions: investPositions, value: portfolioValue, pnl: portfolioPnl, valueByAccount, investedByAccount } = usePortfolioValue()
+  const { positions: investPositions, value: portfolioValue, invested: investedTotal, pnl: portfolioPnl, valueByAccount, investedByAccount } = usePortfolioValue()
   // El saldo de las cuentas de inversión no baja al comprar una posición (no
   // genera un gasto), así que solo se sustituye la parte ya invertida por el
   // valor de mercado actual — el efectivo aún sin invertir se mantiene intacto
@@ -161,6 +161,19 @@ export default function DashboardContent() {
     }, 0)
   }
 
+  // Coste invertido (no valor de mercado) a cierre de `atDate`: solo cuenta
+  // las posiciones ya compradas en esa fecha. Junto con estimateHistoricalPortfolioValue
+  // reproduce para meses pasados la misma sustitución que accountDisplayValue
+  // hace para hoy (ledger - invertido + valor de mercado), dejando intacto el
+  // efectivo aún sin invertir en vez de restar el saldo (ledger) de HOY entero
+  // — que crea un hueco fantasma en los meses previos a abrir/nutrir la cuenta.
+  const estimateHistoricalInvested = (atDate: Date) => {
+    return investPositions.reduce((sum, p) => {
+      if (new Date(p.date).getTime() > atDate.getTime()) return sum
+      return sum + p.units * p.buyPrice
+    }, 0)
+  }
+
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
 
   // Últimos 6 meses de ingresos/gastos/tasa de ahorro, para los mini-gráficos
@@ -187,7 +200,7 @@ export default function DashboardContent() {
 
   const netWorthTrend = useMemo(() => {
     if (activeRange.unit === "today") {
-      return buildNetWorthHistoryToday(state.accounts, state.transactions, today).map((d) => ({ ...d, patrimonio: d.patrimonio - investmentSaldo + portfolioValue }))
+      return buildNetWorthHistoryToday(state.accounts, state.transactions, today).map((d) => ({ ...d, patrimonio: d.patrimonio - investedTotal + portfolioValue }))
     }
     if (activeRange.unit === "days") {
       // Termina hoy si se mira el mes en curso; si se navegó a un mes
@@ -196,7 +209,7 @@ export default function DashboardContent() {
       // Ajusta cada día por el mismo delta cartera-vs-inversión que el mes
       // actual: no tenemos precio histórico de la cartera día a día, así que
       // se mantiene constante (misma simplificación que ya se hacía por mes).
-      return buildNetWorthHistoryDaily(state.accounts, state.transactions, activeRange.count, dailyEndDate).map((d) => ({ ...d, patrimonio: d.patrimonio - investmentSaldo + portfolioValue }))
+      return buildNetWorthHistoryDaily(state.accounts, state.transactions, activeRange.count, dailyEndDate).map((d) => ({ ...d, patrimonio: d.patrimonio - investedTotal + portfolioValue }))
     }
     // Agrupado una vez fuera del bucle (hasta 24 meses): ver comentario en
     // groupTransactionsByAccount.
@@ -206,11 +219,18 @@ export default function DashboardContent() {
       const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
       const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-      const historicalPortfolio = i === activeRange.count - 1 ? portfolioValue : estimateHistoricalPortfolioValue(monthEnd)
-      return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonthFromGroups(state.accounts, txByAccount, key) - investmentSaldo + historicalPortfolio }
+      const isLast = i === activeRange.count - 1
+      const historicalPortfolio = isLast ? portfolioValue : estimateHistoricalPortfolioValue(monthEnd)
+      // Coste invertido (no el saldo/ledger de HOY) a cierre de ESE mes: restar
+      // siempre el invertido de HOY hacía que los meses previos a abrir/nutrir
+      // la cuenta de inversión arrastraran un hueco fantasma (p.ej. -509€ en un
+      // mes donde todavía no se había invertido nada), ocultando cualquier
+      // caída real más reciente detrás de un salto artificial en el último mes.
+      const historicalInvested = isLast ? investedTotal : estimateHistoricalInvested(monthEnd)
+      return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonthFromGroups(state.accounts, txByAccount, key) - historicalInvested + historicalPortfolio }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRange, selectedDate, monthOffset, today, state.accounts, state.transactions, portfolioValue, investmentSaldo, investPositions, priceHistory])
+  }, [activeRange, selectedDate, monthOffset, today, state.accounts, state.transactions, portfolioValue, investedTotal, investPositions, priceHistory])
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
   const rangeDelta = netWorthDisplay - rangeStart
