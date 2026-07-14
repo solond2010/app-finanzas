@@ -282,7 +282,9 @@ export default function IngresosGastosPage() {
           </div>
           {cashflowHasData ? (
             <div role="img" aria-label="Gráfico de área: evolución de ingresos y gastos por mes">
-              <AreaChart data={cashflow} index="mes" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="mt-2 h-64 sm:h-72" curveType="monotone" showAnimation />
+              {/* yAxisWidth 64: con el ancho por defecto (56) las etiquetas de 4 cifras
+    ("1200€") no caben y se pintan cortadas como "200€" */}
+              <AreaChart data={cashflow} index="mes" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} yAxisWidth={64} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="mt-2 h-64 sm:h-72" curveType="monotone" showAnimation />
             </div>
           ) : (
             <EmptyPlaceholder text="Sin movimientos en este periodo" className="mt-2 h-64 sm:h-72" />

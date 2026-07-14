@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { formatMoney } from "@/lib/currency"
-import { dateLabel } from "@/lib/format"
+import { dateLabel, isInitialBalanceTransaction } from "@/lib/format"
 import { Sensitive } from "@/components/shared/sensitive"
 import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurringFrequency, recurringTag, type RecurringFrequency } from "@/lib/calculations"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -687,6 +687,15 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                           )}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
+                          {isInitialBalanceTransaction(t.id) ? (
+                            /* Saldo inicial / ajuste de saldo: no es un ingreso ni un
+                               gasto real, y su delta puede tener cualquier signo — el
+                               chip "Ingreso" junto a un importe negativo confunde. */
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                              Ajuste
+                            </span>
+                          ) : (
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                             t.tipo === "ingreso"
                               ? "bg-emerald-500/8 text-emerald-500"
@@ -695,6 +704,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                             <span className={`h-1.5 w-1.5 rounded-full ${t.tipo === "ingreso" ? "bg-emerald-500" : "bg-red-500"}`} />
                             {t.tipo === "ingreso" ? "Ingreso" : "Gasto"}
                           </span>
+                          )}
                         </TableCell>
                         <TableCell className={`text-right tabular-nums font-bold text-xs sm:text-sm ${(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "text-emerald-500" : "text-foreground"}`}>
                           <div className="flex items-center justify-end gap-1.5">
