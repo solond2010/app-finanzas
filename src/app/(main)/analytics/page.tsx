@@ -404,7 +404,11 @@ export default function AnalyticsPage() {
 
         <SectionTitle label="Gasto" title="Dónde se está yendo el dinero" text="El objetivo no es ver barras bonitas: es encontrar el agujero más grande primero." />
 
-        <div className="col-span-full grid gap-6 lg:col-span-7">
+        {/* content-start: sin él, el grid estira estas dos tarjetas hasta igualar
+            la altura de la columna derecha (5 tarjetas apiladas) y quedan con
+            grandes zonas vacías bajo los gráficos. La altura de cada gráfico se
+            calcula según sus barras reales (~44px por fila + eje) por lo mismo. */}
+        <div className="col-span-full grid content-start gap-6 lg:col-span-7">
           <Card className="stagger-fade" style={{ animationDelay: "180ms" }}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="flex items-center gap-2 text-base font-semibold"><Layers3 className="h-4 w-4 text-violet-500" />Gastos por categoría</CardTitle>
@@ -412,8 +416,8 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               {categoryBreakdown.length === 0 ? <EmptyState icon={Layers3} title="Sin gasto categorizado" description="Cuando registres gastos, aquí verás las categorías que más pesan." bordered className="h-full" /> : (
-                <div role="img" aria-label={`Gráfico de barras: gasto por categoría${topCategory ? `, encabezado por ${topCategory.categoria}` : ""}`}>
-                  <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={80} customTooltip={CategoryTooltip} className="h-[280px]" showAnimation layout="vertical" />
+                <div role="img" aria-label={`Gráfico de barras: gasto por categoría${topCategory ? `, encabezado por ${topCategory.categoria}` : ""}`} style={{ height: categoryBreakdown.slice(0, 8).length * 52 + 48 }}>
+                  <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={80} customTooltip={CategoryTooltip} className="h-full" showAnimation layout="vertical" />
                 </div>
               )}
             </CardContent>
@@ -426,8 +430,8 @@ export default function AnalyticsPage() {
                 <span className="text-xs text-muted-foreground">Top: <strong className="text-foreground">{spendByAccount[0].cuenta}</strong></span>
               </CardHeader>
               <CardContent>
-                <div role="img" aria-label={`Gráfico de barras: gasto por cuenta, encabezado por ${spendByAccount[0].cuenta}`}>
-                  <BarChart data={spendByAccount.slice(0, 8)} index="cuenta" categories={["monto"]} colors={["blue"]} valueFormatter={chartFormatter} yAxisWidth={80} customTooltip={AccountTooltip} className="h-[220px]" showAnimation layout="vertical" />
+                <div role="img" aria-label={`Gráfico de barras: gasto por cuenta, encabezado por ${spendByAccount[0].cuenta}`} style={{ height: spendByAccount.slice(0, 8).length * 52 + 48 }}>
+                  <BarChart data={spendByAccount.slice(0, 8)} index="cuenta" categories={["monto"]} colors={["blue"]} valueFormatter={chartFormatter} yAxisWidth={80} customTooltip={AccountTooltip} className="h-full" showAnimation layout="vertical" />
                 </div>
               </CardContent>
             </Card>
