@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { addMonths, addWeeks, format, parseISO } from "date-fns"
 import { dbSelect, dbUpsert, dbDeleteEq } from "./db-client"
-import { USER_ID } from "./store"
+import { USER_ID, useFinance, type Account } from "./store"
 
 export type AssetKind = "stock" | "fund" | "crypto" | "custom"
 
@@ -419,19 +419,23 @@ export function usePortfolioValue() {
   const invested = positions.reduce((s, p) => s + p.units * p.buyPrice, 0)
   const pnl = value - invested
 
-  const valueByAccount = positions.reduce<Record<string, number>>((m, p) => {
-    if (p.accountId) m[p.accountId] = (m[p.accountId] ?? 0) + p.units * priceOf(p)
+  // Memoizados para que su referencia sea estable entre renders: varios
+  // useMemo/useEffect de las páginas (y useDisplayAccounts) dependen de estos
+  // objetos; sin memo se recreaban en cada render y esas dependencias no
+  // servían de nada.
+  const valueByAccount = useMemo(() => positions.reduce<Record<string, number>>((m, p) => {
+    if (p.accountId) m[p.accountId] = (m[p.accountId] ?? 0) + p.units * (p.kind === "custom" ? p.buyPrice : quotes[p.symbol]?.price ?? p.buyPrice)
     return m
-  }, {})
+  }, {}), [positions, quotes])
   // Coste de compra de las posiciones de cada cuenta: junto con el saldo bruto,
   // permite separar "efectivo aún sin invertir" del valor ya invertido (ver
   // accountDisplayValue). Comprar una posición no descuenta su coste del saldo
   // de la cuenta (no genera un gasto), así que sin esto el saldo bruto no dice
   // nada por sí solo una vez hay posiciones de por medio.
-  const investedByAccount = positions.reduce<Record<string, number>>((m, p) => {
+  const investedByAccount = useMemo(() => positions.reduce<Record<string, number>>((m, p) => {
     if (p.accountId) m[p.accountId] = (m[p.accountId] ?? 0) + p.units * p.buyPrice
     return m
-  }, {})
+  }, {}), [positions])
 
   return { positions, quotes, loading, value, invested, pnl, pnlPct: invested > 0 ? (pnl / invested) * 100 : 0, valueByAccount, investedByAccount }
 }
@@ -452,4 +456,20 @@ export function accountDisplayValue(
   const invested = investedByAccount[account.id] ?? 0
   const marketValue = valueByAccount[account.id] ?? invested
   return account.saldo - invested + marketValue
+}
+
+/**
+ * Cuentas del store con su `saldo` ya sustituido por el valor real de
+ * accountDisplayValue. Cualquier widget que muestre o sume saldos debe usar
+ * esto (no state.accounts directamente): si no, las cuentas de inversión
+ * enseñan el saldo contable en unas páginas y el valor de mercado en otras,
+ * y la misma cuenta aparece con cifras distintas según dónde se mire.
+ */
+export function useDisplayAccounts(): Account[] {
+  const { state } = useFinance()
+  const { valueByAccount, investedByAccount } = usePortfolioValue()
+  return useMemo(
+    () => state.accounts.map((a) => (a.tipo === "inversion" ? { ...a, saldo: accountDisplayValue(a, valueByAccount, investedByAccount) } : a)),
+    [state.accounts, valueByAccount, investedByAccount]
+  )
 }

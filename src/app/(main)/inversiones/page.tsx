@@ -6,7 +6,7 @@ import { Plus, TrendingUp, TrendingDown, LineChart, FileDown, Target, Pencil, Ch
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { useFinance } from "@/lib/store"
-import { useInvestments, usePortfolioValue, assetClassOf, ASSET_CLASS_LABELS, accountDisplayValue, planOf, dcaPendingDates, type Position } from "@/lib/investments"
+import { useInvestments, usePortfolioValue, assetClassOf, ASSET_CLASS_LABELS, accountDisplayValue, useDisplayAccounts, planOf, dcaPendingDates, type Position } from "@/lib/investments"
 import { PositionDialog } from "@/components/investments/position-dialog"
 import { PositionDetailPanel } from "@/components/investments/position-detail-panel"
 import { WatchlistRow } from "@/components/investments/watchlist"
@@ -74,6 +74,9 @@ export default function InversionesPage() {
   const { state } = useFinance()
   const { remove } = useInvestments()
   const { positions, quotes, loading, value, invested, pnl, pnlPct, valueByAccount, investedByAccount } = usePortfolioValue()
+  // Cuentas con el saldo sustituido por su valor real, para los consejos
+  // (getFinancialTips) — misma cifra que enseñan las tarjetas de esta página.
+  const displayAccounts = useDisplayAccounts()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Position | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
@@ -135,8 +138,8 @@ export default function InversionesPage() {
     return tips
   }, [positions])
   const tips = useMemo(
-    () => [...dcaOverdueTips, ...getFinancialTips(state.transactions, state.accounts, state.sinkingFunds)].slice(0, 4),
-    [dcaOverdueTips, state.transactions, state.accounts, state.sinkingFunds]
+    () => [...dcaOverdueTips, ...getFinancialTips(state.transactions, displayAccounts, state.sinkingFunds)].slice(0, 4),
+    [dcaOverdueTips, state.transactions, displayAccounts, state.sinkingFunds]
   )
 
   const symbolsKey = useMemo(

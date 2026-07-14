@@ -550,7 +550,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     // attemptSync() refleja en la UI ("syncing") el inicio de la sincronización
     // con Supabase (sistema externo) — uso previsto de un efecto, igual que antes
     // de que este cuerpo se moviera a una función reutilizable por los reintentos.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     attemptSync()
     return clearRetry
   }, [state, initialized, attemptSync, clearRetry])

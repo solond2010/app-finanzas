@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useFinance, type SinkingFund, generateId } from "@/lib/store"
+import { useDisplayAccounts } from "@/lib/investments"
 import { calculateMonthlySaving, fundCurrentAmount } from "@/lib/calculations"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { PiggyBank, Plus, Pencil, Trash2, Target, TrendingUp, Clock, AlertCircle } from "lucide-react"
@@ -139,6 +140,10 @@ function PredictionTooltip({ remaining, avgMonthly, symbol }: { remaining: numbe
 
 export function SinkingFundsGrid() {
   const { state, loading, dispatch } = useFinance()
+  // Con saldo real (valor de mercado en cuentas de inversión): el progreso de
+  // una meta vinculada a la cuenta de inversión debe coincidir con la cifra
+  // que Cuentas/Inversiones enseñan para esa misma cuenta.
+  const displayAccounts = useDisplayAccounts()
   const { toast } = useToast()
   const [editingFund, setEditingFund] = useState<SinkingFund | null>(null)
   const [showNew, setShowNew] = useState(false)
@@ -179,7 +184,7 @@ export function SinkingFundsGrid() {
               <DialogTitle>Nueva Meta de Ahorro</DialogTitle>
             </DialogHeader>
             <SinkingFundForm
-              accounts={state.accounts}
+              accounts={displayAccounts}
                onSave={(f) => { dispatch({ type: "ADD_SINKING_FUND", payload: f }); setShowNew(false); toast("Meta de ahorro creada", "success") }}
               onCancel={() => setShowNew(false)}
             />
@@ -203,10 +208,10 @@ export function SinkingFundsGrid() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {state.sinkingFunds.map((fund) => {
-              const ahorradoActual = fundCurrentAmount(fund, state.accounts)
+              const ahorradoActual = fundCurrentAmount(fund, displayAccounts)
               const progress = fund.cantidad_objetivo > 0 ? Math.min(Math.round((ahorradoActual / fund.cantidad_objetivo) * 100), 100) : 0
               const monthly = calculateMonthlySaving(fund.cantidad_objetivo, ahorradoActual, fund.fecha_limite)
-              const account = state.accounts.find((a) => a.id === fund.cuenta_id)
+              const account = displayAccounts.find((a) => a.id === fund.cuenta_id)
               const symbol = currencySymbol(account?.currency ?? "EUR")
               const remaining = fund.cantidad_objetivo - ahorradoActual
               const circleColor = progress >= 100 ? "var(--accent-green)" : progress >= 50 ? "var(--accent-amber)" : "var(--accent-blue)"
@@ -237,7 +242,9 @@ export function SinkingFundsGrid() {
                     </h3>
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground">
-                        <Sensitive>{ahorradoActual.toLocaleString("es-ES")} {symbol}</Sensitive>
+                        {/* max 2 decimales: el valor de mercado trae decimales largos y
+                            "511,647 €" se lee como seiscientos mil, no como 511,65 */}
+                        <Sensitive>{ahorradoActual.toLocaleString("es-ES", { maximumFractionDigits: 2 })} {symbol}</Sensitive>
                       </p>
                       <p className="text-[11px] text-muted-foreground/60">
                         de <Sensitive>{fund.cantidad_objetivo.toLocaleString("es-ES")} {symbol}</Sensitive>
@@ -287,7 +294,7 @@ export function SinkingFundsGrid() {
           {editingFund && (
             <SinkingFundForm
               fund={editingFund}
-              accounts={state.accounts}
+              accounts={displayAccounts}
               onSave={(f) => { dispatch({ type: "UPDATE_SINKING_FUND", payload: f }); setEditingFund(null) }}
               onCancel={() => setEditingFund(null)}
             />

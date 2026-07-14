@@ -13,6 +13,7 @@ import { TickerTile } from "@/components/shared/ticker-tile"
 import { EmptyState, EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { useFinance, generateId } from "@/lib/store"
+import { useDisplayAccounts } from "@/lib/investments"
 import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, getUpcomingRecurring } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
 import { formatMonth, isInitialBalanceTransaction, chartFormatter } from "@/lib/format"
@@ -47,6 +48,7 @@ export default function IngresosGastosPage() {
   const [rangeM, setRangeM] = useState(6)
   const [target, setTarget] = useState(2000)
   const [accIdx, setAccIdx] = useState(0)
+  const displayAccounts = useDisplayAccounts()
 
   useEffect(() => {
     queueMicrotask(async () => {
@@ -115,10 +117,13 @@ export default function IngresosGastosPage() {
 
   // Convertir a EUR antes de sumar: sumar saldos en crudo daría un total sin
   // sentido en cuanto una cuenta no está en EUR (ej. la cuenta de Suiza en CHF).
-  const totalBalance = state.accounts.reduce((s, a) => s + convertToEur(a.saldo, a.currency), 0)
-  const accCount = state.accounts.length
+  // displayAccounts (no state.accounts): en las cuentas de inversión el saldo
+  // contable no es su valor real — Dashboard/Cuentas ya enseñan el valor de
+  // mercado y aquí debe verse la misma cifra.
+  const totalBalance = displayAccounts.reduce((s, a) => s + convertToEur(a.saldo, a.currency), 0)
+  const accCount = displayAccounts.length
   const safeAccIdx = accCount > 0 ? ((accIdx % accCount) + accCount) % accCount : 0
-  const currentAccount = state.accounts[safeAccIdx]
+  const currentAccount = displayAccounts[safeAccIdx]
 
   const cashflow = useMemo(
     () => Array.from({ length: rangeM }, (_, i) => {
@@ -205,7 +210,7 @@ export default function IngresosGastosPage() {
               </p>
               {accCount > 1 && (
                 <div className="mt-4 flex items-center gap-1.5">
-                  {state.accounts.map((a, i) => (
+                  {displayAccounts.map((a, i) => (
                     <button key={a.id} onClick={() => setAccIdx(i)} aria-label={`Ver ${a.nombre}`} className={cn("h-1.5 rounded-full transition-all", i === safeAccIdx ? "w-5 bg-white" : "w-1.5 bg-white/30 hover:bg-white/50")} />
                   ))}
                 </div>

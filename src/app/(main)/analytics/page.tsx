@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
 import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
-import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
+import { usePortfolioValue, accountDisplayValue, useDisplayAccounts } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
 import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
@@ -126,6 +126,9 @@ const DayHeatmap = memo(function DayHeatmap({ dailyTotals, firstWeekday }: { dai
 
 export default function AnalyticsPage() {
   const { state, loading, dispatch } = useFinance()
+  // Para los consejos: cuentas con el valor real (mercado) en inversión, la
+  // misma cifra que el resto de widgets de la app.
+  const displayAccounts = useDisplayAccounts()
   const [monthOffset, setMonthOffset] = useState(0)
   const [trendMonths, setTrendMonths] = useState<6 | 12>(6)
 
@@ -142,8 +145,8 @@ export default function AnalyticsPage() {
   // recomendación del diagnóstico rápido deja de ser un único if/else propio
   // de esta página y pasa a ser el consejo de mayor severidad del motor.
   const tips = useMemo(
-    () => getFinancialTips(analysisTransactions, state.accounts, state.sinkingFunds, selectedMonth),
-    [analysisTransactions, state.accounts, state.sinkingFunds, selectedMonth]
+    () => getFinancialTips(analysisTransactions, displayAccounts, state.sinkingFunds, selectedMonth),
+    [analysisTransactions, displayAccounts, state.sinkingFunds, selectedMonth]
   )
   const topTip = tips[0]
   const dailyTotals = useMemo(() => {

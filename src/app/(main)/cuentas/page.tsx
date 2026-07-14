@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useFinance, type Account, type SinkingFund } from "@/lib/store"
-import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
+import { usePortfolioValue, accountDisplayValue, useDisplayAccounts } from "@/lib/investments"
 import { accountGoal, fundCurrentAmount, getFinancialTips } from "@/lib/calculations"
 import { TipsCard } from "@/components/shared/tips-card"
 import { AnimatedNumber } from "@/components/shared/animated-number"
@@ -27,9 +27,12 @@ export default function CuentasPage() {
   const { toast } = useToast()
   const { valueByAccount, investedByAccount } = usePortfolioValue()
   const [showNewAccount, setShowNewAccount] = useState(false)
+  // Los consejos comparan saldos con metas y pagos: deben ver el valor real
+  // de las cuentas de inversión (displayAccounts), igual que el resto de la página.
+  const displayAccounts = useDisplayAccounts()
   const tips = useMemo(
-    () => getFinancialTips(state.transactions, state.accounts, state.sinkingFunds),
-    [state.transactions, state.accounts, state.sinkingFunds]
+    () => getFinancialTips(state.transactions, displayAccounts, state.sinkingFunds),
+    [state.transactions, displayAccounts, state.sinkingFunds]
   )
 
   // Para cuentas de inversión, el saldo bruto no baja al comprar una posición
