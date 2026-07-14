@@ -123,9 +123,12 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
               </div>
             )
           })}
-          <div className="flex items-center justify-between border-t border-border/60 pt-3 text-xs">
+          {/* flex-wrap + nowrap en la cifra: en columnas estrechas el importe se
+              partía dejando un "€" huérfano en su propia línea; mejor que salte
+              el bloque completo (ml-auto lo mantiene pegado a la derecha). */}
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 border-t border-border/60 pt-3 text-xs">
             <span className="font-medium text-muted-foreground">Disponible este mes</span>
-            <span className={cn("font-semibold tabular-nums", totalRemaining >= 0 ? "text-emerald-500" : "text-red-500")}>
+            <span className={cn("ml-auto whitespace-nowrap font-semibold tabular-nums", totalRemaining >= 0 ? "text-emerald-500" : "text-red-500")}>
               <Sensitive>{formatMoney(totalRemaining, "EUR")}</Sensitive> <span className="font-normal text-muted-foreground">de <Sensitive>{formatMoney(totalLimit, "EUR")}</Sensitive></span>
             </span>
           </div>

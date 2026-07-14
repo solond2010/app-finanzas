@@ -107,7 +107,9 @@ export function Sidebar() {
     <>
       {/* Mobile header */}
       <div
-        className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b bg-background/80 px-3 py-2.5 lg:hidden"
+        // backdrop-blur: con bg al 80% y sin blur, el contenido scrolleado se
+        // leía a través de la barra y chocaba con el título.
+        className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b bg-background/80 backdrop-blur-md px-3 py-2.5 lg:hidden"
         style={{ paddingTop: "calc(0.625rem + env(safe-area-inset-top))" }}
       >
         <div className="flex items-center gap-2">

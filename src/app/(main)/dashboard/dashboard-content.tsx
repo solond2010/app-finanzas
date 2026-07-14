@@ -790,7 +790,9 @@ export default function DashboardContent() {
                       </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(c.monto / maxSpend) * 100}%`, backgroundColor: catColor(c.categoria) }} />
+                      {/* max(…, 10px): las categorías pequeñas (1-2% del máximo) pintaban
+                          un punto de ~3px que parecía un pixel suelto, no una barra */}
+                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `max(${(c.monto / maxSpend) * 100}%, 10px)`, backgroundColor: catColor(c.categoria) }} />
                     </div>
                   </div>
                 ))}

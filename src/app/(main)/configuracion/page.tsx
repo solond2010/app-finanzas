@@ -85,7 +85,9 @@ export default function ConfiguracionPage() {
           <Skeleton className="h-64" /><Skeleton className="h-40" />
         </div>
       ) : (
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      // items-start: sin él, la tarjeta "Exportar datos" se estira hasta igualar
+      // la altura de "Categorías" (42 etiquetas) y queda con ~400px vacíos.
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <Card className="border border-border">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
