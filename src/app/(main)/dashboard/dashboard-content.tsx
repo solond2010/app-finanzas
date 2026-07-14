@@ -297,6 +297,15 @@ export default function DashboardContent() {
     ? maxCandidates.reduce((best, t) => (t.patrimonio > best.patrimonio ? t : best), maxCandidates[0])
     : null
   const showRangeMax = !!rangeMaxPoint
+  // La variación de arriba compara INICIO DEL RANGO vs hoy: en 30D/6M/12M/24M
+  // el inicio del rango suele ser un momento en que el patrimonio era mucho
+  // más bajo, así que una bajada real de la última semana queda "enterrada"
+  // dentro de la subida del periodo completo y sale en verde. Esta segunda
+  // cifra (hoy vs el propio pico) no depende del rango elegido: si hoy estás
+  // por debajo del máximo, siempre se ve en rojo, sin importar la pestaña.
+  const vsPeakDelta = rangeMaxPoint ? netWorthDisplay - rangeMaxPoint.patrimonio : 0
+  const showVsPeakDelta = !!rangeMaxPoint && vsPeakDelta < -0.005
+  const vsPeakPct = rangeMaxPoint && Math.abs(rangeMaxPoint.patrimonio) >= 100 ? (vsPeakDelta / Math.abs(rangeMaxPoint.patrimonio)) * 100 : 0
 
   const spending = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
   const spendTotal = spending.reduce((s, c) => s + c.monto, 0)
@@ -541,6 +550,11 @@ export default function DashboardContent() {
                   {showRangeMax && rangeMaxPoint && (
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       Máximo del periodo: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive> ({rangeMaxPoint.mes.replace(" · pico", "")})
+                      {showVsPeakDelta && (
+                        <Sensitive as="span" className="ml-1 font-semibold text-red-500">
+                          · {formatMoney(vsPeakDelta, "EUR")}{Math.abs(vsPeakPct) > 0.05 ? ` (${formatCappedPct(vsPeakPct)})` : ""} desde el pico
+                        </Sensitive>
+                      )}
                     </p>
                   )}
                   {portfolioValue > 0 && (
