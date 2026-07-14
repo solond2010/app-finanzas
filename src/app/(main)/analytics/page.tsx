@@ -413,7 +413,7 @@ export default function AnalyticsPage() {
             <CardContent>
               {categoryBreakdown.length === 0 ? <EmptyState icon={Layers3} title="Sin gasto categorizado" description="Cuando registres gastos, aquí verás las categorías que más pesan." bordered className="h-full" /> : (
                 <div role="img" aria-label={`Gráfico de barras: gasto por categoría${topCategory ? `, encabezado por ${topCategory.categoria}` : ""}`}>
-                  <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={72} customTooltip={CategoryTooltip} className="h-[280px]" showAnimation layout="vertical" />
+                  <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={80} customTooltip={CategoryTooltip} className="h-[280px]" showAnimation layout="vertical" />
                 </div>
               )}
             </CardContent>
@@ -427,7 +427,7 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <div role="img" aria-label={`Gráfico de barras: gasto por cuenta, encabezado por ${spendByAccount[0].cuenta}`}>
-                  <BarChart data={spendByAccount.slice(0, 8)} index="cuenta" categories={["monto"]} colors={["blue"]} valueFormatter={chartFormatter} yAxisWidth={72} customTooltip={AccountTooltip} className="h-[220px]" showAnimation layout="vertical" />
+                  <BarChart data={spendByAccount.slice(0, 8)} index="cuenta" categories={["monto"]} colors={["blue"]} valueFormatter={chartFormatter} yAxisWidth={80} customTooltip={AccountTooltip} className="h-[220px]" showAnimation layout="vertical" />
                 </div>
               </CardContent>
             </Card>
@@ -475,7 +475,9 @@ export default function AnalyticsPage() {
               {totalSpending === 0 ? <EmptyState icon={Gauge} title="Sin gastos este mes" description="La distribución aparecerá al registrar necesidades y deseos." bordered className="h-full" /> : (
                 <div className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center lg:grid-cols-1 xl:grid-cols-[180px_1fr]">
                   <div role="img" aria-label={`Gráfico circular: ${Math.round(needsPct)}% necesidades, ${Math.round(wantsPct)}% deseos`}>
-                    <DonutChart data={needsWantsData} category="value" index="name" colors={["emerald", "amber"]} variant="donut" customTooltip={NeedsWantsTooltip} className="mx-auto h-44 w-44" showAnimation />
+                    {/* valueFormatter también formatea la cifra del centro del donut: sin él,
+                        Tremor pinta la suma cruda con colas de coma flotante ("888.30999..."). */}
+                    <DonutChart data={needsWantsData} category="value" index="name" colors={["emerald", "amber"]} variant="donut" valueFormatter={chartFormatter} customTooltip={NeedsWantsTooltip} className="mx-auto h-44 w-44" showAnimation />
                   </div>
                   <div className="space-y-3">
                     <div className="rounded-2xl bg-emerald-500/[0.05] p-3 ring-1 ring-emerald-500/10">

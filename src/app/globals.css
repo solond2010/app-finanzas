@@ -606,11 +606,14 @@ svg .text-tremor-label, .text-tremor-label { color: var(--tremor-label); fill: v
 .dark .dark\:border-dark-tremor-border { border-color: var(--tremor-border); }
 
 /* First/last x-axis labels anchor inward so they don't clip against the
-   recharts <svg> edge (which has overflow:hidden). */
-.recharts-cartesian-axis-ticks .recharts-cartesian-axis-tick:first-child text {
+   recharts <svg> edge (which has overflow:hidden). Solo el eje X: aplicado
+   también al eje Y, la primera etiqueta de los BarChart horizontales
+   ("Padres" en Gastos por categoría) se empujaba hacia dentro del plot y
+   quedaba tapada por su propia barra. */
+.recharts-xAxis .recharts-cartesian-axis-tick:first-child text {
   text-anchor: start;
 }
-.recharts-cartesian-axis-ticks .recharts-cartesian-axis-tick:last-child text {
+.recharts-xAxis .recharts-cartesian-axis-tick:last-child text {
   text-anchor: end;
 }
 
