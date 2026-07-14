@@ -19,7 +19,7 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { EmptyState } from "@/components/shared/empty-state"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { formatMoney, type CurrencyCode } from "@/lib/currency"
+import { formatMoney, convertToEur, type CurrencyCode } from "@/lib/currency"
 import { chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
 import { accountGoal, getFinancialTips, getMonthTotalsByString, getMonthlyInvestmentInflow, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, type FinancialTip } from "@/lib/calculations"
 import { TipsCard } from "@/components/shared/tips-card"
@@ -187,7 +187,6 @@ export default function InversionesPage() {
   // Alias del valor total de cartera: dentro del map de posiciones `value` queda
   // sombreado por el valor de la fila, y el peso se calcula contra el total.
   const totalValue = value
-  const ahorros0 = state.accounts.filter((a) => a.tipo === "ahorro").reduce((s, a) => s + a.saldo, 0)
 
   const activosData = useMemo(
     () => rows.map((r) => ({ name: r.displayName, value: Math.round(r.value) })).filter((d) => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 8),
@@ -214,7 +213,9 @@ export default function InversionesPage() {
   // Patrimonio completo del informe: cuentas (liquidez) + cartera de inversión.
   // El donut "Tipología" de la página se queda solo con la cartera; el informe
   // X-Ray añade la liquidez de las cuentas no-inversión como clase aparte.
-  const liquidezCuentas = useMemo(() => state.accounts.filter((a) => a.tipo !== "inversion").reduce((s, a) => s + a.saldo, 0), [state.accounts])
+  // En EUR: sumar saldos crudos mezclaría divisas en cuanto una cuenta no esté
+  // en EUR (ej. la cuenta de Suiza en CHF).
+  const liquidezCuentas = useMemo(() => state.accounts.filter((a) => a.tipo !== "inversion").reduce((s, a) => s + convertToEur(a.saldo, a.currency), 0), [state.accounts])
   const netWorth = liquidezCuentas + value
   const byTypeForReport = useMemo(() => {
     const m: Record<string, number> = {}
@@ -521,7 +522,10 @@ export default function InversionesPage() {
 
       <AssetAnalysis />
 
-      <ProjectionSimulator ahorros0={ahorros0} inversiones0={value} />
+      {/* Toda la liquidez (no solo cuentas tipo "ahorro"): simular el retiro
+          partiendo de 3200€ cuando hay ~4900€ líquidos infravaloraba el punto
+          de partida. Mismo criterio de "liquidez" que /cuentas y el X-Ray. */}
+      <ProjectionSimulator ahorros0={liquidezCuentas} inversiones0={value} />
 
       <PositionDialog open={open} onOpenChange={setOpen} editing={editing} />
     </div>

@@ -80,7 +80,8 @@ export function ProjectionSimulator({ ahorros0, inversiones0 }: { ahorros0: numb
       <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
         <div className="space-y-3">
           <div className="space-y-1 rounded-2xl bg-muted/40 p-3 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Ahorros actuales</span><span className="font-semibold tabular-nums"><Sensitive>{eur(ahorros0)}</Sensitive></span></div>
+            {/* "Liquidez", no "Ahorros": recibe todas las cuentas no-inversión. */}
+            <div className="flex justify-between"><span className="text-muted-foreground">Liquidez actual</span><span className="font-semibold tabular-nums"><Sensitive>{eur(ahorros0)}</Sensitive></span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Inversiones actuales</span><span className="font-semibold tabular-nums"><Sensitive>{eur(inversiones0)}</Sensitive></span></div>
           </div>
           <Field label="Objetivo para tu retiro (€)" value={objetivo} onChange={setObjetivo} />

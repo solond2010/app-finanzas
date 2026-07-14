@@ -47,7 +47,12 @@ function exportToExcel(months: [string, Map<string, number>][], positions: Posit
     const total = values.reduce((s, v) => s + v, 0)
     return [monthLabel(mk), ...values, total]
   })
-  rows.push(["Total aportado", ...positions.map((p) => months.reduce((s, [, row]) => s + (row.get(p.id) ?? 0), 0)), totals.invested])
+  // El total de la fila debe ser la suma de sus propias celdas (aportaciones
+  // registradas), no el coste de compra de la cartera: son métricas distintas
+  // y pueden diferir (compras iniciales sin aporte registrado, DCA, etc.).
+  const perPosition = positions.map((p) => months.reduce((s, [, row]) => s + (row.get(p.id) ?? 0), 0))
+  rows.push(["Total aportado", ...perPosition, perPosition.reduce((s, v) => s + v, 0)])
+  rows.push(["Invertido (coste de compra)", ...positions.map(() => ""), totals.invested])
   rows.push(["Valor de mercado actual", ...positions.map(() => ""), totals.value])
   rows.push(["Ganancias", ...positions.map(() => ""), totals.pnl])
 
@@ -164,7 +169,11 @@ export function ContributionsTable({ quotes }: { quotes: Record<string, Quote> }
 
       <div className="mt-4 grid grid-cols-3 gap-3">
         <div className="rounded-2xl bg-muted/30 p-3">
-          <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Aportado</p>
+          {/* "Invertido" (coste de compra), no "Aportado": la tabla de arriba ya
+              tiene una fila "Total aportado" con las aportaciones registradas,
+              que es otra cifra — dos etiquetas casi iguales con números
+              distintos a 10px de distancia confundían. */}
+          <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Invertido</p>
           <p className="mt-1 text-base font-bold tabular-nums"><Sensitive>{formatMoney(invested, cur)}</Sensitive></p>
         </div>
         <div className="rounded-2xl bg-muted/30 p-3">
