@@ -276,6 +276,18 @@ export default function DashboardContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthOffset, today, state.accounts, state.transactions, portfolioValue, investedTotal])
 
+  // Serie que se PINTA: en rangos por mes, si el pico diario del mes en curso
+  // supera el valor de hoy, se inserta como punto extra justo antes del último.
+  // Sin esto, el texto anuncia "-234 € desde el pico" pero el gráfico mensual
+  // (un punto por mes, el actual = hoy) sube hasta el final sin dibujar la
+  // caída — el usuario no ve la bajada que la cifra le está contando.
+  const chartTrend = useMemo(() => {
+    if (activeRange.unit !== "months" || !currentMonthDailyPeak) return netWorthTrend
+    const last = netWorthTrend[netWorthTrend.length - 1]
+    if (!last || currentMonthDailyPeak.patrimonio <= last.patrimonio + 0.005) return netWorthTrend
+    return [...netWorthTrend.slice(0, -1), { mes: currentMonthDailyPeak.mes.replace(" · pico", ""), patrimonio: currentMonthDailyPeak.patrimonio }, { ...last, mes: "hoy" }]
+  }, [netWorthTrend, activeRange.unit, currentMonthDailyPeak])
+
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
   const rangeDelta = netWorthDisplay - rangeStart
@@ -575,7 +587,7 @@ export default function DashboardContent() {
               {activeRange.unit === "today" && netWorthTrend.length <= 1 ? (
                 <EmptyPlaceholder text="Sin movimientos registrados hoy todavía" className="mt-4 h-52 sm:h-64" />
               ) : netWorthHasData ? (
-                <MountainChart data={netWorthTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="mt-4 h-52 sm:h-64" />
+                <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="mt-4 h-52 sm:h-64" />
               ) : (
                 <EmptyPlaceholder text="Sin datos de patrimonio todavía" className="mt-4 h-52 sm:h-64" />
               )}
