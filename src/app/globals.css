@@ -616,6 +616,13 @@ svg .text-tremor-label, .text-tremor-label { color: var(--tremor-label); fill: v
 .recharts-xAxis .recharts-cartesian-axis-tick:last-child text {
   text-anchor: end;
 }
+/* Escape para ejes X de muchas categorías estrechas (ej. proyección a 25
+   años): ahí el anclaje hacia dentro montaba la primera etiqueta sobre la
+   siguiente ("20272030"); recentrar es el mal menor. Debe ir DESPUÉS de las
+   reglas de arriba (misma especificidad, gana la última). */
+.axis-ticks-centered .recharts-xAxis .recharts-cartesian-axis-tick text {
+  text-anchor: middle;
+}
 
 /* ── Tremor chart tooltip ── */
 

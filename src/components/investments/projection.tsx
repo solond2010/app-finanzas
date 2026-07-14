@@ -111,7 +111,7 @@ export function ProjectionSimulator({ ahorros0, inversiones0 }: { ahorros0: numb
                 </div>
               </div>
 
-              <div role="img" aria-label="Gráfico de barras: proyección de ahorros e inversiones por año">
+              <div role="img" aria-label="Gráfico de barras: proyección de ahorros e inversiones por año" className="axis-ticks-centered">
                 <BarChart data={rows} index="year" categories={["Ahorros", "Inversiones"]} colors={["blue", "emerald"]} stack valueFormatter={chartFormatter} showLegend showYAxis={false} customTooltip={ProjectionTooltip} className="h-60" showAnimation />
               </div>
 
