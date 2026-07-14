@@ -605,6 +605,19 @@ svg .text-tremor-label, .text-tremor-label { color: var(--tremor-label); fill: v
 .border-tremor-border { border-color: var(--tremor-border); }
 .dark .dark\:border-dark-tremor-border { border-color: var(--tremor-border); }
 
+/* Sin flechas nativas en los inputs numéricos (monto, proyección…): el
+   stepper del navegador aparece como un cuadrado oscuro que rompe el diseño
+   redondeado de los formularios, y para importes se teclea, no se incrementa. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* First/last x-axis labels anchor inward so they don't clip against the
    recharts <svg> edge (which has overflow:hidden). Solo el eje X: aplicado
    también al eje Y, la primera etiqueta de los BarChart horizontales

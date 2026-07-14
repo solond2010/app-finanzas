@@ -208,9 +208,9 @@ export default function CuentasPage() {
 
         {hasMetas && (
           <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-            <TickerTile label="Restante total" value={money(totalRestante)} valueColor="var(--accent-amber)" />
+            <TickerTile label="Restante total" value={<Sensitive>{money(totalRestante)}</Sensitive>} valueColor="var(--accent-amber)" />
             <TickerTile label="Meta más cerca" value={nearestGoalFund ? `${Math.round(nearestGoalFund.pct)}%` : "—"} detail={nearestGoalFund?.nombre} valueColor="var(--accent-green)" />
-            <TickerTile label="Mayor esfuerzo" value={biggestEffortFund ? money(biggestEffortFund.restante) : "—"} detail={biggestEffortFund?.nombre} valueColor="var(--gold)" />
+            <TickerTile label="Mayor esfuerzo" value={biggestEffortFund ? <Sensitive>{money(biggestEffortFund.restante)}</Sensitive> : "—"} detail={biggestEffortFund?.nombre} valueColor="var(--gold)" />
             <TickerTile label="Completadas" value={`${completedGoals}/${goalStats.count}`} valueColor="var(--primary)" />
           </section>
         )}

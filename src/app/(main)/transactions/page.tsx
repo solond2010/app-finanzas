@@ -177,7 +177,7 @@ export default function IngresosGastosPage() {
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
         <TickerTile label="Pagos pendientes" value={upcomingRecurring.length > 0 ? String(upcomingRecurring.length) : "Al día"} valueColor="var(--accent-amber)" />
-        <TickerTile label="Mayor gasto" value={biggestExpense > 0 ? formatMoney(biggestExpense, "EUR") : "—"} valueColor="var(--accent-red)" />
+        <TickerTile label="Mayor gasto" value={biggestExpense > 0 ? <Sensitive>{formatMoney(biggestExpense, "EUR")}</Sensitive> : "—"} valueColor="var(--accent-red)" />
         <TickerTile label="Categoría top" value={topCategory ? `${topCategoryPct}%` : "—"} detail={topCategory?.categoria} valueColor="var(--gold)" />
       </section>
 

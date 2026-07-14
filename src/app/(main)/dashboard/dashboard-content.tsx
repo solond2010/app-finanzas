@@ -622,12 +622,14 @@ export default function DashboardContent() {
 
           {/* Ticker: pulso del mes con mini-tendencia de 6 meses */}
           <section className="stagger-fade grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" style={{ animationDelay: "40ms" }}>
-            <TickerTile label="Ingresos" value={`+${formatMoney(monthTotals.ingresos, "EUR")}`} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push("/transactions?tipo=ingreso")} />
-            <TickerTile label="Gastos" value={`-${formatMoney(monthTotals.gastos, "EUR")}`} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" onClick={() => router.push("/transactions?tipo=gasto")} />
+            {/* <Sensitive> en todos los valores monetarios: el modo privacidad
+                difuminaba el hero pero estas fichas seguían enseñando importes. */}
+            <TickerTile label="Ingresos" value={<Sensitive>+{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push("/transactions?tipo=ingreso")} />
+            <TickerTile label="Gastos" value={<Sensitive>-{formatMoney(monthTotals.gastos, "EUR")}</Sensitive>} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" onClick={() => router.push("/transactions?tipo=gasto")} />
             <TickerTile
               label="Disponible este mes"
-              value={budgetTotals.limite > 0 ? formatMoney(budgetTotals.disponible, "EUR") : "—"}
-              detail={budgetTotals.limite > 0 ? `de ${formatMoney(budgetTotals.limite, "EUR")} presupuestados` : "Sin presupuesto definido"}
+              value={budgetTotals.limite > 0 ? <Sensitive>{formatMoney(budgetTotals.disponible, "EUR")}</Sensitive> : "—"}
+              detail={budgetTotals.limite > 0 ? <>de <Sensitive as="span">{formatMoney(budgetTotals.limite, "EUR")}</Sensitive> presupuestados</> : "Sin presupuesto definido"}
               valueColor={budgetTotals.limite > 0 ? (budgetTotals.disponible >= 0 ? "var(--gold)" : "var(--accent-red)") : undefined}
               onClick={() => router.push("/transactions?tipo=gasto")}
             />
