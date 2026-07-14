@@ -39,7 +39,13 @@ export default function ConfiguracionPage() {
 
   const deleteCategory = (id: string, name: string) => {
     const inUse = state.transactions.some((t) => t.categoria === name)
-    if (inUse) {
+    // Las transacciones referencian la categoría por NOMBRE: si existe otra
+    // categoría duplicada con el mismo nombre, borrar esta copia es inocuo
+    // (ninguna transacción se queda huérfana). Sin esta comprobación, un
+    // nombre duplicado con movimientos quedaba imposible de limpiar: las dos
+    // copias se bloqueaban mutuamente para siempre.
+    const isLastWithName = state.categories.filter((c) => c.name === name).length <= 1
+    if (inUse && isLastWithName) {
       toast("No puedes eliminar una categoría con transacciones", "error")
       return
     }
