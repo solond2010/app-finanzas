@@ -15,7 +15,7 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer } from "@/lib/calculations"
+import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, buildNetWorthHistoryDaily, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue, useDisplayAccounts } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
@@ -265,7 +265,17 @@ export default function AnalyticsPage() {
   const averageMonthlyNet = activeCashFlow.length > 0 ? Math.round(activeCashFlow.reduce((sum, item) => sum + item.neto, 0) / activeCashFlow.length) : 0
   const positiveMonths = activeCashFlow.filter((item) => item.neto >= 0).length
   const netWorthTrendPositive = netWorthChange >= 0
-  const isAllTimeHigh = netWorthTrendPositive && netWorthHistory.length > 0 && currentNetWorth >= Math.max(...netWorthHistory.map((n) => n.patrimonio))
+  // Pico diario real del mes en curso: la serie mensual solo tiene un punto
+  // para este mes (el valor de hoy), así que sin esto la insignia "Máximo
+  // histórico" se encendía aunque el patrimonio ya hubiera caído desde un
+  // pico intramensual (mismo arreglo que el hero del Dashboard).
+  const currentMonthDailyPeak = useMemo(() => {
+    if (monthOffset !== 0) return 0
+    const daily = buildNetWorthHistoryDaily(state.accounts, state.transactions, today.getDate(), today)
+    return daily.reduce((m, d) => Math.max(m, d.patrimonio - investmentSaldo + investmentDisplayTotal), 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthOffset, state.accounts, state.transactions, investmentSaldo, investmentDisplayTotal])
+  const isAllTimeHigh = netWorthTrendPositive && netWorthHistory.length > 0 && currentNetWorth >= Math.max(...netWorthHistory.map((n) => n.patrimonio), currentMonthDailyPeak)
 
   // Racha de meses consecutivos con flujo de caja positivo, contando hacia
   // atrás desde el mes seleccionado, ignorando los meses sin actividad.
