@@ -413,6 +413,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [initialized, setInitialized] = useState(false)
   const loadedRef = useRef(false)
   const syncChainRef = useRef(Promise.resolve())
+  // El estado recién leído de Supabase no necesita volver a escribirse: sin
+  // este flag, el efecto de sincronización (ver más abajo) reaccionaba a ESE
+  // mismo SET_STATE y reenviaba un upsert completo de todas las tablas en
+  // cada carga de página y cada vuelta de foco, sin que el usuario hubiera
+  // cambiado nada.
+  const skipNextSyncRef = useRef(false)
 
   useEffect(() => {
     if (loadedRef.current) return
@@ -423,6 +429,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     // divisas llega a pintarse con los valores de respaldo desactualizados.
     Promise.all([loadFromSupabase(), refreshExchangeRates()]).then(([remote]) => {
       if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
+        skipNextSyncRef.current = true
         dispatch({ type: "SET_STATE", payload: { ...remote, categories: mergeDefaultCategories(remote.categories) } })
       } else {
         const local = loadLocalBackup()
@@ -457,6 +464,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       lastRefetchRef.current = now
       loadFromSupabase().then((remote) => {
         if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
+          skipNextSyncRef.current = true
           dispatch({ type: "SET_STATE", payload: { ...remote, categories: mergeDefaultCategories(remote.categories) } })
         }
       })
@@ -534,6 +542,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     // Copia de seguridad local en cada cambio (red de seguridad ante pérdidas en
     // Supabase). La app la usa como fallback si Supabase está vacío/caído.
     try { localStorage.setItem("app-finanzas-data", JSON.stringify(state)) } catch {}
+    if (skipNextSyncRef.current) {
+      skipNextSyncRef.current = false
+      return
+    }
     retryAttemptRef.current = 0
     // attemptSync() refleja en la UI ("syncing") el inicio de la sincronización
     // con Supabase (sistema externo) — uso previsto de un efecto, igual que antes
