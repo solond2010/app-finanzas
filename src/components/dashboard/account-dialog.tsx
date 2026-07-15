@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { type Account, generateId } from "@/lib/store"
+import { type Account, generateId, useFinance } from "@/lib/store"
 import { uploadLogo } from "@/lib/db-client"
+import { formatMoney } from "@/lib/currency"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -41,6 +42,15 @@ export function AccountDialog({
   const [error, setError] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+  const { state } = useFinance()
+
+  // Objetivo efectivo cuando el campo está vacío: la suma de las metas de
+  // ahorro vinculadas a esta cuenta (accountGoal hace este mismo fallback al
+  // pintar las tarjetas). Sin avisarlo aquí, la tarjeta dice "Objetivo:
+  // 30.000 €" y este campo dice "Sin objetivo" — parece que se perdió.
+  const inheritedGoal = account
+    ? state.sinkingFunds.filter((f) => f.cuenta_id === account.id).reduce((s, f) => s + f.cantidad_objetivo, 0)
+    : 0
 
   useEffect(() => {
     if (!open) return
@@ -213,7 +223,12 @@ export function AccountDialog({
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Objetivo ({currencySymbol(currency)})</label>
-              <Input type="number" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} placeholder="Sin objetivo" />
+              <Input type="number" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} placeholder={inheritedGoal > 0 ? formatMoney(inheritedGoal, currency) : "Sin objetivo"} />
+              {objetivo.trim() === "" && inheritedGoal > 0 && (
+                <p className="text-[11px] leading-4 text-muted-foreground">
+                  Heredado de sus metas de ahorro. Escribe un importe solo si quieres fijar uno propio.
+                </p>
+              )}
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs text-muted-foreground">Color</label>

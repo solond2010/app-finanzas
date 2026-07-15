@@ -36,8 +36,14 @@ export function BudgetDialog({ open, onOpenChange, selectedMonth }: BudgetDialog
     })
   }, [open, selectedMonth, state.budgets])
 
+  // Solo categorías donde puede haber gasto: un "límite mensual" sobre una
+  // categoría de ingreso (Dividendos, Bonus…) no vigila nada — el widget de
+  // presupuesto solo computa transacciones de tipo gasto — y llenaba la
+  // lista de filas inútiles.
   const sortedCategories = useMemo(
-    () => [...state.categories].sort((a, b) => a.name.localeCompare(b.name, "es")),
+    () => state.categories
+      .filter((c) => !c.kind || c.kind === "gasto" || c.kind === "both")
+      .sort((a, b) => a.name.localeCompare(b.name, "es")),
     [state.categories]
   )
 
