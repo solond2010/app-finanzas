@@ -1,5 +1,9 @@
+// Espacio fino inseparable entre cifra y símbolo (convención tipográfica
+// española); inseparable para que "1.234" y "€" nunca partan de línea.
+export const NNBSP = " "
+
 export function money(value: number) {
-  return `${value.toLocaleString("es-ES")}€`
+  return `${value.toLocaleString("es-ES")}${NNBSP}€`
 }
 
 export function signedMoney(value: number) {

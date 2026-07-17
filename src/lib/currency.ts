@@ -1,3 +1,5 @@
+import { NNBSP } from "./format"
+
 export type CurrencyCode = "EUR" | "USD" | "CHF"
 
 export const CURRENCY_OPTIONS: Array<{ code: CurrencyCode; label: string }> = [
@@ -48,5 +50,7 @@ export function convertToEur(amount: number, currency: CurrencyCode) {
 }
 
 export function formatMoney(amount: number, currency: CurrencyCode) {
-  return `${amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currencySymbol(currency)}`
+  // Espacio fino inseparable, como en money() (lib/format.ts): misma
+  // tipografía de importes en toda la app.
+  return `${amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${NNBSP}${currencySymbol(currency)}`
 }

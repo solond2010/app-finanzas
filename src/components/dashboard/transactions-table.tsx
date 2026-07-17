@@ -649,9 +649,12 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                         style={{ animationDelay: `${rowDelay.get(t.id) ?? 0}ms` }}
                       >
                         <TableCell>
+                          {/* Atenuado en reposo para no llenar la tabla de
+                              cuadraditos; recupera presencia al pasar por la
+                              fila, al marcarlo o al enfocarlo con teclado. */}
                           <input
                             type="checkbox"
-                            className="rounded border-muted-foreground"
+                            className="rounded border-muted-foreground opacity-30 transition-opacity group-hover:opacity-100 checked:opacity-100 focus-visible:opacity-100"
                             aria-label="Seleccionar transacción"
                             checked={selectedIds.has(t.id)}
                             onChange={() => toggleSelected(t.id)}
@@ -821,7 +824,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
           toast("Transacción eliminada", "success")
         }}
         title="¿Eliminar transacción?"
-        description={<>Se eliminará la transacción &ldquo;{deleteConfirm?.descripcion || deleteConfirm?.categoria || ""}&rdquo; de <Sensitive>{deleteConfirm?.monto?.toLocaleString("es-ES")}€</Sensitive>. No se puede deshacer.</>}
+        description={<>Se eliminará la transacción &ldquo;{deleteConfirm?.descripcion || deleteConfirm?.categoria || ""}&rdquo; de <Sensitive>{deleteConfirm?.monto?.toLocaleString("es-ES")} €</Sensitive>. No se puede deshacer.</>}
         confirmLabel="Eliminar"
         destructive
       />

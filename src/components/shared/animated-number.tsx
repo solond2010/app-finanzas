@@ -3,7 +3,7 @@
 import { useAnimatedNumber } from "@/lib/hooks/use-animated-number"
 import { Sensitive } from "./sensitive"
 
-export function AnimatedNumber({ value, prefix = "", suffix = "€" }: { value: number; prefix?: string; suffix?: string }) {
+export function AnimatedNumber({ value, prefix = "", suffix = " €" }: { value: number; prefix?: string; suffix?: string }) {
   const animated = useAnimatedNumber(Math.round(value))
   return <Sensitive className="tabular-nums">{prefix}{animated.toLocaleString("es-ES")}{suffix}</Sensitive>
 }

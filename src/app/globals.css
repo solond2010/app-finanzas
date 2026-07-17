@@ -72,13 +72,19 @@
      demasiado baja y el título de cada página aparecía tapado arriba. */
   --mobile-header-h: calc(52px + env(safe-area-inset-top));
   --bottom-nav-h: 64px;
-  --background: oklch(0.967 0.002 264);
+  /* Fondo con un punto cálido (marfil) en vez de gris azulado: el modo claro
+     deriva de la misma identidad bronce/dorado que el oscuro, no de un tema
+     genérico azul. */
+  --background: oklch(0.968 0.004 85);
   --foreground: oklch(0.205 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.205 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.205 0 0);
-  --primary: oklch(0.52 0.17 264);
+  /* Acento único de la app: bronce en claro (el dorado puro no contrasta
+     sobre blanco para texto pequeño), dorado en oscuro. El azul queda
+     reservado a datos (--accent-blue, charts), no a acciones ni navegación. */
+  --primary: oklch(0.5 0.12 72);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.95 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -89,7 +95,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.915 0 0);
   --input: oklch(0.915 0 0);
-  --ring: oklch(0.52 0.17 264);
+  --ring: oklch(0.5 0.12 72);
   --chart-1: oklch(0.45 0 0);
   --chart-2: oklch(0.6 0.15 160);
   --chart-3: oklch(0.6 0.14 50);
@@ -98,7 +104,7 @@
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.205 0 0);
-  --sidebar-primary: oklch(0.52 0.17 264);
+  --sidebar-primary: oklch(0.5 0.12 72);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.95 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
@@ -109,8 +115,8 @@
   --tremor-content-emphasis: #0a0a0a;
   --tremor-border: #ececec;
   --tremor-label: #9ca3af;
-  --tremor-brand: #2563eb;
-  --tremor-brand-emphasis: #1d4ed8;
+  --tremor-brand: #8e6425;
+  --tremor-brand-emphasis: #74511e;
   --tremor-ring: #d4d4d8;
   --brand-purple: oklch(0.55 0.18 295);
   --brand-teal: oklch(0.6 0.15 185);
@@ -123,8 +129,10 @@
   --card-glow: oklch(0 0 0 / 0.05);
   --gold: oklch(0.7 0.15 85);
   --gold-foreground: oklch(0.32 0.09 70);
-  --hero-bg: oklch(0.945 0.02 264);
-  --hero-border: oklch(0.82 0.05 264);
+  /* Hero champán cálido (antes lavanda): la tarjeta de la cifra protagonista
+     comparte familia cromática con el acento bronce/dorado. */
+  --hero-bg: oklch(0.958 0.018 90);
+  --hero-border: oklch(0.845 0.055 88);
 }
 
 .dark {
@@ -134,8 +142,10 @@
   --card-foreground: oklch(0.97 0 0);
   --popover: oklch(0.10 0.022 264);
   --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.58 0.21 264);
-  --primary-foreground: oklch(0.99 0 0);
+  /* En oscuro el acento único es el dorado pleno, con texto casi negro
+     encima (un botón dorado con texto blanco no contrasta). */
+  --primary: oklch(0.78 0.14 85);
+  --primary-foreground: oklch(0.24 0.05 75);
   --secondary: oklch(0.12 0.02 264);
   --secondary-foreground: oklch(0.97 0 0);
   --muted: oklch(0.11 0.016 264);
@@ -145,7 +155,7 @@
   --destructive: oklch(0.69 0.19 22.216);
   --border: oklch(1 0 0 / 9%);
   --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.58 0.21 264);
+  --ring: oklch(0.72 0.12 85);
   --chart-1: oklch(0.85 0 0);
   --chart-2: oklch(0.6 0.15 160);
   --chart-3: oklch(0.6 0.14 50);
@@ -153,8 +163,8 @@
   --chart-5: oklch(0.55 0.12 190);
   --sidebar: oklch(0.055 0.018 264);
   --sidebar-foreground: oklch(0.97 0 0);
-  --sidebar-primary: oklch(0.58 0.21 264);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-primary: oklch(0.78 0.14 85);
+  --sidebar-primary-foreground: oklch(0.24 0.05 75);
   --sidebar-accent: oklch(0.15 0.03 264);
   --sidebar-accent-foreground: oklch(0.97 0 0);
   --sidebar-border: oklch(1 0 0 / 7%);
@@ -164,8 +174,8 @@
   --tremor-content-emphasis: #fafafa;
   --tremor-border: #1c2440;
   --tremor-label: #6b7387;
-  --tremor-brand: #3f6bff;
-  --tremor-brand-emphasis: #6f9bff;
+  --tremor-brand: #d3ac3f;
+  --tremor-brand-emphasis: #e2c463;
   --tremor-ring: #22305e;
   --brand-purple: oklch(0.6 0.18 295);
   --brand-teal: oklch(0.65 0.15 185);
@@ -190,6 +200,10 @@
   body {
     @apply text-foreground;
     background-color: var(--background);
+    /* App de finanzas: todas las cifras con dígitos de ancho fijo para que
+       las columnas de importes queden alineadas sin repartir `tabular-nums`
+       clase a clase (los sitios que ya la llevan no cambian). */
+    font-variant-numeric: tabular-nums;
   }
 
   html {
@@ -553,33 +567,38 @@ html {
 
 /* ── Tremor / Recharts overrides ── */
 
-.fill-emerald-500 { fill: #10b981; }
-.fill-red-500 { fill: #ef4444; }
-.fill-violet-500 { fill: #8b5cf6; }
-.fill-amber-500 { fill: #f59e0b; }
-.fill-blue-500 { fill: #3b82f6; }
+/* Los colores con token semántico apuntan a var(--accent-*): así los charts
+   (y cualquier texto/icono que use estas utilidades) siguen el tema en claro
+   y oscuro, y coinciden exactamente con los puntos del tooltip
+   (chart-tooltip.tsx usa los mismos tokens). indigo/gray-400 no tienen token
+   propio (son colores de distinción en donuts categóricos) y quedan en hex. */
+.fill-emerald-500 { fill: var(--accent-green); }
+.fill-red-500 { fill: var(--accent-red); }
+.fill-violet-500 { fill: var(--accent-violet); }
+.fill-amber-500 { fill: var(--accent-amber); }
+.fill-blue-500 { fill: var(--accent-blue); }
 .fill-indigo-500 { fill: #6366f1; }
-.fill-gray-500 { fill: #3b82f6; }
+.fill-gray-500 { fill: var(--accent-blue); }
 .fill-gray-400 { fill: #9ca3af; }
 
-.stroke-emerald-500 { stroke: #10b981; }
-.stroke-red-500 { stroke: #ef4444; }
-.stroke-violet-500 { stroke: #8b5cf6; }
-.stroke-amber-500 { stroke: #f59e0b; }
-.stroke-blue-500 { stroke: #3b82f6; }
+.stroke-emerald-500 { stroke: var(--accent-green); }
+.stroke-red-500 { stroke: var(--accent-red); }
+.stroke-violet-500 { stroke: var(--accent-violet); }
+.stroke-amber-500 { stroke: var(--accent-amber); }
+.stroke-blue-500 { stroke: var(--accent-blue); }
 .stroke-indigo-500 { stroke: #6366f1; }
-.stroke-gray-500 { stroke: #3b82f6; }
+.stroke-gray-500 { stroke: var(--accent-blue); }
 .stroke-tremor-background { stroke: var(--tremor-background); }
 .stroke-tremor-border { stroke: var(--tremor-border); }
 .stroke-tremor-ring { stroke: var(--tremor-ring); }
 
-.text-emerald-500 { color: #10b981; fill: #10b981; }
-.text-red-500 { color: #ef4444; fill: #ef4444; }
-.text-violet-500 { color: #8b5cf6; fill: #8b5cf6; }
-.text-amber-500 { color: #f59e0b; fill: #f59e0b; }
-.text-blue-500 { color: #3b82f6; fill: #3b82f6; }
+.text-emerald-500 { color: var(--accent-green); fill: var(--accent-green); }
+.text-red-500 { color: var(--accent-red); fill: var(--accent-red); }
+.text-violet-500 { color: var(--accent-violet); fill: var(--accent-violet); }
+.text-amber-500 { color: var(--accent-amber); fill: var(--accent-amber); }
+.text-blue-500 { color: var(--accent-blue); fill: var(--accent-blue); }
 .text-indigo-500 { color: #6366f1; fill: #6366f1; }
-.text-gray-500 { color: #3b82f6; fill: #3b82f6; }
+.text-gray-500 { color: var(--accent-blue); fill: var(--accent-blue); }
 
 svg .text-tremor-content, .text-tremor-content { color: var(--tremor-content); fill: var(--tremor-content); }
 svg .text-tremor-content-emphasis, .text-tremor-content-emphasis { color: var(--tremor-content-emphasis); fill: var(--tremor-content-emphasis); }

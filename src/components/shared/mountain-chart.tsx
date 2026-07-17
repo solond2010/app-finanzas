@@ -1,10 +1,12 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useId, useMemo, useRef, useState } from "react"
 
-// Gráfico de línea limpia: solo el trazo y el punto final, sin relleno ni
-// degradados. Sustituye al antiguo tratamiento "montaña" (picos + doble capa
-// de relleno + marcador con brillo), que se veía recargado.
+// Gráfico de línea limpia: el trazo, el punto final y un único velo dorado
+// muy tenue bajo la línea (degradado a transparente). Sustituye al antiguo
+// tratamiento "montaña" (picos + doble capa de relleno + marcador con
+// brillo), que se veía recargado; una sola capa al ~10% no compite con el
+// trazo y ancla visualmente la curva a la tarjeta hero.
 export function MountainChart<T extends object>({
   data,
   index,
@@ -20,6 +22,9 @@ export function MountainChart<T extends object>({
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  // Id único por instancia: en una misma página conviven varios MountainChart
+  // (dashboard e inversiones) y un id fijo de <linearGradient> colisionaría.
+  const gradientId = useId()
 
   const VB_W = 600
   const VB_H = 220
@@ -51,6 +56,10 @@ export function MountainChart<T extends object>({
   )
 
   const linePath = points.length === 0 ? "" : points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")
+  const areaPath =
+    points.length > 1
+      ? `${linePath} L${points.at(-1)!.x},${VB_H - PAD_BOTTOM} L${points[0].x},${VB_H - PAD_BOTTOM} Z`
+      : ""
 
   const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current || points.length === 0) return
@@ -73,10 +82,18 @@ export function MountainChart<T extends object>({
   return (
     <div ref={containerRef} className={`relative select-none ${className ?? ""}`} onMouseMove={handleMove} onMouseLeave={() => setHoverIdx(null)} role="img" aria-label={trendSummary}>
       <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="h-full w-full overflow-visible" aria-hidden="true">
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="var(--gold)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
         {/* Líneas de referencia horizontales, discretas */}
         <line x1="0" y1={PAD_TOP} x2={VB_W} y2={PAD_TOP} stroke="var(--border)" strokeWidth="1" />
         <line x1="0" y1={(PAD_TOP + VB_H) / 2} x2={VB_W} y2={(PAD_TOP + VB_H) / 2} stroke="var(--border)" strokeWidth="1" />
         <line x1="0" y1={VB_H - PAD_BOTTOM} x2={VB_W} y2={VB_H - PAD_BOTTOM} stroke="var(--border)" strokeWidth="1" />
+
+        {areaPath && <path d={areaPath} fill={`url(#${gradientId})`} stroke="none" />}
 
         {points.length > 1 && <path d={linePath} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}
 

@@ -17,7 +17,9 @@ function MainInner({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       <Sidebar />
       <main className={cn(
-        "min-h-screen min-w-0 flex-1 overflow-x-hidden px-3 sm:px-6 lg:px-8 pt-[var(--mobile-header-h)] lg:pt-8 pb-[calc(var(--bottom-nav-h)+1.5rem)] lg:pb-8 animate-in fade-in duration-500 transition-all",
+        // lg:pb-24: deja sitio al FAB (56px + margen) para que al llegar al
+        // final de la página no tape la última fila de una tabla o un total.
+        "min-h-screen min-w-0 flex-1 overflow-x-hidden px-3 sm:px-6 lg:px-8 pt-[var(--mobile-header-h)] lg:pt-8 pb-[calc(var(--bottom-nav-h)+1.5rem)] lg:pb-24 animate-in fade-in duration-500 transition-all",
         open ? "lg:ml-64" : "lg:ml-16"
       )}>
         {children}
