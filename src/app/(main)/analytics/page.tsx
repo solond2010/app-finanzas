@@ -446,6 +446,66 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Objetivos y "Lo que ha cambiado" viven en esta columna para
+              equilibrar la sección: los dos gráficos de barras son bajos y la
+              columna derecha apila hasta 4 tarjetas — sin esto quedaba un
+              hueco vacío enorme bajo los gráficos (ver content-start arriba). */}
+          {goalProgress.length > 0 && (
+            <Card className="stagger-fade" style={{ animationDelay: "295ms" }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Target className="h-4 w-4 text-emerald-500" />Objetivos</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {goalProgress.map((g) => {
+                  const complete = g.pct >= 100
+                  return (
+                    <div key={g.account.id} className="space-y-2">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: g.account.color }} />
+                          <span className="truncate">{g.account.nombre}</span>
+                        </span>
+                        <span className={cn("shrink-0 font-semibold tabular-nums", complete ? "text-emerald-500" : "text-foreground")}>
+                          <Sensitive>{formatMoney(g.current, g.account.currency)}</Sensitive> / <Sensitive>{formatMoney(g.goal, g.account.currency)}</Sensitive>
+                        </span>
+                      </div>
+                      <Progress value={g.pct} className="[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-indicator]]:bg-emerald-500" />
+                      {!complete && (
+                        <p className="text-[11px] text-muted-foreground">Faltan <Sensitive as="span">{formatMoney(g.restante, g.account.currency)}</Sensitive> · {Math.round(g.pct)}% completado</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {categoryInsights.length > 0 && (
+            <Card className="stagger-fade" style={{ animationDelay: "310ms" }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Sparkles className="h-4 w-4 text-violet-500" />Lo que ha cambiado este mes</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {categoryInsights.map((insight) => {
+                  const up = insight.isNew || insight.deltaPct > 0
+                  return (
+                    <div key={insight.categoria} className="flex items-start gap-3 rounded-2xl bg-muted/35 p-3.5 ring-1 ring-border/20">
+                      <Lightbulb className={cn("mt-0.5 h-4 w-4 shrink-0", up ? "text-amber-500" : "text-emerald-500")} />
+                      <p className="text-sm leading-6">
+                        <strong className="font-semibold">{insight.categoria}</strong>{" "}
+                        {insight.isNew ? (
+                          <>es nuevo este mes: <Sensitive as="span">{money(insight.current)}</Sensitive>, antes no gastabas aquí.</>
+                        ) : (
+                          <>{up ? "subió" : "bajó"} un <strong className={up ? "text-amber-500" : "text-emerald-500"}>{Math.round(Math.abs(insight.deltaPct))}%</strong> frente a tu media (<Sensitive as="span">{money(Math.round(insight.average))}</Sensitive> → <Sensitive as="span">{money(insight.current)}</Sensitive>).</>
+                        )}
+                      </p>
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="col-span-full grid gap-6 lg:col-span-5">
@@ -524,36 +584,6 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          {goalProgress.length > 0 && (
-            <Card className="stagger-fade" style={{ animationDelay: "295ms" }}>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Target className="h-4 w-4 text-emerald-500" />Objetivos</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {goalProgress.map((g) => {
-                  const complete = g.pct >= 100
-                  return (
-                    <div key={g.account.id} className="space-y-2">
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
-                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: g.account.color }} />
-                          <span className="truncate">{g.account.nombre}</span>
-                        </span>
-                        <span className={cn("shrink-0 font-semibold tabular-nums", complete ? "text-emerald-500" : "text-foreground")}>
-                          <Sensitive>{formatMoney(g.current, g.account.currency)}</Sensitive> / <Sensitive>{formatMoney(g.goal, g.account.currency)}</Sensitive>
-                        </span>
-                      </div>
-                      <Progress value={g.pct} className="[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-indicator]]:bg-emerald-500" />
-                      {!complete && (
-                        <p className="text-[11px] text-muted-foreground">Faltan <Sensitive as="span">{formatMoney(g.restante, g.account.currency)}</Sensitive> · {Math.round(g.pct)}% completado</p>
-                      )}
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
-
           {upcomingRecurring.length > 0 && (
             <Card className="stagger-fade" style={{ animationDelay: "300ms" }}>
               <CardHeader className="pb-2">
@@ -585,31 +615,6 @@ export default function AnalyticsPage() {
             </Card>
           )}
 
-          {categoryInsights.length > 0 && (
-            <Card className="stagger-fade" style={{ animationDelay: "310ms" }}>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Sparkles className="h-4 w-4 text-violet-500" />Lo que ha cambiado este mes</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {categoryInsights.map((insight) => {
-                  const up = insight.isNew || insight.deltaPct > 0
-                  return (
-                    <div key={insight.categoria} className="flex items-start gap-3 rounded-2xl bg-muted/35 p-3.5 ring-1 ring-border/20">
-                      <Lightbulb className={cn("mt-0.5 h-4 w-4 shrink-0", up ? "text-amber-500" : "text-emerald-500")} />
-                      <p className="text-sm leading-6">
-                        <strong className="font-semibold">{insight.categoria}</strong>{" "}
-                        {insight.isNew ? (
-                          <>es nuevo este mes: <Sensitive as="span">{money(insight.current)}</Sensitive>, antes no gastabas aquí.</>
-                        ) : (
-                          <>{up ? "subió" : "bajó"} un <strong className={up ? "text-amber-500" : "text-emerald-500"}>{Math.round(Math.abs(insight.deltaPct))}%</strong> frente a tu media (<Sensitive as="span">{money(Math.round(insight.average))}</Sensitive> → <Sensitive as="span">{money(insight.current)}</Sensitive>).</>
-                        )}
-                      </p>
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         {monthTotals.gastos > 0 && (
