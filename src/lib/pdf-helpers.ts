@@ -1,16 +1,20 @@
 import { jsPDF } from "jspdf"
 
-// Azul cobalto real de la app (oklch(0.52 0.17 264), el mismo --primary de globals.css).
-export const BRAND: [number, number, number] = [52, 97, 201]
+// Bronce de marca (el --primary del tema claro, oklch(0.5 0.12 72) → sRGB):
+// los PDF se imprimen sobre blanco, así que usan la variante clara del acento.
+export const BRAND: [number, number, number] = [140, 85, 0]
 // Dorado de marca (--gold de globals.css), usado como línea de firma bajo la
 // cabecera — el mismo acento que hero-panel/login/sidebar en el resto de la app.
 export const GOLD: [number, number, number] = [232, 182, 74]
 export const INK: [number, number, number] = [17, 24, 39]
 export const MUTED: [number, number, number] = [107, 114, 128]
-export const GREEN: [number, number, number] = [16, 185, 129]
-export const RED: [number, number, number] = [239, 68, 68]
+// Verde/rojo de dinero = --accent-green/--accent-red del tema claro.
+export const GREEN: [number, number, number] = [0, 137, 84]
+export const RED: [number, number, number] = [197, 55, 50]
 export const TRACK: [number, number, number] = [229, 231, 235]
-const PIE_COLORS = ["rgb(52,97,201)", "#0ea5e9", "#6366f1", "#8b5cf6", "#0891b2", "#64748b", "#10b981", "#f59e0b"]
+// El primer color (la porción mayor) es el bronce de marca; el resto son
+// colores de distinción categórica, igual que en los donuts de la app.
+const PIE_COLORS = ["rgb(140,85,0)", "#0ea5e9", "#6366f1", "#8b5cf6", "#0891b2", "#64748b", "#10b981", "#f59e0b"]
 
 export interface Tile { label: string; value: string; color?: [number, number, number] }
 
@@ -45,7 +49,7 @@ export function renderBarChart(data: { label: string; value: number }[], w: numb
     const barH = Math.max(2, (d.value / max) * chartH)
     const x = i * (barW + gap)
     const y = padTop + (chartH - barH)
-    ctx.fillStyle = "rgb(52,97,201)"
+    ctx.fillStyle = `rgb(${BRAND.join(",")})`
     roundRectPath(ctx, x, y, barW, barH, 3)
     ctx.fill()
     ctx.fillStyle = "#6b7280"

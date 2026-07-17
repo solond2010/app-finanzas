@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useRef, Fragment } from "react"
+import { useState, useMemo, useRef, Fragment, type CSSProperties } from "react"
 import { useSearchParams } from "next/navigation"
 import {
   Table,
@@ -40,19 +40,18 @@ import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurrin
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 
-const CATEGORY_COLORS: Record<string, string> = {
-  Salario: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  Alquiler: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  Supermercado: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  Transporte: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-  Internet: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
-  Cena: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-  Suscripciones: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
-  Ropa: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
-  Transferencia: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  Ocio: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-  Gym: "bg-lime-500/10 text-lime-600 dark:text-lime-400",
-  Salud: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+// Estilo del chip de categoría a partir del color REAL de la categoría (el
+// hex que el usuario ve en Configuración y en el punto de la descripción),
+// en vez del antiguo mapa hardcodeado que solo cubría 12 nombres y dejaba el
+// resto en gris. El texto se acerca al foreground con color-mix para que
+// contraste en ambos temas (en claro oscurece el tono, en oscuro lo aclara).
+function categoryChipStyle(hex: string | undefined): CSSProperties | undefined {
+  if (!hex) return undefined
+  return {
+    backgroundColor: `color-mix(in oklch, ${hex}, transparent 88%)`,
+    color: `color-mix(in oklch, ${hex}, var(--foreground) 45%)`,
+    boxShadow: `inset 0 0 0 1px color-mix(in oklch, ${hex}, transparent 75%)`,
+  }
 }
 
 function TransactionForm({
@@ -632,8 +631,8 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                   </TableRow>
                   {group.transactions.map((t) => {
                     const account = state.accounts.find((a) => a.id === t.cuenta_id)
-                    const catColor = CATEGORY_COLORS[t.categoria]
                     const catHex = state.categories.find((c) => c.name === t.categoria)?.color
+                    const chipStyle = categoryChipStyle(catHex)
                     const isEditing = (field: EditField) => editingCell?.id === t.id && editingCell.field === field
                     const categoryOptions = state.categories
                       .filter((c) => !c.kind || c.kind === t.tipo || c.kind === "both")
@@ -684,7 +683,15 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                           {isEditing("categoria") ? (
                             <InlineEditSelect defaultValue={t.categoria} options={categoryOptions} onDone={(ok, v) => handleInlineDone(t, "categoria", ok, v)} />
                           ) : (
-                            <button onClick={() => setEditingCell({ id: t.id, field: "categoria" })} className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset", catColor || "bg-muted/60 text-muted-foreground ring-border/20")} aria-label="Editar categoría">
+                            <button
+                              onClick={() => setEditingCell({ id: t.id, field: "categoria" })}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+                                !chipStyle && "bg-muted/60 text-muted-foreground ring-1 ring-inset ring-border/20"
+                              )}
+                              style={chipStyle}
+                              aria-label="Editar categoría"
+                            >
                               {t.categoria}
                             </button>
                           )}
