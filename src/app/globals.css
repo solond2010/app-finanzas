@@ -200,10 +200,27 @@
   body {
     @apply text-foreground;
     background-color: var(--background);
+    /* Luz ambiental: dos radiales muy tenues (dorado arriba-derecha, azul
+       abajo-izquierda) sobre el color de fondo. Quitan la sensación de vacío
+       plano sin competir con las tarjetas; `fixed` para que la luz no se
+       desplace con el scroll (iOS ignora fixed y la deja scrollear: aceptable
+       por lo sutil que es). */
+    background-image:
+      radial-gradient(1100px 700px at 88% -12%, color-mix(in oklch, var(--gold), transparent 95%), transparent 62%),
+      radial-gradient(900px 650px at -12% 112%, color-mix(in oklch, var(--accent-blue), transparent 96%), transparent 62%);
+    background-attachment: fixed;
     /* App de finanzas: todas las cifras con dígitos de ancho fijo para que
        las columnas de importes queden alineadas sin repartir `tabular-nums`
        clase a clase (los sitios que ya la llevan no cambian). */
     font-variant-numeric: tabular-nums;
+  }
+
+  /* En oscuro la luz puede ser un punto más presente (sobre negro casi puro
+     el 5% claro desaparecería). */
+  .dark body {
+    background-image:
+      radial-gradient(1100px 700px at 88% -12%, color-mix(in oklch, var(--gold), transparent 92%), transparent 62%),
+      radial-gradient(900px 650px at -12% 112%, color-mix(in oklch, var(--accent-blue), transparent 93%), transparent 62%);
   }
 
   html {
@@ -454,7 +471,12 @@
    más importante de cada página se distinga a simple vista del resto. */
 .hero-panel {
   position: relative;
-  background: var(--hero-bg);
+  /* Velo de luz dorada que cae desde el borde superior (donde ya está la
+     línea dorada de firma) y se funde con el fondo del panel: da volumen a
+     la tarjeta protagonista sin añadir sombras ni ruido. */
+  background:
+    linear-gradient(to bottom, color-mix(in oklch, var(--gold), transparent 91%), transparent 34%),
+    var(--hero-bg);
   border: 1px solid var(--hero-border);
   border-top-color: color-mix(in oklch, var(--gold), transparent 45%);
 }

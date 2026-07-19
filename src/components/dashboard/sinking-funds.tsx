@@ -217,7 +217,7 @@ export function SinkingFundsGrid() {
               const circleColor = progress >= 100 ? "var(--accent-green)" : progress >= 50 ? "var(--accent-amber)" : "var(--accent-blue)"
 
               return (
-                <div key={fund.id} className="group relative rounded-2xl border border-border/60 bg-background/70 p-5 shadow-sm transition-colors hover:shadow-md hover:shadow-primary/5">
+                <div key={fund.id} className="group relative rounded-2xl border border-border bg-card p-5 transition-colors hover:border-foreground/15">
                   <PredictionTooltip remaining={remaining} avgMonthly={averageMonthlySavings} symbol={symbol} />
                   <button
                     className="absolute top-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
@@ -234,19 +234,19 @@ export function SinkingFundsGrid() {
                       </span>
                     </div>
                     <h3
-                      className="font-semibold text-sm cursor-pointer hover:text-amber-500 transition-colors flex items-center gap-2 text-center"
+                      className="font-semibold text-[15px] tracking-tight cursor-pointer hover:text-primary transition-colors flex items-center gap-2 text-center"
                       onClick={() => setEditingFund(fund)}
                     >
                       {fund.nombre}
                       <Pencil className="h-3 w-3 text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100" />
                     </h3>
                     <div className="text-center">
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm font-semibold tabular-nums text-foreground">
                         {/* max 2 decimales: el valor de mercado trae decimales largos y
                             "511,647 €" se lee como seiscientos mil, no como 511,65 */}
                         <Sensitive>{ahorradoActual.toLocaleString("es-ES", { maximumFractionDigits: 2 })} {symbol}</Sensitive>
                       </p>
-                      <p className="text-[11px] text-muted-foreground/60">
+                      <p className="text-[11px] text-muted-foreground">
                         de <Sensitive>{fund.cantidad_objetivo.toLocaleString("es-ES")} {symbol}</Sensitive>
                       </p>
                     </div>
@@ -273,8 +273,10 @@ export function SinkingFundsGrid() {
                       const estimated = new Date()
                       estimated.setMonth(estimated.getMonth() + monthsNeeded)
                       return (
-                        <p className="text-emerald-500/90">
-                          A tu ritmo: {estimated.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
+                        <p className="pt-1">
+                          <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-500 ring-1 ring-inset ring-emerald-500/20">
+                            A tu ritmo: {estimated.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
+                          </span>
                         </p>
                       )
                     })()}
