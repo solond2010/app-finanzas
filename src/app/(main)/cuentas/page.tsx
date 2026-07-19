@@ -179,7 +179,7 @@ export default function CuentasPage() {
             })}
             <button
               onClick={() => setShowNewAccount(true)}
-              className="stagger-fade flex flex-col items-center justify-center gap-3 rounded-[16px] border border-dashed border-muted-foreground/25 p-6 text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:text-foreground"
+              className="stagger-fade flex flex-col items-center justify-center gap-3 rounded-[16px] border border-dashed border-muted-foreground/25 p-6 text-muted-foreground transition-colors hover:border-[color-mix(in_oklch,var(--gold),transparent_40%)] hover:bg-[color-mix(in_oklch,var(--gold),transparent_94%)] hover:text-foreground"
               style={{ animationDelay: `${state.accounts.length * 60}ms` }}
             >
               <Plus className="h-8 w-8" />

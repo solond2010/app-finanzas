@@ -773,8 +773,10 @@ export default function DashboardContent() {
                     <span>Necesidades <span className="text-foreground">{needsPct}%</span></span>
                     <span>Deseos <span className="text-foreground">{100 - needsPct}%</span></span>
                   </div>
+                  {/* Verde/ámbar como en el donut de Analíticas y la Regla
+                      50/30/20: Necesidades siempre esmeralda, Deseos ámbar. */}
                   <div className="flex h-2 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full bg-[var(--accent-blue)] transition-all duration-700" style={{ width: `${needsPct}%` }} />
+                    <div className="h-full bg-[var(--accent-green)] transition-all duration-700" style={{ width: `${needsPct}%` }} />
                     <div className="h-full bg-[var(--accent-amber)] transition-all duration-700" style={{ width: `${100 - needsPct}%` }} />
                   </div>
                 </div>
