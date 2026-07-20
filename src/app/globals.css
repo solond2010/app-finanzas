@@ -256,6 +256,13 @@
   ::selection {
     background: color-mix(in oklch, var(--foreground), transparent 85%);
   }
+
+  /* Checkboxes y radios nativos (fila de la tabla, "Es necesidad"…): sin
+     esto el navegador los pinta con su azul de sistema, ajeno al tema. */
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--primary);
+  }
 }
 
 /* ── Keyframes ── */

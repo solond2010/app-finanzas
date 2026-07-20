@@ -625,7 +625,9 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
               currentGrouped.map((group) => (
                 <Fragment key={group.date}>
                   <TableRow>
-                    <TableCell colSpan={9} className="px-3 py-2 bg-card/90 backdrop-blur-sm text-[11px] sm:text-xs font-bold text-muted-foreground tracking-[0.08em] border-b border-border/40">
+                    {/* Mismo lenguaje que las etiquetas de sección de la app
+                        (page-section-label): mayúsculas pequeñas espaciadas. */}
+                    <TableCell colSpan={9} className="px-3 py-2 bg-card/90 backdrop-blur-sm text-[10px] sm:text-[11px] font-semibold uppercase text-muted-foreground tracking-[0.1em] border-b border-border/40">
                       {group.label}
                     </TableCell>
                   </TableRow>

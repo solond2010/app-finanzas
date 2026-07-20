@@ -3,7 +3,10 @@
 export const NNBSP = " "
 
 export function money(value: number) {
-  return `${value.toLocaleString("es-ES")}${NNBSP}€`
+  // max 2 decimales: toLocaleString deja hasta 3 por defecto y "908,238 €"
+  // se lee como novecientos ocho mil (mismo problema documentado en
+  // sinking-funds.tsx con los valores de mercado).
+  return `${value.toLocaleString("es-ES", { maximumFractionDigits: 2 })}${NNBSP}€`
 }
 
 export function signedMoney(value: number) {
