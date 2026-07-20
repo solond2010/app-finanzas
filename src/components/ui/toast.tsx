@@ -25,7 +25,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast: addToast }}>
       {children}
-      <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2.5 max-w-sm pointer-events-none [&>div]:pointer-events-auto">
+      {/* role=status + aria-live: los avisos ("Gasto registrado"…) se anuncian
+          a lectores de pantalla al aparecer. Posicionado POR ENCIMA del FAB
+          (que vive en la misma esquina): antes el toast tapaba el botón "+"
+          durante sus 3,5s — y en móvil pisaba la barra de navegación. */}
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed right-5 bottom-[calc(var(--bottom-nav-h)+5.25rem)] lg:right-8 lg:bottom-24 z-[60] flex flex-col gap-2.5 max-w-sm pointer-events-none [&>div]:pointer-events-auto"
+      >
         {toasts.map((t, idx) => (
           <div
             key={t.id}
@@ -45,7 +53,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 : <span className="flex h-6 w-6 items-center justify-center rounded-full" style={{ backgroundColor: "color-mix(in oklch, var(--gold), transparent 80%)" }}><Info className="h-3.5 w-3.5" style={{ color: "var(--gold)" }} /></span>
             }
             <span className="flex-1 font-medium">{t.message}</span>
-            <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} className="shrink-0 rounded-xl p-1.5 opacity-50 hover:opacity-100 hover:bg-black/30 transition-all"><X className="h-3 w-3" /></button>
+            <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} aria-label="Cerrar aviso" className="shrink-0 rounded-xl p-1.5 opacity-50 hover:opacity-100 hover:bg-black/30 transition-all"><X className="h-3 w-3" /></button>
           </div>
         ))}
       </div>

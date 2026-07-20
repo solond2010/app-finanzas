@@ -23,8 +23,10 @@ export function chartFormatter(value: number) {
 export const PCT_CHANGE_CAP = 500
 
 export function formatCappedPct(value: number, cap = PCT_CHANGE_CAP) {
-  const sign = value >= 0 ? "+" : "-"
   const magnitude = Math.round(Math.abs(value))
+  // Un cambio que redondea a cero no lleva signo: "-0,4%" mostraba "-0%".
+  if (magnitude === 0) return "0%"
+  const sign = value >= 0 ? "+" : "-"
   return magnitude > cap ? `${sign}>${cap}%` : `${sign}${magnitude}%`
 }
 
