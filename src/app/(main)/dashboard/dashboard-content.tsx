@@ -228,7 +228,7 @@ export default function DashboardContent() {
     if (activeRange.unit !== "months" || !currentMonthDailyPeak) return netWorthTrend
     const last = netWorthTrend[netWorthTrend.length - 1]
     if (!last || currentMonthDailyPeak.patrimonio <= last.patrimonio + 0.005) return netWorthTrend
-    return [...netWorthTrend.slice(0, -1), { mes: currentMonthDailyPeak.mes.replace(" · pico", ""), patrimonio: currentMonthDailyPeak.patrimonio }, { ...last, mes: "hoy" }]
+    return [...netWorthTrend.slice(0, -1), { mes: currentMonthDailyPeak.label.replace(" · pico", ""), patrimonio: currentMonthDailyPeak.patrimonio }, { ...last, mes: "hoy" }]
   }, [netWorthTrend, activeRange.unit, currentMonthDailyPeak])
 
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
@@ -504,7 +504,7 @@ export default function DashboardContent() {
                   </p>
                   {showRangeMax && rangeMaxPoint && (
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Máximo del periodo: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive> ({rangeMaxPoint.mes.replace(" · pico", "")})
+                      Máximo del periodo: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive> ({"mes" in rangeMaxPoint ? rangeMaxPoint.mes : rangeMaxPoint.label}.replace(" · pico", ""))
                       {showVsPeakDelta && (
                         <Sensitive as="span" className="ml-1 font-semibold text-red-500">
                           · {formatMoney(vsPeakDelta, "EUR")}{Math.abs(vsPeakPct) > 0.05 ? ` (${formatCappedPct(vsPeakPct)})` : ""} desde el pico
