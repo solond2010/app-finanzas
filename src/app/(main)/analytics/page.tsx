@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { useMemo, useState, memo, lazy, Suspense, useRef, useEffect } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
 import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, Target, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
@@ -47,7 +48,14 @@ const SectionTitle = memo(function SectionTitle({ label, title, text }: { label:
 
 const MonthlyOverviewTooltip = createChartTooltip(["ingresos", "gastos", "neto"], ["emerald", "red", "blue"])
 
-const MountainChartLazy = lazy(() => import("@/components/shared/mountain-chart").then(module => ({ default: module.MountainChart })))
+type MountainChartProps = {
+  data: any[]
+  index: string
+  category: string
+  valueFormatter: (v: number) => string
+  className?: string
+}
+const MountainChartLazy = lazy<React.ComponentType<MountainChartProps>>(() => import("@/components/shared/mountain-chart").then(module => ({ default: module.MountainChart })))
 
 const RuleCard = memo(function RuleCard({ label, target, actual, value, tone, delay }: { label: string; target: number; actual: number; value: number; tone: string; delay: number }) {
   const diff = actual - target
