@@ -594,7 +594,12 @@ export default function DashboardContent() {
               {activeRange.unit === "today" && netWorthTrend.length <= 1 ? (
                 <EmptyPlaceholder text="Sin movimientos registrados hoy todavía" className="mt-4 h-52 sm:h-64" />
               ) : netWorthHasData ? (
-                <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="mt-4 h-52 sm:h-64" />
+                <div className="mt-4 h-52 sm:h-64">
+                  <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-full" />
+                  <p className="mt-2 text-xs text-muted-foreground text-center">
+                    Los valores históricos son estimaciones basadas en posiciones actuales y precios históricos; pueden no reflejar el patrimonio exacto en fechas pasadas.
+                  </p>
+                </div>
               ) : (
                 <EmptyPlaceholder text="Sin datos de patrimonio todavía" className="mt-4 h-52 sm:h-64" />
               )}
