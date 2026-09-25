@@ -222,7 +222,10 @@ export default function DashboardContent() {
     if (activeRange.unit === "today") {
       return buildNetWorthHistoryToday(state.accounts, state.transactions, today).map((d) => {
         const { invested, portfolio } = netWorthPointAdjustment(d.date)
-        return { ...d, patrimonio: d.patrimonio - invested + portfolio }
+        const patrimonio = d.patrimonio - invested + portfolio
+        const fecha = new Date(d.date)
+        const mes = fecha.toLocaleDateString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+        return { mes, patrimonio }
       })
     }
     if (activeRange.unit === "days") {
@@ -233,7 +236,11 @@ export default function DashboardContent() {
       // ESE día (ver netWorthPointAdjustment), no uno constante de hoy.
       return buildNetWorthHistoryDaily(state.accounts, state.transactions, activeRange.count, dailyEndDate).map((d) => {
         const { invested, portfolio } = netWorthPointAdjustment(d.date)
-        return { ...d, patrimonio: d.patrimonio - invested + portfolio }
+        const patrimonio = d.patrimonio - invested + portfolio
+        // Formatear la fecha para que el gráfico muestre "23 sep" en lugar de la fecha ISO
+        const fecha = new Date(d.date)
+        const mes = fecha.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
+        return { mes, patrimonio }
       })
     }
     // Agrupado una vez fuera del bucle (hasta 24 meses): ver comentario en
