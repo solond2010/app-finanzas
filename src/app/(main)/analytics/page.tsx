@@ -138,7 +138,7 @@ export default function AnalyticsPage() {
   const [trendMonths, setTrendMonths] = useState<6 | 12>(6)
   const [overviewMonths, setOverviewMonths] = useState<number | 'ytd'>(12)
   const shownBudgetIds = useRef(new Set<string>())
-  const toast = useToast()
+  const { toast } = useToast()
 
   const today = new Date()
   const selectedDate = new Date(today.getFullYear(), today.getMonth() - monthOffset, 1)
