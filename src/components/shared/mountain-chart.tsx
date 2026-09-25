@@ -83,10 +83,10 @@ export function MountainChart<T extends object>({
     <div ref={containerRef} className={`relative select-none ${className ?? ""}`} onMouseMove={handleMove} onMouseLeave={() => setHoverIdx(null)} role="img" aria-label={trendSummary}>
       <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="h-full w-full overflow-visible" aria-hidden="true">
         <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.16" />
-            <stop offset="100%" stopColor="var(--gold)" stopOpacity="0" />
-          </linearGradient>
+<linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+             <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.22" />
+             <stop offset="100%" stopColor="var(--gold)" stopOpacity="0" />
+           </linearGradient>
         </defs>
         {/* Líneas de referencia horizontales, discretas */}
         <line x1="0" y1={PAD_TOP} x2={VB_W} y2={PAD_TOP} stroke="var(--border)" strokeWidth="1" />
@@ -95,16 +95,16 @@ export function MountainChart<T extends object>({
 
         {areaPath && <path d={areaPath} fill={`url(#${gradientId})`} stroke="none" />}
 
-        {points.length > 1 && <path d={linePath} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}
+{points.length > 1 && <path d={linePath} fill="none" stroke="var(--gold)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" filter="drop-shadow(0 1px 2px rgba(0,0,0,0.15))" />}
 
-        {last && <circle cx={last.x} cy={last.y} r="3.5" fill="var(--gold)" />}
+         {last && <circle cx={last.x} cy={last.y} r="4" fill="var(--gold)" stroke="var(--hero-bg)" strokeWidth="1.5" />}
 
-        {hovered && (
-          <>
-            <line x1={hovered.x} y1={PAD_TOP} x2={hovered.x} y2={VB_H - PAD_BOTTOM} stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
-            <circle cx={hovered.x} cy={hovered.y} r="3.5" fill="var(--gold)" stroke="var(--hero-bg)" strokeWidth="2" />
-          </>
-        )}
+{hovered && (
+           <>
+             <line x1={hovered.x} y1={PAD_TOP} x2={hovered.x} y2={VB_H - PAD_BOTTOM} stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
+             <circle cx={hovered.x} cy={hovered.y} r="4" fill="var(--gold)" stroke="var(--hero-bg)" strokeWidth="2" />
+           </>
+         )}
       </svg>
 
       {hovered && (
