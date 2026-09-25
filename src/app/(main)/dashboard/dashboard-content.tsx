@@ -15,7 +15,7 @@ import { usePortfolioValue, accountDisplayValue, type Position } from "@/lib/inv
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, accountGoal } from "@/lib/calculations"
+import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, accountGoal, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -120,9 +120,7 @@ export default function DashboardContent() {
   )
   const netWorthDisplay = netWorth - investmentSaldo + investmentDisplayTotal
 
-  // Precio histórico mensual (2 años) de cada símbolo en cartera, para poder
-  // reconstruir cuánto valía la cartera en meses pasados en vez de usar el
-  // valor de HOY para todos los puntos del gráfico (ver estimateHistoricalPortfolioValue).
+  // Precio histórico mensual (2 años) de cada símbolo en cartera
   const historySymbolsKey = useMemo(
     () => [...new Set(investPositions.filter((p) => p.kind !== "custom").map((p) => p.symbol))].sort().join(","),
     [investPositions]
@@ -139,60 +137,6 @@ export default function DashboardContent() {
       .catch(() => {})
     return () => { cancelled = true }
   }, [historySymbolsKey])
-
-  // Precio de un símbolo en la fecha más cercana (sin pasarse) a `atDate`,
-  // dentro del histórico ya cargado. Sin histórico para ese símbolo (activo
-  // personalizado, IPO reciente, fallo de red), usamos el precio de compra
-  // como mejor aproximación disponible.
-  const priceAt = (p: Position, atDate: Date) => {
-    const hist = priceHistory[p.symbol]
-    if (!hist || hist.length === 0) return p.buyPrice
-    const atMs = atDate.getTime()
-    let best: { t: number; c: number } | null = null
-    for (const point of hist) {
-      const pointMs = point.t * 1000
-      if (pointMs <= atMs && (!best || pointMs > best.t * 1000)) best = point
-    }
-    return best?.c ?? hist[0].c
-  }
-
-  // Valor estimado de la cartera a cierre de `atDate`: para cada posición ya
-  // comprada en esa fecha, sus unidades actuales (no se reconstruyen aportes
-  // DCA pasados, una simplificación razonable mientras no haya DCA activo) al
-  // precio histórico de entonces, en vez del valor de mercado de HOY.
-  const estimateHistoricalPortfolioValue = (atDate: Date) => {
-    return investPositions.reduce((sum, p) => {
-      if (new Date(p.date).getTime() > atDate.getTime()) return sum
-      return sum + p.units * priceAt(p, atDate)
-    }, 0)
-  }
-
-  // Coste invertido (no valor de mercado) a cierre de `atDate`: solo cuenta
-  // las posiciones ya compradas en esa fecha. Junto con estimateHistoricalPortfolioValue
-  // reproduce para meses pasados la misma sustitución que accountDisplayValue
-  // hace para hoy (ledger - invertido + valor de mercado), dejando intacto el
-  // efectivo aún sin invertir en vez de restar el saldo (ledger) de HOY entero
-  // — que crea un hueco fantasma en los meses previos a abrir/nutrir la cuenta.
-  const estimateHistoricalInvested = (atDate: Date) => {
-    return investPositions.reduce((sum, p) => {
-      if (new Date(p.date).getTime() > atDate.getTime()) return sum
-      return sum + p.units * p.buyPrice
-    }, 0)
-  }
-
-  // Sustituye el ledger de inversión por su valor de mercado EN LA FECHA de
-  // ese punto (no una constante de hoy aplicada a todos los días del rango):
-  // sin esto, un día de hace 2-4 semanas —antes de que la cuenta de inversión
-  // tuviera el saldo/coste actual— arrastraba el mismo hueco fantasma que ya
-  // se corrigió para los rangos por mes, inflando artificialmente la subida
-  // de 7D/30D hasta casi igualar la de 6M/12M/24M.
-  const netWorthPointAdjustment = (dateKey: string | undefined) => {
-    if (!dateKey) return { invested: investedTotal, portfolio: portfolioValue }
-    if (monthOffset === 0 && dateKey === toLocalDateKey(today)) return { invested: investedTotal, portfolio: portfolioValue }
-    const [y, m, day] = dateKey.split("-").map(Number)
-    const atDate = new Date(y, m - 1, day)
-    return { invested: estimateHistoricalInvested(atDate), portfolio: estimateHistoricalPortfolioValue(atDate) }
-  }
 
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
 
@@ -219,69 +163,61 @@ export default function DashboardContent() {
   const annualNeto = annualIngresos - annualGastos
 
   const netWorthTrend = useMemo(() => {
-    if (activeRange.unit === "today") {
-      return buildNetWorthHistoryToday(state.accounts, state.transactions, today).map((d) => {
-        const { invested, portfolio } = netWorthPointAdjustment(d.date)
-        const patrimonio = d.patrimonio - invested + portfolio
-        const fecha = new Date(d.date as string)
-        const mes = fecha.toLocaleDateString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
-        return { mes, patrimonio }
-      })
-    }
-    if (activeRange.unit === "days") {
-      // Termina hoy si se mira el mes en curso; si se navegó a un mes
-      // anterior, termina en el último día de ese mes.
+    // Rangos diarios (hoy, 7D, 30D): usar cálculo preciso diario
+    if (activeRange.unit === "today" || activeRange.unit === "days") {
+      const count = activeRange.unit === "today" ? 1 : activeRange.count
       const dailyEndDate = monthOffset === 0 ? today : new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0)
-      // Cada día sustituye el ledger de inversión por su valor de mercado DE
-      // ESE día (ver netWorthPointAdjustment), no uno constante de hoy.
-      return buildNetWorthHistoryDaily(state.accounts, state.transactions, activeRange.count, dailyEndDate).map((d) => {
-        const { invested, portfolio } = netWorthPointAdjustment(d.date)
-        const patrimonio = d.patrimonio - invested + portfolio
-        // Formatear la fecha para que el gráfico muestre "23 sep" en lugar de la fecha ISO
-        const fecha = new Date(d.date as string)
-        const mes = fecha.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
-        return { mes, patrimonio }
-      })
+      const precise = buildPreciseNetWorthHistory(
+        state.accounts,
+        state.transactions,
+        investPositions,
+        priceHistory,
+        count,
+        dailyEndDate
+      )
+      return precise.map((p) => ({
+        mes: p.label,
+        patrimonio: p.patrimonio,
+        breakdown: p.breakdown
+      }))
     }
-    // Agrupado una vez fuera del bucle (hasta 24 meses): ver comentario en
-    // groupTransactionsByAccount.
-    const txByAccount = groupTransactionsByAccount(state.transactions)
-    return Array.from({ length: activeRange.count }, (_, i) => {
-      const offset = activeRange.count - 1 - i
-      const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-      const isLast = i === activeRange.count - 1
-      const historicalPortfolio = isLast ? portfolioValue : estimateHistoricalPortfolioValue(monthEnd)
-      // Coste invertido (no el saldo/ledger de HOY) a cierre de ESE mes: restar
-      // siempre el invertido de HOY hacía que los meses previos a abrir/nutrir
-      // la cuenta de inversión arrastraran un hueco fantasma (p.ej. -509€ en un
-      // mes donde todavía no se había invertido nada), ocultando cualquier
-      // caída real más reciente detrás de un salto artificial en el último mes.
-      const historicalInvested = isLast ? investedTotal : estimateHistoricalInvested(monthEnd)
-      return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), patrimonio: getNetWorthAtMonthFromGroups(state.accounts, txByAccount, key) - historicalInvested + historicalPortfolio }
-    })
+    // Rangos mensuales (6M/12M/24M): usar cálculo preciso mensual
+    const preciseMonthly = buildPreciseNetWorthHistoryMonthly(
+      state.accounts,
+      state.transactions,
+      investPositions,
+      priceHistory,
+      activeRange.count,
+      selectedMonth
+    )
+    return preciseMonthly.map((p) => ({
+      mes: p.label,
+      patrimonio: p.patrimonio,
+      breakdown: p.breakdown
+    }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRange, selectedDate, monthOffset, today, state.accounts, state.transactions, portfolioValue, investedTotal, investPositions, priceHistory])
+  }, [activeRange, selectedDate, monthOffset, today, selectedMonth, state.accounts, state.transactions, investPositions, priceHistory])
 
   // En los rangos por mes (6M/12M/24M) el mes en curso solo aporta UN punto a
   // netWorthTrend: el valor de HOY. Si dentro de ese mismo mes hubo un pico
   // más alto y ya bajó (p.ej. el día 8 vs hoy día 14), ese pico no aparece —
   // "el máximo del periodo" acababa siendo simplemente "el valor de hoy",
   // aunque el pico real (visible en 7D/30D, que sí tienen un punto por día)
-  // fuera mayor. Se reconstruye el mes en curso día a día (misma fórmula que
-  // el rango "days") solo para hallar el pico real, sin tocar el propio
-  // gráfico mensual.
+  // fuera mayor. Se reconstruye el mes en curso día a día con cálculo preciso
+  // solo para hallar el pico real, sin tocar el propio gráfico mensual.
   const currentMonthDailyPeak = useMemo(() => {
     if (monthOffset !== 0) return null
-    const daily = buildNetWorthHistoryDaily(state.accounts, state.transactions, today.getDate(), today)
-      .map((d) => {
-        const { invested, portfolio } = netWorthPointAdjustment(d.date)
-        return { ...d, patrimonio: d.patrimonio - invested + portfolio }
-      })
+    const daily = buildPreciseNetWorthHistory(
+      state.accounts,
+      state.transactions,
+      investPositions,
+      priceHistory,
+      today.getDate(),
+      today
+    )
     return daily.length === 0 ? null : daily.reduce((best, d) => (d.patrimonio > best.patrimonio ? d : best), daily[0])
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthOffset, today, state.accounts, state.transactions, portfolioValue, investedTotal])
+  }, [monthOffset, today, state.accounts, state.transactions, investPositions, priceHistory])
 
   // Serie que se PINTA: en rangos por mes, si el pico diario del mes en curso
   // supera el valor de hoy, se inserta como punto extra justo antes del último.

@@ -1,5 +1,6 @@
 import type { Account, Transaction, MonthlySummary, NetWorthSnapshot, SinkingFund } from "./store"
 import { convertToEur } from "./currency"
+import type { Position } from "./investments"
 
 /**
  * Objetivo efectivo de una cuenta: el que tenga puesto directamente en la
@@ -527,7 +528,7 @@ export function getUpcomingRecurring(transactions: Transaction[]): UpcomingRecur
     const frequency = recurringFrequency(last)
     const next = addFrequency(new Date(last.fecha), frequency)
     const overdueDays = Math.round((today.getTime() - next.getTime()) / 86400000)
-    out.push({
+out.push({
       key,
       sourceTransactionId: last.id,
       cuenta_id: last.cuenta_id,
@@ -542,5 +543,191 @@ export function getUpcomingRecurring(transactions: Transaction[]): UpcomingRecur
       overdueDays,
     })
   }
+
+  return out
+}
+
+// ============================================================
+// CÁLCULO PRECISO DEL HISTORIAL DE PATRIMONIO
+// ============================================================
+// Reconstruye el patrimonio exacto en cada fecha usando:
+// 1. Saldo real de cuentas de inversión (traspasos "traspaso")
+// 2. Unidades reales de cada posición (fecha de compra) × precio histórico
+// ============================================================
+
+export interface PreciseNetWorthPoint {
+  date: string        // YYYY-MM-DD
+  label: string       // Etiqueta para gráfico
+  patrimonio: number  // €
+  breakdown: {
+    cash: number              // Cuentas no-inversión
+    investedCash: number      // Efectivo en cuentas inversión (saldo - coste posiciones)
+    portfolioValue: number    // Valor de mercado de posiciones
+  }
+}
+
+/**
+ * Calcula el patrimonio neto preciso para un rango de fechas.
+ * @param accounts Cuentas actuales
+ * @param transactions Todas las transacciones
+ * @param positions Posiciones actuales (con fecha de compra)
+ * @param priceHistory Histórico de precios { symbol: [{ t: timestamp, c: price }] }
+ * @param days Número de días hacia atrás desde endDate
+ * @param endDate Fecha final (por defecto hoy)
+ * @returns Array de puntos diarios con patrimonio preciso
+ */
+export function buildPreciseNetWorthHistory(
+  accounts: Account[],
+  transactions: Transaction[],
+  positions: Position[],
+  priceHistory: Record<string, { t: number; c: number }[]>,
+  days: number,
+  endDate = new Date()
+): PreciseNetWorthPoint[] {
+  // 1. Agrupar transacciones por cuenta
+  const txByAccount = groupByAccount(transactions)
+  
+  // 2. Identificar cuentas de inversión
+  const investAccountIds = new Set(accounts.filter((a) => a.tipo === "inversion").map((a) => a.id))
+  
+  // 3. Para cada posición, obtener su cuenta de inversión
+  const positionByAccount = new Map<string, Position[]>()
+  for (const p of positions) {
+    if (p.accountId && investAccountIds.has(p.accountId)) {
+      const arr = positionByAccount.get(p.accountId) ?? []
+      arr.push(p)
+      positionByAccount.set(p.accountId, arr)
+    }
+  }
+  
+  // 4. Para cada cuenta de inversión, obtener traspasos ordenados por fecha
+  const transfersByAccount = new Map<string, Transaction[]>()
+  for (const accountId of investAccountIds) {
+    const accountTxs = txByAccount.get(accountId) ?? []
+    const transfers = accountTxs
+      .filter((t) => isTransfer(t))
+      .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+    if (transfers.length > 0) transfersByAccount.set(accountId, transfers)
+  }
+  
+  // 5. Para cada posición, ordenar por fecha de compra
+  const positionsSorted = [...positions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  
+  // 6. Función helper: precio de un símbolo en una fecha
+  const getPriceAt = (symbol: string, atDate: Date): number => {
+    const hist = priceHistory[symbol]
+    if (!hist || hist.length === 0) return 0
+    const atMs = atDate.getTime()
+    let best: { t: number; c: number } | null = null
+    for (const point of hist) {
+      const pointMs = point.t * 1000
+      if (pointMs <= atMs && (!best || pointMs > best.t * 1000)) best = point
+    }
+    return best?.c ?? hist[0].c
+  }
+  
+  // 7. Generar puntos diarios
+  const points: PreciseNetWorthPoint[] = []
+  
+  for (let i = 0; i < days; i++) {
+    const d = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() - (days - 1 - i))
+    const dateKey = toDateKey(d)
+    const label = d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
+    
+    // --- CASH: cuentas NO inversión ---
+    let cash = 0
+    for (const account of accounts) {
+      if (investAccountIds.has(account.id)) continue
+      // Calcular saldo a fecha
+      const accountTxs = txByAccount.get(account.id) ?? []
+      let balance = account.saldo
+      for (const t of accountTxs) {
+        if (new Date(t.fecha) > d) balance -= transactionDelta(t)
+      }
+      cash += convertToEur(balance, account.currency)
+    }
+    
+    // --- CUENTAS DE INVERSIÓN ---
+    let investedCash = 0
+    let portfolioValue = 0
+    
+    for (const accountId of investAccountIds) {
+      const account = accounts.find((a) => a.id === accountId)
+      if (!account) continue
+      
+      // Saldo base de la cuenta (sin posiciones)
+      const accountTxs = txByAccount.get(accountId) ?? []
+      let balance = account.saldo
+      for (const t of accountTxs) {
+        if (new Date(t.fecha) > d) balance -= transactionDelta(t)
+      }
+      
+      // Restar coste de posiciones compradas hasta esta fecha
+      const accountPositions = positionByAccount.get(accountId) ?? []
+      let investedCost = 0
+      for (const p of accountPositions) {
+        if (new Date(p.date) <= d) {
+          investedCost += p.units * p.buyPrice
+        }
+      }
+      
+      // Efectivo en la cuenta = saldo - coste posiciones
+      const cashInAccount = balance - investedCost
+      investedCash += cashInAccount
+      
+      // Valor de cartera = sum(units * precio histórico) para posiciones compradas hasta esta fecha
+      for (const p of accountPositions) {
+        if (new Date(p.date) <= d) {
+          const price = getPriceAt(p.symbol, d)
+          portfolioValue += p.units * price
+        }
+      }
+    }
+    
+    const patrimonio = cash + investedCash + portfolioValue
+    
+    points.push({
+      date: dateKey,
+      label,
+      patrimonio,
+      breakdown: { cash, investedCash, portfolioValue }
+    })
+  }
+  
+  return points
+}
+
+/**
+ * Versión mensual: devuelve un punto por mes (cierre de mes)
+ */
+export function buildPreciseNetWorthHistoryMonthly(
+  accounts: Account[],
+  transactions: Transaction[],
+  positions: Position[],
+  priceHistory: Record<string, { t: number; c: number }[]>,
+  months: number,
+  endMonthKey?: string
+): PreciseNetWorthPoint[] {
+  const end = endMonthKey ? parseMonthKey(endMonthKey) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+  const points: PreciseNetWorthPoint[] = []
+  
+  for (let i = 0; i < months; i++) {
+    const d = new Date(end.getFullYear(), end.getMonth() - (months - 1 - i), 1)
+    const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+    const monthKey = getMonthKey(d)
+    
+    // Usar la versión diaria para el último día del mes
+    const daily = buildPreciseNetWorthHistory(accounts, transactions, positions, priceHistory, 1, monthEnd)
+    const point = daily[0]
+    
+    points.push({
+      ...point,
+      label: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }),
+      date: monthKey
+    })
+  }
+  
+  return points
+}
   return out.sort((a, b) => a.nextDate.localeCompare(b.nextDate))
 }
