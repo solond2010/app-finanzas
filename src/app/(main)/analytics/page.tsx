@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, memo, lazy, Suspense, useRef } from "react"
+import { useMemo, useState, memo, lazy, Suspense, useRef, useEffect } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
 import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, Target, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
