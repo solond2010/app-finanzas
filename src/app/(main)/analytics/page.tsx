@@ -1,8 +1,9 @@
 "use client"
 
-import { useMemo, useState, memo } from "react"
+import { useMemo, useState, memo, lazy, Suspense, useRef } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
 import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, Target, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
+import { useToast } from "@/components/ui/toast"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -45,6 +46,8 @@ const SectionTitle = memo(function SectionTitle({ label, title, text }: { label:
 })
 
 const MonthlyOverviewTooltip = createChartTooltip(["ingresos", "gastos", "neto"], ["emerald", "red", "blue"])
+
+const MountainChartLazy = lazy(() => import("@/components/shared/mountain-chart"))
 
 const RuleCard = memo(function RuleCard({ label, target, actual, value, tone, delay }: { label: string; target: number; actual: number; value: number; tone: string; delay: number }) {
   const diff = actual - target
@@ -133,6 +136,9 @@ export default function AnalyticsPage() {
   const displayAccounts = useDisplayAccounts()
   const [monthOffset, setMonthOffset] = useState(0)
   const [trendMonths, setTrendMonths] = useState<6 | 12>(6)
+  const [overviewMonths, setOverviewMonths] = useState(12)
+  const shownBudgetIds = useRef(new Set<number>())
+  const toast = useToast()
 
   const today = new Date()
   const selectedDate = new Date(today.getFullYear(), today.getMonth() - monthOffset, 1)
@@ -207,17 +213,47 @@ export default function AnalyticsPage() {
   }, [state.budgets, state.categories, analysisTransactions, selectedMonth])
   const summaries = useMemo(() => buildMonthlySummariesUpTo(analysisTransactions, selectedMonth, trendMonths), [analysisTransactions, selectedMonth, trendMonths])
   const cashFlow = useMemo(() => buildMonthlyCashFlow(analysisTransactions, selectedMonth, trendMonths), [analysisTransactions, selectedMonth, trendMonths])
-  // Nuevo: datos para el gráfico de visión general mensual (últimos 12 meses o todos los disponibles)
-  const monthlyOverviewData = useMemo(() => {
-    // Tomamos los últimos 12 meses de cashFlow (o menos si no hay tantos)
-    const limited = cashFlow.slice(-12)
-    return limited.map(m => ({
-      mes: m.mes,
-      ingresos: m.ingresos,
-      gastos: m.gastos,
-      neto: m.neto,
-    }))
-  }, [cashFlow])
+// Nuevo: datos para el gráfico de visión general mensual (últimos N meses o todos los disponibles)
+   const monthlyOverviewData = useMemo(() => {
+     let data: Array<{ mes: string; ingresos: number; gastos: number; neto: number }> = []
+     if (overviewMonths === 12) {
+       // últimos 12 meses disponibles en cashFlow
+       const limited = cashFlow.slice(-12)
+       data = limited.map(m => ({
+         mes: m.mes,
+         ingresos: m.ingresos,
+         gastos: m.gastos,
+         neto: m.neto,
+       }))
+     } else if (overviewMonths === 3) {
+       const limited = cashFlow.slice(-3)
+       data = limited.map(m => ({
+         mes: m.mes,
+         ingresos: m.ingresos,
+         gastos: m.gastos,
+         neto: m.neto,
+       }))
+     } else if (overviewMonths === 6) {
+       const limited = cashFlow.slice(-6)
+       data = limited.map(m => ({
+         mes: m.mes,
+         ingresos: m.ingresos,
+         gastos: m.gastos,
+         neto: m.neto,
+       }))
+     } else if (overviewMonths === 'ytd') {
+       const currentYear = new Date().getFullYear()
+       data = cashFlow
+         .filter(m => m.mes.startsWith(`${currentYear}-`))
+         .map(m => ({
+           mes: m.mes,
+           ingresos: m.ingresos,
+           gastos: m.gastos,
+           neto: m.neto,
+         }))
+     }
+     return data
+   }, [cashFlow, overviewMonths])
   const { valueByAccount, investedByAccount } = usePortfolioValue()
   // Objetivo consolidado por cuenta: propio (accountGoal ya combina objetivo
   // directo + metas de ahorro vinculadas) frente al valor actual de la cuenta,
@@ -230,6 +266,21 @@ export default function AnalyticsPage() {
       .map((g) => ({ ...g, pct: Math.min((g.current / g.goal) * 100, 100), restante: Math.max(g.goal - g.current, 0) }))
       .sort((a, b) => b.pct - a.pct)
   }, [state.accounts, state.sinkingFunds, valueByAccount, investedByAccount])
+
+   // Toast alerts for budget overruns
+   useEffect(() => {
+     if (!hasData) return;
+     budgetProgress.forEach((budget) => {
+       const { id, percentage, categoryName, amount, spent } = budget;
+       if (percentage >= 100 && !shownBudgetIds.current.has(id)) {
+         toast(`Has superado el presupuesto de "${categoryName}" (${formatMoney(spent, "EUR")} de ${formatMoney(amount, "EUR")})`, "error");
+         shownBudgetIds.current.add(id);
+       } else if (percentage >= BUDGET_WARNING_THRESHOLD && percentage < 100 && !shownBudgetIds.current.has(id)) {
+         toast(`Estás cerca de superar el presupuesto de "${categoryName}" (${formatMoney(spent, "EUR")} de ${formatMoney(amount, "EUR")})`, "info");
+         shownBudgetIds.current.add(id);
+       }
+     });
+   }, [budgetProgress, toast, hasData])
 
   // Previsión de recurrentes: siempre mira hacia el próximo vencimiento real
   // (no depende del mes que se esté navegando en el resto de la página), como
@@ -354,6 +405,19 @@ export default function AnalyticsPage() {
             </button>
           </div>
           {hasData && (
+            <select
+              value={overviewMonths}
+              onChange={(e) => setOverviewMonths(e.target.value === 'ytd' ? 'ytd' : Number(e.target.value))}
+              className="rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              aria-label="Rango de vista general"
+            >
+              <option value={3}>Últimos 3 meses</option>
+              <option value={6}>Últimos 6 meses</option>
+              <option value={12}>Últimos 12 meses</option>
+              <option value="ytd">Año a la fecha</option>
+            </select>
+          )}
+          {hasData && (
             <Button variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={handleExportPdf} disabled={exportingPdf}>
               <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Descargar PDF"}
             </Button>
@@ -420,7 +484,9 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {state.accounts.length === 0 ? <EmptyState icon={Wallet} title="Sin patrimonio registrado" description="Crea cuentas para ver la evolución de tu riqueza neta." bordered className="h-full" /> : (
-              <MountainChart data={netWorthHistory} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-[310px]" />
+              <Suspense fallback={<Skeleton className="h-[310px] w-full" />}>
+                <MountainChartLazy data={netWorthHistory} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-[310px]" />
+              </Suspense>
             )}
           </CardContent>
         </Card>
