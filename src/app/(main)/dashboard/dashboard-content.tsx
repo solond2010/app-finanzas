@@ -223,7 +223,7 @@ export default function DashboardContent() {
       return buildNetWorthHistoryToday(state.accounts, state.transactions, today).map((d) => {
         const { invested, portfolio } = netWorthPointAdjustment(d.date)
         const patrimonio = d.patrimonio - invested + portfolio
-        const fecha = new Date(d.date)
+        const fecha = new Date(d.date as string)
         const mes = fecha.toLocaleDateString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
         return { mes, patrimonio }
       })
@@ -238,7 +238,7 @@ export default function DashboardContent() {
         const { invested, portfolio } = netWorthPointAdjustment(d.date)
         const patrimonio = d.patrimonio - invested + portfolio
         // Formatear la fecha para que el gráfico muestre "23 sep" en lugar de la fecha ISO
-        const fecha = new Date(d.date)
+        const fecha = new Date(d.date as string)
         const mes = fecha.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
         return { mes, patrimonio }
       })
