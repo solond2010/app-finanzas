@@ -17,9 +17,9 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, buildNetWorthHistoryDaily, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer } from "@/lib/calculations"
+import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, buildNetWorthHistoryDaily, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer, buildPreciseNetWorthHistory } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
-import { usePortfolioValue, accountDisplayValue, useDisplayAccounts } from "@/lib/investments"
+import { usePortfolioValue, accountDisplayValue, useDisplayAccounts, type Position } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
 import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
@@ -263,6 +263,24 @@ export default function AnalyticsPage() {
      return data
    }, [cashFlow, overviewMonths])
   const { valueByAccount, investedByAccount } = usePortfolioValue()
+  // Para el historial completo: necesitamos posiciones y precio histórico
+  const { positions: investPositions } = usePortfolioValue()
+  // Precio histórico mensual (2 años) para el cálculo preciso
+  const historySymbolsKey = useMemo(
+    () => [...new Set(investPositions.filter((p) => p.kind !== "custom").map((p) => p.symbol))].sort().join(","),
+    [investPositions]
+  )
+  const [priceHistory, setPriceHistory] = useState<Record<string, { t: number; c: number }[]>>({})
+  useEffect(() => {
+    const syms = historySymbolsKey ? historySymbolsKey.split(",") : []
+    if (syms.length === 0) { setPriceHistory({}); return }
+    let cancelled = false
+    fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}&interval=1mo&range=2y`)
+      .then((r) => r.json())
+      .then((d: { history?: Record<string, { t: number; c: number }[]> }) => { if (!cancelled) setPriceHistory(d.history ?? {}) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [historySymbolsKey])
   // Objetivo consolidado por cuenta: propio (accountGoal ya combina objetivo
   // directo + metas de ahorro vinculadas) frente al valor actual de la cuenta,
   // reutilizando accountDisplayValue para que las cuentas de inversión usen
@@ -367,6 +385,147 @@ export default function AnalyticsPage() {
     { name: "Necesidades", value: necesidades },
     { name: "Deseos", value: deseos },
   ]
+
+  // ===== HISTORIAL COMPLETO PRECISO (diario desde primera transacción) =====
+  const fullHistory = useMemo(() => {
+    if (!hasData) return []
+    const firstTxDate = state.transactions.length > 0
+      ? new Date(Math.min(...state.transactions.map(t => new Date(t.fecha).getTime())))
+      : today
+    const totalDays = Math.ceil((today.getTime() - firstTxDate.getTime()) / 86400000) + 1
+    const precise = buildPreciseNetWorthHistory(
+      state.accounts,
+      state.transactions,
+      investPositions,
+      priceHistory,
+      Math.min(totalDays, 1000),
+      today
+    )
+    return precise.map(p => ({
+      mes: p.label,
+      patrimonio: p.patrimonio,
+      breakdown: p.breakdown,
+      date: p.date
+    }))
+  }, [hasData, state.accounts, state.transactions, investPositions, priceHistory, today])
+
+  // Pico histórico absoluto
+  const fullHistoryPeak = useMemo(() => 
+    fullHistory.reduce((best, d) => (d.patrimonio > best.patrimonio ? d : best), fullHistory[0] ?? { patrimonio: 0, mes: '—', date: '' }), [fullHistory])
+
+  // Valor actual
+  const fullHistoryCurrent = fullHistory.at(-1)?.patrimonio ?? 0
+
+  // Drawdown actual desde el pico
+  const fullHistoryDrawdown = fullHistoryPeak.patrimonio - fullHistoryCurrent
+  const fullHistoryDrawdownPct = fullHistoryPeak.patrimonio > 0 ? (fullHistoryDrawdown / fullHistoryPeak.patrimonio) * 100 : 0
+
+  // Días desde el pico histórico
+  const fullHistoryDaysSincePeak = fullHistoryPeak.date 
+    ? Math.ceil((today.getTime() - new Date(fullHistoryPeak.date).getTime()) / 86400000)
+    : 0
+
+  // Análisis de drawdowns (caídas y recuperaciones)
+  const fullHistoryDrawdowns = useMemo(() => {
+    if (fullHistory.length < 2) return []
+    const drawdowns: Array<{
+      start: string
+      peakDate: string
+      peakValue: number
+      troughDate: string
+      troughValue: number
+      drop: number
+      dropPct: number
+      recovered: boolean
+      recoveryDate: string
+      days: number
+    }> = []
+    
+    let peak = fullHistory[0]
+    let trough = fullHistory[0]
+    let inDrawdown = false
+    let drawdownStart = fullHistory[0]
+    
+    for (let i = 1; i < fullHistory.length; i++) {
+      const current = fullHistory[i]
+      
+      if (current.patrimonio > peak.patrimonio) {
+        // Nuevo pico histórico
+        if (inDrawdown && trough.patrimonio < peak.patrimonio) {
+          // Cerrar drawdown anterior
+          const recovered = current.patrimonio >= peak.patrimonio
+          drawdowns.push({
+            start: drawdownStart.mes,
+            peakDate: peak.mes,
+            peakValue: peak.patrimonio,
+            troughDate: trough.mes,
+            troughValue: trough.patrimonio,
+            drop: peak.patrimonio - trough.patrimonio,
+            dropPct: peak.patrimonio > 0 ? ((peak.patrimonio - trough.patrimonio) / peak.patrimonio) * 100 : 0,
+            recovered,
+            recoveryDate: recovered ? current.mes : '—',
+            days: Math.ceil((new Date(trough.date).getTime() - new Date(drawdownStart.date).getTime()) / 86400000)
+          })
+        }
+        peak = current
+        trough = current
+        drawdownStart = current
+        inDrawdown = false
+      } else if (current.patrimonio < trough.patrimonio) {
+        // Nuevo valle
+        trough = current
+        if (!inDrawdown) {
+          inDrawdown = true
+          drawdownStart = peak
+        }
+      }
+    }
+    
+    // Si terminamos en drawdown, añadirlo
+    if (inDrawdown && trough.patrimonio < peak.patrimonio) {
+      const last = fullHistory[fullHistory.length - 1]
+      const recovered = last.patrimonio >= peak.patrimonio
+      drawdowns.push({
+        start: drawdownStart.mes,
+        peakDate: peak.mes,
+        peakValue: peak.patrimonio,
+        troughDate: trough.mes,
+        troughValue: trough.patrimonio,
+        drop: peak.patrimonio - trough.patrimonio,
+        dropPct: peak.patrimonio > 0 ? ((peak.patrimonio - trough.patrimonio) / peak.patrimonio) * 100 : 0,
+        recovered,
+        recoveryDate: recovered ? last.mes : '—',
+        days: Math.ceil((new Date(trough.date).getTime() - new Date(drawdownStart.date).getTime()) / 86400000)
+      })
+    }
+    
+    return drawdowns.sort((a, b) => b.drop - a.drop)
+  }, [fullHistory])
+
+  // Drawdown máximo histórico
+  const fullHistoryMaxDrawdown = fullHistoryDrawdowns.length > 0 
+    ? Math.max(...fullHistoryDrawdowns.map(d => d.drop))
+    : 0
+  const fullHistoryMaxDrawdownPct = fullHistoryDrawdowns.length > 0
+    ? Math.max(...fullHistoryDrawdowns.map(d => d.dropPct))
+    : 0
+
+  // Mejor y peor día (cambio diario)
+  const fullHistoryBestDayChange = fullHistory.length > 1
+    ? Math.max(...fullHistory.slice(1).map((d, i) => d.patrimonio - fullHistory[i].patrimonio))
+    : 0
+  const fullHistoryWorstDayChange = fullHistory.length > 1
+    ? Math.min(...fullHistory.slice(1).map((d, i) => d.patrimonio - fullHistory[i].patrimonio))
+    : 0
+
+  // Volatilidad (desviación estándar diaria)
+  const fullHistoryVolatility = (() => {
+    if (fullHistory.length < 2) return 0
+    const changes = fullHistory.slice(1).map((d, i) => d.patrimonio - fullHistory[i].patrimonio)
+    const mean = changes.reduce((s, c) => s + c, 0) / changes.length
+    const variance = changes.reduce((s, c) => s + Math.pow(c - mean, 2), 0) / changes.length
+    return Math.sqrt(variance)
+  })()
 
   const [exportingPdf, setExportingPdf] = useState(false)
   const handleExportPdf = async () => {
@@ -774,12 +933,96 @@ export default function AnalyticsPage() {
                   ))
                 )}
               </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </section>
-      </>
-      )}
+</Table>
+           </CardContent>
+         </Card>
+       </section>
+
+       {/* ===== HISTORIAL COMPLETO DE PATRIMONIO ===== */}
+       <SectionTitle label="Historial" title="Evolución completa del patrimonio" text="Todos los días desde tu primera transacción: picos, valles, caídas y recuperaciones." />
+       <Card className="stagger-fade col-span-full" style={{ animationDelay: "400ms" }}>
+         <CardHeader className="pb-2">
+           <CardTitle className="flex items-center gap-2 text-base font-semibold"><TrendingUp className="h-4 w-4 text-emerald-500" />Patrimonio neto histórico (diario)</CardTitle>
+         </CardHeader>
+         <CardContent>
+           {fullHistory.length === 0 ? (
+             <EmptyState icon={TrendingUp} title="Sin historial" description="Registra transacciones para ver la evolución completa." bordered className="h-64" />
+           ) : (
+             <div className="space-y-6">
+               {/* Gráfico principal */}
+               <div className="h-[400px]">
+                 <MountainChart data={fullHistory} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-full" />
+               </div>
+
+               {/* Métricas clave */}
+               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                 <MetricCard label="Pico histórico" value={<Sensitive>{money(fullHistoryPeak.patrimonio)}</Sensitive>} subtitle={<Sensitive>{fullHistoryPeak.mes}</Sensitive>} icon={TrendingUp} tone="emerald" delay={0} />
+                 <MetricCard label="Valor actual" value={<Sensitive>{money(fullHistoryCurrent)}</Sensitive>} subtitle={fullHistoryDrawdown > 0 ? <span className="text-red-500">{signedMoney(-fullHistoryDrawdown)} ({fullHistoryDrawdownPct.toFixed(1)}%)</span> : <span className="text-emerald-500">En máximo</span>} icon={Wallet} tone="blue" delay={70} />
+                 <MetricCard label="Máx. caída (drawdown)" value={<Sensitive>{money(fullHistoryMaxDrawdown)}</Sensitive>} subtitle={<span className="text-red-500">{fullHistoryMaxDrawdownPct.toFixed(1)}%</span>} icon={TrendingDown} tone="red" delay={140} />
+                 <MetricCard label="Días en recuperación" value={fullHistoryDaysSincePeak > 0 ? <span className="text-amber-500">{fullHistoryDaysSincePeak} días</span> : <span className="text-emerald-500">En máximo</span>} subtitle="Desde el pico histórico" icon={CalendarClock} tone="amber" delay={210} />
+               </div>
+
+               {/* Análisis de caídas y recuperaciones */}
+               {fullHistoryDrawdowns.length > 0 && (
+                 <div className="space-y-4">
+                   <h4 className="font-semibold text-sm text-foreground">Principales caídas y recuperaciones</h4>
+                   <div className="overflow-x-auto">
+                     <Table>
+                       <TableHeader>
+                         <TableRow>
+                           <TableHead>Inicio</TableHead>
+                           <TableHead>Pico</TableHead>
+                           <TableHead>Valle</TableHead>
+                           <TableHead className="text-right">Caída</TableHead>
+                           <TableHead className="text-right">% Caída</TableHead>
+                           <TableHead>Recuperación</TableHead>
+                           <TableHead className="text-right">Días</TableHead>
+                         </TableRow>
+                       </TableHeader>
+                       <TableBody>
+                         {fullHistoryDrawdowns.slice(0, 10).map((d, i) => (
+                           <TableRow key={i}>
+                             <TableCell className="font-medium">{d.start}</TableCell>
+                             <TableCell><Sensitive>{money(d.peakValue)}</Sensitive> ({d.peakDate})</TableCell>
+                             <TableCell><Sensitive>{money(d.troughValue)}</Sensitive> ({d.troughDate})</TableCell>
+                             <TableCell className="text-right font-semibold text-red-500"><Sensitive>{money(d.drop)}</Sensitive></TableCell>
+                             <TableCell className="text-right font-semibold text-red-500">{d.dropPct.toFixed(1)}%</TableCell>
+                             <TableCell>{d.recovered ? <span className="text-emerald-500">{d.recoveryDate}</span> : <span className="text-amber-500">En curso</span>}</TableCell>
+                             <TableCell className="text-right">{d.days} días</TableCell>
+                           </TableRow>
+                         ))}
+                       </TableBody>
+                     </Table>
+                   </div>
+                 </div>
+               )}
+
+               {/* Estadísticas adicionales */}
+               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 pt-4 border-t border-border">
+                 <div className="rounded-xl bg-muted/35 p-4 ring-1 ring-border/20">
+                   <p className="text-xs text-muted-foreground">Días totales registrados</p>
+                   <p className="mt-1 text-2xl font-bold tabular-nums">{fullHistory.length}</p>
+                 </div>
+                 <div className="rounded-xl bg-muted/35 p-4 ring-1 ring-border/20">
+                   <p className="text-xs text-muted-foreground">Mejor día (subida)</p>
+                   <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-500"><Sensitive>{money(fullHistoryBestDayChange)}</Sensitive></p>
+                 </div>
+                 <div className="rounded-xl bg-muted/35 p-4 ring-1 ring-border/20">
+                   <p className="text-xs text-muted-foreground">Peor día (bajada)</p>
+                   <p className="mt-1 text-2xl font-bold tabular-nums text-red-500"><Sensitive>{money(fullHistoryWorstDayChange)}</Sensitive></p>
+                 </div>
+                 <div className="rounded-xl bg-muted/35 p-4 ring-1 ring-border/20">
+                   <p className="text-xs text-muted-foreground">Volatilidad (desv. std día)</p>
+                   <p className="mt-1 text-2xl font-bold tabular-nums"><Sensitive>{money(fullHistoryVolatility)}</Sensitive></p>
+                 </div>
+               </div>
+             </div>
+           )}
+         </CardContent>
+       </Card>
+       </section>
+       </>
+       )}
 
       <ConfirmDialog
         open={confirmReset}
