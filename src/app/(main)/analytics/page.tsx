@@ -17,7 +17,7 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, buildNetWorthHistoryDaily, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer, buildPreciseNetWorthHistory } from "@/lib/calculations"
+import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, buildNetWorthHistoryDaily, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer, buildPreciseNetWorthHistory, diagnoseNetWorthCalculation } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue, useDisplayAccounts, type Position } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
@@ -424,6 +424,12 @@ export default function AnalyticsPage() {
   const fullHistoryDaysSincePeak = fullHistoryPeak.date 
     ? Math.ceil((today.getTime() - new Date(fullHistoryPeak.date).getTime()) / 86400000)
     : 0
+
+  // Diagnóstico del cálculo
+  const [showDiagnostic, setShowDiagnostic] = useState(false)
+  const diagnostic = useMemo(() => 
+    diagnoseNetWorthCalculation(state.accounts, state.transactions, investPositions, priceHistory), 
+    [state.accounts, state.transactions, investPositions, priceHistory])
 
   // Análisis de drawdowns (caídas y recuperaciones)
   const fullHistoryDrawdowns = useMemo(() => {
@@ -960,9 +966,43 @@ export default function AnalyticsPage() {
                  <MetricCard label="Valor actual" value={<Sensitive>{money(fullHistoryCurrent)}</Sensitive>} subtitle={fullHistoryDrawdown > 0 ? <span className="text-red-500">{signedMoney(-fullHistoryDrawdown)} ({fullHistoryDrawdownPct.toFixed(1)}%)</span> : <span className="text-emerald-500">En máximo</span>} icon={Wallet} tone="blue" delay={70} />
                  <MetricCard label="Máx. caída (drawdown)" value={<Sensitive>{money(fullHistoryMaxDrawdown)}</Sensitive>} subtitle={<span className="text-red-500">{fullHistoryMaxDrawdownPct.toFixed(1)}%</span>} icon={TrendingDown} tone="red" delay={140} />
                  <MetricCard label="Días en recuperación" value={fullHistoryDaysSincePeak > 0 ? <span className="text-amber-500">{fullHistoryDaysSincePeak} días</span> : <span className="text-emerald-500">En máximo</span>} subtitle="Desde el pico histórico" icon={CalendarClock} tone="amber" delay={210} />
-               </div>
+</div>
 
-               {/* Análisis de caídas y recuperaciones */}
+                {/* Botón de diagnóstico */}
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" onClick={() => setShowDiagnostic(!showDiagnostic)} className="gap-1.5">
+                    <AlertTriangle className="h-4 w-4" />
+                    {showDiagnostic ? "Ocultar diagnóstico" : "Ver diagnóstico del cálculo"}
+                  </Button>
+                </div>
+
+                {/* Panel de diagnóstico */}
+                {showDiagnostic && (
+                  <div className="space-y-4 p-4 rounded-xl bg-muted/35 ring-1 ring-border/20">
+                    <h4 className="font-semibold text-sm text-foreground">Diagnóstico del cálculo de patrimonio</h4>
+                    {diagnostic.warnings.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-amber-500">⚠️ Advertencias (pueden afectar la precisión):</p>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-amber-600">
+                          {diagnostic.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {diagnostic.info.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-blue-500">ℹ️ Información:</p>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                          {diagnostic.info.map((i, idx) => <li key={idx}>{i}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {diagnostic.warnings.length === 0 && diagnostic.info.length === 0 && (
+                      <p className="text-sm text-emerald-500">✅ Todo correcto. El cálculo debería ser preciso.</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Análisis de caídas y recuperaciones */}
                {fullHistoryDrawdowns.length > 0 && (
                  <div className="space-y-4">
                    <h4 className="font-semibold text-sm text-foreground">Principales caídas y recuperaciones</h4>
