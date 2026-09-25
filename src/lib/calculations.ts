@@ -614,16 +614,16 @@ export function buildPreciseNetWorthHistory(
   const positionsSorted = [...positions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   
   // 6. Función helper: precio de un símbolo en una fecha
-  const getPriceAt = (symbol: string, atDate: Date): number => {
+  const getPriceAt = (symbol: string, atDate: Date, fallbackBuyPrice: number): number => {
     const hist = priceHistory[symbol]
-    if (!hist || hist.length === 0) return 0
+    if (!hist || hist.length === 0) return fallbackBuyPrice
     const atMs = atDate.getTime()
     let best: { t: number; c: number } | null = null
     for (const point of hist) {
       const pointMs = point.t * 1000
       if (pointMs <= atMs && (!best || pointMs > best.t * 1000)) best = point
     }
-    return best?.c ?? hist[0].c
+    return best?.c ?? fallbackBuyPrice
   }
   
   // 7. Generar puntos diarios
@@ -678,7 +678,7 @@ export function buildPreciseNetWorthHistory(
       // Valor de cartera = sum(units * precio histórico) para posiciones compradas hasta esta fecha
       for (const p of accountPositions) {
         if (new Date(p.date) <= d) {
-          const price = getPriceAt(p.symbol, d)
+          const price = getPriceAt(p.symbol, d, p.buyPrice)
           portfolioValue += p.units * price
         }
       }
@@ -695,6 +695,76 @@ export function buildPreciseNetWorthHistory(
   }
   
   return points
+}
+
+/**
+ * Diagnóstico del cálculo de patrimonio: identifica posibles problemas
+ * (precios faltantes, posiciones sin fecha, traspasos sin etiquetar, etc.)
+ */
+export function diagnoseNetWorthCalculation(
+  accounts: Account[],
+  transactions: Transaction[],
+  positions: Position[],
+  priceHistory: Record<string, { t: number; c: number }[]>
+): { warnings: string[]; info: string[] } {
+  const warnings: string[] = []
+  const info: string[] = []
+  
+  const investAccountIds = new Set(accounts.filter((a) => a.tipo === "inversion").map((a) => a.id))
+  
+  // 1. Cuentas de inversión sin traspasos etiquetados
+  const txByAccount = groupByAccount(transactions)
+  for (const accountId of investAccountIds) {
+    const accountTxs = txByAccount.get(accountId) ?? []
+    const transfers = accountTxs.filter((t) => isTransfer(t))
+    if (transfers.length === 0) {
+      const account = accounts.find((a) => a.id === accountId)
+      if (account) warnings.push(`Cuenta "${account.nombre}" (inversión) no tiene traspasos etiquetados "traspaso". El saldo histórico será incorrecto.`)
+    }
+  }
+  
+  // 2. Posiciones sin accountId
+  const positionsWithoutAccount = positions.filter((p) => !p.accountId)
+  if (positionsWithoutAccount.length > 0) {
+    warnings.push(`${positionsWithoutAccount.length} posición(es) sin accountId: no se asignarán a ninguna cuenta de inversión.`)
+  }
+  
+  // 3. Posiciones con fecha de compra futura o inválida
+  const now = new Date()
+  const invalidDatePositions = positions.filter((p) => {
+    const d = new Date(p.date)
+    return isNaN(d.getTime()) || d > now
+  })
+  if (invalidDatePositions.length > 0) {
+    warnings.push(`${invalidDatePositions.length} posición(es) con fecha de compra inválida/futura.`)
+  }
+  
+  // 4. Símbolos sin histórico de precios
+  const symbolsNeeded = new Set(positions.filter((p) => p.kind !== "custom").map((p) => p.symbol))
+  const symbolsMissing = [...symbolsNeeded].filter((s) => !priceHistory[s] || priceHistory[s].length === 0)
+  if (symbolsMissing.length > 0) {
+    warnings.push(`Símbolos sin histórico de precios (se usará buyPrice como fallback): ${symbolsMissing.join(", ")}`)
+  }
+  
+  // 5. Histórico de precios muy corto
+  for (const [symbol, hist] of Object.entries(priceHistory)) {
+    if (hist.length > 0) {
+      const oldest = new Date(hist[0].t * 1000)
+      const newest = new Date(hist[hist.length - 1].t * 1000)
+      const days = (newest.getTime() - oldest.getTime()) / 86400000
+      if (days < 365) {
+        info.push(`Histórico de ${symbol}: solo ${days.toFixed(0)} días (${oldest.toLocaleDateString()} - ${newest.toLocaleDateString()})`)
+      }
+    }
+  }
+  
+  // 6. Primera transacción
+  if (transactions.length > 0) {
+    const firstTx = transactions.reduce((oldest, t) => new Date(t.fecha) < new Date(oldest.fecha) ? t : oldest)
+    info.push(`Primera transacción: ${firstTx.fecha} (${firstTx.tipo} ${firstTx.monto}€ en ${firstTx.categoria})`)
+  }
+  
+  return { warnings, info }
 }
 
 /**
