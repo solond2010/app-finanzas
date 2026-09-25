@@ -181,7 +181,7 @@ export default function DashboardContent() {
         breakdown: p.breakdown
       }))
     }
-    // Rangos mensuales (6M/12M/24M): usar cálculo preciso mensual
+    // Rangos mensuales (6M/12M/24M): usar cálculo preciso mensual + picos diarios por mes
     const preciseMonthly = buildPreciseNetWorthHistoryMonthly(
       state.accounts,
       state.transactions,
@@ -190,11 +190,54 @@ export default function DashboardContent() {
       activeRange.count,
       selectedMonth
     )
-    return preciseMonthly.map((p) => ({
+    const baseTrend = preciseMonthly.map((p) => ({
       mes: p.label,
       patrimonio: p.patrimonio,
       breakdown: p.breakdown
     }))
+    
+    // Para cada mes del rango (excepto el actual si monthOffset===0), calcular pico diario
+    // y si supera el valor de fin de mes, añadirlo como punto extra
+    const enrichedTrend = [...baseTrend]
+    for (let i = 0; i < baseTrend.length; i++) {
+      const monthPoint = baseTrend[i]
+      // Saltar el mes actual (se maneja aparte con currentMonthDailyPeak)
+      if (monthOffset === 0 && i === baseTrend.length - 1) continue
+      
+      // Calcular pico diario de este mes
+      const monthLabel = monthPoint.mes // ej. "sep 24"
+      const [monthStr, yearStr] = monthLabel.split(" ")
+      const monthNames = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+      const monthIdx = monthNames.indexOf(monthStr.toLowerCase())
+      const year = parseInt("20" + yearStr, 10)
+      if (monthIdx === -1) continue
+      
+      const monthStart = new Date(year, monthIdx, 1)
+      const monthEnd = new Date(year, monthIdx + 1, 0)
+      const daysInMonth = monthEnd.getDate()
+      
+      const daily = buildPreciseNetWorthHistory(
+        state.accounts,
+        state.transactions,
+        investPositions,
+        priceHistory,
+        daysInMonth,
+        monthEnd
+      )
+      const dailyPeak = daily.reduce((best, d) => (d.patrimonio > best.patrimonio ? d : best), daily[0])
+      
+      // Si el pico supera el valor de fin de mes en más de 0.5%, insertarlo antes del punto de fin de mes
+      if (dailyPeak.patrimonio > monthPoint.patrimonio + 0.005) {
+        // Insertar antes del índice actual (fin de mes)
+        enrichedTrend.splice(i, 0, {
+          mes: dailyPeak.label.replace(" · pico", ""),
+          patrimonio: dailyPeak.patrimonio,
+          breakdown: dailyPeak.breakdown
+        })
+      }
+    }
+    
+    return enrichedTrend
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRange, selectedDate, monthOffset, today, selectedMonth, state.accounts, state.transactions, investPositions, priceHistory])
 
