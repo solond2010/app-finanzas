@@ -729,5 +729,3 @@ export function buildPreciseNetWorthHistoryMonthly(
   
   return points
 }
-  return out.sort((a, b) => a.nextDate.localeCompare(b.nextDate))
-}
