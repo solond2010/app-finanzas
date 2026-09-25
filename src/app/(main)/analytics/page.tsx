@@ -3,7 +3,7 @@
 import React from "react"
 import { useMemo, useState, memo, lazy, Suspense, useRef, useEffect } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, Target, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
+import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, RotateCcw, Sparkles, Target, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
 
 import { Button } from "@/components/ui/button"
@@ -275,7 +275,8 @@ export default function AnalyticsPage() {
     const syms = historySymbolsKey ? historySymbolsKey.split(",") : []
     if (syms.length === 0) { setPriceHistory({}); return }
     let cancelled = false
-    fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}&interval=1mo&range=2y`)
+    // Fetch 5 años (máximo de la API)
+    fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}&interval=1mo&range=5y`)
       .then((r) => r.json())
       .then((d: { history?: Record<string, { t: number; c: number }[]> }) => { if (!cancelled) setPriceHistory(d.history ?? {}) })
       .catch(() => {})
@@ -430,6 +431,35 @@ export default function AnalyticsPage() {
   const diagnostic = useMemo(() => 
     diagnoseNetWorthCalculation(state.accounts, state.transactions, investPositions, priceHistory), 
     [state.accounts, state.transactions, investPositions, priceHistory])
+
+  // Persistir pico histórico en localStorage para que nunca se pierda
+  const [savedPeak, setSavedPeak] = useState<{ value: number; date: string; label: string } | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('netWorthPeak')
+      return saved ? JSON.parse(saved) : null
+    }
+    return null
+  })
+
+  // Validar si el histórico de precios cubre la primera transacción
+  const historyCoverage = useMemo(() => {
+    if (!hasData || Object.keys(priceHistory).length === 0) return { covered: true, gapDays: 0 }
+    const firstTxDate = new Date(Math.min(...state.transactions.map(t => new Date(t.fecha).getTime())))
+    const oldestPriceDate = Math.min(...Object.values(priceHistory).flatMap(h => h.length > 0 ? h[0].t * 1000 : []))
+    const gapDays = (firstTxDate.getTime() - oldestPriceDate) / 86400000
+    return { covered: gapDays <= 30, gapDays: Math.max(0, Math.round(gapDays)) }
+  }, [hasData, priceHistory, state.transactions])
+
+  // Guardar pico en localStorage cuando cambia
+  useEffect(() => {
+    if (fullHistoryPeak && fullHistoryPeak.patrimonio > 0) {
+      const peakData = { value: fullHistoryPeak.patrimonio, date: fullHistoryPeak.date, label: fullHistoryPeak.mes }
+      if (!savedPeak || peakData.value > savedPeak.value) {
+        localStorage.setItem('netWorthPeak', JSON.stringify(peakData))
+        setSavedPeak(peakData)
+      }
+    }
+  }, [fullHistoryPeak, savedPeak])
 
   // Análisis de drawdowns (caídas y recuperaciones)
   const fullHistoryDrawdowns = useMemo(() => {
@@ -969,10 +999,30 @@ export default function AnalyticsPage() {
 </div>
 
                 {/* Botón de diagnóstico */}
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  {!historyCoverage.covered && (
+                    <span className="flex items-center gap-2 text-sm text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-full">
+                      <AlertTriangle className="h-4 w-4" />
+                      El histórico de precios no cubre {historyCoverage.gapDays} días desde tu primera transacción.
+                    </span>
+                  )}
                   <Button variant="outline" size="sm" onClick={() => setShowDiagnostic(!showDiagnostic)} className="gap-1.5">
                     <AlertTriangle className="h-4 w-4" />
                     {showDiagnostic ? "Ocultar diagnóstico" : "Ver diagnóstico del cálculo"}
+                  </Button>
+                  <Button variant="default" size="sm" onClick={() => {
+                    // Forzar recálculo con fetch extendido
+                    const syms = historySymbolsKey ? historySymbolsKey.split(",") : []
+                    if (syms.length > 0) {
+                      fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}&interval=1mo&range=5y`)
+                        .then((r) => r.json())
+                        .then((d: { history?: Record<string, { t: number; c: number }[]> }) => { 
+                          if (d.history) setPriceHistory(prev => ({ ...prev, ...d.history }))
+                        })
+                    }
+                  }} className="gap-1.5">
+                    <RotateCcw className="h-4 w-4" />
+                    Recalcular histórico (5 años)
                   </Button>
                 </div>
 
