@@ -44,6 +44,8 @@ const SectionTitle = memo(function SectionTitle({ label, title, text }: { label:
   )
 })
 
+const MonthlyOverviewTooltip = createChartTooltip(["ingresos", "gastos", "neto"], ["emerald", "red", "blue"])
+
 const RuleCard = memo(function RuleCard({ label, target, actual, value, tone, delay }: { label: string; target: number; actual: number; value: number; tone: string; delay: number }) {
   const diff = actual - target
   const width = Math.min(Math.max(actual, 0), 100)
@@ -205,6 +207,17 @@ export default function AnalyticsPage() {
   }, [state.budgets, state.categories, analysisTransactions, selectedMonth])
   const summaries = useMemo(() => buildMonthlySummariesUpTo(analysisTransactions, selectedMonth, trendMonths), [analysisTransactions, selectedMonth, trendMonths])
   const cashFlow = useMemo(() => buildMonthlyCashFlow(analysisTransactions, selectedMonth, trendMonths), [analysisTransactions, selectedMonth, trendMonths])
+  // Nuevo: datos para el gráfico de visión general mensual (últimos 12 meses o todos los disponibles)
+  const monthlyOverviewData = useMemo(() => {
+    // Tomamos los últimos 12 meses de cashFlow (o menos si no hay tantos)
+    const limited = cashFlow.slice(-12)
+    return limited.map(m => ({
+      mes: m.mes,
+      ingresos: m.ingresos,
+      gastos: m.gastos,
+      neto: m.neto,
+    }))
+  }, [cashFlow])
   const { valueByAccount, investedByAccount } = usePortfolioValue()
   // Objetivo consolidado por cuenta: propio (accountGoal ya combina objetivo
   // directo + metas de ahorro vinculadas) frente al valor actual de la cuenta,
@@ -347,9 +360,22 @@ export default function AnalyticsPage() {
           )}
           {hasData && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmReset(true)}>Limpiar</Button>}
         </div>
-      </header>
+</header>
 
-      {loading ? (
+       {hasData && (
+         <Card className="stagger-fade col-span-full" style={{ animationDelay: "60ms" }}>
+           <CardHeader className="pb-2">
+             <CardTitle className="flex items-center gap-2 text-base font-semibold"><BarChart3 className="h-4 w-4 text-muted-foreground" />Resumen mensual</CardTitle>
+           </CardHeader>
+           <CardContent>
+             <div role="img" aria-label="Ingresos, gastos y neto por mes">
+               <BarChart data={monthlyOverviewData} index="mes" categories={["ingresos", "gastos", "neto"]} colors={["emerald", "red", "blue"]} valueFormatter={chartFormatter} yAxisWidth={64} customTooltip={MonthlyOverviewTooltip} className="h-[200px]" showAnimation />
+             </div>
+           </CardContent>
+         </Card>
+       )}
+
+       {loading ? (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" />
