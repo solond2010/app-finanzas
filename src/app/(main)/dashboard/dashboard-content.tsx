@@ -39,6 +39,7 @@ const RANGES = [
   { id: "6M", count: 6, unit: "months" as const },
   { id: "12M", count: 12, unit: "months" as const },
   { id: "24M", count: 24, unit: "months" as const },
+  { id: "Todo", count: 0, unit: "all" as const },
 ]
 
 // Misma clave de fecha (YYYY-MM-DD, en huso local) que toDateKey en
@@ -163,6 +164,26 @@ export default function DashboardContent() {
   const annualNeto = annualIngresos - annualGastos
 
   const netWorthTrend = useMemo(() => {
+    // Rango "Todo": historial completo diario desde la primera transacción
+    if (activeRange.unit === "all") {
+      const firstTxDate = state.transactions.length > 0 
+        ? new Date(Math.min(...state.transactions.map(t => new Date(t.fecha).getTime())))
+        : today
+      const totalDays = Math.ceil((today.getTime() - firstTxDate.getTime()) / 86400000) + 1
+      const precise = buildPreciseNetWorthHistory(
+        state.accounts,
+        state.transactions,
+        investPositions,
+        priceHistory,
+        Math.min(totalDays, 1000), // límite razonable
+        today
+      )
+      return precise.map((p) => ({
+        mes: p.label,
+        patrimonio: p.patrimonio,
+        breakdown: p.breakdown
+      }))
+    }
     // Rangos diarios (hoy, 7D, 30D): usar cálculo preciso diario
     if (activeRange.unit === "today" || activeRange.unit === "days") {
       const count = activeRange.unit === "today" ? 1 : activeRange.count
@@ -262,16 +283,25 @@ export default function DashboardContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthOffset, today, state.accounts, state.transactions, investPositions, priceHistory])
 
-  // Serie que se PINTA: en rangos por mes, si el pico diario del mes en curso
-  // supera el valor de hoy, se inserta como punto extra justo antes del último.
-  // Sin esto, el texto anuncia "-234 € desde el pico" pero el gráfico mensual
-  // (un punto por mes, el actual = hoy) sube hasta el final sin dibujar la
-  // caída — el usuario no ve la bajada que la cifra le está contando.
+  // Serie que se PINTA: en rangos por mes y "Todo", si el pico diario supera
+  // el valor final, se inserta como punto extra antes del último.
   const chartTrend = useMemo(() => {
-    if (activeRange.unit !== "months" || !currentMonthDailyPeak) return netWorthTrend
-    const last = netWorthTrend[netWorthTrend.length - 1]
-    if (!last || currentMonthDailyPeak.patrimonio <= last.patrimonio + 0.005) return netWorthTrend
-    return [...netWorthTrend.slice(0, -1), { mes: currentMonthDailyPeak.label.replace(" · pico", ""), patrimonio: currentMonthDailyPeak.patrimonio }, { ...last, mes: "hoy" }]
+    // Para "months": usar currentMonthDailyPeak (pico del mes actual)
+    // Para "all": calcular el pico global de todo el historial
+    if (activeRange.unit === "months") {
+      if (!currentMonthDailyPeak) return netWorthTrend
+      const last = netWorthTrend[netWorthTrend.length - 1]
+      if (!last || currentMonthDailyPeak.patrimonio <= last.patrimonio + 0.005) return netWorthTrend
+      return [...netWorthTrend.slice(0, -1), { mes: currentMonthDailyPeak.label.replace(" · pico", ""), patrimonio: currentMonthDailyPeak.patrimonio }, { ...last, mes: "hoy" }]
+    }
+    if (activeRange.unit === "all") {
+      // Encontrar el pico global en netWorthTrend (ya incluye picos diarios por mes)
+      const globalPeak = netWorthTrend.reduce((best, d) => (d.patrimonio > best.patrimonio ? d : best), netWorthTrend[0])
+      const last = netWorthTrend[netWorthTrend.length - 1]
+      if (!last || globalPeak.patrimonio <= last.patrimonio + 0.005) return netWorthTrend
+      return [...netWorthTrend.slice(0, -1), { mes: globalPeak.mes.replace(" · pico", ""), patrimonio: globalPeak.patrimonio }, { ...last, mes: "hoy" }]
+    }
+    return netWorthTrend
   }, [netWorthTrend, activeRange.unit, currentMonthDailyPeak])
 
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
