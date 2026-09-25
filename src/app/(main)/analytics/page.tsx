@@ -1016,13 +1016,12 @@ export default function AnalyticsPage() {
                    <p className="mt-1 text-2xl font-bold tabular-nums"><Sensitive>{money(fullHistoryVolatility)}</Sensitive></p>
                  </div>
                </div>
-             </div>
-           )}
-         </CardContent>
-       </Card>
-       </section>
-       </>
-       )}
+</div>
+            )}
+          </CardContent>
+        </Card>
+        </>
+        )}
 
       <ConfirmDialog
         open={confirmReset}
