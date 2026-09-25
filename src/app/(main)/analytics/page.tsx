@@ -47,7 +47,7 @@ const SectionTitle = memo(function SectionTitle({ label, title, text }: { label:
 
 const MonthlyOverviewTooltip = createChartTooltip(["ingresos", "gastos", "neto"], ["emerald", "red", "blue"])
 
-const MountainChartLazy = lazy(() => import("@/components/shared/mountain-chart"))
+const MountainChartLazy = lazy(() => import("@/components/shared/mountain-chart").then(module => ({ default: module.MountainChart })))
 
 const RuleCard = memo(function RuleCard({ label, target, actual, value, tone, delay }: { label: string; target: number; actual: number; value: number; tone: string; delay: number }) {
   const diff = actual - target
@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
   const displayAccounts = useDisplayAccounts()
   const [monthOffset, setMonthOffset] = useState(0)
   const [trendMonths, setTrendMonths] = useState<6 | 12>(6)
-  const [overviewMonths, setOverviewMonths] = useState(12)
+  const [overviewMonths, setOverviewMonths] = useState<number | 'ytd'>(12)
   const shownBudgetIds = useRef(new Set<number>())
   const toast = useToast()
 
