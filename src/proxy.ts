@@ -1,18 +1,27 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { timingSafeEqualString } from "@/lib/auth"
+import { AUTH_COOKIE_NAME, isValidSessionToken } from "@/lib/auth"
 
 // Auth de un solo secreto compartido (sin usuarios ni sesiones individuales),
 // a juego con el resto de la app: store.tsx escribe siempre con un `USER_ID`
 // fijo. Válido mientras esta sea una app personal de un único usuario; si en
 // algún momento hay más de una persona accediendo, esto necesita migrar a
 // autenticación real (p. ej. Supabase Auth) antes de considerarse seguro.
-export function proxy(request: NextRequest) {
-  const authCookie = request.cookies.get("app-auth")?.value
+//
+// Fail-closed: sin APP_PASSWORD la app no se abre (503), nunca next() abierto.
+// La cookie `app-auth` guarda un token HMAC opaco, no la contraseña en claro.
+export async function proxy(request: NextRequest) {
   const password = process.env.APP_PASSWORD
 
-  if (!password) return NextResponse.next()
-  const authed = authCookie != null && timingSafeEqualString(authCookie, password)
+  if (!password) {
+    return new NextResponse("Servicio no disponible: falta APP_PASSWORD", {
+      status: 503,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    })
+  }
+
+  const authCookie = request.cookies.get(AUTH_COOKIE_NAME)?.value
+  const authed = await isValidSessionToken(authCookie, password)
 
   if (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/api/login") {
     if (authed && request.nextUrl.pathname !== "/api/login") {

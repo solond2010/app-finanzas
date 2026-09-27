@@ -25,6 +25,7 @@ import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransa
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
+import { PatrimonioMensualSection } from "@/components/analytics/patrimonio-mensual"
 
 // Mismo umbral que MonthlyBudget (src/components/dashboard/monthly-budget.tsx).
 const BUDGET_WARNING_THRESHOLD = 80
@@ -666,6 +667,9 @@ export default function AnalyticsPage() {
         <TickerTile label="Cash flow medio" value={<Sensitive>{signedMoney(averageMonthlyNet)}</Sensitive>} valueColor={averageMonthlyNet >= 0 ? "var(--accent-green)" : "var(--accent-red)"} />
         <TickerTile label="Categoría top" value={topCategory ? `${topCategoryPct}%` : "—"} detail={topCategory?.categoria} valueColor="var(--gold)" />
       </section>
+
+      {/* Control Patrimonio Mensual: snapshots día 5 derivados del historial diario preciso. */}
+      <PatrimonioMensualSection dailyHistory={fullHistory} />
 
       <section className="grid grid-cols-12 gap-6">
         <SectionTitle label="Tendencia" title={`El pulso de los últimos ${trendMonths} meses`} text="Patrimonio histórico y evolución mensual para detectar si estás acumulando o drenando capital." />

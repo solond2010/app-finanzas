@@ -14,6 +14,9 @@ import {
   getCategoryInsights,
   getFinancialScore,
   getFinancialTips,
+  extractMonthlyPatrimonioControl,
+  buildMonthlyPatrimonioControl,
+  getPatrimonioMensualKpis,
 } from "./calculations"
 
 function account(overrides: Partial<Account> = {}): Account {
@@ -395,5 +398,82 @@ describe("getFinancialTips", () => {
     const tips = getFinancialTips(txns, [account({ saldo: 200 })], funds, "2026-06", 1)
     expect(tips).toHaveLength(1)
     expect(tips[0].severity).toBe("critical")
+  })
+})
+
+describe("extractMonthlyPatrimonioControl / buildMonthlyPatrimonioControl", () => {
+  it("calcula variación y crecimiento como en el sheet (3200 → 4300 = +1100 / 34.38%)", () => {
+    const daily = [
+      { date: "2026-09-05", patrimonio: 3200 },
+      { date: "2026-09-06", patrimonio: 3250 },
+      { date: "2026-10-05", patrimonio: 4300 },
+      { date: "2026-10-06", patrimonio: 4300 },
+    ]
+    const rows = extractMonthlyPatrimonioControl(daily, {
+      dayOfMonth: 5,
+      asOf: new Date(2026, 9, 6), // 6 oct 2026
+    })
+    expect(rows).toHaveLength(2)
+    expect(rows[0].mensualidad).toBe("05/09/2026")
+    expect(rows[0].patrimonio).toBe(3200)
+    expect(rows[0].variacion).toBe(0)
+    expect(rows[0].crecimiento).toBeNull()
+
+    expect(rows[1].mensualidad).toBe("05/10/2026")
+    expect(rows[1].patrimonio).toBe(4300)
+    expect(rows[1].variacion).toBe(1100)
+    expect(rows[1].crecimiento).not.toBeNull()
+    expect(Number(rows[1].crecimiento!.toFixed(2))).toBe(34.38)
+  })
+
+  it("marca provisional el mes en curso si aún no llegó el día 5", () => {
+    const daily = [
+      { date: "2026-08-05", patrimonio: 3000 },
+      { date: "2026-09-02", patrimonio: 3100 },
+    ]
+    const rows = extractMonthlyPatrimonioControl(daily, {
+      dayOfMonth: 5,
+      asOf: new Date(2026, 8, 2), // 2 sep 2026
+    })
+    expect(rows.length).toBeGreaterThanOrEqual(2)
+    const last = rows[rows.length - 1]
+    expect(last.provisional).toBe(true)
+    expect(last.mensualidad).toBe("02/09/2026")
+    expect(last.patrimonio).toBe(3100)
+  })
+
+  it("getPatrimonioMensualKpis resume actual, Δ mes y vs primero", () => {
+    const rows = extractMonthlyPatrimonioControl(
+      [
+        { date: "2026-09-05", patrimonio: 3200 },
+        { date: "2026-10-05", patrimonio: 4300 },
+      ],
+      { asOf: new Date(2026, 9, 5) }
+    )
+    const kpis = getPatrimonioMensualKpis(rows)
+    expect(kpis.actual).toBe(4300)
+    expect(kpis.deltaEur).toBe(1100)
+    expect(Number(kpis.deltaPct!.toFixed(2))).toBe(34.38)
+    expect(kpis.vsPrimeroEur).toBe(1100)
+  })
+
+  it("buildMonthlyPatrimonioControl reconstruye desde cuentas y txs (sin posiciones)", () => {
+    const accounts = [account({ id: "acc_1", saldo: 4300 })]
+    const txns = [
+      tx({ id: "init_1", tipo: "ingreso", monto: 3200, fecha: "2026-09-01", cuenta_id: "acc_1" }),
+      tx({ id: "tx_up", tipo: "ingreso", monto: 1100, fecha: "2026-09-20", cuenta_id: "acc_1" }),
+    ]
+    // Saldo actual 4300 = init 3200 + 1100. El día 5/09 solo había llegado el init
+    // (si init es 01/09). Tras rebobinar txs posteriores al 05/09, patrimonio = 3200.
+    const rows = buildMonthlyPatrimonioControl(accounts, txns, [], {}, {
+      dayOfMonth: 5,
+      asOf: new Date(2026, 9, 5),
+    })
+    expect(rows.length).toBeGreaterThanOrEqual(2)
+    const sep = rows.find((r) => r.mensualidad === "05/09/2026")
+    const oct = rows.find((r) => r.mensualidad === "05/10/2026")
+    expect(sep?.patrimonio).toBe(3200)
+    expect(oct?.patrimonio).toBe(4300)
+    expect(oct?.variacion).toBe(1100)
   })
 })

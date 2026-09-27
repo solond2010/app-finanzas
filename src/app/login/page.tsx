@@ -27,6 +27,12 @@ function LoginForm() {
           } else {
             router.push("/dashboard")
           }
+        } else if (res.status === 503) {
+          setError(true)
+          setErrorMsg("Auth no configurada en el servidor (falta APP_PASSWORD)")
+        } else if (res.status === 429) {
+          setError(true)
+          setErrorMsg("Demasiados intentos. Espera unos minutos.")
         } else {
           setError(true)
           setErrorMsg("Contraseña incorrecta")

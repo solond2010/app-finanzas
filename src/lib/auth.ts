@@ -1,7 +1,16 @@
+// Auth de un solo secreto compartido (APP_PASSWORD). Sin usuarios individuales.
+// Compatible con Edge (proxy.ts) y Node (/api/login): solo Web Crypto + JS puro.
+
+export const AUTH_COOKIE_NAME = "app-auth"
+
+// Mensaje fijo para derivar el token de sesión. No es un salt por usuario:
+// con un único secreto compartido basta para que la cookie NO contenga la
+// contraseña en claro. Cambiar APP_PASSWORD invalida todas las sesiones.
+const SESSION_HMAC_MESSAGE = "finanzas-app-auth-v1"
+
 // Comparación en tiempo constante para no filtrar por temporización cuánto
-// coincide la contraseña probada con la real. `a !== b` corta en el primer
-// carácter distinto — en teoría permite adivinar la contraseña carácter a
-// carácter midiendo la respuesta. Implementación manual (no crypto.timingSafeEqual)
+// coincide la contraseña/token probado con el real. `a !== b` corta en el
+// primer carácter distinto. Implementación manual (no crypto.timingSafeEqual)
 // porque este módulo lo usa tanto proxy.ts (Edge Runtime, sin el módulo
 // `crypto` de Node) como la ruta /api/login (Node).
 export function timingSafeEqualString(a: string, b: string): boolean {
@@ -9,6 +18,36 @@ export function timingSafeEqualString(a: string, b: string): boolean {
   let diff = 0
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
   return diff === 0
+}
+
+async function hmacSha256Hex(secret: string, message: string): Promise<string> {
+  const enc = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  )
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(message))
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+}
+
+/** Token opaco de sesión derivado de APP_PASSWORD (HMAC-SHA256). */
+export async function createSessionToken(appPassword: string): Promise<string> {
+  return hmacSha256Hex(appPassword, SESSION_HMAC_MESSAGE)
+}
+
+/** Valida la cookie app-auth contra el token esperado (timing-safe). */
+export async function isValidSessionToken(
+  cookieValue: string | undefined | null,
+  appPassword: string,
+): Promise<boolean> {
+  if (!cookieValue) return false
+  const expected = await createSessionToken(appPassword)
+  return timingSafeEqualString(cookieValue, expected)
 }
 
 // Limitador de intentos de login en memoria: `MAX_ATTEMPTS` fallos por IP en

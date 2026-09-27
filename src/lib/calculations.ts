@@ -799,3 +799,197 @@ export function buildPreciseNetWorthHistoryMonthly(
   
   return points
 }
+
+// ============================================================
+// CONTROL PATRIMONIO MENSUAL (día 5)
+// ============================================================
+// Réplica del Google Sheet "Control Patrimonio Mensual": un snapshot el día 5
+// de cada mes, con variación neta (€) y crecimiento (%) respecto al mes
+// anterior. Se deriva del historial diario preciso (cuentas + valor de
+// mercado de posiciones) — no hace falta registrar snapshots a mano.
+
+export interface PatrimonioMensualRow {
+  /** YYYY-MM-DD del snapshot (normalmente el día 5; "hoy" si es provisional). */
+  date: string
+  /** Etiqueta tipo hoja: DD/MM/YYYY */
+  mensualidad: string
+  /** Etiqueta corta para ejes de gráfico ("sep 26"). */
+  label: string
+  patrimonio: number
+  /** Δ€ vs el snapshot anterior (0 en el primero). */
+  variacion: number
+  /** Crecimiento % vs el snapshot anterior (null en el primero). */
+  crecimiento: number | null
+  /** true si el mes en curso aún no ha llegado al día 5 y usamos "hoy". */
+  provisional: boolean
+}
+
+function formatMensualidad(d: Date) {
+  const dd = String(d.getDate()).padStart(2, "0")
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  return `${dd}/${mm}/${d.getFullYear()}`
+}
+
+function parseDateKeyLocal(dateKey: string) {
+  const [y, m, d] = dateKey.split("-").map(Number)
+  return new Date(y, m - 1, d)
+}
+
+/**
+ * Extrae la serie mensual (día `dayOfMonth`, por defecto 5) a partir de un
+ * historial diario ya calculado (`buildPreciseNetWorthHistory` / fullHistory).
+ * Si el mes en curso aún no ha llegado al día 5, añade un punto provisional
+ * con el valor de hoy.
+ */
+export function extractMonthlyPatrimonioControl(
+  dailyPoints: Array<{ date: string; patrimonio: number }>,
+  opts?: { dayOfMonth?: number; asOf?: Date; maxMonths?: number }
+): PatrimonioMensualRow[] {
+  if (dailyPoints.length === 0) return []
+
+  const dayOfMonth = opts?.dayOfMonth ?? 5
+  const asOf = opts?.asOf ?? new Date()
+  const maxMonths = opts?.maxMonths ?? 48
+  const asOfKey = toDateKey(asOf)
+
+  const byDate = new Map<string, number>()
+  for (const p of dailyPoints) byDate.set(p.date, p.patrimonio)
+
+  const firstKey = dailyPoints[0].date
+  const firstDate = parseDateKeyLocal(firstKey)
+
+  const rows: PatrimonioMensualRow[] = []
+  let y = firstDate.getFullYear()
+  let m = firstDate.getMonth()
+  const endY = asOf.getFullYear()
+  const endM = asOf.getMonth()
+
+  while (y < endY || (y === endY && m <= endM)) {
+    if (rows.length >= maxMonths) break
+
+    const isCurrentMonth = y === asOf.getFullYear() && m === asOf.getMonth()
+    let snapDate: Date
+    let provisional = false
+
+    if (isCurrentMonth && asOf.getDate() < dayOfMonth) {
+      snapDate = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate())
+      provisional = true
+    } else {
+      snapDate = new Date(y, m, dayOfMonth)
+      if (toDateKey(snapDate) < firstKey) {
+        m += 1
+        if (m > 11) { m = 0; y += 1 }
+        continue
+      }
+      if (toDateKey(snapDate) > asOfKey) break
+    }
+
+    const key = toDateKey(snapDate)
+    let patrimonio = byDate.get(key)
+    if (patrimonio === undefined) {
+      for (let i = dailyPoints.length - 1; i >= 0; i--) {
+        if (dailyPoints[i].date <= key) {
+          patrimonio = dailyPoints[i].patrimonio
+          break
+        }
+      }
+    }
+    if (patrimonio === undefined) {
+      m += 1
+      if (m > 11) { m = 0; y += 1 }
+      continue
+    }
+
+    const prev = rows.at(-1)
+    const variacion = prev ? patrimonio - prev.patrimonio : 0
+    const crecimiento =
+      prev && prev.patrimonio !== 0
+        ? ((patrimonio - prev.patrimonio) / Math.abs(prev.patrimonio)) * 100
+        : null
+
+    rows.push({
+      date: key,
+      mensualidad: formatMensualidad(snapDate),
+      label: snapDate.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }),
+      patrimonio,
+      variacion,
+      crecimiento,
+      provisional,
+    })
+
+    m += 1
+    if (m > 11) { m = 0; y += 1 }
+  }
+
+  return rows
+}
+
+/**
+ * Construye el control patrimonio mensual desde cero (cuentas + posiciones +
+ * histórico de precios). Fuente: reconstrucción diaria precisa muestreada el
+ * día 5 de cada mes.
+ */
+export function buildMonthlyPatrimonioControl(
+  accounts: Account[],
+  transactions: Transaction[],
+  positions: Position[],
+  priceHistory: Record<string, { t: number; c: number }[]>,
+  opts?: { dayOfMonth?: number; asOf?: Date; maxMonths?: number }
+): PatrimonioMensualRow[] {
+  if (accounts.length === 0) return []
+
+  const asOf = opts?.asOf ?? new Date()
+  const dayOfMonth = opts?.dayOfMonth ?? 5
+
+  let start: Date
+  if (transactions.length > 0) {
+    start = new Date(Math.min(...transactions.map((t) => new Date(t.fecha).getTime())))
+  } else {
+    // Sin transacciones: un único punto con el patrimonio de hoy.
+    start = new Date(asOf.getFullYear(), asOf.getMonth(), Math.min(dayOfMonth, asOf.getDate()))
+  }
+
+  // Empezar el día 1 del mes de la primera actividad para cubrir el primer día 5.
+  const rangeStart = new Date(start.getFullYear(), start.getMonth(), 1)
+  const totalDays = Math.max(1, Math.ceil((asOf.getTime() - rangeStart.getTime()) / 86400000) + 1)
+  const daily = buildPreciseNetWorthHistory(
+    accounts,
+    transactions,
+    positions,
+    priceHistory,
+    Math.min(totalDays, 2000),
+    asOf
+  )
+
+  return extractMonthlyPatrimonioControl(daily, { ...opts, asOf, dayOfMonth })
+}
+
+/** KPIs del strip superior del control patrimonio mensual. */
+export function getPatrimonioMensualKpis(rows: PatrimonioMensualRow[]) {
+  if (rows.length === 0) {
+    return {
+      actual: 0,
+      deltaEur: 0,
+      deltaPct: null as number | null,
+      vsPrimeroEur: 0,
+      vsPrimeroPct: null as number | null,
+      primero: null as PatrimonioMensualRow | null,
+      ultimo: null as PatrimonioMensualRow | null,
+    }
+  }
+  const primero = rows[0]
+  const ultimo = rows[rows.length - 1]
+  const anterior = rows.length > 1 ? rows[rows.length - 2] : null
+  const deltaEur = anterior ? ultimo.patrimonio - anterior.patrimonio : 0
+  const deltaPct =
+    anterior && anterior.patrimonio !== 0
+      ? ((ultimo.patrimonio - anterior.patrimonio) / Math.abs(anterior.patrimonio)) * 100
+      : null
+  const vsPrimeroEur = ultimo.patrimonio - primero.patrimonio
+  const vsPrimeroPct =
+    primero.patrimonio !== 0
+      ? ((ultimo.patrimonio - primero.patrimonio) / Math.abs(primero.patrimonio)) * 100
+      : null
+
+  return { actual: ultimo.patrimonio, deltaEur, deltaPct, vsPrimeroEur, vsPrimeroPct, primero, ultimo }
+}
