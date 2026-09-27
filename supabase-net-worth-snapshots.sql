@@ -1,0 +1,23 @@
+-- Snapshots de patrimonio mensual
+-- --------------------------------
+-- La app NO necesita una tabla nueva: usa la tabla `settings` ya existente
+-- (clave/valor) con estas keys:
+--
+--   net_worth_monthly_snapshots  → JSON array
+--     [{ "date": "2026-09-05", "patrimonio": 5300.12, "updatedAt": "..." }, ...]
+--     Se fusiona por fecha conservando el MÁXIMO patrimonio visto (nunca baja
+--     un histórico si el recálculo llega con datos incompletos).
+--
+--   net_worth_peak               → JSON object
+--     { "value": 5300.12, "date": "2026-08-12", "label": "..." }
+--
+-- No hace falta ejecutar este fichero. Queda como documentación del contrato.
+-- Si en el futuro se prefiere tabla dedicada, equivalente:
+--
+-- create table if not exists net_worth_snapshots (
+--   date text primary key,
+--   patrimonio numeric not null,
+--   user_id uuid not null,
+--   updated_at timestamptz default now()
+-- );
+-- alter table net_worth_snapshots disable row level security;

@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useMemo } from "react"
+import { memo, useEffect, useMemo, useState } from "react"
 import { AreaChart, BarChart } from "@tremor/react"
 import { CalendarDays, Percent, TrendingDown, TrendingUp, Wallet } from "lucide-react"
 
@@ -15,6 +15,12 @@ import {
   getPatrimonioMensualKpis,
   type PatrimonioMensualRow,
 } from "@/lib/calculations"
+import {
+  applyStoredSnapshotsToRows,
+  loadNetWorthSnapshots,
+  persistMergedNetWorthSnapshots,
+  type StoredNetWorthSnapshot,
+} from "@/lib/net-worth-snapshots"
 import { money, signedMoney, chartFormatter } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -28,28 +34,101 @@ function formatGrowth(pct: number | null) {
   return `${sign}${rounded.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
 }
 
+export type MonthlyCashFlowPoint = {
+  /** YYYY-MM */
+  monthKey: string
+  ingresos: number
+  gastos: number
+  neto: number
+}
+
 type DailyPoint = { date: string; patrimonio: number }
 
 interface PatrimonioMensualSectionProps {
   dailyHistory: DailyPoint[]
+  /** Cashflow por mes (YYYY-MM) para el detalle unificado. */
+  cashByMonth?: Record<string, { ingresos: number; gastos: number; neto: number }>
   /** Día del mes del snapshot (por defecto 5, como en la hoja de control). */
   dayOfMonth?: number
 }
 
+type DetalleRow = PatrimonioMensualRow & {
+  ingresos: number
+  gastos: number
+  neto: number
+}
+
+function recomputeVariations(rows: PatrimonioMensualRow[]): PatrimonioMensualRow[] {
+  return rows.map((row, i) => {
+    if (i === 0) return { ...row, variacion: 0, crecimiento: null }
+    const prev = rows[i - 1]
+    const variacion = row.patrimonio - prev.patrimonio
+    const crecimiento =
+      prev.patrimonio !== 0 ? ((row.patrimonio - prev.patrimonio) / Math.abs(prev.patrimonio)) * 100 : null
+    return { ...row, variacion, crecimiento }
+  })
+}
+
 /**
- * Control Patrimonio Mensual — sección de Analytics inspirada en el Google
- * Sheet homónimo. Fuente: historial diario preciso (cuentas + inversiones)
- * muestreado el día 5 de cada mes. No persiste snapshots propios.
+ * Control / detalle mensual unificado: patrimonio (día 5) + cashflow
+ * (ingresos/gastos/neto) en una sola sección. Persiste snapshots en settings
+ * para que un recálculo con datos incompletos no borre el histórico.
  */
 export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
   dailyHistory,
+  cashByMonth = {},
   dayOfMonth = 5,
 }: PatrimonioMensualSectionProps) {
-  const rows = useMemo(
+  const [storedSnapshots, setStoredSnapshots] = useState<StoredNetWorthSnapshot[]>([])
+
+  const rawRows = useMemo(
     () => extractMonthlyPatrimonioControl(dailyHistory, { dayOfMonth }),
     [dailyHistory, dayOfMonth]
   )
+
+  // Persistir snapshots definitivos (no provisionales) y fusionar con lo guardado.
+  useEffect(() => {
+    let cancelled = false
+    const definitive = rawRows
+      .filter((r) => !r.provisional && r.patrimonio > 0)
+      .map((r) => ({ date: r.date, patrimonio: r.patrimonio }))
+    ;(async () => {
+      try {
+        if (definitive.length > 0) {
+          const merged = await persistMergedNetWorthSnapshots(definitive)
+          if (!cancelled) setStoredSnapshots(merged)
+        } else {
+          const loaded = await loadNetWorthSnapshots()
+          if (!cancelled) setStoredSnapshots(loaded)
+        }
+      } catch {
+        // sin red / settings → seguimos solo con el cálculo en vivo
+      }
+    })()
+    return () => { cancelled = true }
+  }, [rawRows])
+
+  const rows = useMemo(() => {
+    const applied = applyStoredSnapshotsToRows(rawRows, storedSnapshots)
+    return recomputeVariations(applied)
+  }, [rawRows, storedSnapshots])
+
   const kpis = useMemo(() => getPatrimonioMensualKpis(rows), [rows])
+
+  const detalleRows: DetalleRow[] = useMemo(
+    () =>
+      rows.map((row) => {
+        const monthKey = row.date.slice(0, 7)
+        const cash = cashByMonth[monthKey]
+        return {
+          ...row,
+          ingresos: cash?.ingresos ?? 0,
+          gastos: cash?.gastos ?? 0,
+          neto: cash?.neto ?? 0,
+        }
+      }),
+    [rows, cashByMonth]
+  )
 
   const areaData = useMemo(
     () =>
@@ -76,11 +155,11 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
   return (
     <section className="col-span-full grid grid-cols-12 gap-4 sm:gap-6">
       <div className="col-span-full flex flex-col gap-1 pt-2">
-        <p className="page-section-label">Patrimonio</p>
+        <p className="page-section-label">Detalle mensual</p>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <h2 className="text-xl font-bold tracking-tight">Control patrimonio mensual</h2>
+          <h2 className="text-xl font-bold tracking-tight">Patrimonio + cashflow</h2>
           <p className="max-w-xl text-sm text-muted-foreground">
-            Snapshot el día {dayOfMonth} de cada mes · cuentas + valor de mercado de inversiones.
+            Snapshot el día {dayOfMonth} · patrimonio (cuentas + mercado) e ingresos/gastos/neto del mes.
             {kpis.ultimo?.provisional ? " · Mes en curso provisional (aún no llegó el día 5)." : null}
           </p>
         </div>
@@ -92,7 +171,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
             <EmptyState
               icon={Wallet}
               title="Sin historial de patrimonio"
-              description="Cuando tengas cuentas y movimientos, aquí verás el patrimonio de cada mensualidad (día 5), la variación neta y el crecimiento."
+              description="Cuando tengas cuentas y movimientos, aquí verás el patrimonio de cada mensualidad (día 5), la variación neta, el crecimiento y el cashflow."
               bordered
               className="h-full"
             />
@@ -199,27 +278,34 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
           <Card className="stagger-fade col-span-full min-w-0 overflow-hidden" style={{ animationDelay: "180ms" }}>
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold">Detalle mensual</CardTitle>
+              <p className="text-xs text-muted-foreground">Patrimonio del día {dayOfMonth} + ingresos, gastos y neto del mes.</p>
             </CardHeader>
             <CardContent className="p-0">
-              {/* Móvil: cards apilables; desktop: tabla limpia */}
+              {/* Móvil: cards apilables */}
               <div className="space-y-2 p-3 sm:hidden">
-                {[...rows].reverse().map((row) => (
-                  <MobilePatrimonioCard key={row.date} row={row} />
+                {[...detalleRows].reverse().map((row) => (
+                  <MobileDetalleCard key={row.date} row={row} />
                 ))}
               </div>
+              {/* Desktop: tabla unificada */}
               <div className="hidden overflow-x-auto sm:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Mensualidad</TableHead>
                       <TableHead className="text-right">Patrimonio</TableHead>
-                      <TableHead className="text-right">Variación €</TableHead>
-                      <TableHead className="text-right">Crecimiento %</TableHead>
+                      <TableHead className="text-right">Δ €</TableHead>
+                      <TableHead className="text-right">Δ %</TableHead>
+                      <TableHead className="text-right">Ingresos</TableHead>
+                      <TableHead className="text-right">Gastos</TableHead>
+                      <TableHead className="text-right">Neto</TableHead>
+                      <TableHead className="text-right">Estado</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {[...rows].reverse().map((row, idx) => {
-                      const isFirst = idx === rows.length - 1
+                    {[...detalleRows].reverse().map((row, idx) => {
+                      const isFirst = idx === detalleRows.length - 1
+                      const hasCash = row.ingresos > 0 || row.gastos > 0
                       return (
                         <TableRow key={row.date}>
                           <TableCell className="font-medium tabular-nums">
@@ -259,6 +345,30 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
                           >
                             {formatGrowth(row.crecimiento)}
                           </TableCell>
+                          <TableCell className="text-right font-semibold tabular-nums text-emerald-500">
+                            {hasCash ? <Sensitive>+{money(row.ingresos)}</Sensitive> : <span className="text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold tabular-nums text-red-500">
+                            {hasCash ? <Sensitive>{row.gastos > 0 ? "-" : ""}{money(row.gastos)}</Sensitive> : <span className="text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              "text-right font-bold tabular-nums",
+                              !hasCash ? "text-muted-foreground" : row.neto >= 0 ? "text-emerald-500" : "text-red-500"
+                            )}
+                          >
+                            {hasCash ? <Sensitive>{signedMoney(row.neto)}</Sensitive> : "—"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {hasCash ? (
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${row.neto >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
+                                {row.neto >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                {row.neto >= 0 ? "Sano" : "Déficit"}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
                         </TableRow>
                       )
                     })}
@@ -273,8 +383,9 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
   )
 })
 
-const MobilePatrimonioCard = memo(function MobilePatrimonioCard({ row }: { row: PatrimonioMensualRow }) {
+const MobileDetalleCard = memo(function MobileDetalleCard({ row }: { row: DetalleRow }) {
   const hasPrev = row.crecimiento !== null
+  const hasCash = row.ingresos > 0 || row.gastos > 0
   return (
     <div className="rounded-2xl border border-border bg-card p-3.5 ring-1 ring-border/20">
       <div className="flex items-start justify-between gap-2">
@@ -321,6 +432,26 @@ const MobilePatrimonioCard = memo(function MobilePatrimonioCard({ row }: { row: 
             )}
           >
             {formatGrowth(row.crecimiento)}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/60 pt-3">
+        <div>
+          <p className="text-[11px] text-muted-foreground">Ingresos</p>
+          <p className={cn("text-sm font-semibold tabular-nums", hasCash ? "text-emerald-500" : "text-muted-foreground")}>
+            {hasCash ? <Sensitive>+{money(row.ingresos)}</Sensitive> : "—"}
+          </p>
+        </div>
+        <div className="text-center">
+          <p className="text-[11px] text-muted-foreground">Gastos</p>
+          <p className={cn("text-sm font-semibold tabular-nums", hasCash ? "text-red-500" : "text-muted-foreground")}>
+            {hasCash ? <Sensitive>{row.gastos > 0 ? "-" : ""}{money(row.gastos)}</Sensitive> : "—"}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[11px] text-muted-foreground">Neto</p>
+          <p className={cn("text-sm font-semibold tabular-nums", !hasCash ? "text-muted-foreground" : row.neto >= 0 ? "text-emerald-500" : "text-red-500")}>
+            {hasCash ? <Sensitive>{signedMoney(row.neto)}</Sensitive> : "—"}
           </p>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import React from "react"
 import { useMemo, useState, memo, lazy, Suspense, useRef, useEffect } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, RotateCcw, Sparkles, Target, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
+import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, CalendarClock, ChevronLeft, ChevronRight, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, RotateCcw, Sparkles, Target, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
 
 import { Button } from "@/components/ui/button"
@@ -222,6 +222,23 @@ export default function AnalyticsPage() {
   }, [state.budgets, state.categories, analysisTransactions, selectedMonth])
   const summaries = useMemo(() => buildMonthlySummariesUpTo(analysisTransactions, selectedMonth, trendMonths), [analysisTransactions, selectedMonth, trendMonths])
   const cashFlow = useMemo(() => buildMonthlyCashFlow(analysisTransactions, selectedMonth, trendMonths), [analysisTransactions, selectedMonth, trendMonths])
+  // Cashflow indexado por YYYY-MM para el detalle mensual unificado (patrimonio + ingresos/gastos/neto).
+  const cashByMonthKey = useMemo(() => {
+    const map: Record<string, { ingresos: number; gastos: number; neto: number }> = {}
+    const keys = new Set<string>()
+    for (const t of analysisTransactions) {
+      if (t.fecha && t.fecha.length >= 7) keys.add(t.fecha.slice(0, 7))
+    }
+    const [ey, em] = selectedMonth.split("-").map(Number)
+    for (let i = 0; i < 48; i++) {
+      const d = new Date(ey, em - 1 - i, 1)
+      keys.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
+    }
+    for (const key of keys) {
+      map[key] = getMonthTotalsByString(analysisTransactions, key)
+    }
+    return map
+  }, [analysisTransactions, selectedMonth])
 // Nuevo: datos para el gráfico de visión general mensual (últimos N meses o todos los disponibles)
    const monthlyOverviewData = useMemo(() => {
      let data: Array<{ mes: string; ingresos: number; gastos: number; neto: number }> = []
@@ -451,16 +468,35 @@ export default function AnalyticsPage() {
     return { covered: gapDays <= 30, gapDays: Math.max(0, Math.round(gapDays)) }
   }, [hasData, priceHistory, state.transactions])
 
-  // Guardar pico en localStorage cuando cambia
+  // Guardar pico en localStorage + settings (nube) cuando cambia
   useEffect(() => {
     if (fullHistoryPeak && fullHistoryPeak.patrimonio > 0) {
       const peakData = { value: fullHistoryPeak.patrimonio, date: fullHistoryPeak.date, label: fullHistoryPeak.mes }
       if (!savedPeak || peakData.value > savedPeak.value) {
-        localStorage.setItem('netWorthPeak', JSON.stringify(peakData))
+        try { localStorage.setItem('netWorthPeak', JSON.stringify(peakData)) } catch {}
         setSavedPeak(peakData)
+        import("@/lib/net-worth-snapshots").then(({ persistNetWorthPeakIfHigher }) => {
+          persistNetWorthPeakIfHigher(peakData).catch(() => {})
+        })
       }
     }
   }, [fullHistoryPeak, savedPeak])
+
+  // Hidratar pico desde settings si localStorage está vacío o es menor
+  useEffect(() => {
+    let cancelled = false
+    import("@/lib/net-worth-snapshots").then(({ loadNetWorthPeak }) =>
+      loadNetWorthPeak().then((cloud) => {
+        if (cancelled || !cloud) return
+        setSavedPeak((prev) => {
+          if (prev && prev.value >= cloud.value) return prev
+          try { localStorage.setItem('netWorthPeak', JSON.stringify(cloud)) } catch {}
+          return cloud
+        })
+      })
+    )
+    return () => { cancelled = true }
+  }, [])
 
   // Análisis de drawdowns (caídas y recuperaciones)
   const fullHistoryDrawdowns = useMemo(() => {
@@ -669,7 +705,7 @@ export default function AnalyticsPage() {
       </section>
 
       {/* Control Patrimonio Mensual: snapshots día 5 derivados del historial diario preciso. */}
-      <PatrimonioMensualSection dailyHistory={fullHistory} />
+      <PatrimonioMensualSection dailyHistory={fullHistory} cashByMonth={cashByMonthKey} />
 
       <section className="grid grid-cols-12 gap-6">
         <SectionTitle label="Tendencia" title={`El pulso de los últimos ${trendMonths} meses`} text="Patrimonio histórico y evolución mensual para detectar si estás acumulando o drenando capital." />
@@ -937,45 +973,6 @@ export default function AnalyticsPage() {
           <RuleCard label="20% Ahorro" target={20} actual={savingsActual} value={monthTotals.neto} tone="var(--accent-blue)" delay={240} />
         </div>
 
-        <SectionTitle label="Detalle" title="Cash flow mensual" text="La tabla compacta para confirmar si la historia que cuentan los gráficos es real." />
-
-        <Card className="stagger-fade col-span-full" style={{ animationDelay: "180ms" }}>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Mes</TableHead>
-                  <TableHead className="text-right">Ingresos</TableHead>
-                  <TableHead className="text-right">Gastos</TableHead>
-                  <TableHead className="text-right">Neto</TableHead>
-                  <TableHead className="text-right">Estado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {!hasData ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="py-14"><EmptyState icon={CircleDollarSign} title="Sin cash flow" description="Registra movimientos para construir tu histórico mensual." bordered className="h-full" /></TableCell>
-                  </TableRow>
-                ) : (
-                  cashFlow.slice().reverse().map((month) => (
-                    <TableRow key={month.mes}>
-                      <TableCell className="font-medium capitalize">{month.mes}</TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums text-emerald-500"><Sensitive>+{money(month.ingresos)}</Sensitive></TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums text-red-500"><Sensitive>{month.gastos > 0 ? "-" : ""}{money(month.gastos)}</Sensitive></TableCell>
-                      <TableCell className={`text-right font-bold tabular-nums ${month.neto >= 0 ? "text-emerald-500" : "text-red-500"}`}><Sensitive>{signedMoney(month.neto)}</Sensitive></TableCell>
-                      <TableCell className="text-right">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${month.neto >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
-                          {month.neto >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                          {month.neto >= 0 ? "Sano" : "Déficit"}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-</Table>
-           </CardContent>
-         </Card>
        </section>
 
        {/* ===== HISTORIAL COMPLETO DE PATRIMONIO ===== */}

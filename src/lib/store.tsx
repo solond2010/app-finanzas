@@ -419,6 +419,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // cada carga de página y cada vuelta de foco, sin que el usuario hubiera
   // cambiado nada.
   const skipNextSyncRef = useRef(false)
+  // Borrados explícitos pendientes de enviar a Supabase (no espejo remoto).
+  const pendingDeletesRef = useRef<PendingDeletes>(emptyPendingDeletes())
+  // true tras cualquier acción del usuario aún no confirmada en remoto: evita
+  // que un refetch al recuperar el foco pise cambios locales no sincronizados.
+  const dirtyRef = useRef(false)
+  // Generación de cambios locales: solo se limpia dirty si el sync terminó
+  // sin que hubiera nuevas acciones en medio.
+  const dirtyGenerationRef = useRef(0)
 
   useEffect(() => {
     if (loadedRef.current) return
@@ -459,10 +467,15 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const refetchIfVisible = () => {
       if (document.visibilityState !== "visible") return
+      // No pisar el estado local si hay cambios sin sincronizar o un sync en
+      // curso: un SET_STATE remoto con skipNextSync borraría patrimonio/txs
+      // que aún no han llegado a Supabase.
+      if (dirtyRef.current) return
       const now = Date.now()
       if (now - lastRefetchRef.current < 10000) return
       lastRefetchRef.current = now
       loadFromSupabase().then((remote) => {
+        if (dirtyRef.current) return
         if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
           skipNextSyncRef.current = true
           dispatch({ type: "SET_STATE", payload: { ...remote, categories: mergeDefaultCategories(remote.categories) } })
@@ -508,10 +521,27 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       return
     }
     setSyncStatus("syncing")
+    // Copia de los borrados pendientes al inicio del intento: si el usuario
+    // borra más cosas mientras corre el sync, esas IDs se acumulan en el ref
+    // y no se pierden al limpiar solo las que este intento envió.
+    const deletesSnapshot: PendingDeletes = {
+      accounts: new Set(pendingDeletesRef.current.accounts),
+      transactions: new Set(pendingDeletesRef.current.transactions),
+      sinking_funds: new Set(pendingDeletesRef.current.sinking_funds),
+      budgets: new Set(pendingDeletesRef.current.budgets),
+      categories: new Set(pendingDeletesRef.current.categories),
+    }
+    const generationAtStart = dirtyGenerationRef.current
     syncChainRef.current = syncChainRef.current
-      .then(() => syncToSupabase(stateRef.current))
+      .then(() => syncToSupabase(stateRef.current, deletesSnapshot))
       .then(() => {
         if (!mountedRef.current) return
+        for (const id of deletesSnapshot.accounts) pendingDeletesRef.current.accounts.delete(id)
+        for (const id of deletesSnapshot.transactions) pendingDeletesRef.current.transactions.delete(id)
+        for (const id of deletesSnapshot.sinking_funds) pendingDeletesRef.current.sinking_funds.delete(id)
+        for (const id of deletesSnapshot.budgets) pendingDeletesRef.current.budgets.delete(id)
+        for (const id of deletesSnapshot.categories) pendingDeletesRef.current.categories.delete(id)
+        if (dirtyGenerationRef.current === generationAtStart) dirtyRef.current = false
         retryAttemptRef.current = 0
         setSyncStatus("saved")
       })
@@ -567,12 +597,23 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     }
   }, [attemptSync, clearRetry])
 
+  // Envuelve dispatch para marcar dirty + acumular borrados explícitos antes
+  // de reducir. SET_STATE (carga remota) no marca dirty.
+  const trackedDispatch = useCallback((action: Action) => {
+    if (action.type !== "SET_STATE") {
+      dirtyRef.current = true
+      dirtyGenerationRef.current += 1
+      collectDeletesFromAction(stateRef.current, action, pendingDeletesRef.current)
+    }
+    dispatch(action)
+  }, [])
+
   // Memoizado: si no, este objeto se recrea en cada render de FinanceProvider
   // (aunque state/loading no hayan cambiado) y como Context re-renderiza a
   // todos los consumidores cuando su `value` cambia de referencia, cualquier
   // cambio en cualquier parte del árbol forzaba un re-render de absolutamente
   // todo lo que usa useFinance() en la app.
-  const contextValue = useMemo(() => ({ state, dispatch, loading }), [state, loading])
+  const contextValue = useMemo(() => ({ state, dispatch: trackedDispatch, loading }), [state, trackedDispatch, loading])
   const syncStatusValue = useMemo(() => ({ status: syncStatus, retrySync }), [syncStatus, retrySync])
 
   return (
@@ -606,7 +647,77 @@ async function loadFromSupabase(): Promise<FinanceState | null> {
 
 export const USER_ID = '8c449806-d8b4-498a-98d7-28809bb7c95a'
 
-async function syncToSupabase(state: FinanceState) {
+type PendingDeletes = {
+  accounts: Set<string>
+  transactions: Set<string>
+  sinking_funds: Set<string>
+  budgets: Set<string>
+  categories: Set<string>
+}
+
+export function emptyPendingDeletes(): PendingDeletes {
+  return {
+    accounts: new Set(),
+    transactions: new Set(),
+    sinking_funds: new Set(),
+    budgets: new Set(),
+    categories: new Set(),
+  }
+}
+
+/**
+ * Registra qué filas hay que borrar en remoto a partir de una acción del
+ * usuario. Ya no se hace un "espejo" borrando todo lo que no está en local
+ * (eso podía vaporizar cuentas/saldos si el estado local llegaba parcial).
+ */
+export function collectDeletesFromAction(state: FinanceState, action: Action, pending: PendingDeletes) {
+  switch (action.type) {
+    case "DELETE_ACCOUNT": {
+      pending.accounts.add(action.payload)
+      for (const t of state.transactions) {
+        if (t.cuenta_id === action.payload) pending.transactions.add(t.id)
+      }
+      for (const s of state.sinkingFunds) {
+        if (s.cuenta_id === action.payload) pending.sinking_funds.add(s.id)
+      }
+      break
+    }
+    case "DELETE_TRANSACTION":
+      pending.transactions.add(action.payload)
+      break
+    case "DELETE_SINKING_FUND":
+      pending.sinking_funds.add(action.payload)
+      break
+    case "DELETE_BUDGET":
+      pending.budgets.add(action.payload)
+      break
+    case "DELETE_CATEGORY": {
+      pending.categories.add(action.payload)
+      for (const b of state.budgets) {
+        if (b.category_id === action.payload) pending.budgets.add(b.id)
+      }
+      break
+    }
+    case "RESET": {
+      const keepAccounts = new Set(defaultState.accounts.map((a) => a.id))
+      const keepCategories = new Set(defaultState.categories.map((c) => c.id))
+      for (const a of state.accounts) {
+        if (!keepAccounts.has(a.id)) pending.accounts.add(a.id)
+      }
+      for (const t of state.transactions) pending.transactions.add(t.id)
+      for (const s of state.sinkingFunds) pending.sinking_funds.add(s.id)
+      for (const b of state.budgets) pending.budgets.add(b.id)
+      for (const c of state.categories) {
+        if (!keepCategories.has(c.id)) pending.categories.add(c.id)
+      }
+      break
+    }
+    default:
+      break
+  }
+}
+
+async function syncToSupabase(state: FinanceState, pending: PendingDeletes) {
   await dbUpsert("accounts", state.accounts.map(a => ({ ...unformatAccount(a), user_id: USER_ID })))
   await dbUpsert("transactions", state.transactions.map(t => ({ ...unformatTransaction(t), user_id: USER_ID })))
   await dbUpsert("sinking_funds", state.sinkingFunds.map(sf => ({ ...unformatSinkingFund(sf), user_id: USER_ID })))
@@ -615,16 +726,13 @@ async function syncToSupabase(state: FinanceState) {
   // tiene una FK a categories.id, así que la categoría referenciada ya debe existir.
   await dbUpsert("budgets", state.budgets.map(b => ({ id: b.id, category_id: b.category_id, amount: b.amount, month: b.month, user_id: USER_ID })))
 
-  await deleteRemoteMissingRows("transactions", state.transactions.map((t) => t.id))
-  await deleteRemoteMissingRows("sinking_funds", state.sinkingFunds.map((s) => s.id))
-  await deleteRemoteMissingRows("accounts", state.accounts.map((a) => a.id))
-  await deleteRemoteMissingRows("budgets", state.budgets.map((b) => b.id))
-  // Las categorías se borran DESPUÉS de los presupuestos: como budgets.category_id
-  // tiene una FK a categories.id, primero deben desaparecer los presupuestos que
-  // referencian la categoría eliminada (ya los quitamos en DELETE_CATEGORY). La
-  // salvaguarda anti-borrado-masivo de deleteRemoteMissingRows evita perder datos
-  // si el estado local llega parcial.
-  await deleteRemoteMissingRows("categories", state.categories.map((c) => c.id))
+  // Solo se borran IDs marcados por acciones explícitas del usuario (ver
+  // collectDeletesFromAction). Orden: presupuestos antes que categorías (FK).
+  if (pending.transactions.size) await dbDeleteIn("transactions", [...pending.transactions])
+  if (pending.sinking_funds.size) await dbDeleteIn("sinking_funds", [...pending.sinking_funds])
+  if (pending.accounts.size) await dbDeleteIn("accounts", [...pending.accounts])
+  if (pending.budgets.size) await dbDeleteIn("budgets", [...pending.budgets])
+  if (pending.categories.size) await dbDeleteIn("categories", [...pending.categories])
 }
 
 function loadLocalBackup(): FinanceState | null {
@@ -641,33 +749,6 @@ function loadLocalBackup(): FinanceState | null {
   }
 }
 
-async function deleteRemoteMissingRows(table: "accounts" | "transactions" | "sinking_funds" | "budgets" | "categories", localIds: string[]) {
-  // Para "transactions" también se leen los tags: las filas con "atajo" las
-  // crea /api/shortcuts/movement directamente en Supabase, fuera de este
-  // reducer, así que ninguna pestaña abierta las tiene en su estado local
-  // todavía. Sin esta excepción, este borrado-espejo las trataba como "el
-  // usuario las borró" y las eliminaba a los pocos segundos de crearse.
-  type RowWithTags = { id: string; tags?: unknown }
-  const data = await dbSelect<RowWithTags>(table, table === "transactions" ? "id, tags" : "id")
-  if (!data) throw new Error(`No se pudo leer "${table}" para sincronizar borrados`)
-
-  const remoteIds = data
-    .filter((row) => !(Array.isArray(row.tags) && row.tags.includes("atajo")))
-    .map((row) => row.id)
-  const localSet = new Set(localIds)
-  const missing = remoteIds.filter((id) => !localSet.has(id))
-  if (missing.length === 0) return
-
-  // Salvaguarda anti-pérdida de datos: si "faltan" muchas filas a la vez, casi
-  // seguro el estado local está desincronizado/parcial (otra pestaña, carga
-  // antigua, etc.), NO un borrado real del usuario. No borramos en masa.
-  if (missing.length > 5 && missing.length > remoteIds.length * 0.4) {
-    console.warn(`[Finance] Borrado masivo evitado en "${table}": ${missing.length}/${remoteIds.length} filas no estaban en el estado local. Estado probablemente parcial; no se borra nada.`)
-    return
-  }
-
-  await dbDeleteIn(table, missing)
-}
 
 function formatAccount(a: AccountRow): Account {
   return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco ?? "", saldo: Number(a.saldo), currency: a.currency ?? "EUR", objetivo: a.objetivo ? Number(a.objetivo) : null, limite_mensual: a.limite_mensual ? Number(a.limite_mensual) : null, color: a.color ?? "#3b82f6", logoUrl: a.logo_url ?? undefined }

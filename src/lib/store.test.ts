@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { reducer, defaultState, type Account, type Transaction, type Category, type FinanceState } from "./store"
+import { reducer, defaultState, collectDeletesFromAction, emptyPendingDeletes, type Account, type Transaction, type Category, type FinanceState } from "./store"
 
 const baseAccount: Account = {
   id: "acc1",
@@ -185,5 +185,37 @@ describe("reducer / RESET", () => {
   it("vuelve al estado por defecto", () => {
     const state: FinanceState = { ...emptyState, transactions: [tx()] }
     expect(reducer(state, { type: "RESET" })).toBe(defaultState)
+  })
+})
+
+
+describe("collectDeletesFromAction", () => {
+  it("marca cuenta + txs + sinking funds en cascada al borrar una cuenta", () => {
+    const state: FinanceState = {
+      ...emptyState,
+      accounts: [baseAccount],
+      transactions: [tx({ id: "t1", cuenta_id: "acc1" }), tx({ id: "t2", cuenta_id: "other" })],
+      sinkingFunds: [{ id: "sf1", nombre: "Meta", cantidad_objetivo: 1000, ahorrado_actual: 0, fecha_limite: "2027-01-01", cuenta_id: "acc1" }],
+    }
+    const pending = emptyPendingDeletes()
+    collectDeletesFromAction(state, { type: "DELETE_ACCOUNT", payload: "acc1" }, pending)
+    expect([...pending.accounts]).toEqual(["acc1"])
+    expect([...pending.transactions]).toEqual(["t1"])
+    expect([...pending.sinking_funds]).toEqual(["sf1"])
+  })
+
+  it("en RESET solo marca cuentas/categorías que no forman parte del estado por defecto", () => {
+    const state: FinanceState = {
+      ...defaultState,
+      accounts: [...defaultState.accounts, { ...baseAccount, id: "acc_custom" }],
+      transactions: [tx({ id: "t1" })],
+      categories: [...defaultState.categories, { id: "cat_custom", name: "Custom", color: "#000", kind: "gasto" }],
+    }
+    const pending = emptyPendingDeletes()
+    collectDeletesFromAction(state, { type: "RESET" }, pending)
+    expect([...pending.accounts]).toEqual(["acc_custom"])
+    expect([...pending.transactions]).toEqual(["t1"])
+    expect([...pending.categories]).toEqual(["cat_custom"])
+    expect(pending.accounts.has("acc_principal")).toBe(false)
   })
 })
