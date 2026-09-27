@@ -347,9 +347,9 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const [filterCategory, setFilterCategory] = useState<string>("all")
   // Permite llegar aquí desde otra página con el tipo ya filtrado, ej. al
   // pinchar el ticker "Ingresos"/"Gastos" del Dashboard (/transactions?tipo=...).
-  const [filterTipo, setFilterTipo] = useState<"all" | "ingreso" | "gasto">(() => {
+  const [filterTipo, setFilterTipo] = useState<"all" | "ingreso" | "gasto" | "traspaso">(() => {
     const tipo = searchParams.get("tipo")
-    return tipo === "ingreso" || tipo === "gasto" ? tipo : "all"
+    return tipo === "ingreso" || tipo === "gasto" || tipo === "traspaso" ? tipo : "all"
   })
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(0)
@@ -392,7 +392,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const handleCategoryFilter = (value: string | null) => {
     if (value) { setFilterCategory(value); setPage(0) }
   }
-  const handleTipoFilter = (value: "all" | "ingreso" | "gasto") => {
+  const handleTipoFilter = (value: "all" | "ingreso" | "gasto" | "traspaso") => {
     setFilterTipo(value); setPage(0)
   }
   const hasActiveFilters = filterAccount !== "all" || filterCategory !== "all" || filterTipo !== "all" || search !== ""
@@ -458,7 +458,11 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
       return filterTransactionsByMonth(state.transactions, selectedMonth)
         .filter((t) => filterAccount === "all" || t.cuenta_id === filterAccount)
         .filter((t) => filterCategory === "all" || t.categoria === filterCategory)
-        .filter((t) => filterTipo === "all" || t.tipo === filterTipo)
+        .filter((t) => {
+          if (filterTipo === "all") return true
+          if (filterTipo === "traspaso") return isTransfer(t)
+          return t.tipo === filterTipo && !isTransfer(t)
+        })
         .filter((t) => !search || t.descripcion.toLowerCase().includes(search.toLowerCase()) || t.categoria.toLowerCase().includes(search.toLowerCase()) || t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())))
         .sort((a, b) =>
           safeTime(b.fecha) - safeTime(a.fecha)
@@ -529,16 +533,21 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
               </SelectContent>
             </Select>
             <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
-              {(["all", "ingreso", "gasto"] as const).map((tipo) => (
+              {([
+                { value: "all" as const, label: "Todos" },
+                { value: "ingreso" as const, label: "Ingreso" },
+                { value: "gasto" as const, label: "Gasto" },
+                { value: "traspaso" as const, label: "Traspaso" },
+              ]).map((tipo) => (
                 <button
-                  key={tipo}
-                  onClick={() => handleTipoFilter(tipo)}
+                  key={tipo.value}
+                  onClick={() => handleTipoFilter(tipo.value)}
                   className={cn(
                     "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-                    filterTipo === tipo ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    filterTipo === tipo.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {tipo === "all" ? "Todos" : tipo === "ingreso" ? "Ingreso" : "Gasto"}
+                  {tipo.label}
                 </button>
               ))}
             </div>
@@ -741,6 +750,11 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                             <span className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
                               <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
                               Ajuste
+                            </span>
+                          ) : transfer ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/8 px-2 py-0.5 text-[11px] font-semibold text-violet-500">
+                              <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+                              Traspaso
                             </span>
                           ) : (
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
