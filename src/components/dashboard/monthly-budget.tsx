@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress"
 import { Sensitive } from "@/components/shared/sensitive"
 import { formatMoney } from "@/lib/currency"
 import { type Budget, type Transaction, type Category } from "@/lib/store"
+import { countsTowardCashFlow } from "@/lib/calculations"
 import { BudgetDialog } from "@/components/dashboard/budget-dialog"
 import { EmptyState } from "@/components/shared/empty-state"
 import { cn } from "@/lib/utils"
@@ -34,7 +35,7 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
     const categoryById = new Map(categories.map((c) => [c.id, c]))
     const spentByCategory = new Map<string, number>()
     for (const t of transactions) {
-      if (t.tipo !== "gasto" || !t.fecha.startsWith(selectedMonth)) continue
+      if (t.tipo !== "gasto" || !t.fecha.startsWith(selectedMonth) || !countsTowardCashFlow(t, transactions)) continue
       spentByCategory.set(t.categoria, (spentByCategory.get(t.categoria) ?? 0) + t.monto)
     }
 

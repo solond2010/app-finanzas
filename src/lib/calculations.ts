@@ -38,10 +38,11 @@ function getMonthWindow(endMonthKey: string | undefined, count = 6) {
   return Array.from({ length: count }, (_, index) => getMonthKey(new Date(end.getFullYear(), end.getMonth() - (count - 1 - index), 1)))
 }
 
+// Comparar por prefijo YYYY-MM evita el bug de `new Date("YYYY-MM-DD")`
+// (se interpreta en UTC y en zonas negativas puede caer en el mes anterior).
+// El resto de la app ya filtra con `fecha.startsWith(monthKey)`.
 function isInMonth(dateString: string, monthKey: string) {
-  const d = new Date(dateString)
-  const monthDate = parseMonthKey(monthKey)
-  return d.getFullYear() === monthDate.getFullYear() && d.getMonth() === monthDate.getMonth()
+  return dateString.startsWith(monthKey)
 }
 
 function isAfterMonth(dateString: string, monthKey: string) {
@@ -62,15 +63,48 @@ export function isTransfer(t: Transaction) {
   return t.tags?.includes("traspaso") ?? false
 }
 
+// Saldo inicial (init_) y ajustes al editar cuenta (adj_): existen para que
+// account.saldo cuadre con el ledger, no son actividad económica del mes.
+export function isBalanceAdjustment(t: Transaction) {
+  return t.id.startsWith("init_") || t.id.startsWith("adj_")
+}
+
+/**
+ * True solo si hay la otra pata del traspaso (mismo día, mismo monto, tipo
+ * opuesto, otra cuenta). Si se borró la cuenta origen/destino, la pata
+ * huérfana deja de ser un traspaso interno: el dinero sí entró/salió del
+ * perímetro de cuentas y debe contar en ingresos/gastos.
+ */
+export function hasTransferPair(t: Transaction, all: Transaction[]): boolean {
+  if (!isTransfer(t)) return false
+  const opposite = t.tipo === "ingreso" ? "gasto" : "ingreso"
+  return all.some(
+    (o) =>
+      o.id !== t.id &&
+      isTransfer(o) &&
+      o.tipo === opposite &&
+      o.monto === t.monto &&
+      o.fecha === t.fecha &&
+      o.cuenta_id !== t.cuenta_id
+  )
+}
+
+/** Cuenta para totales de cash flow (ingresos/gastos del mes, categorías, etc.). */
+export function countsTowardCashFlow(t: Transaction, all: Transaction[] = []): boolean {
+  if (isBalanceAdjustment(t)) return false
+  if (isTransfer(t) && (all.length === 0 || hasTransferPair(t, all))) return false
+  return true
+}
+
 export function filterTransactionsByMonth(transactions: Transaction[], monthKey?: string) {
   if (!monthKey) return transactions
   return transactions.filter((t) => isInMonth(t.fecha, monthKey))
 }
 
 export function getMonthTotalsByString(transactions: Transaction[], month: string) {
-  const monthTxns = filterTransactionsByMonth(transactions, month)
-  const ingresos = monthTxns.filter((t) => t.tipo === "ingreso" && !isTransfer(t)).reduce((s, t) => s + t.monto, 0)
-  const gastos = monthTxns.filter((t) => t.tipo === "gasto" && !isTransfer(t)).reduce((s, t) => s + t.monto, 0)
+  const monthTxns = filterTransactionsByMonth(transactions, month).filter((t) => countsTowardCashFlow(t, transactions))
+  const ingresos = monthTxns.filter((t) => t.tipo === "ingreso").reduce((s, t) => s + t.monto, 0)
+  const gastos = monthTxns.filter((t) => t.tipo === "gasto").reduce((s, t) => s + t.monto, 0)
   return { ingresos, gastos, neto: ingresos - gastos }
 }
 
@@ -92,7 +126,7 @@ export function getMonthlyInvestmentInflow(transactions: Transaction[], accounts
 }
 
 export function getNeedsVsWantsForMonth(transactions: Transaction[], monthKey?: string) {
-  const monthTransactions = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto" && !isTransfer(t))
+  const monthTransactions = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto" && countsTowardCashFlow(t, transactions))
   const necesidades = monthTransactions.filter((t) => t.es_necesidad).reduce((s, t) => s + t.monto, 0)
   const deseos = monthTransactions.filter((t) => !t.es_necesidad).reduce((s, t) => s + t.monto, 0)
   return { necesidades, deseos }
@@ -249,7 +283,7 @@ export function buildNetWorthHistoryToday(accounts: Account[], transactions: Tra
 }
 
 export function getCategoryBreakdown(transactions: Transaction[], monthKey?: string) {
-  const gastos = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto" && !isTransfer(t))
+  const gastos = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto" && countsTowardCashFlow(t, transactions))
 
   const breakdown: Record<string, number> = {}
   for (const t of gastos) {

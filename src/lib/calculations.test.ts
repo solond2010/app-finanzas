@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest"
 import type { Account, SinkingFund, Transaction } from "./store"
 import {
   isTransfer,
+  hasTransferPair,
+  countsTowardCashFlow,
   getSavingsRate,
   getMonthTotalsByString,
   getAccountsAtMonth,
@@ -85,15 +87,35 @@ describe("getSavingsRate", () => {
 })
 
 describe("getMonthTotalsByString", () => {
-  it("excluye traspasos de ingresos y gastos", () => {
+  it("excluye traspasos emparejados de ingresos y gastos", () => {
     const txns = [
       tx({ tipo: "ingreso", monto: 1000, fecha: "2026-06-01" }),
       tx({ tipo: "gasto", monto: 300, fecha: "2026-06-02" }),
-      tx({ tipo: "ingreso", monto: 50, fecha: "2026-06-03", tags: ["traspaso"] }),
-      tx({ tipo: "gasto", monto: 50, fecha: "2026-06-03", tags: ["traspaso"] }),
+      tx({ id: "xf_in", cuenta_id: "acc_2", tipo: "ingreso", monto: 50, fecha: "2026-06-03", tags: ["traspaso"] }),
+      tx({ id: "xf_out", tipo: "gasto", monto: 50, fecha: "2026-06-03", tags: ["traspaso"] }),
       tx({ tipo: "gasto", monto: 999, fecha: "2026-05-15" }), // otro mes, no cuenta
     ]
     expect(getMonthTotalsByString(txns, "2026-06")).toEqual({ ingresos: 1000, gastos: 300, neto: 700 })
+  })
+
+  it("cuenta como ingreso un traspaso huérfano (sin pata en otra cuenta)", () => {
+    // Caso real: se borró la cuenta "Efectivo" y quedó solo el ingreso etiquetado traspaso.
+    const txns = [
+      tx({ tipo: "ingreso", monto: 472, fecha: "2026-09-10" }),
+      tx({ id: "orphan", tipo: "ingreso", monto: 900, fecha: "2026-09-23", tags: ["traspaso"], descripcion: "Traspaso ← Efectivo" }),
+    ]
+    expect(hasTransferPair(txns[1], txns)).toBe(false)
+    expect(countsTowardCashFlow(txns[1], txns)).toBe(true)
+    expect(getMonthTotalsByString(txns, "2026-09")).toEqual({ ingresos: 1372, gastos: 0, neto: 1372 })
+  })
+
+  it("excluye init_/adj_ aunque el caller no los haya filtrado", () => {
+    const txns = [
+      tx({ tipo: "ingreso", monto: 100, fecha: "2026-09-01" }),
+      tx({ id: "init_acc_1", tipo: "ingreso", monto: 500, fecha: "2026-09-01", categoria: "Saldo inicial" }),
+      tx({ id: "adj_xyz", tipo: "ingreso", monto: -40, fecha: "2026-09-02", categoria: "Ajuste de saldo" }),
+    ]
+    expect(getMonthTotalsByString(txns, "2026-09")).toEqual({ ingresos: 100, gastos: 0, neto: 100 })
   })
 })
 

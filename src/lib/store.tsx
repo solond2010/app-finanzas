@@ -3,6 +3,7 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
 import { type CurrencyCode, refreshExchangeRates } from "./currency"
+import { hasTransferPair, isTransfer } from "./calculations"
 
 export interface Account {
   id: string
@@ -288,13 +289,30 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
         transactions: newTransactions,
       }
     }
-    case "DELETE_ACCOUNT":
+    case "DELETE_ACCOUNT": {
+      // Al borrar una cuenta se van sus transacciones. Si había un traspaso
+      // hacia/desde otra cuenta, la pata que queda quedaría etiquetada
+      // "traspaso" para siempre y desaparecería de ingresos/gastos aunque el
+      // dinero sí esté en el perímetro restante. Se le quita el tag.
+      const deletedId = action.payload
+      const deletedTransfers = state.transactions.filter((t) => t.cuenta_id === deletedId && isTransfer(t))
+      const remaining = state.transactions
+        .filter((t) => t.cuenta_id !== deletedId)
+        .map((t) => {
+          if (!isTransfer(t)) return t
+          const wasPaired = deletedTransfers.some(
+            (d) => d.tipo !== t.tipo && d.monto === t.monto && d.fecha === t.fecha
+          )
+          if (!wasPaired) return t
+          return { ...t, tags: t.tags.filter((tag) => tag !== "traspaso") }
+        })
       return {
         ...state,
-        accounts: state.accounts.filter((a) => a.id !== action.payload),
-        transactions: state.transactions.filter((t) => t.cuenta_id !== action.payload),
-        sinkingFunds: state.sinkingFunds.filter((s) => s.cuenta_id !== action.payload),
+        accounts: state.accounts.filter((a) => a.id !== deletedId),
+        transactions: remaining,
+        sinkingFunds: state.sinkingFunds.filter((s) => s.cuenta_id !== deletedId),
       }
+    }
     case "ADD_TRANSACTION": {
       // created_at se fija aquí (punto único) en vez de en cada sitio que
       // despacha ADD_TRANSACTION, para poder ordenar por hora real de alta
@@ -756,27 +774,53 @@ function formatAccount(a: AccountRow): Account {
 
 function normalizeFinanceState(state: FinanceState): FinanceState {
   const accounts = state.accounts.map((account) => ({ ...account, currency: account.currency ?? "EUR" }))
-  const transactions = [...state.transactions]
+  let transactions = [...state.transactions]
+
+  // 1) Quitar tag "traspaso" de patas huérfanas (la otra cuenta ya no existe).
+  //    Si no, dejan de contar en ingresos/gastos aunque el dinero sí esté.
+  transactions = transactions.map((t) => {
+    if (!isTransfer(t) || hasTransferPair(t, transactions)) return t
+    return { ...t, tags: t.tags.filter((tag) => tag !== "traspaso") }
+  })
+
+  // 2) Eliminar init_ fantasma: se crearon con monto = saldo actual aunque ya
+  //    hubiera movimientos que explicaban ese saldo (p.ej. un "Otros" de
+  //    apertura). Si sin el init_ la suma del ledger ya cuadra con el saldo,
+  //    el init_ sobra y desincroniza sumTx vs saldo.
+  const phantomInitIds = new Set<string>()
   for (const account of accounts) {
-    if (account.saldo !== 0 && !transactions.some((t) => t.cuenta_id === account.id && (t.categoria === "Saldo inicial" || t.id.startsWith(`init_${account.id}`)))) {
-      const ids = transactions.filter((t) => t.cuenta_id === account.id).map((t) => t.id)
-      const hasInitTx = ids.some((id) => typeof id === "string" && id.startsWith(`init_${account.id}`))
-      if (!hasInitTx) {
-        const txDates = transactions.filter((t) => t.cuenta_id === account.id).map((t) => t.fecha).sort()
-        const fecha = txDates.length > 0 ? txDates[0] : new Date().toISOString().split("T")[0]
-        transactions.push({
-          id: `init_${account.id}`,
-          cuenta_id: account.id,
-          monto: account.saldo,
-          fecha,
-          tipo: "ingreso",
-          categoria: "Saldo inicial",
-          es_necesidad: false,
-          descripcion: `Saldo inicial de ${account.nombre}`,
-          tags: [],
-        })
-      }
-    }
+    const initTx = transactions.find((t) => t.id === `init_${account.id}`)
+    if (!initTx) continue
+    const sumWithout = transactions
+      .filter((t) => t.cuenta_id === account.id && t.id !== initTx.id)
+      .reduce((s, t) => s + (t.tipo === "ingreso" ? t.monto : -t.monto), 0)
+    if (Math.abs(sumWithout - account.saldo) < 0.005) phantomInitIds.add(initTx.id)
+  }
+  if (phantomInitIds.size) transactions = transactions.filter((t) => !phantomInitIds.has(t.id))
+
+  // 3) Si una cuenta tiene saldo sin ningún movimiento que lo explique, crear
+  //    un init_ solo por el RESIDUAL (saldo − suma ledger), nunca por el saldo
+  //    entero cuando ya hay txs (eso duplicaba el ledger).
+  for (const account of accounts) {
+    const accountTxs = transactions.filter((t) => t.cuenta_id === account.id)
+    const hasInitTx = accountTxs.some((t) => t.categoria === "Saldo inicial" || t.id.startsWith(`init_${account.id}`))
+    if (hasInitTx) continue
+    const sumTx = accountTxs.reduce((s, t) => s + (t.tipo === "ingreso" ? t.monto : -t.monto), 0)
+    const residual = account.saldo - sumTx
+    if (Math.abs(residual) < 0.005) continue
+    const txDates = accountTxs.map((t) => t.fecha).sort()
+    const fecha = txDates.length > 0 ? txDates[0] : new Date().toISOString().split("T")[0]
+    transactions.push({
+      id: `init_${account.id}`,
+      cuenta_id: account.id,
+      monto: Math.abs(residual),
+      fecha,
+      tipo: residual >= 0 ? "ingreso" : "gasto",
+      categoria: "Saldo inicial",
+      es_necesidad: false,
+      descripcion: `Saldo inicial de ${account.nombre}`,
+      tags: [],
+    })
   }
   return { ...state, accounts, transactions }
 }

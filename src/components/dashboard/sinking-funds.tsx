@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type SinkingFund, generateId } from "@/lib/store"
 import { useDisplayAccounts } from "@/lib/investments"
-import { calculateMonthlySaving, fundCurrentAmount } from "@/lib/calculations"
+import { calculateMonthlySaving, fundCurrentAmount, countsTowardCashFlow } from "@/lib/calculations"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { PiggyBank, Plus, Pencil, Trash2, Target, TrendingUp, Clock, AlertCircle } from "lucide-react"
 import { currencySymbol } from "@/lib/currency"
@@ -160,8 +160,8 @@ export function SinkingFundsGrid() {
       const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const key = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}`
       const monthTxns = filtered.filter((t) => t.fecha.startsWith(key))
-      const ingresos = monthTxns.filter((t) => t.tipo === "ingreso").reduce((s, t) => s + t.monto, 0)
-      const gastos = monthTxns.filter((t) => t.tipo === "gasto").reduce((s, t) => s + t.monto, 0)
+      const ingresos = monthTxns.filter((t) => t.tipo === "ingreso" && countsTowardCashFlow(t, state.transactions)).reduce((s, t) => s + t.monto, 0)
+      const gastos = monthTxns.filter((t) => t.tipo === "gasto" && countsTowardCashFlow(t, state.transactions)).reduce((s, t) => s + t.monto, 0)
       netPerMonth.push(ingresos - gastos)
     }
     const total = netPerMonth.reduce((s, v) => s + v, 0)

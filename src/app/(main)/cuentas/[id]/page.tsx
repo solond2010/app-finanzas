@@ -14,7 +14,7 @@ import { formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
 import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
-import { accountGoal } from "@/lib/calculations"
+import { accountGoal, countsTowardCashFlow } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
 
 export default function AccountDetailPage() {
@@ -60,18 +60,17 @@ export default function AccountDetailPage() {
         const now = new Date()
         const mes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
         const gastado = state.transactions
-          .filter((t) => t.cuenta_id === account.id && t.fecha.startsWith(mes) && t.tipo === "gasto")
+          .filter((t) => t.cuenta_id === account.id && t.fecha.startsWith(mes) && t.tipo === "gasto" && countsTowardCashFlow(t, state.transactions))
           .reduce((s, t) => s + t.monto, 0)
         return Math.min((gastado / account.limite_mensual) * 100, 100)
       })()
     : null
 
-  const totalIngresos = state.transactions
-    .filter((t) => t.cuenta_id === account.id && t.tipo === "ingreso")
-    .reduce((s, t) => s + t.monto, 0)
-  const totalGastos = state.transactions
-    .filter((t) => t.cuenta_id === account.id && t.tipo === "gasto")
-    .reduce((s, t) => s + t.monto, 0)
+  const accountCashFlow = state.transactions.filter(
+    (t) => t.cuenta_id === account.id && countsTowardCashFlow(t, state.transactions)
+  )
+  const totalIngresos = accountCashFlow.filter((t) => t.tipo === "ingreso").reduce((s, t) => s + t.monto, 0)
+  const totalGastos = accountCashFlow.filter((t) => t.tipo === "gasto").reduce((s, t) => s + t.monto, 0)
 
   return (
     <div className="content-fade space-y-6">

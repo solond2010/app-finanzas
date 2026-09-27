@@ -14,7 +14,7 @@ import { MetricCard } from "@/components/dashboard/metric-card"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
-import { accountGoal, buildMonthlyCashFlow, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer, buildPreciseNetWorthHistory } from "@/lib/calculations"
+import { accountGoal, buildMonthlyCashFlow, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, countsTowardCashFlow, buildPreciseNetWorthHistory } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue, useDisplayAccounts } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
@@ -174,7 +174,7 @@ export default function AnalyticsPage() {
     const daysInMonth = new Date(year, month, 0).getDate()
     const totals = new Array(daysInMonth).fill(0)
     for (const t of analysisTransactions) {
-      if (t.tipo !== "gasto" || isTransfer(t) || !t.fecha.startsWith(selectedMonth)) continue
+      if (t.tipo !== "gasto" || !countsTowardCashFlow(t, analysisTransactions) || !t.fecha.startsWith(selectedMonth)) continue
       const day = new Date(t.fecha).getDate()
       totals[day - 1] += t.monto
     }
@@ -190,7 +190,7 @@ export default function AnalyticsPage() {
     const accountById = new Map(state.accounts.map((a) => [a.id, a]))
     const totals = new Map<string, number>()
     for (const t of analysisTransactions) {
-      if (t.tipo !== "gasto" || isTransfer(t) || !t.fecha.startsWith(selectedMonth)) continue
+      if (t.tipo !== "gasto" || !countsTowardCashFlow(t, analysisTransactions) || !t.fecha.startsWith(selectedMonth)) continue
       totals.set(t.cuenta_id, (totals.get(t.cuenta_id) ?? 0) + t.monto)
     }
     return Array.from(totals.entries())
