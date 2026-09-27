@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Account, type Category, generateId } from "@/lib/store"
 import { parseAmount } from "@/lib/validation"
-import { formatMoney } from "@/lib/currency"
+import { formatMoney, currencySymbol, type CurrencyCode } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { cn } from "@/lib/utils"
@@ -148,25 +148,36 @@ function UnifiedMovementForm({
   const submitLabel = tipo === "gasto" ? "Registrar gasto" : tipo === "ingreso" ? "Registrar ingreso" : "Transferir"
   const submitDisabled = tipo === "traspaso" && origenId === destinoId
 
+  const selectedAccountId = tipo === "traspaso" ? origenId : cuentaId
+  const selectedCurrency = (accounts.find((a) => a.id === selectedAccountId)?.currency ?? "EUR") as CurrencyCode
+  const montoLabel = `Monto (${currencySymbol(selectedCurrency)})`
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-foreground">Tipo</label>
-        <Select value={tipo} onValueChange={(v) => v && setTipo(v as MovementType)} items={Object.fromEntries(TIPO_OPTIONS.map((t) => [t.value, t.label]))}>
-          <SelectTrigger className="h-12 w-full text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="p-2">
-            {TIPO_OPTIONS.map((t) => (
-              <SelectItem key={t.value} value={t.value} className="py-2.5 text-sm">
-                <span className="flex items-center gap-2.5">
-                  <t.icon className={cn("h-4 w-4", t.color)} />
-                  {t.label}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="grid grid-cols-3 gap-2">
+          {TIPO_OPTIONS.map((t) => {
+            const Icon = t.icon
+            const active = tipo === t.value
+            return (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setTipo(t.value)}
+                className={cn(
+                  "flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-xs font-semibold transition-all active:scale-[0.98]",
+                  active
+                    ? "border-primary/40 bg-primary/10 text-foreground shadow-sm"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted/60"
+                )}
+              >
+                <Icon className={cn("h-4 w-4", active ? t.color : "")} />
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {tipo === "traspaso" ? (
@@ -211,7 +222,7 @@ function UnifiedMovementForm({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Monto (€)</label>
+              <label className="text-sm font-medium text-foreground">{montoLabel}</label>
               <Input type="number" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" required autoFocus className="h-12 text-base" />
             </div>
             <div className="space-y-1.5">
@@ -245,7 +256,7 @@ function UnifiedMovementForm({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Monto (€)</label>
+              <label className="text-sm font-medium text-foreground">{montoLabel}</label>
               <Input type="number" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" required autoFocus className="h-12 text-base" />
             </div>
             <div className="space-y-1.5">
@@ -273,15 +284,35 @@ function UnifiedMovementForm({
             </div>
           </div>
 
-          <label className="flex items-center gap-3 cursor-pointer py-1">
-            <input
-              type="checkbox"
-              checked={esNecesidad}
-              onChange={(e) => setEsNecesidad(e.target.checked)}
-              className="h-4 w-4 rounded border-muted-foreground"
-            />
-            <span className="text-sm text-foreground">Es necesidad</span>
-          </label>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Clasificación</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setEsNecesidad(true)}
+                className={cn(
+                  "rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all active:scale-[0.98]",
+                  esNecesidad
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted/60"
+                )}
+              >
+                Necesidad
+              </button>
+              <button
+                type="button"
+                onClick={() => setEsNecesidad(false)}
+                className={cn(
+                  "rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all active:scale-[0.98]",
+                  !esNecesidad
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted/60"
+                )}
+              >
+                Deseo
+              </button>
+            </div>
+          </div>
         </>
       )}
 

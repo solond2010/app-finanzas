@@ -33,7 +33,7 @@ import { parseAmount } from "@/lib/validation"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { formatMoney } from "@/lib/currency"
+import { formatMoney, currencySymbol, type CurrencyCode } from "@/lib/currency"
 import { dateLabel, isInitialBalanceTransaction } from "@/lib/format"
 import { Sensitive } from "@/components/shared/sensitive"
 import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurringFrequency, recurringTag, type RecurringFrequency } from "@/lib/calculations"
@@ -62,7 +62,7 @@ function TransactionForm({
   onCancel,
 }: {
   transaction?: Transaction
-  accounts: { id: string; nombre: string }[]
+  accounts: { id: string; nombre: string; currency?: CurrencyCode }[]
   categories: Category[]
   onSave: (t: Transaction) => void
   onCancel: () => void
@@ -135,16 +135,31 @@ function TransactionForm({
         </div>
         <div className="space-y-1.5">
           <label className="text-xs text-muted-foreground">Tipo</label>
-          <Select value={tipo} onValueChange={(v) => changeTipo(v as "ingreso" | "gasto")}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ingreso">Ingreso</SelectItem>
-              <SelectItem value="gasto">Gasto</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { value: "gasto" as const, label: "Gasto" },
+              { value: "ingreso" as const, label: "Ingreso" },
+            ]).map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => changeTipo(t.value)}
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-sm font-semibold transition-all active:scale-[0.98]",
+                  tipo === t.value
+                    ? t.value === "gasto"
+                      ? "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400"
+                      : "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted/60"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Monto (€)</label>
+          <label className="text-xs text-muted-foreground">Monto ({currencySymbol((accounts.find((a) => a.id === cuentaId)?.currency ?? "EUR") as CurrencyCode)})</label>
           <Input type="number" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" required />
         </div>
         <div className="space-y-1.5">
@@ -169,15 +184,35 @@ function TransactionForm({
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={esNecesidad}
-            onChange={(e) => setEsNecesidad(e.target.checked)}
-            className="rounded border-muted-foreground"
-          />
-          <span className="text-sm text-muted-foreground">Es necesidad</span>
-        </label>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground shrink-0">Clasificación</span>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setEsNecesidad(true)}
+              className={cn(
+                "rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-all",
+                esNecesidad
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "border-border text-muted-foreground hover:bg-muted/60"
+              )}
+            >
+              Necesidad
+            </button>
+            <button
+              type="button"
+              onClick={() => setEsNecesidad(false)}
+              className={cn(
+                "rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-all",
+                !esNecesidad
+                  ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  : "border-border text-muted-foreground hover:bg-muted/60"
+              )}
+            >
+              Deseo
+            </button>
+          </div>
+        </div>
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"

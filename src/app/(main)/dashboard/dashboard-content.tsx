@@ -97,6 +97,8 @@ export default function DashboardContent() {
   const activeRange = RANGES.find((r) => r.id === rangeId) ?? RANGES[3]
   const [accIdx, setAccIdx] = useState(0)
   const [showNewAccount, setShowNewAccount] = useState(false)
+  const [showAnnual, setShowAnnual] = useState(false)
+  const [showSpendBreakdown, setShowSpendBreakdown] = useState(false)
 
   const selectedDate = useMemo(() => new Date(today.getFullYear(), today.getMonth() - monthOffset, 1), [today, monthOffset])
   const selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`
@@ -699,17 +701,50 @@ export default function DashboardContent() {
             </div>
           </section>
 
-          {/* Acumulado anual */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3" style={{ animationDelay: "120ms" }}>
-            <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="var(--accent-green)" icon={ArrowUpRight}>
-              <MiniBars values={monthlyYear.map((m) => m.ingresos)} color="var(--accent-green)" />
-            </AnnualStat>
-            <AnnualStat label="Gastos totales" year={year} value={annualGastos} accent="var(--accent-red)" icon={ArrowDownRight}>
-              <MiniBars values={monthlyYear.map((m) => m.gastos)} color="var(--accent-red)" />
-            </AnnualStat>
-            <AnnualStat label="Ahorro neto anual" year={year} value={annualNeto} accent={annualNeto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} icon={PiggyBank}>
-              <MiniBars values={monthlyYear.map((m) => m.neto)} color="var(--accent-blue)" signed />
-            </AnnualStat>
+          {/* Acumulado anual: colapsado por defecto; detalle denso vive en Analíticas */}
+          <section className="stagger-fade" style={{ animationDelay: "120ms" }}>
+            <div className={`${CARD} space-y-4`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAnnual((v) => !v)}
+                  className="flex items-center gap-2 text-sm font-semibold text-foreground transition-colors hover:opacity-80"
+                  aria-expanded={showAnnual}
+                >
+                  <PiggyBank className="h-4 w-4 text-primary" />
+                  Acumulado {year}
+                  <span className="text-xs font-medium text-muted-foreground">{showAnnual ? "Ocultar" : "Ver más"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/analytics")}
+                  className="text-xs font-medium text-primary transition-colors hover:opacity-70"
+                >
+                  Ver en Analíticas
+                </button>
+              </div>
+              {!showAnnual && (
+                <p className="text-sm text-muted-foreground">
+                  Neto anual:{" "}
+                  <Sensitive as="span" className={cn("font-semibold tabular-nums", annualNeto >= 0 ? "text-emerald-500" : "text-red-500")}>
+                    {formatMoney(annualNeto, "EUR")}
+                  </Sensitive>
+                </p>
+              )}
+              {showAnnual && (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="var(--accent-green)" icon={ArrowUpRight}>
+                    <MiniBars values={monthlyYear.map((m) => m.ingresos)} color="var(--accent-green)" />
+                  </AnnualStat>
+                  <AnnualStat label="Gastos totales" year={year} value={annualGastos} accent="var(--accent-red)" icon={ArrowDownRight}>
+                    <MiniBars values={monthlyYear.map((m) => m.gastos)} color="var(--accent-red)" />
+                  </AnnualStat>
+                  <AnnualStat label="Ahorro neto anual" year={year} value={annualNeto} accent={annualNeto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} icon={PiggyBank}>
+                    <MiniBars values={monthlyYear.map((m) => m.neto)} color="var(--accent-blue)" signed />
+                  </AnnualStat>
+                </div>
+              )}
+            </div>
           </section>
 
           {/* Cuentas (carrusel) + Presupuesto */}
@@ -784,44 +819,53 @@ export default function DashboardContent() {
 
           {topSpending.length > 0 && (
             <div className={`${CARD} stagger-fade min-w-0`} style={{ animationDelay: "200ms" }}>
-              <div className="mb-5 flex items-center justify-between gap-2">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-foreground">Distribución de gastos</p>
-                <p className="text-sm tabular-nums text-muted-foreground"><Sensitive>{formatMoney(spendTotal, "EUR")}</Sensitive></p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm tabular-nums text-muted-foreground"><Sensitive>{formatMoney(spendTotal, "EUR")}</Sensitive></p>
+                  <button type="button" onClick={() => router.push("/analytics")} className="text-xs font-medium text-primary transition-colors hover:opacity-70">Ver en Analíticas</button>
+                </div>
               </div>
               {needsVsWantsTotal > 0 && (
-                <div className="mb-5 space-y-1.5">
+                <div className="mb-4 space-y-1.5">
                   <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
                     <span>Necesidades <span className="text-foreground">{needsPct}%</span></span>
                     <span>Deseos <span className="text-foreground">{100 - needsPct}%</span></span>
                   </div>
-                  {/* Verde/ámbar como en el donut de Analíticas y la Regla
-                      50/30/20: Necesidades siempre esmeralda, Deseos ámbar. */}
                   <div className="flex h-2 overflow-hidden rounded-full bg-muted">
                     <div className="h-full bg-[var(--accent-green)] transition-all duration-700" style={{ width: `${needsPct}%` }} />
                     <div className="h-full bg-[var(--accent-amber)] transition-all duration-700" style={{ width: `${100 - needsPct}%` }} />
                   </div>
                 </div>
               )}
-              <div className="grid grid-cols-1 gap-x-8 gap-y-3.5 sm:grid-cols-2">
-                {topSpending.map((c) => (
-                  <div key={c.categoria} className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="flex min-w-0 items-center gap-2 font-medium text-foreground">
-                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: catColor(c.categoria) }} />
-                        <span className="truncate">{c.categoria}</span>
-                      </span>
-                      <span className="shrink-0 tabular-nums text-muted-foreground">
-                        <Sensitive>{formatMoney(c.monto, "EUR")}</Sensitive> · {Math.round((c.monto / spendTotal) * 100)}%
-                      </span>
+              <button
+                type="button"
+                onClick={() => setShowSpendBreakdown((v) => !v)}
+                className="mb-3 text-xs font-medium text-primary transition-colors hover:opacity-70"
+                aria-expanded={showSpendBreakdown}
+              >
+                {showSpendBreakdown ? "Ocultar desglose" : "Ver desglose por categoría"}
+              </button>
+              {showSpendBreakdown && (
+                <div className="grid grid-cols-1 gap-x-8 gap-y-3.5 sm:grid-cols-2">
+                  {topSpending.map((c) => (
+                    <div key={c.categoria} className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="flex min-w-0 items-center gap-2 font-medium text-foreground">
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: catColor(c.categoria) }} />
+                          <span className="truncate">{c.categoria}</span>
+                        </span>
+                        <span className="shrink-0 tabular-nums text-muted-foreground">
+                          <Sensitive>{formatMoney(c.monto, "EUR")}</Sensitive> · {Math.round((c.monto / spendTotal) * 100)}%
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `max(${(c.monto / maxSpend) * 100}%, 10px)`, backgroundColor: catColor(c.categoria) }} />
+                      </div>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
-                      {/* max(…, 10px): las categorías pequeñas (1-2% del máximo) pintaban
-                          un punto de ~3px que parecía un pixel suelto, no una barra */}
-                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `max(${(c.monto / maxSpend) * 100}%, 10px)`, backgroundColor: catColor(c.categoria) }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

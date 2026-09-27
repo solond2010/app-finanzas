@@ -28,7 +28,7 @@ import { useEffect, useState } from "react"
 import { useSidebar } from "@/lib/sidebar"
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
   { href: "/transactions", label: "Movimientos", icon: ArrowLeftRight },
   { href: "/cuentas", label: "Cuentas", icon: Wallet },
   { href: "/inversiones", label: "Inversiones", icon: LineChart },
@@ -238,7 +238,8 @@ export function Sidebar() {
           </div>
         </div>
 
-        <nav className="flex flex-col gap-0.5 flex-1 px-3">
+        {/* Rutas principales: solo en desktop. En móvil la bottom nav ya las cubre. */}
+        <nav className="hidden flex-col gap-0.5 flex-1 px-3 lg:flex">
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
@@ -262,7 +263,22 @@ export function Sidebar() {
           })}
         </nav>
 
-        <div className="mt-4 space-y-1 px-3 pt-4 border-t border-sidebar-border/50">
+        {/* Móvil: solo ajustes (tema, privacidad, sync) + Configuración. Desktop: mismos ajustes bajo la nav. */}
+        <div className="mt-auto space-y-1 px-3 pt-4 border-t border-sidebar-border/50 max-lg:flex-1">
+          <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:hidden">Ajustes</p>
+          <Link
+            href="/configuracion"
+            onClick={() => setMobileOpen(false)}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] lg:hidden",
+              pathname === "/configuracion" || pathname.startsWith("/configuracion/")
+                ? "bg-primary/10 text-primary shadow-sm"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+            )}
+          >
+            <Settings className="h-4 w-4 shrink-0" />
+            Configuración
+          </Link>
           <button
             onClick={togglePrivacy}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"

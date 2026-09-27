@@ -1,25 +1,22 @@
 "use client"
 
 import React from "react"
-import { useMemo, useState, memo, lazy, Suspense, useRef, useEffect } from "react"
+import { useMemo, useState, memo, useRef, useEffect } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Calendar, CalendarClock, ChevronLeft, ChevronRight, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, RotateCcw, Sparkles, Target, TrendingDown, TrendingUp, Wallet, Wallet2 } from "lucide-react"
+import { Activity, AlertTriangle, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, Target, Wallet, Wallet2 } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
-import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
-import { TickerTile } from "@/components/shared/ticker-tile"
-import { accountGoal, buildMonthlyCashFlow, buildMonthlySummariesUpTo, buildNetWorthHistory, buildNetWorthHistoryDaily, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer, buildPreciseNetWorthHistory, diagnoseNetWorthCalculation } from "@/lib/calculations"
+import { accountGoal, buildMonthlyCashFlow, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, isTransfer, buildPreciseNetWorthHistory } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
-import { usePortfolioValue, accountDisplayValue, useDisplayAccounts, type Position } from "@/lib/investments"
+import { usePortfolioValue, accountDisplayValue, useDisplayAccounts } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
 import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
@@ -30,33 +27,40 @@ import { PatrimonioMensualSection } from "@/components/analytics/patrimonio-mens
 // Mismo umbral que MonthlyBudget (src/components/dashboard/monthly-budget.tsx).
 const BUDGET_WARNING_THRESHOLD = 80
 
-const SummaryTooltip = createChartTooltip(["ingresos", "gastos"], ["emerald", "red"])
 const CategoryTooltip = createChartTooltip(["monto"], ["violet"])
 const AccountTooltip = createChartTooltip(["monto"], ["blue"])
 const NeedsWantsTooltip = createChartTooltip(["Necesidades", "Deseos"], ["emerald", "amber"])
 
-const SectionTitle = memo(function SectionTitle({ label, title, text }: { label: string; title: string; text?: string }) {
+const CollapsibleBlock = memo(function CollapsibleBlock({
+  title,
+  hint,
+  defaultOpen = false,
+  children,
+}: {
+  title: string
+  hint?: string
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="col-span-full flex flex-col gap-1 pt-2">
-      <p className="page-section-label">{label}</p>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <h2 className="text-xl font-bold tracking-tight">{title}</h2>
-        {text && <p className="max-w-xl text-sm text-muted-foreground">{text}</p>}
-      </div>
-    </div>
+    <section className="space-y-4">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/40"
+        aria-expanded={open}
+      >
+        <div className="min-w-0">
+          <h2 className="text-base font-bold tracking-tight text-foreground">{title}</h2>
+          {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+        </div>
+        <ChevronDown className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
+      </button>
+      {open && <div className="space-y-6">{children}</div>}
+    </section>
   )
 })
-
-const MonthlyOverviewTooltip = createChartTooltip(["ingresos", "gastos", "neto"], ["emerald", "red", "blue"])
-
-type MountainChartProps = {
-  data: any[]
-  index: string
-  category: string
-  valueFormatter: (v: number) => string
-  className?: string
-}
-const MountainChartLazy = lazy<React.ComponentType<MountainChartProps>>(() => import("@/components/shared/mountain-chart").then(module => ({ default: module.MountainChart })))
 
 const RuleCard = memo(function RuleCard({ label, target, actual, value, tone, delay }: { label: string; target: number; actual: number; value: number; tone: string; delay: number }) {
   const diff = actual - target
@@ -144,8 +148,7 @@ export default function AnalyticsPage() {
   // misma cifra que el resto de widgets de la app.
   const displayAccounts = useDisplayAccounts()
   const [monthOffset, setMonthOffset] = useState(0)
-  const [trendMonths, setTrendMonths] = useState<6 | 12>(6)
-  const [overviewMonths, setOverviewMonths] = useState<number | 'ytd'>(12)
+  const TREND_MONTHS = 6
   const shownBudgetIds = useRef(new Set<string>())
   const { toast } = useToast()
 
@@ -220,8 +223,7 @@ export default function AnalyticsPage() {
       })
       .sort((a, b) => b.percentage - a.percentage)
   }, [state.budgets, state.categories, analysisTransactions, selectedMonth])
-  const summaries = useMemo(() => buildMonthlySummariesUpTo(analysisTransactions, selectedMonth, trendMonths), [analysisTransactions, selectedMonth, trendMonths])
-  const cashFlow = useMemo(() => buildMonthlyCashFlow(analysisTransactions, selectedMonth, trendMonths), [analysisTransactions, selectedMonth, trendMonths])
+  const cashFlow = useMemo(() => buildMonthlyCashFlow(analysisTransactions, selectedMonth, TREND_MONTHS), [analysisTransactions, selectedMonth])
   // Cashflow indexado por YYYY-MM para el detalle mensual unificado (patrimonio + ingresos/gastos/neto).
   const cashByMonthKey = useMemo(() => {
     const map: Record<string, { ingresos: number; gastos: number; neto: number }> = {}
@@ -239,47 +241,6 @@ export default function AnalyticsPage() {
     }
     return map
   }, [analysisTransactions, selectedMonth])
-// Nuevo: datos para el gráfico de visión general mensual (últimos N meses o todos los disponibles)
-   const monthlyOverviewData = useMemo(() => {
-     let data: Array<{ mes: string; ingresos: number; gastos: number; neto: number }> = []
-     if (overviewMonths === 12) {
-       // últimos 12 meses disponibles en cashFlow
-       const limited = cashFlow.slice(-12)
-       data = limited.map(m => ({
-         mes: m.mes,
-         ingresos: m.ingresos,
-         gastos: m.gastos,
-         neto: m.neto,
-       }))
-     } else if (overviewMonths === 3) {
-       const limited = cashFlow.slice(-3)
-       data = limited.map(m => ({
-         mes: m.mes,
-         ingresos: m.ingresos,
-         gastos: m.gastos,
-         neto: m.neto,
-       }))
-     } else if (overviewMonths === 6) {
-       const limited = cashFlow.slice(-6)
-       data = limited.map(m => ({
-         mes: m.mes,
-         ingresos: m.ingresos,
-         gastos: m.gastos,
-         neto: m.neto,
-       }))
-     } else if (overviewMonths === 'ytd') {
-       const currentYear = new Date().getFullYear()
-       data = cashFlow
-         .filter(m => m.mes.startsWith(`${currentYear}-`))
-         .map(m => ({
-           mes: m.mes,
-           ingresos: m.ingresos,
-           gastos: m.gastos,
-           neto: m.neto,
-         }))
-     }
-     return data
-   }, [cashFlow, overviewMonths])
   const { valueByAccount, investedByAccount } = usePortfolioValue()
   // Para el historial completo: necesitamos posiciones y precio histórico
   const { positions: investPositions } = usePortfolioValue()
@@ -350,7 +311,7 @@ export default function AnalyticsPage() {
     () => investmentAccounts.reduce((s, a) => s + accountDisplayValue(a, valueByAccount, investedByAccount), 0),
     [investmentAccounts, valueByAccount, investedByAccount]
   )
-  const rawNetWorthHistory = useMemo(() => buildNetWorthHistory(state.transactions, state.accounts, selectedMonth, trendMonths), [state.transactions, state.accounts, selectedMonth, trendMonths])
+  const rawNetWorthHistory = useMemo(() => buildNetWorthHistory(state.transactions, state.accounts, selectedMonth, TREND_MONTHS), [state.transactions, state.accounts, selectedMonth])
   const netWorthHistory = useMemo(
     () => rawNetWorthHistory.map((point) => ({ ...point, patrimonio: point.patrimonio - investmentSaldo + investmentDisplayTotal })),
     [rawNetWorthHistory, investmentSaldo, investmentDisplayTotal]
@@ -364,8 +325,6 @@ export default function AnalyticsPage() {
   const wantsPct = totalSpending > 0 ? (deseos / totalSpending) * 100 : 0
   const savingsActual = monthTotals.ingresos > 0 ? Math.max((monthTotals.neto / monthTotals.ingresos) * 100, 0) : 0
   const topCategory = categoryBreakdown[0]
-  const categoryTotal = categoryBreakdown.reduce((sum, item) => sum + item.monto, 0)
-  const topCategoryPct = topCategory && categoryTotal > 0 ? Math.round((topCategory.monto / categoryTotal) * 100) : 0
   // La ventana de cashFlow siempre tiene 6 meses aunque el usuario lleve
   // menos tiempo usando la app; los meses sin ningún movimiento (ni ingresos
   // ni gastos) no cuentan como "mes con cash flow positivo" ni entran en la
@@ -374,31 +333,7 @@ export default function AnalyticsPage() {
   const averageMonthlyNet = activeCashFlow.length > 0 ? Math.round(activeCashFlow.reduce((sum, item) => sum + item.neto, 0) / activeCashFlow.length) : 0
   const positiveMonths = activeCashFlow.filter((item) => item.neto >= 0).length
   const netWorthTrendPositive = netWorthChange >= 0
-  // Pico diario real del mes en curso: la serie mensual solo tiene un punto
-  // para este mes (el valor de hoy), así que sin esto la insignia "Máximo
-  // histórico" se encendía aunque el patrimonio ya hubiera caído desde un
-  // pico intramensual (mismo arreglo que el hero del Dashboard).
-  const currentMonthDailyPeak = useMemo(() => {
-    if (monthOffset !== 0) return 0
-    const daily = buildNetWorthHistoryDaily(state.accounts, state.transactions, today.getDate(), today)
-    return daily.reduce((m, d) => Math.max(m, d.patrimonio - investmentSaldo + investmentDisplayTotal), 0)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthOffset, state.accounts, state.transactions, investmentSaldo, investmentDisplayTotal])
-  const isAllTimeHigh = netWorthTrendPositive && netWorthHistory.length > 0 && currentNetWorth >= Math.max(...netWorthHistory.map((n) => n.patrimonio), currentMonthDailyPeak)
 
-  // Racha de meses consecutivos con flujo de caja positivo, contando hacia
-  // atrás desde el mes seleccionado, ignorando los meses sin actividad.
-  const streak = useMemo(() => {
-    let count = 0
-    for (let i = cashFlow.length - 1; i >= 0; i--) {
-      const month = cashFlow[i]
-      if (month.ingresos === 0 && month.gastos === 0) break
-      if (month.neto < 0) break
-      count++
-    }
-    return count
-  }, [cashFlow])
-  const savingsRateTrend = useMemo(() => cashFlow.map((c) => (c.ingresos > 0 ? Math.max((c.neto / c.ingresos) * 100, 0) : 0)), [cashFlow])
 
   const needsWantsData = [
     { name: "Necesidades", value: necesidades },
@@ -432,23 +367,8 @@ export default function AnalyticsPage() {
   const fullHistoryPeak = useMemo(() => 
     fullHistory.reduce((best, d) => (d.patrimonio > best.patrimonio ? d : best), fullHistory[0] ?? { patrimonio: 0, mes: '—', date: '' }), [fullHistory])
 
-  // Valor actual
-  const fullHistoryCurrent = fullHistory.at(-1)?.patrimonio ?? 0
-
-  // Drawdown actual desde el pico
-  const fullHistoryDrawdown = fullHistoryPeak.patrimonio - fullHistoryCurrent
-  const fullHistoryDrawdownPct = fullHistoryPeak.patrimonio > 0 ? (fullHistoryDrawdown / fullHistoryPeak.patrimonio) * 100 : 0
-
-  // Días desde el pico histórico
-  const fullHistoryDaysSincePeak = fullHistoryPeak.date 
-    ? Math.ceil((today.getTime() - new Date(fullHistoryPeak.date).getTime()) / 86400000)
-    : 0
 
   // Diagnóstico del cálculo
-  const [showDiagnostic, setShowDiagnostic] = useState(false)
-  const diagnostic = useMemo(() => 
-    diagnoseNetWorthCalculation(state.accounts, state.transactions, investPositions, priceHistory), 
-    [state.accounts, state.transactions, investPositions, priceHistory])
 
   // Persistir pico histórico en localStorage para que nunca se pierda
   const [savedPeak, setSavedPeak] = useState<{ value: number; date: string; label: string } | null>(() => {
@@ -459,14 +379,6 @@ export default function AnalyticsPage() {
     return null
   })
 
-  // Validar si el histórico de precios cubre la primera transacción
-  const historyCoverage = useMemo(() => {
-    if (!hasData || Object.keys(priceHistory).length === 0) return { covered: true, gapDays: 0 }
-    const firstTxDate = new Date(Math.min(...state.transactions.map(t => new Date(t.fecha).getTime())))
-    const oldestPriceDate = Math.min(...Object.values(priceHistory).flatMap(h => h.length > 0 ? h[0].t * 1000 : []))
-    const gapDays = (firstTxDate.getTime() - oldestPriceDate) / 86400000
-    return { covered: gapDays <= 30, gapDays: Math.max(0, Math.round(gapDays)) }
-  }, [hasData, priceHistory, state.transactions])
 
   // Guardar pico en localStorage + settings (nube) cuando cambia
   useEffect(() => {
@@ -498,107 +410,6 @@ export default function AnalyticsPage() {
     return () => { cancelled = true }
   }, [])
 
-  // Análisis de drawdowns (caídas y recuperaciones)
-  const fullHistoryDrawdowns = useMemo(() => {
-    if (fullHistory.length < 2) return []
-    const drawdowns: Array<{
-      start: string
-      peakDate: string
-      peakValue: number
-      troughDate: string
-      troughValue: number
-      drop: number
-      dropPct: number
-      recovered: boolean
-      recoveryDate: string
-      days: number
-    }> = []
-    
-    let peak = fullHistory[0]
-    let trough = fullHistory[0]
-    let inDrawdown = false
-    let drawdownStart = fullHistory[0]
-    
-    for (let i = 1; i < fullHistory.length; i++) {
-      const current = fullHistory[i]
-      
-      if (current.patrimonio > peak.patrimonio) {
-        // Nuevo pico histórico
-        if (inDrawdown && trough.patrimonio < peak.patrimonio) {
-          // Cerrar drawdown anterior
-          const recovered = current.patrimonio >= peak.patrimonio
-          drawdowns.push({
-            start: drawdownStart.mes,
-            peakDate: peak.mes,
-            peakValue: peak.patrimonio,
-            troughDate: trough.mes,
-            troughValue: trough.patrimonio,
-            drop: peak.patrimonio - trough.patrimonio,
-            dropPct: peak.patrimonio > 0 ? ((peak.patrimonio - trough.patrimonio) / peak.patrimonio) * 100 : 0,
-            recovered,
-            recoveryDate: recovered ? current.mes : '—',
-            days: Math.ceil((new Date(trough.date).getTime() - new Date(drawdownStart.date).getTime()) / 86400000)
-          })
-        }
-        peak = current
-        trough = current
-        drawdownStart = current
-        inDrawdown = false
-      } else if (current.patrimonio < trough.patrimonio) {
-        // Nuevo valle
-        trough = current
-        if (!inDrawdown) {
-          inDrawdown = true
-          drawdownStart = peak
-        }
-      }
-    }
-    
-    // Si terminamos en drawdown, añadirlo
-    if (inDrawdown && trough.patrimonio < peak.patrimonio) {
-      const last = fullHistory[fullHistory.length - 1]
-      const recovered = last.patrimonio >= peak.patrimonio
-      drawdowns.push({
-        start: drawdownStart.mes,
-        peakDate: peak.mes,
-        peakValue: peak.patrimonio,
-        troughDate: trough.mes,
-        troughValue: trough.patrimonio,
-        drop: peak.patrimonio - trough.patrimonio,
-        dropPct: peak.patrimonio > 0 ? ((peak.patrimonio - trough.patrimonio) / peak.patrimonio) * 100 : 0,
-        recovered,
-        recoveryDate: recovered ? last.mes : '—',
-        days: Math.ceil((new Date(trough.date).getTime() - new Date(drawdownStart.date).getTime()) / 86400000)
-      })
-    }
-    
-    return drawdowns.sort((a, b) => b.drop - a.drop)
-  }, [fullHistory])
-
-  // Drawdown máximo histórico
-  const fullHistoryMaxDrawdown = fullHistoryDrawdowns.length > 0 
-    ? Math.max(...fullHistoryDrawdowns.map(d => d.drop))
-    : 0
-  const fullHistoryMaxDrawdownPct = fullHistoryDrawdowns.length > 0
-    ? Math.max(...fullHistoryDrawdowns.map(d => d.dropPct))
-    : 0
-
-  // Mejor y peor día (cambio diario)
-  const fullHistoryBestDayChange = fullHistory.length > 1
-    ? Math.max(...fullHistory.slice(1).map((d, i) => d.patrimonio - fullHistory[i].patrimonio))
-    : 0
-  const fullHistoryWorstDayChange = fullHistory.length > 1
-    ? Math.min(...fullHistory.slice(1).map((d, i) => d.patrimonio - fullHistory[i].patrimonio))
-    : 0
-
-  // Volatilidad (desviación estándar diaria)
-  const fullHistoryVolatility = (() => {
-    if (fullHistory.length < 2) return 0
-    const changes = fullHistory.slice(1).map((d, i) => d.patrimonio - fullHistory[i].patrimonio)
-    const mean = changes.reduce((s, c) => s + c, 0) / changes.length
-    const variance = changes.reduce((s, c) => s + Math.pow(c - mean, 2), 0) / changes.length
-    return Math.sqrt(variance)
-  })()
 
   const [exportingPdf, setExportingPdf] = useState(false)
   const handleExportPdf = async () => {
@@ -645,474 +456,268 @@ export default function AnalyticsPage() {
             </button>
           </div>
           {hasData && (
-            <select
-              value={overviewMonths}
-              onChange={(e) => setOverviewMonths(e.target.value === 'ytd' ? 'ytd' : Number(e.target.value))}
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-              aria-label="Rango de vista general"
-            >
-              <option value={3}>Últimos 3 meses</option>
-              <option value={6}>Últimos 6 meses</option>
-              <option value={12}>Últimos 12 meses</option>
-              <option value="ytd">Año a la fecha</option>
-            </select>
-          )}
-          {hasData && (
             <Button variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={handleExportPdf} disabled={exportingPdf}>
               <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Descargar PDF"}
             </Button>
           )}
           {hasData && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmReset(true)}>Limpiar</Button>}
         </div>
-</header>
+      </header>
 
-       {hasData && (
-         <Card className="stagger-fade col-span-full" style={{ animationDelay: "60ms" }}>
-           <CardHeader className="pb-2">
-             <CardTitle className="flex items-center gap-2 text-base font-semibold"><BarChart3 className="h-4 w-4 text-muted-foreground" />Resumen mensual</CardTitle>
-           </CardHeader>
-           <CardContent>
-             <div role="img" aria-label="Ingresos, gastos y neto por mes">
-               <BarChart data={monthlyOverviewData} index="mes" categories={["ingresos", "gastos", "neto"]} colors={["emerald", "red", "blue"]} valueFormatter={chartFormatter} yAxisWidth={64} customTooltip={MonthlyOverviewTooltip} className="h-[200px]" showAnimation />
-             </div>
-           </CardContent>
-         </Card>
-       )}
-
-       {loading ? (
+      {loading ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" />
           </div>
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <Skeleton className="h-80" /><Skeleton className="h-80" />
-          </div>
+          <Skeleton className="h-80" />
         </div>
       ) : (
-      <>
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Patrimonio" value={<AnimatedNumber value={Math.round(currentNetWorth)} />} subtitle={<>{netWorthTrendPositive ? "Sube" : "Baja"} <Sensitive>{signedMoney(netWorthChange)}</Sensitive> vs mes previo</>} icon={Wallet} tone={netWorthTrendPositive ? "emerald" : "red"} delay={0} />
-        <MetricCard label="Ingresos" value={<AnimatedNumber value={monthTotals.ingresos} prefix={monthTotals.ingresos > 0 ? "+" : ""} />} subtitle={`Registrados en ${formatMonth(selectedDate)}`} icon={ArrowUpRight} tone="emerald" delay={70} />
-        <MetricCard label="Gastos" value={<AnimatedNumber value={monthTotals.gastos} prefix={monthTotals.gastos > 0 ? "-" : ""} />} subtitle={topCategory ? `${topCategory.categoria} concentra el ${topCategoryPct}%` : "Sin gastos este mes"} icon={ArrowDownRight} tone="red" delay={140} />
-        <MetricCard label="Neto" value={<AnimatedNumber value={monthTotals.neto} />} subtitle={activeCashFlow.length > 0 ? `${positiveMonths}/${activeCashFlow.length} meses con cash flow positivo` : "Sin histórico todavía"} icon={Activity} tone={monthTotals.neto >= 0 ? "blue" : "amber"} delay={210} />
-      </section>
+        <>
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <MetricCard
+              label="Patrimonio"
+              value={<AnimatedNumber value={Math.round(currentNetWorth)} />}
+              subtitle={<>{netWorthTrendPositive ? "Sube" : "Baja"} <Sensitive>{signedMoney(netWorthChange)}</Sensitive> vs mes previo</>}
+              icon={Wallet}
+              tone={netWorthTrendPositive ? "emerald" : "red"}
+              delay={0}
+            />
+            <MetricCard
+              label="Neto del mes"
+              value={<AnimatedNumber value={monthTotals.neto} />}
+              subtitle={<><Sensitive>{money(monthTotals.ingresos)}</Sensitive> ingresos · <Sensitive>{money(monthTotals.gastos)}</Sensitive> gastos</>}
+              icon={Activity}
+              tone={monthTotals.neto >= 0 ? "blue" : "amber"}
+              delay={70}
+            />
+            <MetricCard
+              label="Cash flow medio"
+              value={<Sensitive>{signedMoney(averageMonthlyNet)}</Sensitive>}
+              subtitle={activeCashFlow.length > 0 ? `Media ${TREND_MONTHS} meses · ${positiveMonths}/${activeCashFlow.length} positivos` : "Sin histórico todavía"}
+              icon={PiggyBank}
+              tone={averageMonthlyNet >= 0 ? "emerald" : "red"}
+              delay={140}
+            />
+          </section>
 
-      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <TickerTile label="Tasa de ahorro" value={`${Math.round(savingsActual)}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
-        <TickerTile label="Racha positiva" value={streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"} valueColor="var(--accent-amber)" />
-        <TickerTile label="Cash flow medio" value={<Sensitive>{signedMoney(averageMonthlyNet)}</Sensitive>} valueColor={averageMonthlyNet >= 0 ? "var(--accent-green)" : "var(--accent-red)"} />
-        <TickerTile label="Categoría top" value={topCategory ? `${topCategoryPct}%` : "—"} detail={topCategory?.categoria} valueColor="var(--gold)" />
-      </section>
+          <PatrimonioMensualSection dailyHistory={fullHistory} cashByMonth={cashByMonthKey} />
 
-      {/* Control Patrimonio Mensual: snapshots día 5 derivados del historial diario preciso. */}
-      <PatrimonioMensualSection dailyHistory={fullHistory} cashByMonth={cashByMonthKey} />
-
-      <section className="grid grid-cols-12 gap-6">
-        <SectionTitle label="Tendencia" title={`El pulso de los últimos ${trendMonths} meses`} text="Patrimonio histórico y evolución mensual para detectar si estás acumulando o drenando capital." />
-
-        <Card className="stagger-fade hero-panel col-span-full xl:col-span-7" style={{ animationDelay: "80ms" }}>
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <TrendingUp className="h-4 w-4 text-emerald-500" />Patrimonio neto
-              {isAllTimeHigh && <span className="gold-badge rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">Máximo histórico</span>}
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <div className="range-tabs">
-                {([6, 12] as const).map((m) => (
-                  <button key={m} onClick={() => setTrendMonths(m)} data-active={trendMonths === m} className="range-tab">{m}M</button>
-                ))}
-              </div>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${netWorthTrendPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}><Sensitive>{signedMoney(netWorthChange)}</Sensitive></span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {state.accounts.length === 0 ? <EmptyState icon={Wallet} title="Sin patrimonio registrado" description="Crea cuentas para ver la evolución de tu riqueza neta." bordered className="h-full" /> : (
-              <Suspense fallback={<Skeleton className="h-[310px] w-full" />}>
-                <MountainChartLazy data={netWorthHistory} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-[310px]" />
-              </Suspense>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="stagger-fade col-span-full xl:col-span-5" style={{ animationDelay: "140ms" }}>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold"><BarChart3 className="h-4 w-4 text-muted-foreground" />Ingresos vs gastos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!hasData ? <EmptyState icon={BarChart3} title="Aún no hay movimientos" description="Añade ingresos y gastos para comparar tu ritmo mensual." bordered className="h-full" /> : (
-              <div role="img" aria-label="Gráfico de barras: ingresos y gastos mes a mes">
-                <BarChart data={summaries} index="mes" categories={["ingresos", "gastos"]} colors={["emerald", "red"]} valueFormatter={chartFormatter} yAxisWidth={64} customTooltip={SummaryTooltip} className="h-[310px]" showAnimation />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <SectionTitle label="Gasto" title="Dónde se está yendo el dinero" text="El objetivo no es ver barras bonitas: es encontrar el agujero más grande primero." />
-
-        {/* content-start: sin él, el grid estira estas dos tarjetas hasta igualar
-            la altura de la columna derecha (5 tarjetas apiladas) y quedan con
-            grandes zonas vacías bajo los gráficos. La altura de cada gráfico se
-            calcula según sus barras reales (~44px por fila + eje) por lo mismo. */}
-        <div className="col-span-full grid content-start gap-6 lg:col-span-7">
-          <Card className="stagger-fade" style={{ animationDelay: "180ms" }}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold"><Layers3 className="h-4 w-4 text-violet-500" />Gastos por categoría</CardTitle>
-              {topCategory && <span className="text-xs text-muted-foreground">Top: <strong className="text-foreground">{topCategory.categoria}</strong></span>}
-            </CardHeader>
-            <CardContent>
-              {categoryBreakdown.length === 0 ? <EmptyState icon={Layers3} title="Sin gasto categorizado" description="Cuando registres gastos, aquí verás las categorías que más pesan." bordered className="h-full" /> : (
-                <div role="img" aria-label={`Gráfico de barras: gasto por categoría${topCategory ? `, encabezado por ${topCategory.categoria}` : ""}`} style={{ height: categoryBreakdown.slice(0, 8).length * 52 + 48 }}>
-                  <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={80} customTooltip={CategoryTooltip} className="h-full" showAnimation layout="vertical" />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {spendByAccount.length > 0 && (
-            <Card className="stagger-fade" style={{ animationDelay: "190ms" }}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Wallet className="h-4 w-4 text-blue-500" />Gasto por cuenta</CardTitle>
-                <span className="text-xs text-muted-foreground">Top: <strong className="text-foreground">{spendByAccount[0].cuenta}</strong></span>
-              </CardHeader>
-              <CardContent>
-                <div role="img" aria-label={`Gráfico de barras: gasto por cuenta, encabezado por ${spendByAccount[0].cuenta}`} style={{ height: spendByAccount.slice(0, 8).length * 52 + 48 }}>
-                  <BarChart data={spendByAccount.slice(0, 8)} index="cuenta" categories={["monto"]} colors={["blue"]} valueFormatter={chartFormatter} yAxisWidth={80} customTooltip={AccountTooltip} className="h-full" showAnimation layout="vertical" />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Objetivos y "Lo que ha cambiado" viven en esta columna para
-              equilibrar la sección: los dos gráficos de barras son bajos y la
-              columna derecha apila hasta 4 tarjetas — sin esto quedaba un
-              hueco vacío enorme bajo los gráficos (ver content-start arriba). */}
-          {goalProgress.length > 0 && (
-            <Card className="stagger-fade" style={{ animationDelay: "295ms" }}>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Target className="h-4 w-4 text-emerald-500" />Objetivos</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {goalProgress.map((g) => {
-                  const complete = g.pct >= 100
-                  return (
-                    <div key={g.account.id} className="space-y-2">
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
-                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: g.account.color }} />
-                          <span className="truncate">{g.account.nombre}</span>
-                        </span>
-                        <span className={cn("shrink-0 font-semibold tabular-nums", complete ? "text-emerald-500" : "text-foreground")}>
-                          <Sensitive>{formatMoney(g.current, g.account.currency)}</Sensitive> / <Sensitive>{formatMoney(g.goal, g.account.currency)}</Sensitive>
-                        </span>
-                      </div>
-                      <Progress value={g.pct} className="[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-indicator]]:bg-emerald-500" />
-                      {!complete && (
-                        <p className="text-[11px] text-muted-foreground">Faltan <Sensitive as="span">{formatMoney(g.restante, g.account.currency)}</Sensitive> · {Math.round(g.pct)}% completado</p>
-                      )}
+          <CollapsibleBlock title="Mes" hint="Categorías, presupuesto, pagos y calendario de gasto" defaultOpen>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <Card className="stagger-fade">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><Layers3 className="h-4 w-4 text-violet-500" />Gastos por categoría</CardTitle>
+                  {topCategory && <span className="text-xs text-muted-foreground">Top: <strong className="text-foreground">{topCategory.categoria}</strong></span>}
+                </CardHeader>
+                <CardContent>
+                  {categoryBreakdown.length === 0 ? <EmptyState icon={Layers3} title="Sin gasto categorizado" description="Cuando registres gastos, aquí verás las categorías que más pesan." bordered className="h-full" /> : (
+                    <div role="img" aria-label={`Gráfico de barras: gasto por categoría${topCategory ? `, encabezado por ${topCategory.categoria}` : ""}`} style={{ height: categoryBreakdown.slice(0, 8).length * 52 + 48 }}>
+                      <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={80} customTooltip={CategoryTooltip} className="h-full" showAnimation layout="vertical" />
                     </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
-
-          {categoryInsights.length > 0 && (
-            <Card className="stagger-fade" style={{ animationDelay: "310ms" }}>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Sparkles className="h-4 w-4 text-violet-500" />Lo que ha cambiado este mes</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {categoryInsights.map((insight) => {
-                  const up = insight.isNew || insight.deltaPct > 0
-                  return (
-                    <div key={insight.categoria} className="flex items-start gap-3 rounded-2xl bg-muted/35 p-3.5 ring-1 ring-border/20">
-                      <Lightbulb className={cn("mt-0.5 h-4 w-4 shrink-0", up ? "text-amber-500" : "text-emerald-500")} />
-                      <p className="text-sm leading-6">
-                        <strong className="font-semibold">{insight.categoria}</strong>{" "}
-                        {insight.isNew ? (
-                          <>es nuevo este mes: <Sensitive as="span">{money(insight.current)}</Sensitive>, antes no gastabas aquí.</>
-                        ) : (
-                          <>{up ? "subió" : "bajó"} un <strong className={up ? "text-amber-500" : "text-emerald-500"}>{Math.round(Math.abs(insight.deltaPct))}%</strong> frente a tu media (<Sensitive as="span">{money(Math.round(insight.average))}</Sensitive> → <Sensitive as="span">{money(insight.current)}</Sensitive>).</>
-                        )}
-                      </p>
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        <div className="col-span-full grid gap-6 lg:col-span-5">
-          {budgetProgress.length > 0 && (
-            <Card className="stagger-fade" style={{ animationDelay: "200ms" }}>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold"><Wallet2 className="h-4 w-4 text-primary" />Presupuesto vs real</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {budgetProgress.map((b) => {
-                  const over = b.percentage >= 100
-                  const warning = !over && b.percentage >= BUDGET_WARNING_THRESHOLD
-                  return (
-                    <div key={b.id} className="space-y-2">
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
-                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: b.categoryColor }} />
-                          <span className="truncate">{b.categoryName}</span>
-                          {(over || warning) && <AlertTriangle className={cn("h-3 w-3 shrink-0", over ? "text-red-500" : "text-amber-500")} />}
-                        </span>
-                        <span className={cn("shrink-0 font-semibold tabular-nums", over ? "text-red-500" : warning ? "text-amber-500" : "text-foreground")}>
-                          <Sensitive>{formatMoney(b.spent, "EUR")}</Sensitive> / <Sensitive>{formatMoney(b.amount, "EUR")}</Sensitive>
-                        </span>
-                      </div>
-                      <Progress value={b.percentage} className={cn(
-                        "[&_[data-slot=progress-track]]:h-2",
-                        over ? "[&_[data-slot=progress-indicator]]:bg-red-500" : warning ? "[&_[data-slot=progress-indicator]]:bg-amber-500" : "[&_[data-slot=progress-indicator]]:bg-foreground"
-                      )} />
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
-
-          <Card className="stagger-fade" style={{ animationDelay: "230ms" }}>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold"><Gauge className="h-4 w-4 text-amber-500" />Necesidades vs deseos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {totalSpending === 0 ? <EmptyState icon={Gauge} title="Sin gastos este mes" description="La distribución aparecerá al registrar necesidades y deseos." bordered className="h-full" /> : (
-                <div className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center lg:grid-cols-1 xl:grid-cols-[180px_1fr]">
-                  <div role="img" aria-label={`Gráfico circular: ${Math.round(needsPct)}% necesidades, ${Math.round(wantsPct)}% deseos`}>
-                    {/* valueFormatter también formatea la cifra del centro del donut: sin él,
-                        Tremor pinta la suma cruda con colas de coma flotante ("888.30999..."). */}
-                    <DonutChart data={needsWantsData} category="value" index="name" colors={["emerald", "amber"]} variant="donut" valueFormatter={chartFormatter} customTooltip={NeedsWantsTooltip} className="mx-auto h-44 w-44" showAnimation />
-                  </div>
-                  <div className="space-y-3">
-                    <div className="rounded-2xl bg-emerald-500/[0.05] p-3 ring-1 ring-emerald-500/10">
-                      <div className="flex items-center justify-between text-sm"><span>Necesidades</span><strong className="text-emerald-500 tabular-nums">{Math.round(needsPct)}%</strong></div>
-                      <p className="mt-1 text-xs text-muted-foreground"><Sensitive>{money(necesidades)}</Sensitive></p>
-                    </div>
-                    <div className="rounded-2xl bg-amber-500/[0.05] p-3 ring-1 ring-amber-500/10">
-                      <div className="flex items-center justify-between text-sm"><span>Deseos</span><strong className="text-amber-500 tabular-nums">{Math.round(wantsPct)}%</strong></div>
-                      <p className="mt-1 text-xs text-muted-foreground"><Sensitive>{money(deseos)}</Sensitive></p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="stagger-fade" style={{ animationDelay: "280ms" }}>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold"><PiggyBank className="h-4 w-4 text-blue-500" />Diagnóstico rápido</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="rounded-2xl bg-muted/35 p-4 ring-1 ring-border/20">
-                <p className="text-xs text-muted-foreground">Cash flow medio {trendMonths} meses</p>
-                <p className={`mt-1 text-2xl font-bold tabular-nums ${averageMonthlyNet >= 0 ? "text-emerald-500" : "text-red-500"}`}><Sensitive>{signedMoney(averageMonthlyNet)}</Sensitive></p>
-              </div>
-              <div className="rounded-2xl bg-muted/35 p-4 ring-1 ring-border/20">
-                <p className="text-xs text-muted-foreground">Recomendación</p>
-                <p className="mt-1 text-sm font-medium leading-6">{topTip?.message ?? (monthTotals.neto >= 0 ? "Buen mes. Mantén el ahorro automático y revisa si puedes subir aportaciones." : "Mes negativo. Revisa categorías grandes y congela gastos variables unos días.")}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {upcomingRecurring.length > 0 && (
-            <Card className="stagger-fade" style={{ animationDelay: "300ms" }}>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold"><CalendarClock className="h-4 w-4 text-primary" />Próximos pagos</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {upcomingRecurringMonthTotal > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Recurrente previsto este mes: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(upcomingRecurringMonthTotal, "EUR")}</Sensitive>
-                  </p>
-                )}
-                <div className="space-y-2">
-                  {upcomingRecurring.slice(0, 4).map((item) => (
-                    <div key={item.key} className="flex items-center gap-2 rounded-xl border border-border p-2.5">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-semibold text-foreground">{item.descripcion || item.categoria}</p>
-                        <p className={cn("text-[11px] font-medium", item.overdueDays > 0 ? "text-red-500" : "text-muted-foreground")}>
-                          {item.overdueDays > 0 ? `Atrasado ${item.overdueDays}d` : item.overdueDays === 0 ? "Hoy" : new Date(item.nextDate).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
-                          {item.frequency !== "mensual" && ` · ${item.frequency === "semanal" ? "Semanal" : "Anual"}`}
-                        </p>
-                      </div>
-                      <span className={cn("shrink-0 text-xs font-bold tabular-nums", (item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "text-emerald-500" : "text-foreground")}>
-                        <Sensitive>{(item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(item.monto), "EUR")}</Sensitive>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-        </div>
-
-        {monthTotals.gastos > 0 && (
-          <Card className="stagger-fade col-span-full" style={{ animationDelay: "330ms" }}>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold"><Calendar className="h-4 w-4 text-red-500" />Gasto por día</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="mx-auto max-w-md">
-                <DayHeatmap dailyTotals={dailyTotals} firstWeekday={firstWeekday} />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <SectionTitle label="Sistema" title="Regla 50/30/20" text="No es una ley, es un mapa rápido para saber si el mes está equilibrado." />
-
-        <div className="col-span-full grid grid-cols-1 gap-4 md:grid-cols-3">
-          <RuleCard label="50% Necesidades" target={50} actual={needsPct} value={necesidades} tone="var(--accent-green)" delay={100} />
-          <RuleCard label="30% Deseos" target={30} actual={wantsPct} value={deseos} tone="var(--accent-amber)" delay={170} />
-          <RuleCard label="20% Ahorro" target={20} actual={savingsActual} value={monthTotals.neto} tone="var(--accent-blue)" delay={240} />
-        </div>
-
-       </section>
-
-       {/* ===== HISTORIAL COMPLETO DE PATRIMONIO ===== */}
-       <SectionTitle label="Historial" title="Evolución completa del patrimonio" text="Todos los días desde tu primera transacción: picos, valles, caídas y recuperaciones." />
-       <Card className="stagger-fade col-span-full" style={{ animationDelay: "400ms" }}>
-         <CardHeader className="pb-2">
-           <CardTitle className="flex items-center gap-2 text-base font-semibold"><TrendingUp className="h-4 w-4 text-emerald-500" />Patrimonio neto histórico (diario)</CardTitle>
-         </CardHeader>
-         <CardContent>
-           {fullHistory.length === 0 ? (
-             <EmptyState icon={TrendingUp} title="Sin historial" description="Registra transacciones para ver la evolución completa." bordered className="h-64" />
-           ) : (
-             <div className="space-y-6">
-               {/* Gráfico principal */}
-               <div className="h-[400px]">
-                 <MountainChart data={fullHistory} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-full" />
-               </div>
-
-               {/* Métricas clave */}
-               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                 <MetricCard label="Pico histórico" value={<Sensitive>{money(fullHistoryPeak.patrimonio)}</Sensitive>} subtitle={<Sensitive>{fullHistoryPeak.mes}</Sensitive>} icon={TrendingUp} tone="emerald" delay={0} />
-                 <MetricCard label="Valor actual" value={<Sensitive>{money(fullHistoryCurrent)}</Sensitive>} subtitle={fullHistoryDrawdown > 0 ? <span className="text-red-500">{signedMoney(-fullHistoryDrawdown)} ({fullHistoryDrawdownPct.toFixed(1)}%)</span> : <span className="text-emerald-500">En máximo</span>} icon={Wallet} tone="blue" delay={70} />
-                 <MetricCard label="Máx. caída (drawdown)" value={<Sensitive>{money(fullHistoryMaxDrawdown)}</Sensitive>} subtitle={<span className="text-red-500">{fullHistoryMaxDrawdownPct.toFixed(1)}%</span>} icon={TrendingDown} tone="red" delay={140} />
-                 <MetricCard label="Días en recuperación" value={fullHistoryDaysSincePeak > 0 ? <span className="text-amber-500">{fullHistoryDaysSincePeak} días</span> : <span className="text-emerald-500">En máximo</span>} subtitle="Desde el pico histórico" icon={CalendarClock} tone="amber" delay={210} />
-</div>
-
-                {/* Botón de diagnóstico */}
-                <div className="flex justify-end gap-2">
-                  {!historyCoverage.covered && (
-                    <span className="flex items-center gap-2 text-sm text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-full">
-                      <AlertTriangle className="h-4 w-4" />
-                      El histórico de precios no cubre {historyCoverage.gapDays} días desde tu primera transacción.
-                    </span>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => setShowDiagnostic(!showDiagnostic)} className="gap-1.5">
-                    <AlertTriangle className="h-4 w-4" />
-                    {showDiagnostic ? "Ocultar diagnóstico" : "Ver diagnóstico del cálculo"}
-                  </Button>
-                  <Button variant="default" size="sm" onClick={() => {
-                    // Forzar recálculo con fetch extendido
-                    const syms = historySymbolsKey ? historySymbolsKey.split(",") : []
-                    if (syms.length > 0) {
-                      fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}&interval=1mo&range=5y`)
-                        .then((r) => r.json())
-                        .then((d: { history?: Record<string, { t: number; c: number }[]> }) => { 
-                          if (d.history) setPriceHistory(prev => ({ ...prev, ...d.history }))
-                        })
-                    }
-                  }} className="gap-1.5">
-                    <RotateCcw className="h-4 w-4" />
-                    Recalcular histórico (5 años)
-                  </Button>
-                </div>
+                </CardContent>
+              </Card>
 
-                {/* Panel de diagnóstico */}
-                {showDiagnostic && (
-                  <div className="space-y-4 p-4 rounded-xl bg-muted/35 ring-1 ring-border/20">
-                    <h4 className="font-semibold text-sm text-foreground">Diagnóstico del cálculo de patrimonio</h4>
-                    {diagnostic.warnings.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-amber-500">⚠️ Advertencias (pueden afectar la precisión):</p>
-                        <ul className="list-disc list-inside space-y-1 text-sm text-amber-600">
-                          {diagnostic.warnings.map((w, i) => <li key={i}>{w}</li>)}
-                        </ul>
-                      </div>
+              {spendByAccount.length > 0 && (
+                <Card className="stagger-fade">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold"><Wallet className="h-4 w-4 text-blue-500" />Gasto por cuenta</CardTitle>
+                    <span className="text-xs text-muted-foreground">Top: <strong className="text-foreground">{spendByAccount[0].cuenta}</strong></span>
+                  </CardHeader>
+                  <CardContent>
+                    <div role="img" aria-label={`Gráfico de barras: gasto por cuenta, encabezado por ${spendByAccount[0].cuenta}`} style={{ height: spendByAccount.slice(0, 8).length * 52 + 48 }}>
+                      <BarChart data={spendByAccount.slice(0, 8)} index="cuenta" categories={["monto"]} colors={["blue"]} valueFormatter={chartFormatter} yAxisWidth={80} customTooltip={AccountTooltip} className="h-full" showAnimation layout="vertical" />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {budgetProgress.length > 0 && (
+                <Card className="stagger-fade">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold"><Wallet2 className="h-4 w-4 text-primary" />Presupuesto vs real</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {budgetProgress.map((b) => {
+                      const over = b.percentage >= 100
+                      const warning = !over && b.percentage >= BUDGET_WARNING_THRESHOLD
+                      return (
+                        <div key={b.id} className="space-y-2">
+                          <div className="flex items-center justify-between gap-2 text-xs">
+                            <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
+                              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: b.categoryColor }} />
+                              <span className="truncate">{b.categoryName}</span>
+                              {(over || warning) && <AlertTriangle className={cn("h-3 w-3 shrink-0", over ? "text-red-500" : "text-amber-500")} />}
+                            </span>
+                            <span className={cn("shrink-0 font-semibold tabular-nums", over ? "text-red-500" : warning ? "text-amber-500" : "text-foreground")}>
+                              <Sensitive>{formatMoney(b.spent, "EUR")}</Sensitive> / <Sensitive>{formatMoney(b.amount, "EUR")}</Sensitive>
+                            </span>
+                          </div>
+                          <Progress value={b.percentage} className={cn(
+                            "[&_[data-slot=progress-track]]:h-2",
+                            over ? "[&_[data-slot=progress-indicator]]:bg-red-500" : warning ? "[&_[data-slot=progress-indicator]]:bg-amber-500" : "[&_[data-slot=progress-indicator]]:bg-foreground"
+                          )} />
+                        </div>
+                      )
+                    })}
+                  </CardContent>
+                </Card>
+              )}
+
+              {upcomingRecurring.length > 0 && (
+                <Card className="stagger-fade">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold"><CalendarClock className="h-4 w-4 text-primary" />Próximos pagos</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {upcomingRecurringMonthTotal > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Recurrente previsto este mes: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(upcomingRecurringMonthTotal, "EUR")}</Sensitive>
+                      </p>
                     )}
-                    {diagnostic.info.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-blue-500">ℹ️ Información:</p>
-                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                          {diagnostic.info.map((i, idx) => <li key={idx}>{i}</li>)}
-                        </ul>
-                      </div>
-                    )}
-                    {diagnostic.warnings.length === 0 && diagnostic.info.length === 0 && (
-                      <p className="text-sm text-emerald-500">✅ Todo correcto. El cálculo debería ser preciso.</p>
-                    )}
+                    <div className="space-y-2">
+                      {upcomingRecurring.slice(0, 4).map((item) => (
+                        <div key={item.key} className="flex items-center gap-2 rounded-xl border border-border p-2.5">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold text-foreground">{item.descripcion || item.categoria}</p>
+                            <p className={cn("text-[11px] font-medium", item.overdueDays > 0 ? "text-red-500" : "text-muted-foreground")}>
+                              {item.overdueDays > 0 ? `Atrasado ${item.overdueDays}d` : item.overdueDays === 0 ? "Hoy" : new Date(item.nextDate).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
+                              {item.frequency !== "mensual" && ` · ${item.frequency === "semanal" ? "Semanal" : "Anual"}`}
+                            </p>
+                          </div>
+                          <span className={cn("shrink-0 text-xs font-bold tabular-nums", (item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "text-emerald-500" : "text-foreground")}>
+                            <Sensitive>{(item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(item.monto), "EUR")}</Sensitive>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {monthTotals.gastos > 0 && (
+              <Card className="stagger-fade">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><Calendar className="h-4 w-4 text-red-500" />Gasto por día</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="mx-auto max-w-md">
+                    <DayHeatmap dailyTotals={dailyTotals} firstWeekday={firstWeekday} />
                   </div>
-                )}
-
-                {/* Análisis de caídas y recuperaciones */}
-               {fullHistoryDrawdowns.length > 0 && (
-                 <div className="space-y-4">
-                   <h4 className="font-semibold text-sm text-foreground">Principales caídas y recuperaciones</h4>
-                   <div className="overflow-x-auto">
-                     <Table>
-                       <TableHeader>
-                         <TableRow>
-                           <TableHead>Inicio</TableHead>
-                           <TableHead>Pico</TableHead>
-                           <TableHead>Valle</TableHead>
-                           <TableHead className="text-right">Caída</TableHead>
-                           <TableHead className="text-right">% Caída</TableHead>
-                           <TableHead>Recuperación</TableHead>
-                           <TableHead className="text-right">Días</TableHead>
-                         </TableRow>
-                       </TableHeader>
-                       <TableBody>
-                         {fullHistoryDrawdowns.slice(0, 10).map((d, i) => (
-                           <TableRow key={i}>
-                             <TableCell className="font-medium">{d.start}</TableCell>
-                             <TableCell><Sensitive>{money(d.peakValue)}</Sensitive> ({d.peakDate})</TableCell>
-                             <TableCell><Sensitive>{money(d.troughValue)}</Sensitive> ({d.troughDate})</TableCell>
-                             <TableCell className="text-right font-semibold text-red-500"><Sensitive>{money(d.drop)}</Sensitive></TableCell>
-                             <TableCell className="text-right font-semibold text-red-500">{d.dropPct.toFixed(1)}%</TableCell>
-                             <TableCell>{d.recovered ? <span className="text-emerald-500">{d.recoveryDate}</span> : <span className="text-amber-500">En curso</span>}</TableCell>
-                             <TableCell className="text-right">{d.days} días</TableCell>
-                           </TableRow>
-                         ))}
-                       </TableBody>
-                     </Table>
-                   </div>
-                 </div>
-               )}
-
-               {/* Estadísticas adicionales */}
-               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 pt-4 border-t border-border">
-                 <div className="rounded-xl bg-muted/35 p-4 ring-1 ring-border/20">
-                   <p className="text-xs text-muted-foreground">Días totales registrados</p>
-                   <p className="mt-1 text-2xl font-bold tabular-nums">{fullHistory.length}</p>
-                 </div>
-                 <div className="rounded-xl bg-muted/35 p-4 ring-1 ring-border/20">
-                   <p className="text-xs text-muted-foreground">Mejor día (subida)</p>
-                   <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-500"><Sensitive>{money(fullHistoryBestDayChange)}</Sensitive></p>
-                 </div>
-                 <div className="rounded-xl bg-muted/35 p-4 ring-1 ring-border/20">
-                   <p className="text-xs text-muted-foreground">Peor día (bajada)</p>
-                   <p className="mt-1 text-2xl font-bold tabular-nums text-red-500"><Sensitive>{money(fullHistoryWorstDayChange)}</Sensitive></p>
-                 </div>
-                 <div className="rounded-xl bg-muted/35 p-4 ring-1 ring-border/20">
-                   <p className="text-xs text-muted-foreground">Volatilidad (desv. std día)</p>
-                   <p className="mt-1 text-2xl font-bold tabular-nums"><Sensitive>{money(fullHistoryVolatility)}</Sensitive></p>
-                 </div>
-               </div>
-</div>
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
+          </CollapsibleBlock>
+
+          <CollapsibleBlock title="Hábitos" hint="Necesidades vs deseos, regla 50/30/20 y objetivos">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <Card className="stagger-fade">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><Gauge className="h-4 w-4 text-amber-500" />Necesidades vs deseos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {totalSpending === 0 ? <EmptyState icon={Gauge} title="Sin gastos este mes" description="La distribución aparecerá al registrar necesidades y deseos." bordered className="h-full" /> : (
+                    <div className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center">
+                      <div role="img" aria-label={`Gráfico circular: ${Math.round(needsPct)}% necesidades, ${Math.round(wantsPct)}% deseos`}>
+                        <DonutChart data={needsWantsData} category="value" index="name" colors={["emerald", "amber"]} variant="donut" valueFormatter={chartFormatter} customTooltip={NeedsWantsTooltip} className="mx-auto h-44 w-44" showAnimation />
+                      </div>
+                      <div className="space-y-3">
+                        <div className="rounded-2xl bg-emerald-500/[0.05] p-3 ring-1 ring-emerald-500/10">
+                          <div className="flex items-center justify-between text-sm"><span>Necesidades</span><strong className="text-emerald-500 tabular-nums">{Math.round(needsPct)}%</strong></div>
+                          <p className="mt-1 text-xs text-muted-foreground"><Sensitive>{money(necesidades)}</Sensitive></p>
+                        </div>
+                        <div className="rounded-2xl bg-amber-500/[0.05] p-3 ring-1 ring-amber-500/10">
+                          <div className="flex items-center justify-between text-sm"><span>Deseos</span><strong className="text-amber-500 tabular-nums">{Math.round(wantsPct)}%</strong></div>
+                          <p className="mt-1 text-xs text-muted-foreground"><Sensitive>{money(deseos)}</Sensitive></p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {goalProgress.length > 0 && (
+                <Card className="stagger-fade">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold"><Target className="h-4 w-4 text-emerald-500" />Objetivos</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {goalProgress.map((g) => {
+                      const complete = g.pct >= 100
+                      return (
+                        <div key={g.account.id} className="space-y-2">
+                          <div className="flex items-center justify-between gap-2 text-xs">
+                            <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
+                              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: g.account.color }} />
+                              <span className="truncate">{g.account.nombre}</span>
+                            </span>
+                            <span className={cn("shrink-0 font-semibold tabular-nums", complete ? "text-emerald-500" : "text-foreground")}>
+                              <Sensitive>{formatMoney(g.current, g.account.currency)}</Sensitive> / <Sensitive>{formatMoney(g.goal, g.account.currency)}</Sensitive>
+                            </span>
+                          </div>
+                          <Progress value={g.pct} className="[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-indicator]]:bg-emerald-500" />
+                          {!complete && (
+                            <p className="text-[11px] text-muted-foreground">Faltan <Sensitive as="span">{formatMoney(g.restante, g.account.currency)}</Sensitive> · {Math.round(g.pct)}% completado</p>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <RuleCard label="50% Necesidades" target={50} actual={needsPct} value={necesidades} tone="var(--accent-green)" delay={100} />
+              <RuleCard label="30% Deseos" target={30} actual={wantsPct} value={deseos} tone="var(--accent-amber)" delay={170} />
+              <RuleCard label="20% Ahorro" target={20} actual={savingsActual} value={monthTotals.neto} tone="var(--accent-blue)" delay={240} />
+            </div>
+          </CollapsibleBlock>
+
+          <CollapsibleBlock title="Alertas" hint="Diagnóstico e insights del mes">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <Card className="stagger-fade">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><PiggyBank className="h-4 w-4 text-blue-500" />Diagnóstico rápido</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-2xl bg-muted/35 p-4 ring-1 ring-border/20">
+                    <p className="text-xs text-muted-foreground">Recomendación</p>
+                    <p className="mt-1 text-sm font-medium leading-6">{topTip?.message ?? (monthTotals.neto >= 0 ? "Buen mes. Mantén el ahorro automático y revisa si puedes subir aportaciones." : "Mes negativo. Revisa categorías grandes y congela gastos variables unos días.")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {categoryInsights.length > 0 && (
+                <Card className="stagger-fade">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold"><Sparkles className="h-4 w-4 text-violet-500" />Lo que ha cambiado</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {categoryInsights.map((insight) => {
+                      const up = insight.isNew || insight.deltaPct > 0
+                      return (
+                        <div key={insight.categoria} className="flex items-start gap-3 rounded-2xl bg-muted/35 p-3.5 ring-1 ring-border/20">
+                          <Lightbulb className={cn("mt-0.5 h-4 w-4 shrink-0", up ? "text-amber-500" : "text-emerald-500")} />
+                          <p className="text-sm leading-6">
+                            <strong className="font-semibold">{insight.categoria}</strong>{" "}
+                            {insight.isNew ? (
+                              <>es nuevo este mes: <Sensitive as="span">{money(insight.current)}</Sensitive>, antes no gastabas aquí.</>
+                            ) : (
+                              <>{up ? "subió" : "bajó"} un <strong className={up ? "text-amber-500" : "text-emerald-500"}>{Math.round(Math.abs(insight.deltaPct))}%</strong> frente a tu media (<Sensitive as="span">{money(Math.round(insight.average))}</Sensitive> → <Sensitive as="span">{money(insight.current)}</Sensitive>).</>
+                            )}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </CollapsibleBlock>
         </>
-        )}
+      )}
 
       <ConfirmDialog
         open={confirmReset}

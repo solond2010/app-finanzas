@@ -9,7 +9,7 @@ const items = [
   { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
   { href: "/transactions", label: "Movimientos", icon: ArrowLeftRight },
   { href: "/cuentas", label: "Cuentas", icon: Wallet },
-  { href: "/inversiones", label: "Inversión", icon: LineChart },
+  { href: "/inversiones", label: "Inversiones", icon: LineChart },
   { href: "/analytics", label: "Analíticas", icon: BarChart3 },
 ]
 
