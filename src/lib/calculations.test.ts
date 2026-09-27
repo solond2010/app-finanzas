@@ -15,6 +15,8 @@ import {
   fundCurrentAmount,
   getCategoryInsights,
   getFinancialScore,
+  getEmergencyCushionStatus,
+  suggestEmergencyTransfer,
   getFinancialTips,
   extractMonthlyPatrimonioControl,
   buildMonthlyPatrimonioControl,
@@ -497,5 +499,34 @@ describe("extractMonthlyPatrimonioControl / buildMonthlyPatrimonioControl", () =
     expect(sep?.patrimonio).toBe(3200)
     expect(oct?.patrimonio).toBe(4300)
     expect(oct?.variacion).toBe(1100)
+  })
+})
+
+
+describe("getEmergencyCushionStatus", () => {
+  it("detecta meta Colchón y marca isLow bajo el 50%", () => {
+    const accounts = [account({ id: "e1", tipo: "emergencia", saldo: 1000 })]
+    const funds = [fund({ id: "f1", nombre: "Colchón de Emergencia", cantidad_objetivo: 6000, ahorrado_actual: 0, cuenta_id: "e1" })]
+    const status = getEmergencyCushionStatus(accounts, funds)
+    expect(status?.isLow).toBe(true)
+    expect(status?.remaining).toBe(5000)
+    expect(status?.name).toMatch(/Colchón/i)
+  })
+
+  it("devuelve null si no hay objetivo usable", () => {
+    const accounts = [account({ id: "e1", tipo: "emergencia", saldo: 100, objetivo: null })]
+    expect(getEmergencyCushionStatus(accounts, [])).toBeNull()
+  })
+})
+
+describe("suggestEmergencyTransfer", () => {
+  it("usa la mitad del sobrante con techo 500", () => {
+    expect(suggestEmergencyTransfer(10000, 800)).toBe(400)
+    expect(suggestEmergencyTransfer(10000, 2000)).toBe(500)
+  })
+
+  it("cae a 200 € si no hay sobrante", () => {
+    expect(suggestEmergencyTransfer(5000, 0)).toBe(200)
+    expect(suggestEmergencyTransfer(100, -50)).toBe(100)
   })
 })

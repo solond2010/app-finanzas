@@ -2,8 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, PiggyBank, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
+import { AlertTriangle, ArrowDownRight, ArrowRightLeft, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, PiggyBank, Receipt, ShieldAlert, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
+import { BudgetDialog } from "@/components/dashboard/budget-dialog"
+import { openMovementDialog } from "@/components/layout/quick-actions"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { AccountLogo } from "@/components/dashboard/account-logo"
@@ -15,7 +17,7 @@ import { usePortfolioValue, accountDisplayValue, type Position } from "@/lib/inv
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, accountGoal, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow } from "@/lib/calculations"
+import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, accountGoal, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow, suggestEmergencyTransfer } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -99,6 +101,7 @@ export default function DashboardContent() {
   const [showNewAccount, setShowNewAccount] = useState(false)
   const [showAnnual, setShowAnnual] = useState(false)
   const [showSpendBreakdown, setShowSpendBreakdown] = useState(false)
+  const [showBudgetDialog, setShowBudgetDialog] = useState(false)
 
   const selectedDate = useMemo(() => new Date(today.getFullYear(), today.getMonth() - monthOffset, 1), [today, monthOffset])
   const selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`
@@ -430,6 +433,36 @@ export default function DashboardContent() {
     [savingsRate, monthTotals.neto, netWorthDisplay, scoreBaseline, displayAccounts]
   )
 
+  // Colchón de emergencia: prioridad UX cuando va muy por debajo del objetivo.
+  // No altera el número de la puntuación; solo contextualiza la etiqueta y
+  // alimenta el banner / bloque "Este mes, haz esto".
+  const emergency = useMemo(
+    () => getEmergencyCushionStatus(displayAccounts, state.sinkingFunds),
+    [displayAccounts, state.sinkingFunds]
+  )
+  const scoreDisplayLabel = emergency?.isLow
+    ? (score >= 60
+        ? `${scoreTier.label} en flujo · pendiente el colchón`
+        : `${scoreTier.label} · prioriza el colchón`)
+    : scoreTier.label
+
+  const emergencyAction = useMemo(() => {
+    if (!emergency || emergency.isComplete || emergency.remaining <= 0) return null
+    const suggested = suggestEmergencyTransfer(emergency.remaining, monthTotals.neto)
+    if (suggested <= 0) return null
+    const months = Math.max(1, Math.ceil(emergency.remaining / suggested))
+    const liquidTypes = new Set(["efectivo", "gastos", "ahorro"])
+    const source =
+      displayAccounts
+        .filter((a) => a.id !== emergency.accountId && liquidTypes.has(a.tipo) && a.saldo > 0)
+        .sort((a, b) => b.saldo - a.saldo)[0]
+      ?? displayAccounts
+        .filter((a) => a.id !== emergency.accountId && a.saldo > 0)
+        .sort((a, b) => b.saldo - a.saldo)[0]
+      ?? null
+    return { suggested, months, sourceId: source?.id ?? "", surplus: monthTotals.neto }
+  }, [emergency, monthTotals.neto, displayAccounts])
+
   const sortedAccounts = useMemo(() => displayAccounts.slice().sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo)), [displayAccounts])
   const accCount = sortedAccounts.length
   const safeAccIdx = accCount > 0 ? ((accIdx % accCount) + accCount) % accCount : 0
@@ -546,6 +579,20 @@ export default function DashboardContent() {
         </button>
       )}
 
+      {!loading && hasAnyData && emergency?.isLow && (
+        <div className="flex w-full items-center gap-3 rounded-[16px] border border-emerald-500/25 bg-emerald-500/[0.07] p-4 text-left">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500"><ShieldAlert className="h-4 w-4" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-foreground">Prioridad: reforzar tu {emergency.name}</span>
+            <span className="block text-xs text-muted-foreground">
+              Llevas <Sensitive as="span" className="font-medium text-foreground">{formatMoney(emergency.current, "EUR")}</Sensitive> de{" "}
+              <Sensitive as="span" className="font-medium text-foreground">{formatMoney(emergency.target, "EUR")}</Sensitive>
+              {" "}({Math.round(emergency.progress * 100)}%). El colchón va primero: sin él, una puntuación alta no significa seguridad.
+            </span>
+          </span>
+        </div>
+      )}
+
       {loading ? (
         <div className="space-y-6">
           <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-72 lg:col-span-2" /><Skeleton className="h-72" /></div>
@@ -629,7 +676,7 @@ export default function DashboardContent() {
                   <span className="text-xs text-muted-foreground">de 100</span>
                 </div>
               </div>
-              <p className="text-center text-sm font-semibold" style={{ color: scoreTier.color }}>{scoreTier.label}</p>
+              <p className="text-center text-sm font-semibold" style={{ color: scoreTier.color }}>{scoreDisplayLabel}</p>
               <div className="mt-4 space-y-2 border-t border-border pt-4">
                 {scoreFactors.map((f) => (
                   <div key={f.label} className="flex items-center gap-2 text-xs">
@@ -650,14 +697,54 @@ export default function DashboardContent() {
             <TickerTile label="Ingresos" value={<Sensitive>+{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push("/transactions?tipo=ingreso")} />
             <TickerTile label="Gastos" value={<Sensitive>-{formatMoney(monthTotals.gastos, "EUR")}</Sensitive>} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" onClick={() => router.push("/transactions?tipo=gasto")} />
             <TickerTile
-              label="Disponible este mes"
+              label="Presupuesto restante"
               value={budgetTotals.limite > 0 ? <Sensitive>{formatMoney(budgetTotals.disponible, "EUR")}</Sensitive> : "—"}
-              detail={budgetTotals.limite > 0 ? <>de <Sensitive as="span">{formatMoney(budgetTotals.limite, "EUR")}</Sensitive> presupuestados</> : "Sin presupuesto definido"}
+              detail={budgetTotals.limite > 0
+                ? <>Techo de categorías con límite · de <Sensitive as="span">{formatMoney(budgetTotals.limite, "EUR")}</Sensitive></>
+                : "No es efectivo libre · define límites"}
               valueColor={budgetTotals.limite > 0 ? (budgetTotals.disponible >= 0 ? "var(--gold)" : "var(--accent-red)") : undefined}
-              onClick={() => router.push("/transactions?tipo=gasto")}
+              onClick={() => setShowBudgetDialog(true)}
             />
             <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" onClick={() => router.push("/analytics")} />
           </section>
+
+          {/* Siguiente paso del mes: aportar al colchón si aún falta */}
+          {emergencyAction && emergency && !emergency.isComplete && (
+            <section className="stagger-fade" style={{ animationDelay: "50ms" }}>
+              <div className={`${CARD} flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between`}>
+                <div className="min-w-0 flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                    <ArrowRightLeft className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Este mes, haz esto</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                      {emergencyAction.surplus > 0 ? (
+                        <>Te sobran ~<Sensitive as="span" className="font-semibold text-foreground">{formatMoney(emergencyAction.surplus, "EUR")}</Sensitive>. </>
+                      ) : (
+                        <>Este mes el flujo está justo. </>
+                      )}
+                      Si pasas <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(emergencyAction.suggested, "EUR")}</Sensitive> al {emergency.name},
+                      llegas a <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(emergency.target, "EUR")}</Sensitive> en unos {emergencyAction.months} {emergencyAction.months === 1 ? "mes" : "meses"}.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  className="shrink-0 rounded-full"
+                  onClick={() => openMovementDialog({
+                    tipo: "traspaso",
+                    origenId: emergencyAction.sourceId || undefined,
+                    destinoId: emergency.accountId,
+                    monto: emergencyAction.suggested,
+                    descripcion: `Aporte a ${emergency.name}`,
+                  })}
+                >
+                  Preparar traspaso
+                </Button>
+              </div>
+            </section>
+          )}
 
           {/* Composición del patrimonio + racha de ahorro */}
           <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3" style={{ animationDelay: "80ms" }}>
@@ -908,6 +995,7 @@ export default function DashboardContent() {
       )}
 
       <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={handleCreateAccount} />
+      <BudgetDialog open={showBudgetDialog} onOpenChange={setShowBudgetDialog} selectedMonth={selectedMonth} />
     </div>
   )
 }

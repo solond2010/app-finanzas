@@ -29,6 +29,23 @@ import { cn } from "@/lib/utils"
 
 type MovementType = "gasto" | "ingreso" | "traspaso"
 
+/** Prefill opcional para abrir el modal de movimiento ya relleno (p.ej. desde el dashboard). */
+export type MovementPrefill = {
+  tipo?: MovementType
+  origenId?: string
+  destinoId?: string
+  monto?: number
+  descripcion?: string
+}
+
+export const OPEN_MOVEMENT_EVENT = "finanzas:open-movement"
+
+/** Abre el FAB de nuevo movimiento con campos opcionales precargados. El usuario confirma. */
+export function openMovementDialog(prefill?: MovementPrefill) {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new CustomEvent<MovementPrefill>(OPEN_MOVEMENT_EVENT, { detail: prefill ?? {} }))
+}
+
 const TIPO_OPTIONS: { value: MovementType; label: string; icon: typeof ArrowDownCircle; color: string }[] = [
   { value: "gasto", label: "Gasto", icon: ArrowDownCircle, color: "text-red-500" },
   { value: "ingreso", label: "Ingreso", icon: ArrowUpCircle, color: "text-emerald-500" },
@@ -82,24 +99,31 @@ function UnifiedMovementForm({
   onSaveTransaction,
   onSaveTransfer,
   onCancel,
+  initial,
 }: {
   accounts: Account[]
   categories: Category[]
   onSaveTransaction: (t: Transaction) => void
   onSaveTransfer: (sourceId: string, destId: string, monto: number, descripcion: string, fecha: string) => void
   onCancel: () => void
+  initial?: MovementPrefill
 }) {
   const today = new Date().toISOString().split("T")[0]
+  const initialTipo: MovementType = initial?.tipo ?? "gasto"
 
-  const [tipo, setTipo] = useState<MovementType>("gasto")
-  const [cuentaId, setCuentaId] = useState(() => defaultAccountFor("gasto", accounts))
-  const [monto, setMonto] = useState("")
+  const [tipo, setTipo] = useState<MovementType>(initialTipo)
+  const [cuentaId, setCuentaId] = useState(() => defaultAccountFor(initialTipo === "traspaso" ? "gasto" : initialTipo, accounts))
+  const [monto, setMonto] = useState(initial?.monto != null && initial.monto > 0 ? String(initial.monto) : "")
   const [fecha, setFecha] = useState(today)
   const [categoria, setCategoria] = useState("")
-  const [esNecesidad, setEsNecesidad] = useState(true)
-  const [descripcion, setDescripcion] = useState("")
-  const [origenId, setOrigenId] = useState(accounts[0]?.id ?? "")
-  const [destinoId, setDestinoId] = useState(accounts[1]?.id ?? accounts[0]?.id ?? "")
+  const [esNecesidad, setEsNecesidad] = useState(initialTipo !== "ingreso")
+  const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "")
+  const [origenId, setOrigenId] = useState(initial?.origenId || accounts[0]?.id || "")
+  const [destinoId, setDestinoId] = useState(() => {
+    if (initial?.destinoId) return initial.destinoId
+    const fallback = accounts.find((a) => a.id !== (initial?.origenId || accounts[0]?.id))
+    return fallback?.id ?? accounts[0]?.id ?? ""
+  })
   const [error, setError] = useState("")
 
   // Al cambiar de tipo, recalcula la cuenta por defecto (gasto → cuenta de
@@ -335,7 +359,20 @@ function UnifiedMovementForm({
 export function QuickActionsFAB() {
   const { state, dispatch } = useFinance()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [prefill, setPrefill] = useState<MovementPrefill | undefined>()
   const { toast } = useToast()
+
+  // Permite abrir el mismo modal desde otras pantallas (dashboard "Preparar traspaso")
+  // con origen/destino/importe ya rellenados; el usuario sigue confirmando a mano.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<MovementPrefill>).detail
+      setPrefill(detail && Object.keys(detail).length > 0 ? detail : undefined)
+      setDialogOpen(true)
+    }
+    window.addEventListener(OPEN_MOVEMENT_EVENT, handler)
+    return () => window.removeEventListener(OPEN_MOVEMENT_EVENT, handler)
+  }, [])
 
   // En móvil el FAB flota fijo sobre el contenido con scroll y puede acabar
   // tapando cifras justo debajo (ej. la puntuación financiera o una tarjeta
@@ -408,7 +445,7 @@ export function QuickActionsFAB() {
         }`}
       >
         <button
-          onClick={() => setDialogOpen(true)}
+          onClick={() => { setPrefill(undefined); setDialogOpen(true) }}
           aria-label="Nuevo movimiento"
           className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--gold)] shadow-md transition-colors hover:brightness-95 active:scale-95"
         >
@@ -416,13 +453,23 @@ export function QuickActionsFAB() {
         </button>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setPrefill(undefined) }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-lg">Nuevo movimiento</DialogTitle>
             <DialogDescription>Añade un gasto, ingreso o traspaso.</DialogDescription>
           </DialogHeader>
-          <UnifiedMovementForm accounts={state.accounts} categories={state.categories} onSaveTransaction={handleAddTransaction} onSaveTransfer={handleTransfer} onCancel={() => setDialogOpen(false)} />
+          {dialogOpen && (
+            <UnifiedMovementForm
+              key={prefill ? `prefill-${prefill.tipo}-${prefill.origenId}-${prefill.destinoId}-${prefill.monto}` : "blank"}
+              accounts={state.accounts}
+              categories={state.categories}
+              initial={prefill}
+              onSaveTransaction={handleAddTransaction}
+              onSaveTransfer={handleTransfer}
+              onCancel={() => setDialogOpen(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>

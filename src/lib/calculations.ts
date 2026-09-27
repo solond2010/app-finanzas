@@ -24,6 +24,85 @@ export function fundCurrentAmount(fund: SinkingFund, accounts: Account[]): numbe
   return account ? account.saldo : fund.ahorrado_actual
 }
 
+/** Umbral bajo el cual el colchón de emergencia se considera prioridad. */
+export const EMERGENCY_LOW_PROGRESS = 0.5
+
+export interface EmergencyCushionStatus {
+  name: string
+  accountId: string
+  current: number
+  target: number
+  remaining: number
+  /** Progreso 0–1 respecto al objetivo. */
+  progress: number
+  isLow: boolean
+  isComplete: boolean
+}
+
+/**
+ * Resuelve el colchón de emergencia: meta cuyo nombre encaja con
+ * Colchón/Emergencia, o en su defecto la cuenta tipo "emergencia" con
+ * objetivo (propio o vía metas vinculadas). Devuelve null si no hay nada
+ * usable (sin objetivo > 0).
+ */
+export function getEmergencyCushionStatus(accounts: Account[], sinkingFunds: SinkingFund[]): EmergencyCushionStatus | null {
+  const nameRe = /colch[oó]n|emergencia/i
+  const byName = sinkingFunds.find((f) => nameRe.test(f.nombre) && f.cantidad_objetivo > 0)
+  const emergencyAccountIds = new Set(accounts.filter((a) => a.tipo === "emergencia").map((a) => a.id))
+  const byAccount = !byName
+    ? sinkingFunds.find((f) => emergencyAccountIds.has(f.cuenta_id) && f.cantidad_objetivo > 0)
+    : undefined
+  const fund = byName ?? byAccount
+  if (fund) {
+    const current = fundCurrentAmount(fund, accounts)
+    const target = fund.cantidad_objetivo
+    const progress = target > 0 ? Math.max(0, current / target) : 1
+    return {
+      name: fund.nombre,
+      accountId: fund.cuenta_id,
+      current,
+      target,
+      remaining: Math.max(0, target - current),
+      progress,
+      isLow: progress < EMERGENCY_LOW_PROGRESS,
+      isComplete: current >= target,
+    }
+  }
+
+  const acc = accounts.find((a) => a.tipo === "emergencia")
+  if (!acc) return null
+  const target = accountGoal(acc, sinkingFunds)
+  if (target <= 0) return null
+  const current = acc.saldo
+  const progress = Math.max(0, current / target)
+  return {
+    name: acc.nombre || "Colchón de Emergencia",
+    accountId: acc.id,
+    current,
+    target,
+    remaining: Math.max(0, target - current),
+    progress,
+    isLow: progress < EMERGENCY_LOW_PROGRESS,
+    isComplete: current >= target,
+  }
+}
+
+/**
+ * Importe concreto sugerido para aportar al colchón este mes: mitad del
+ * sobrante neto (si hay), o un tramo fijo de 200 €, nunca por encima de lo
+ * que falta ni de un techo razonable de 500 €.
+ */
+export function suggestEmergencyTransfer(remaining: number, monthlyNeto: number): number {
+  if (remaining <= 0) return 0
+  const fromSurplus = monthlyNeto > 0 ? monthlyNeto * 0.5 : 0
+  const raw = fromSurplus > 0 ? fromSurplus : 200
+  const capped = Math.min(remaining, raw, 500)
+  if (capped < 1) return 0
+  if (capped < 50) return Math.round(capped)
+  if (capped < 200) return Math.round(capped / 5) * 5
+  return Math.round(capped / 10) * 10
+}
+
 function getMonthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
 }
