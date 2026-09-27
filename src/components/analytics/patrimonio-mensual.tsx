@@ -25,7 +25,7 @@ import { money, signedMoney, chartFormatter } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 const PatrimonioTooltip = createChartTooltip(["patrimonio"], ["amber"])
-const VariacionTooltip = createChartTooltip(["Δ positiva", "Δ negativa"], ["emerald", "red"])
+const VariacionTooltip = createChartTooltip(["Variación positiva", "Variación negativa"], ["emerald", "red"])
 
 function formatGrowth(pct: number | null) {
   if (pct === null || !Number.isFinite(pct)) return "—"
@@ -143,8 +143,8 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
     () =>
       rows.map((r) => ({
         mensualidad: r.mensualidad,
-        "Δ positiva": r.variacion > 0 ? Math.round(r.variacion * 100) / 100 : 0,
-        "Δ negativa": r.variacion < 0 ? Math.round(Math.abs(r.variacion) * 100) / 100 : 0,
+        "Variación positiva": r.variacion > 0 ? Math.round(r.variacion * 100) / 100 : 0,
+        "Variación negativa": r.variacion < 0 ? Math.round(Math.abs(r.variacion) * 100) / 100 : 0,
       })),
     [rows]
   )
@@ -193,7 +193,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
               delay={0}
             />
             <MetricCard
-              label="Δ€ vs mes anterior"
+              label="Variación € vs mes anterior"
               value={<Sensitive>{signedMoney(kpis.deltaEur)}</Sensitive>}
               subtitle={rows.length > 1 ? "Respecto a la mensualidad previa" : "Primer snapshot"}
               icon={deltaPositive ? TrendingUp : TrendingDown}
@@ -201,7 +201,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
               delay={60}
             />
             <MetricCard
-              label="Δ% vs mes anterior"
+              label="Variación % vs mes anterior"
               value={formatGrowth(kpis.deltaPct)}
               subtitle="Crecimiento mes a mes"
               icon={Percent}
@@ -261,7 +261,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
                 <BarChart
                   data={barData}
                   index="mensualidad"
-                  categories={["Δ positiva", "Δ negativa"]}
+                  categories={["Variación positiva", "Variación negativa"]}
                   colors={["emerald", "red"]}
                   valueFormatter={chartFormatter}
                   yAxisWidth={56}
@@ -294,8 +294,8 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
                     <TableRow>
                       <TableHead>Mensualidad</TableHead>
                       <TableHead className="text-right">Patrimonio</TableHead>
-                      <TableHead className="text-right">Δ €</TableHead>
-                      <TableHead className="text-right">Δ %</TableHead>
+                      <TableHead className="text-right">Variación €</TableHead>
+                      <TableHead className="text-right">Variación %</TableHead>
                       <TableHead className="text-right">Ingresos</TableHead>
                       <TableHead className="text-right">Gastos</TableHead>
                       <TableHead className="text-right">Neto</TableHead>
@@ -420,7 +420,7 @@ const MobileDetalleCard = memo(function MobileDetalleCard({ row }: { row: Detall
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[11px] text-muted-foreground">Crecimiento %</p>
+          <p className="text-[11px] text-muted-foreground">Variación %</p>
           <p
             className={cn(
               "text-sm font-semibold tabular-nums",
