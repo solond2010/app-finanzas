@@ -26,10 +26,10 @@ import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 
-const CARD = "rounded-[16px] border border-border bg-card p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+const CARD = "rounded-[14px] border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
 // para las dos cifras más importantes de la página (patrimonio y puntuación).
-const CARD_HERO = "rounded-[16px] hero-panel p-5 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.30)] sm:p-6"
+const CARD_HERO = "rounded-[14px] hero-panel p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // "Hoy" usa un punto por transacción (orden real de alta vía created_at) en
 // vez de por día, para cuentas tan nuevas que varios movimientos del mismo
 // día esconderían un pico intermedio con resolución diaria. 7D/30D siguen a
@@ -567,7 +567,7 @@ export default function DashboardContent() {
       {!loading && overduePayments.length > 0 && (
         <button
           onClick={() => router.push("/transactions")}
-          className="flex w-full items-center gap-3 rounded-[16px] border border-amber-500/20 bg-amber-500/[0.06] p-4 text-left transition-colors hover:bg-amber-500/[0.1]"
+          className="flex w-full items-center gap-3 rounded-[14px] border border-amber-500/20 bg-amber-500/[0.06] p-4 text-left transition-colors hover:bg-amber-500/[0.1]"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500"><AlertTriangle className="h-4 w-4" /></span>
           <span className="min-w-0 flex-1">
@@ -580,7 +580,7 @@ export default function DashboardContent() {
       )}
 
       {!loading && hasAnyData && emergency?.isLow && (
-        <div className="flex w-full items-center gap-3 rounded-[16px] border border-emerald-500/25 bg-emerald-500/[0.07] p-4 text-left">
+        <div className="flex w-full items-center gap-3 rounded-[14px] border border-emerald-500/25 bg-emerald-500/[0.07] p-4 text-left">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500"><ShieldAlert className="h-4 w-4" /></span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold text-foreground">Prioridad: reforzar tu {emergency.name}</span>
@@ -605,9 +605,9 @@ export default function DashboardContent() {
           <Button onClick={() => setShowNewAccount(true)} className="mt-6 rounded-full px-6">Crear cuenta</Button>
         </div>
       ) : (
-        <div className="space-y-5 sm:space-y-6">
+        <div className="space-y-5 sm:space-y-5 lg:space-y-5">
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3" style={{ animationDelay: "0ms" }}>
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-3 lg:gap-5" style={{ animationDelay: "0ms" }}>
             {/* Patrimonio + rango */}
             <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -691,7 +691,7 @@ export default function DashboardContent() {
           </section>
 
           {/* Ticker: pulso del mes con mini-tendencia de 6 meses */}
-          <section className="stagger-fade grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" style={{ animationDelay: "40ms" }}>
+          <section className="stagger-fade grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-4" style={{ animationDelay: "40ms" }}>
             {/* <Sensitive> en todos los valores monetarios: el modo privacidad
                 difuminaba el hero pero estas fichas seguían enseñando importes. */}
             <TickerTile label="Ingresos" value={<Sensitive>+{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push("/transactions?tipo=ingreso")} />
@@ -746,9 +746,11 @@ export default function DashboardContent() {
             </section>
           )}
 
-          {/* Composición del patrimonio + racha de ahorro */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3" style={{ animationDelay: "80ms" }}>
-            <div className={`${CARD} min-w-0 lg:col-span-2`}>
+          {/* Middle (lg+): composición + cuentas + presupuesto lado a lado.
+              En móvil sigue siendo stack vertical. La racha/mejor mes/objetivo
+              vive dentro de la card de composición para densificar el boceto. */}
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-3 lg:items-start" style={{ animationDelay: "80ms" }}>
+            <div className={`${CARD} flex min-w-0 flex-col`}>
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Layers3 className="h-4 w-4 text-primary" /> Composición del patrimonio</p>
               {composicion.length === 0 ? (
                 <p className="mt-4 text-sm text-muted-foreground">Sin datos todavía.</p>
@@ -770,22 +772,88 @@ export default function DashboardContent() {
                   </div>
                 </>
               )}
+              <div className="mt-5 space-y-3 border-t border-border pt-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><Flame className="h-3.5 w-3.5 text-amber-500" /> Racha de ahorro</span>
+                  <span className="text-sm font-semibold tabular-nums text-foreground">{streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> Mejor mes</span>
+                  <span className="text-sm font-semibold tabular-nums text-emerald-500">{bestMonth ? <Sensitive>{formatMoney(bestMonth.value, "EUR")}</Sensitive> : "—"}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><Target className="h-3.5 w-3.5 text-primary" /> Próximo objetivo</span>
+                  <span className="truncate text-sm font-semibold tabular-nums text-foreground">{nextGoal ? <Sensitive>{formatMoney(nextGoal.objetivo, "EUR")}</Sensitive> : "—"}</span>
+                </div>
+              </div>
             </div>
 
-            <div className={`${CARD} flex min-w-0 flex-col justify-center gap-3.5`}>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-xs text-muted-foreground"><Flame className="h-3.5 w-3.5 text-amber-500" /> Racha de ahorro</span>
-                <span className="text-sm font-semibold tabular-nums text-foreground">{streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"}</span>
+            <div className={`${CARD} min-w-0`}>
+              <div className="mb-5 flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground">Mis cuentas</p>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setShowNewAccount(true)} className="text-sm font-medium text-primary transition-colors hover:opacity-70">+ Nueva</button>
+                  {accCount > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setAccIdx((p) => p - 1)} aria-label="Cuenta anterior" className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
+                      <button onClick={() => setAccIdx((p) => p + 1)} aria-label="Cuenta siguiente" className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-xs text-muted-foreground"><TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> Mejor mes</span>
-                <span className="text-sm font-semibold tabular-nums text-emerald-500">{bestMonth ? <Sensitive>{formatMoney(bestMonth.value, "EUR")}</Sensitive> : "—"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-xs text-muted-foreground"><Target className="h-3.5 w-3.5 text-primary" /> Próximo objetivo</span>
-                <span className="truncate text-sm font-semibold tabular-nums text-foreground">{nextGoal ? <Sensitive>{formatMoney(nextGoal.objetivo, "EUR")}</Sensitive> : "—"}</span>
-              </div>
+
+              {currentAccount && (() => {
+                const cfg = typeConfig[currentAccount.tipo] ?? typeConfig.efectivo
+                const objetivo = accountGoal(currentAccount, state.sinkingFunds)
+                const pct = objetivo > 0 ? Math.min((currentAccount.saldo / objetivo) * 100, 100) : 0
+                return (
+                  <button
+                    onClick={() => router.push(`/cuentas/${currentAccount.id}`)}
+                    className="group flex w-full flex-col gap-5 rounded-[14px] border border-border bg-muted/30 p-5 text-left transition-colors hover:bg-muted/60 sm:p-6"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <AccountLogo account={currentAccount} className="h-11 w-11" />
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-foreground">{currentAccount.nombre}</p>
+                          <p className="truncate text-xs text-muted-foreground">{currentAccount.banco || cfg.label}</p>
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-card px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{cfg.label}</span>
+                    </div>
+                    <p className="text-3xl font-bold tabular-nums tracking-tight text-foreground">
+                      <Sensitive>{formatMoney(currentAccount.saldo, currentAccount.currency)}</Sensitive>
+                    </p>
+                    {objetivo > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Objetivo</span>
+                          <span className="tabular-nums">{Math.round(pct)}%</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-card">
+                          <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                )
+              })()}
+
+              {accCount > 1 && (
+                <div className="mt-4 flex items-center justify-center gap-1.5">
+                  {sortedAccounts.map((a, i) => (
+                    <button
+                      key={a.id}
+                      onClick={() => setAccIdx(i)}
+                      aria-label={`Ver ${a.nombre}`}
+                      className={cn("h-1.5 rounded-full transition-all", i === safeAccIdx ? "w-5 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground/40")}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
+
+            <MonthlyBudget budgets={state.budgets} transactions={analysisTransactions} categories={state.categories} selectedMonth={selectedMonth} />
           </section>
 
           {/* Acumulado anual: colapsado por defecto; detalle denso vive en Analíticas */}
@@ -832,76 +900,6 @@ export default function DashboardContent() {
                 </div>
               )}
             </div>
-          </section>
-
-          {/* Cuentas (carrusel) + Presupuesto */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3" style={{ animationDelay: "160ms" }}>
-            <div className={`${CARD} min-w-0 lg:col-span-2`}>
-              <div className="mb-5 flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground">Mis cuentas</p>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setShowNewAccount(true)} className="text-sm font-medium text-primary transition-colors hover:opacity-70">+ Nueva</button>
-                  {accCount > 1 && (
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setAccIdx((p) => p - 1)} aria-label="Cuenta anterior" className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-                      <button onClick={() => setAccIdx((p) => p + 1)} aria-label="Cuenta siguiente" className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {currentAccount && (() => {
-                const cfg = typeConfig[currentAccount.tipo] ?? typeConfig.efectivo
-                const objetivo = accountGoal(currentAccount, state.sinkingFunds)
-                const pct = objetivo > 0 ? Math.min((currentAccount.saldo / objetivo) * 100, 100) : 0
-                return (
-                  <button
-                    onClick={() => router.push(`/cuentas/${currentAccount.id}`)}
-                    className="group flex w-full flex-col gap-5 rounded-[16px] border border-border bg-muted/30 p-5 text-left transition-colors hover:bg-muted/60 sm:p-6"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <AccountLogo account={currentAccount} className="h-11 w-11" />
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-foreground">{currentAccount.nombre}</p>
-                          <p className="truncate text-xs text-muted-foreground">{currentAccount.banco || cfg.label}</p>
-                        </div>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-card px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{cfg.label}</span>
-                    </div>
-                    <p className="text-3xl font-bold tabular-nums tracking-tight text-foreground">
-                      <Sensitive>{formatMoney(currentAccount.saldo, currentAccount.currency)}</Sensitive>
-                    </p>
-                    {objetivo > 0 && (
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Objetivo</span>
-                          <span className="tabular-nums">{Math.round(pct)}%</span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-card">
-                          <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    )}
-                  </button>
-                )
-              })()}
-
-              {accCount > 1 && (
-                <div className="mt-4 flex items-center justify-center gap-1.5">
-                  {sortedAccounts.map((a, i) => (
-                    <button
-                      key={a.id}
-                      onClick={() => setAccIdx(i)}
-                      aria-label={`Ver ${a.nombre}`}
-                      className={cn("h-1.5 rounded-full transition-all", i === safeAccIdx ? "w-5 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground/40")}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <MonthlyBudget budgets={state.budgets} transactions={analysisTransactions} categories={state.categories} selectedMonth={selectedMonth} />
           </section>
 
           {topSpending.length > 0 && (
@@ -956,41 +954,43 @@ export default function DashboardContent() {
             </div>
           )}
 
-          {/* Últimos movimientos: vista rápida de los 5 más recientes. El
-              historial completo vive en Movimientos. */}
-          <div className={`${CARD} stagger-fade min-w-0`} style={{ animationDelay: "240ms" }}>
-            <div className="mb-4 flex items-center justify-between">
-              <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Receipt className="h-4 w-4 text-primary" /> Últimos movimientos</p>
-              <button onClick={() => router.push("/transactions")} className="text-xs font-medium text-primary transition-colors hover:opacity-70">Ver todos</button>
-            </div>
-            {recentTransactions.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Sin movimientos todavía.</p>
-            ) : (
-              <div className="divide-y divide-border/70">
-                {recentTransactions.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span
-                        className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold", t.tipo === "ingreso" ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500")}
-                      >
-                        {accountName(t.cuenta_id).slice(0, 2).toUpperCase()}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">{t.descripcion || t.categoria}</p>
-                        <p className="truncate text-xs text-muted-foreground">{accountName(t.cuenta_id)}</p>
-                      </div>
-                    </div>
-                    <span className={cn("shrink-0 text-sm font-semibold tabular-nums", (t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "text-emerald-500" : "text-red-500")}>
-                      <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(t.monto), "EUR")}</Sensitive>
-                    </span>
-                  </div>
-                ))}
+          {/* Bottom (lg+): movimientos + metas en fila equilibrada de 2 cols.
+              Móvil: stack. */}
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2 lg:items-start" style={{ animationDelay: "240ms" }}>
+            <div className={`${CARD} min-w-0`}>
+              <div className="mb-4 flex items-center justify-between">
+                <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Receipt className="h-4 w-4 text-primary" /> Últimos movimientos</p>
+                <button onClick={() => router.push("/transactions")} className="text-xs font-medium text-primary transition-colors hover:opacity-70">Ver todos</button>
               </div>
-            )}
-          </div>
-          <div className="stagger-fade" style={{ animationDelay: "280ms" }}>
-            <SinkingFundsGrid />
-          </div>
+              {recentTransactions.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">Sin movimientos todavía.</p>
+              ) : (
+                <div className="divide-y divide-border/70">
+                  {recentTransactions.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold", t.tipo === "ingreso" ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500")}
+                        >
+                          {accountName(t.cuenta_id).slice(0, 2).toUpperCase()}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{t.descripcion || t.categoria}</p>
+                          <p className="truncate text-xs text-muted-foreground">{accountName(t.cuenta_id)}</p>
+                        </div>
+                      </div>
+                      <span className={cn("shrink-0 text-sm font-semibold tabular-nums", (t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "text-emerald-500" : "text-red-500")}>
+                        <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(t.monto), "EUR")}</Sensitive>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 [&_[data-slot=card]]:h-full">
+              <SinkingFundsGrid />
+            </div>
+          </section>
         </div>
       )}
 

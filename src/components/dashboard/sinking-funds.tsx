@@ -193,7 +193,7 @@ export function SinkingFundsGrid() {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Skeleton className="h-40" /><Skeleton className="h-40" /><Skeleton className="h-40" />
           </div>
         ) : state.sinkingFunds.length === 0 ? (
@@ -206,7 +206,7 @@ export function SinkingFundsGrid() {
             action={{ label: "Crear primera meta", icon: Plus, onClick: () => setShowNew(true) }}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {state.sinkingFunds.map((fund) => {
               const ahorradoActual = fundCurrentAmount(fund, displayAccounts)
               const progress = fund.cantidad_objetivo > 0 ? Math.min(Math.round((ahorradoActual / fund.cantidad_objetivo) * 100), 100) : 0
@@ -217,7 +217,7 @@ export function SinkingFundsGrid() {
               const circleColor = progress >= 100 ? "var(--accent-green)" : progress >= 50 ? "var(--accent-amber)" : "var(--accent-blue)"
 
               return (
-                <div key={fund.id} className="group relative rounded-2xl border border-border bg-card p-5 transition-colors hover:border-foreground/15">
+                <div key={fund.id} className="group relative rounded-[14px] border border-border bg-card p-5 transition-colors hover:border-foreground/15">
                   <PredictionTooltip remaining={remaining} avgMonthly={averageMonthlySavings} symbol={symbol} />
                   <button
                     className="absolute top-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
