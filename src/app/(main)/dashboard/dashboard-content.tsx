@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowDownRight, ArrowRightLeft, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
+import { AlertTriangle, ArrowDownRight, ArrowRightLeft, ArrowUpRight, Check, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
 import { BudgetDialog } from "@/components/dashboard/budget-dialog"
 import { openMovementDialog } from "@/components/layout/quick-actions"
@@ -671,7 +671,7 @@ export default function DashboardContent() {
                 {scoreFactors.map((f) => (
                   <div key={f.label} className="flex items-center gap-2 text-xs">
                     <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded-full", f.ok ? "bg-emerald-500/15 text-emerald-500" : "bg-muted text-muted-foreground")}>
-                      {f.ok ? "✓" : "·"}
+                      {f.ok ? <Check className="h-2.5 w-2.5" strokeWidth={2.2} /> : <Minus className="h-2.5 w-2.5" />}
                     </span>
                     <span className={f.ok ? "text-foreground" : "text-muted-foreground"}>{f.label}</span>
                   </div>

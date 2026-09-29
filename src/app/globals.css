@@ -1,4 +1,12 @@
 @import "tailwindcss";
+
+/* Iconografía de trazo uniforme: mantiene los pictogramas nítidos y sobrios
+   en tamaños pequeños, sin variar de peso entre secciones o dispositivos. */
+svg.lucide {
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 

@@ -3,7 +3,7 @@
 import React from "react"
 import { useMemo, useState, memo, useRef, useEffect } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, AlertTriangle, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Sparkles, Target, Wallet, Wallet2 } from "lucide-react"
+import { Activity, AlertTriangle, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Target, Wallet, Wallet2 } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
 
 import { Button } from "@/components/ui/button"
@@ -693,7 +693,7 @@ export default function AnalyticsPage() {
               {categoryInsights.length > 0 && (
                 <Card className="stagger-fade">
                   <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-base font-semibold"><Sparkles className="h-4 w-4 text-violet-500" />Lo que ha cambiado</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold"><Activity className="h-4 w-4 text-[var(--gold)]" />Lo que ha cambiado</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {categoryInsights.map((insight) => {

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { useFinance, type CategoryKind } from "@/lib/store"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
-import { Plus, Trash2, Download, Sparkles, Tags, FileDown, Layers, Search, Pencil, Check, X } from "lucide-react"
+import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X } from "lucide-react"
 import { Skeleton } from "@/components/shared/skeleton"
 
 export default function ConfiguracionPage() {
@@ -100,7 +100,7 @@ export default function ConfiguracionPage() {
       <section className="rounded-[16px] border border-border bg-card p-6 sm:p-8">
         <div className="space-y-4">
           <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
-            <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+            <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
             Configuración
           </div>
           <div className="space-y-2">

@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils"
 
 const TONE_CLASSES = {
   neutral: "bg-muted/60 text-muted-foreground/60",
-  primary: "bg-primary/10 text-primary",
-  amber: "bg-amber-500/10 text-amber-500",
+  primary: "bg-[color-mix(in_oklch,var(--gold),transparent_88%)] text-[var(--gold)] ring-1 ring-inset ring-[color-mix(in_oklch,var(--gold),transparent_78%)]",
+  amber: "bg-[color-mix(in_oklch,var(--gold),transparent_88%)] text-[var(--gold)] ring-1 ring-inset ring-[color-mix(in_oklch,var(--gold),transparent_78%)]",
 } as const
 
 // Estado vacío único para toda la app: icono en círculo tintado + título +

@@ -16,11 +16,11 @@ interface MetricCardProps {
 }
 
 const ICON_TONES: Record<MetricTone, string> = {
-  emerald: "bg-emerald-500/10 text-emerald-500",
-  red: "bg-red-500/10 text-red-500",
-  blue: "bg-primary/10 text-primary",
-  amber: "bg-amber-500/10 text-amber-500",
-  violet: "bg-violet-500/10 text-violet-500",
+  emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  red: "bg-red-500/10 text-red-600 dark:text-red-400",
+  blue: "bg-[color-mix(in_oklch,var(--gold),transparent_88%)] text-[var(--gold)]",
+  amber: "bg-[color-mix(in_oklch,var(--gold),transparent_88%)] text-[var(--gold)]",
+  violet: "bg-[color-mix(in_oklch,var(--gold),transparent_88%)] text-[var(--gold)]",
 }
 
 export const MetricCard = memo(function MetricCard({
@@ -37,7 +37,7 @@ export const MetricCard = memo(function MetricCard({
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${ICON_TONES[tone]}`}>
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[13px] ring-1 ring-inset ring-current/10 ${ICON_TONES[tone]}`}>
           <Icon className="h-4 w-4" />
         </span>
         {hasDelta && (
