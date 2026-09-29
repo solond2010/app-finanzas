@@ -14,7 +14,7 @@ import { MetricCard } from "@/components/dashboard/metric-card"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
-import { accountGoal, buildMonthlyCashFlow, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, countsTowardCashFlow, buildPreciseNetWorthHistory } from "@/lib/calculations"
+import { accountGoal, buildMonthlyCashFlow, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, countsTowardCashFlow, buildPreciseNetWorthHistory, getCurrencyByAccount, reportingAmount } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue, useDisplayAccounts } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
@@ -144,6 +144,7 @@ const DayHeatmap = memo(function DayHeatmap({ dailyTotals, firstWeekday }: { dai
 
 export default function AnalyticsPage() {
   const { state, loading, dispatch } = useFinance()
+  const currencyByAccount = useMemo(() => getCurrencyByAccount(state.accounts), [state.accounts])
   // Para los consejos: cuentas con el valor real (mercado) en inversión, la
   // misma cifra que el resto de widgets de la app.
   const displayAccounts = useDisplayAccounts()
@@ -160,13 +161,13 @@ export default function AnalyticsPage() {
 
   const [confirmReset, setConfirmReset] = useState(false)
 
-  const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   // Misma fuente de reglas que Cuentas/Inversiones (getFinancialTips): la
   // recomendación del diagnóstico rápido deja de ser un único if/else propio
   // de esta página y pasa a ser el consejo de mayor severidad del motor.
   const tips = useMemo(
-    () => getFinancialTips(analysisTransactions, displayAccounts, state.sinkingFunds, selectedMonth),
-    [analysisTransactions, displayAccounts, state.sinkingFunds, selectedMonth]
+    () => getFinancialTips(analysisTransactions, displayAccounts, state.sinkingFunds, selectedMonth, 4, currencyByAccount),
+    [analysisTransactions, displayAccounts, state.sinkingFunds, selectedMonth, currencyByAccount]
   )
   const topTip = tips[0]
   const dailyTotals = useMemo(() => {
@@ -176,14 +177,14 @@ export default function AnalyticsPage() {
     for (const t of analysisTransactions) {
       if (t.tipo !== "gasto" || !countsTowardCashFlow(t, analysisTransactions) || !t.fecha.startsWith(selectedMonth)) continue
       const day = new Date(t.fecha).getDate()
-      totals[day - 1] += t.monto
+      totals[day - 1] += reportingAmount(t, currencyByAccount)
     }
     return totals
-  }, [analysisTransactions, selectedMonth])
+  }, [analysisTransactions, selectedMonth, currencyByAccount])
   // getDay() da 0=domingo..6=sábado; se convierte a semana de lunes a domingo.
   const firstWeekday = (new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1).getDay() + 6) % 7
-  const { necesidades, deseos } = useMemo(() => getNeedsVsWantsForMonth(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
-  const categoryBreakdown = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const { necesidades, deseos } = useMemo(() => getNeedsVsWantsForMonth(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
+  const categoryBreakdown = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   // De qué cuenta sale el gasto del mes (no solo en qué categoría se va),
   // para detectar qué cuenta se vacía más rápido.
   const spendByAccount = useMemo(() => {
@@ -191,13 +192,13 @@ export default function AnalyticsPage() {
     const totals = new Map<string, number>()
     for (const t of analysisTransactions) {
       if (t.tipo !== "gasto" || !countsTowardCashFlow(t, analysisTransactions) || !t.fecha.startsWith(selectedMonth)) continue
-      totals.set(t.cuenta_id, (totals.get(t.cuenta_id) ?? 0) + t.monto)
+      totals.set(t.cuenta_id, (totals.get(t.cuenta_id) ?? 0) + reportingAmount(t, currencyByAccount))
     }
     return Array.from(totals.entries())
       .map(([cuentaId, monto]) => ({ cuenta: accountById.get(cuentaId)?.nombre ?? "Cuenta eliminada", monto }))
       .sort((a, b) => b.monto - a.monto)
-  }, [state.accounts, analysisTransactions, selectedMonth])
-  const categoryInsights = useMemo(() => getCategoryInsights(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  }, [state.accounts, analysisTransactions, selectedMonth, currencyByAccount])
+  const categoryInsights = useMemo(() => getCategoryInsights(analysisTransactions, selectedMonth, 3, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   // Mismo patrón que MonthlyBudget: un único pase agrupa el gasto por
   // categoría, en vez de recorrer transacciones una vez por presupuesto.
   const budgetProgress = useMemo(() => {
@@ -205,7 +206,7 @@ export default function AnalyticsPage() {
     const spentByCategory = new Map<string, number>()
     for (const t of analysisTransactions) {
       if (t.tipo !== "gasto" || !t.fecha.startsWith(selectedMonth)) continue
-      spentByCategory.set(t.categoria, (spentByCategory.get(t.categoria) ?? 0) + t.monto)
+      spentByCategory.set(t.categoria, (spentByCategory.get(t.categoria) ?? 0) + reportingAmount(t, currencyByAccount))
     }
     return state.budgets
       .filter((b) => b.month === selectedMonth)
@@ -222,8 +223,8 @@ export default function AnalyticsPage() {
         }
       })
       .sort((a, b) => b.percentage - a.percentage)
-  }, [state.budgets, state.categories, analysisTransactions, selectedMonth])
-  const cashFlow = useMemo(() => buildMonthlyCashFlow(analysisTransactions, selectedMonth, TREND_MONTHS), [analysisTransactions, selectedMonth])
+  }, [state.budgets, state.categories, analysisTransactions, selectedMonth, currencyByAccount])
+  const cashFlow = useMemo(() => buildMonthlyCashFlow(analysisTransactions, selectedMonth, TREND_MONTHS, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   // Cashflow indexado por YYYY-MM para el detalle mensual unificado (patrimonio + ingresos/gastos/neto).
   const cashByMonthKey = useMemo(() => {
     const map: Record<string, { ingresos: number; gastos: number; neto: number }> = {}
@@ -237,10 +238,10 @@ export default function AnalyticsPage() {
       keys.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
     }
     for (const key of keys) {
-      map[key] = getMonthTotalsByString(analysisTransactions, key)
+      map[key] = getMonthTotalsByString(analysisTransactions, key, currencyByAccount)
     }
     return map
-  }, [analysisTransactions, selectedMonth])
+  }, [analysisTransactions, selectedMonth, currencyByAccount])
   const { valueByAccount, investedByAccount } = usePortfolioValue()
   // Para el historial completo: necesitamos posiciones y precio histórico
   const { positions: investPositions } = usePortfolioValue()

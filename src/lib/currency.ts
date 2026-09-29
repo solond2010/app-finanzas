@@ -49,6 +49,10 @@ export function convertToEur(amount: number, currency: CurrencyCode) {
   return amount * EUR_RATES[currency]
 }
 
+export function convertFromEur(amount: number, currency: CurrencyCode) {
+  return amount / EUR_RATES[currency]
+}
+
 export function formatMoney(amount: number, currency: CurrencyCode) {
   // Espacio fino inseparable, como en money() (lib/format.ts): misma
   // tipografía de importes en toda la app.

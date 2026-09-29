@@ -17,8 +17,8 @@ import { usePortfolioValue, accountDisplayValue, type Position } from "@/lib/inv
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow, suggestEmergencyTransfer } from "@/lib/calculations"
-import { formatMoney } from "@/lib/currency"
+import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, getCurrencyByAccount, reportingAmount, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow, suggestEmergencyTransfer } from "@/lib/calculations"
+import { convertFromEur, convertToEur, formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
 import { formatMonth, isInitialBalanceTransaction, chartFormatter, formatCappedPct, PCT_CHANGE_CAP } from "@/lib/format"
@@ -91,6 +91,7 @@ function AnnualStat({ label, year, value, accent, icon: Icon, children }: { labe
 
 export default function DashboardContent() {
   const { state, loading, dispatch } = useFinance()
+  const currencyByAccount = useMemo(() => getCurrencyByAccount(state.accounts), [state.accounts])
   const router = useRouter()
   const { toast } = useToast()
   const today = useMemo(() => new Date(), [])
@@ -109,7 +110,7 @@ export default function DashboardContent() {
   const hasAnyData = state.accounts.length > 0 || analysisTransactions.length > 0 || state.sinkingFunds.length > 0
   const overduePayments = useMemo(() => getUpcomingRecurring(state.transactions).filter((p) => p.overdueDays > 0), [state.transactions])
 
-  const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const { positions: investPositions, value: portfolioValue, invested: investedTotal, pnl: portfolioPnl, valueByAccount, investedByAccount } = usePortfolioValue()
@@ -118,9 +119,9 @@ export default function DashboardContent() {
   // valor de mercado actual — el efectivo aún sin invertir se mantiene intacto
   // en vez de perderse (ver accountDisplayValue).
   const investmentAccounts = useMemo(() => displayAccounts.filter((a) => a.tipo === "inversion"), [displayAccounts])
-  const investmentSaldo = useMemo(() => investmentAccounts.reduce((s, a) => s + a.saldo, 0), [investmentAccounts])
+  const investmentSaldo = useMemo(() => investmentAccounts.reduce((s, a) => s + convertToEur(a.saldo, a.currency), 0), [investmentAccounts])
   const investmentDisplayTotal = useMemo(
-    () => investmentAccounts.reduce((s, a) => s + accountDisplayValue(a, valueByAccount, investedByAccount), 0),
+    () => investmentAccounts.reduce((s, a) => s + convertToEur(accountDisplayValue(a, valueByAccount, investedByAccount), a.currency), 0),
     [investmentAccounts, valueByAccount, investedByAccount]
   )
   const netWorthDisplay = netWorth - investmentSaldo + investmentDisplayTotal
@@ -152,16 +153,16 @@ export default function DashboardContent() {
       const offset = 5 - i
       const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-      const t = getMonthTotalsByString(analysisTransactions, key)
+      const t = getMonthTotalsByString(analysisTransactions, key, currencyByAccount)
       return { ingresos: t.ingresos, gastos: t.gastos, tasa: getSavingsRate(t.ingresos, t.neto) }
     }),
-    [selectedDate, analysisTransactions]
+    [selectedDate, analysisTransactions, currencyByAccount]
   )
 
   const year = selectedDate.getFullYear()
   const monthlyYear = useMemo(
-    () => Array.from({ length: 12 }, (_, m) => getMonthTotalsByString(analysisTransactions, `${year}-${String(m + 1).padStart(2, "0")}`)),
-    [analysisTransactions, year]
+    () => Array.from({ length: 12 }, (_, m) => getMonthTotalsByString(analysisTransactions, `${year}-${String(m + 1).padStart(2, "0")}`, currencyByAccount)),
+    [analysisTransactions, year, currencyByAccount]
   )
   const annualIngresos = monthlyYear.reduce((s, m) => s + m.ingresos, 0)
   const annualGastos = monthlyYear.reduce((s, m) => s + m.gastos, 0)
@@ -339,11 +340,11 @@ export default function DashboardContent() {
   const showVsPeakDelta = !!rangeMaxPoint && vsPeakDelta < -0.005
   const vsPeakPct = rangeMaxPoint && Math.abs(rangeMaxPoint.patrimonio) >= 100 ? (vsPeakDelta / Math.abs(rangeMaxPoint.patrimonio)) * 100 : 0
 
-  const spending = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const spending = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   const spendTotal = spending.reduce((s, c) => s + c.monto, 0)
   const topSpending = spending.slice(0, 6)
   const maxSpend = topSpending[0]?.monto ?? 1
-  const needsVsWants = useMemo(() => getNeedsVsWantsForMonth(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const needsVsWants = useMemo(() => getNeedsVsWantsForMonth(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   const needsVsWantsTotal = needsVsWants.necesidades + needsVsWants.deseos
   const needsPct = needsVsWantsTotal > 0 ? Math.round((needsVsWants.necesidades / needsVsWantsTotal) * 100) : 0
   const catColor = (name: string) => state.categories.find((c) => c.name === name)?.color ?? "var(--accent-blue)"
@@ -356,7 +357,7 @@ export default function DashboardContent() {
     const groups: Record<string, number> = {}
     for (const a of displayAccounts) {
       if (a.tipo === "inversion") continue
-      groups[a.tipo] = (groups[a.tipo] ?? 0) + a.saldo
+      groups[a.tipo] = (groups[a.tipo] ?? 0) + convertToEur(a.saldo, a.currency)
     }
     if (investmentDisplayTotal > 0) groups.inversion = investmentDisplayTotal
     const total = Object.values(groups).reduce((s, v) => s + Math.max(v, 0), 0) || 1
@@ -380,13 +381,13 @@ export default function DashboardContent() {
     for (let offset = 1; offset <= 24; offset++) {
       const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-      const t = getMonthTotalsByString(analysisTransactions, key)
+      const t = getMonthTotalsByString(analysisTransactions, key, currencyByAccount)
       if (t.ingresos === 0 && t.gastos === 0) break
       if (t.neto <= 0) break
       count++
     }
     return count
-  }, [selectedDate, analysisTransactions])
+  }, [selectedDate, analysisTransactions, currencyByAccount])
 
   const bestMonth = useMemo(() => {
     let best = { idx: -1, neto: 0 }
@@ -448,19 +449,22 @@ export default function DashboardContent() {
 
   const emergencyAction = useMemo(() => {
     if (!emergency || emergency.isComplete || emergency.remaining <= 0) return null
-    const suggested = suggestEmergencyTransfer(emergency.remaining, monthTotals.neto)
-    if (suggested <= 0) return null
-    const months = Math.max(1, Math.ceil(emergency.remaining / suggested))
+    const targetAccount = displayAccounts.find((a) => a.id === emergency.accountId)
+    const remainingEur = convertToEur(emergency.remaining, targetAccount?.currency ?? "EUR")
+    const suggestedEur = suggestEmergencyTransfer(remainingEur, monthTotals.neto)
+    if (suggestedEur <= 0) return null
+    const months = Math.max(1, Math.ceil(remainingEur / suggestedEur))
     const liquidTypes = new Set(["efectivo", "gastos", "ahorro"])
+    const targetCurrency = targetAccount?.currency ?? "EUR"
     const source =
       displayAccounts
-        .filter((a) => a.id !== emergency.accountId && liquidTypes.has(a.tipo) && a.saldo > 0)
+        .filter((a) => a.id !== emergency.accountId && a.currency === targetCurrency && liquidTypes.has(a.tipo) && a.saldo > 0)
         .sort((a, b) => b.saldo - a.saldo)[0]
       ?? displayAccounts
-        .filter((a) => a.id !== emergency.accountId && a.saldo > 0)
+        .filter((a) => a.id !== emergency.accountId && a.currency === targetCurrency && a.saldo > 0)
         .sort((a, b) => b.saldo - a.saldo)[0]
       ?? null
-    return { suggested, months, sourceId: source?.id ?? "", surplus: monthTotals.neto }
+    return { suggested: convertFromEur(suggestedEur, targetAccount?.currency ?? "EUR"), suggestedSource: convertFromEur(suggestedEur, source?.currency ?? "EUR"), months, sourceId: source?.id ?? "", surplus: monthTotals.neto }
   }, [emergency, monthTotals.neto, displayAccounts])
 
   const sortedAccounts = useMemo(() => displayAccounts.slice().sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo)), [displayAccounts])
@@ -481,7 +485,7 @@ export default function DashboardContent() {
     const spentByCategory = new Map<string, number>()
     for (const t of analysisTransactions) {
       if (t.tipo !== "gasto" || !t.fecha.startsWith(selectedMonth) || !countsTowardCashFlow(t, analysisTransactions)) continue
-      spentByCategory.set(t.categoria, (spentByCategory.get(t.categoria) ?? 0) + t.monto)
+      spentByCategory.set(t.categoria, (spentByCategory.get(t.categoria) ?? 0) + reportingAmount(t, currencyByAccount))
     }
 
     return state.budgets
@@ -492,7 +496,7 @@ export default function DashboardContent() {
         return { categoria: category?.name ?? "Sin categoría", gastado, limite: budget.amount }
       })
       .filter((b) => b.limite > 0)
-  }, [state.budgets, state.categories, analysisTransactions, selectedMonth])
+  }, [state.budgets, state.categories, analysisTransactions, selectedMonth, currencyByAccount])
 
   // Respuesta directa a "¿cuánto puedo gastar aún este mes?": suma de los
   // presupuestos del mes menos lo ya gastado en esas categorías. Negativo si
@@ -524,7 +528,7 @@ export default function DashboardContent() {
         annualGastos,
         annualNeto,
         year,
-        accounts: sortedAccounts.map((a) => ({ nombre: a.nombre, tipo: typeConfig[a.tipo]?.label ?? a.tipo, banco: a.banco, saldo: a.saldo })),
+        accounts: sortedAccounts.map((a) => ({ nombre: a.nombre, tipo: typeConfig[a.tipo]?.label ?? a.tipo, banco: a.banco, saldo: convertToEur(a.saldo, a.currency) })),
         budgets: budgetRows,
         spending: topSpending.map((c) => ({ categoria: c.categoria, monto: c.monto })),
         transactions: filterTransactionsByMonth(analysisTransactions, selectedMonth).map((t) => ({
@@ -532,7 +536,7 @@ export default function DashboardContent() {
           descripcion: t.descripcion,
           categoria: t.categoria,
           tipo: t.tipo,
-          monto: t.monto,
+          monto: convertToEur(t.monto, currencyByAccount.get(t.cuenta_id) ?? "EUR"),
         })),
       })
     } finally {
@@ -638,8 +642,8 @@ export default function DashboardContent() {
               {activeRange.unit === "today" && netWorthTrend.length <= 1 ? (
                 <EmptyPlaceholder text="Sin movimientos registrados hoy todavía" className="mt-4 h-52 sm:h-64" />
               ) : netWorthHasData ? (
-                <div className="mt-4 h-52 sm:h-64">
-                  <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-full" />
+                <div className="mt-4">
+                  <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-44 sm:h-52" />
                   <p className="mt-2 text-xs text-muted-foreground text-center">
                     Los valores históricos son estimaciones basadas en posiciones actuales y precios históricos; pueden no reflejar el patrimonio exacto en fechas pasadas.
                   </p>
@@ -775,8 +779,8 @@ export default function DashboardContent() {
                       ) : (
                         <>Este mes el flujo está justo. </>
                       )}
-                      Si pasas <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(emergencyAction.suggested, "EUR")}</Sensitive> al {emergency.name},
-                      llegas a <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(emergency.target, "EUR")}</Sensitive> en unos {emergencyAction.months} {emergencyAction.months === 1 ? "mes" : "meses"}.
+                      Si pasas <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(emergencyAction.suggested, state.accounts.find((a) => a.id === emergency.accountId)?.currency ?? "EUR")}</Sensitive> al {emergency.name},
+                      llegas a <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(emergency.target, state.accounts.find((a) => a.id === emergency.accountId)?.currency ?? "EUR")}</Sensitive> en unos {emergencyAction.months} {emergencyAction.months === 1 ? "mes" : "meses"}.
                     </p>
                   </div>
                 </div>
@@ -787,7 +791,7 @@ export default function DashboardContent() {
                     tipo: "traspaso",
                     origenId: emergencyAction.sourceId || undefined,
                     destinoId: emergency.accountId,
-                    monto: emergencyAction.suggested,
+                    monto: emergencyAction.suggestedSource,
                     descripcion: `Aporte a ${emergency.name}`,
                   })}
                 >
@@ -799,7 +803,7 @@ export default function DashboardContent() {
 
           {/* El presupuesto tiene ancho completo para dar aire a las categorías. */}
           <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:items-start" style={{ animationDelay: "80ms" }}>
-            <MonthlyBudget budgets={state.budgets} transactions={analysisTransactions} categories={state.categories} selectedMonth={selectedMonth} />
+            <MonthlyBudget budgets={state.budgets} transactions={analysisTransactions} categories={state.categories} selectedMonth={selectedMonth} currencyByAccount={currencyByAccount} />
           </section>
 
 
@@ -922,7 +926,7 @@ export default function DashboardContent() {
                         </div>
                       </div>
                       <span className={cn("shrink-0 text-sm font-semibold tabular-nums", (t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "text-emerald-500" : "text-red-500")}>
-                        <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(t.monto), "EUR")}</Sensitive>
+                        <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(t.monto), state.accounts.find((a) => a.id === t.cuenta_id)?.currency ?? "EUR")}</Sensitive>
                       </span>
                     </div>
                   ))}

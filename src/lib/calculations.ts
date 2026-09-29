@@ -1,6 +1,16 @@
 import type { Account, Transaction, MonthlySummary, NetWorthSnapshot, SinkingFund } from "./store"
-import { convertToEur } from "./currency"
+import { convertToEur, type CurrencyCode } from "./currency"
 import type { Position } from "./investments"
+
+export type CurrencyByAccount = ReadonlyMap<string, CurrencyCode>
+
+export function getCurrencyByAccount(accounts: readonly Pick<Account, "id" | "currency">[]): CurrencyByAccount {
+  return new Map(accounts.map((account) => [account.id, account.currency]))
+}
+
+export function reportingAmount(transaction: Transaction, currencies?: CurrencyByAccount) {
+  return convertToEur(transaction.monto, currencies?.get(transaction.cuenta_id) ?? "EUR")
+}
 
 /**
  * Objetivo efectivo de una cuenta: el que tenga puesto directamente en la
@@ -180,10 +190,10 @@ export function filterTransactionsByMonth(transactions: Transaction[], monthKey?
   return transactions.filter((t) => isInMonth(t.fecha, monthKey))
 }
 
-export function getMonthTotalsByString(transactions: Transaction[], month: string) {
+export function getMonthTotalsByString(transactions: Transaction[], month: string, currencies?: CurrencyByAccount) {
   const monthTxns = filterTransactionsByMonth(transactions, month).filter((t) => countsTowardCashFlow(t, transactions))
-  const ingresos = monthTxns.filter((t) => t.tipo === "ingreso").reduce((s, t) => s + t.monto, 0)
-  const gastos = monthTxns.filter((t) => t.tipo === "gasto").reduce((s, t) => s + t.monto, 0)
+  const ingresos = monthTxns.filter((t) => t.tipo === "ingreso").reduce((s, t) => s + reportingAmount(t, currencies), 0)
+  const gastos = monthTxns.filter((t) => t.tipo === "gasto").reduce((s, t) => s + reportingAmount(t, currencies), 0)
   return { ingresos, gastos, neto: ingresos - gastos }
 }
 
@@ -199,15 +209,16 @@ export function getSavingsRate(ingresos: number, neto: number): number {
 // "cuánto has invertido este mes" para el informe X-Ray.
 export function getMonthlyInvestmentInflow(transactions: Transaction[], accounts: Account[], monthKey: string): number {
   const investAccountIds = new Set(accounts.filter((a) => a.tipo === "inversion").map((a) => a.id))
+  const currencies = getCurrencyByAccount(accounts)
   return filterTransactionsByMonth(transactions, monthKey)
     .filter((t) => t.tipo === "ingreso" && isTransfer(t) && investAccountIds.has(t.cuenta_id))
-    .reduce((s, t) => s + t.monto, 0)
+    .reduce((s, t) => s + reportingAmount(t, currencies), 0)
 }
 
-export function getNeedsVsWantsForMonth(transactions: Transaction[], monthKey?: string) {
+export function getNeedsVsWantsForMonth(transactions: Transaction[], monthKey?: string, currencies?: CurrencyByAccount) {
   const monthTransactions = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto" && countsTowardCashFlow(t, transactions))
-  const necesidades = monthTransactions.filter((t) => t.es_necesidad).reduce((s, t) => s + t.monto, 0)
-  const deseos = monthTransactions.filter((t) => !t.es_necesidad).reduce((s, t) => s + t.monto, 0)
+  const necesidades = monthTransactions.filter((t) => t.es_necesidad).reduce((s, t) => s + reportingAmount(t, currencies), 0)
+  const deseos = monthTransactions.filter((t) => !t.es_necesidad).reduce((s, t) => s + reportingAmount(t, currencies), 0)
   return { necesidades, deseos }
 }
 
@@ -361,12 +372,12 @@ export function buildNetWorthHistoryToday(accounts: Account[], transactions: Tra
   return points
 }
 
-export function getCategoryBreakdown(transactions: Transaction[], monthKey?: string) {
+export function getCategoryBreakdown(transactions: Transaction[], monthKey?: string, currencies?: CurrencyByAccount) {
   const gastos = filterTransactionsByMonth(transactions, monthKey).filter((t) => t.tipo === "gasto" && countsTowardCashFlow(t, transactions))
 
   const breakdown: Record<string, number> = {}
   for (const t of gastos) {
-    breakdown[t.categoria] = (breakdown[t.categoria] || 0) + t.monto
+    breakdown[t.categoria] = (breakdown[t.categoria] || 0) + reportingAmount(t, currencies)
   }
 
   return Object.entries(breakdown)
@@ -396,16 +407,16 @@ const INSIGHT_MIN_PCT = 15
  * devuelve las mayores desviaciones — para la tarjeta "Lo que ha cambiado
  * este mes" de Analíticas.
  */
-export function getCategoryInsights(transactions: Transaction[], selectedMonth: string, maxInsights = 3): CategoryInsight[] {
+export function getCategoryInsights(transactions: Transaction[], selectedMonth: string, maxInsights = 3, currencies?: CurrencyByAccount): CategoryInsight[] {
   const window = getMonthWindow(selectedMonth, 6)
   const currentMonth = window[window.length - 1]
   const priorMonths = window.slice(0, -1)
 
-  const currentBreakdown = new Map(getCategoryBreakdown(transactions, currentMonth).map((c) => [c.categoria, c.monto]))
+  const currentBreakdown = new Map(getCategoryBreakdown(transactions, currentMonth, currencies).map((c) => [c.categoria, c.monto]))
 
   const priorTotals = new Map<string, number>()
   for (const m of priorMonths) {
-    for (const c of getCategoryBreakdown(transactions, m)) {
+    for (const c of getCategoryBreakdown(transactions, m, currencies)) {
       priorTotals.set(c.categoria, (priorTotals.get(c.categoria) ?? 0) + c.monto)
     }
   }
@@ -507,11 +518,12 @@ export function getFinancialTips(
   accounts: Account[],
   sinkingFunds: SinkingFund[],
   selectedMonth?: string,
-  maxTips = 4
+  maxTips = 4,
+  currencies?: CurrencyByAccount
 ): FinancialTip[] {
   const tips: FinancialTip[] = []
   const monthKey = selectedMonth ?? getMonthKey(new Date())
-  const monthTotals = getMonthTotalsByString(transactions, monthKey)
+  const monthTotals = getMonthTotalsByString(transactions, monthKey, currencies)
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
 
   if (monthTotals.neto < 0) {
@@ -552,16 +564,16 @@ function formatMonth(d: Date) {
   return d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" })
 }
 
-export function buildMonthlySummariesUpTo(transactions: Transaction[], endMonthKey?: string, monthCount = 6): MonthlySummary[] {
+export function buildMonthlySummariesUpTo(transactions: Transaction[], endMonthKey?: string, monthCount = 6, currencies?: CurrencyByAccount): MonthlySummary[] {
   return getMonthWindow(endMonthKey, monthCount).map((month) => {
-    const { ingresos, gastos } = getMonthTotalsByString(transactions, month)
+    const { ingresos, gastos } = getMonthTotalsByString(transactions, month, currencies)
     return { mes: formatMonth(parseMonthKey(month)), ingresos, gastos }
   })
 }
 
-export function buildMonthlyCashFlow(transactions: Transaction[], endMonthKey?: string, monthCount = 6): { mes: string; ingresos: number; gastos: number; neto: number }[] {
+export function buildMonthlyCashFlow(transactions: Transaction[], endMonthKey?: string, monthCount = 6, currencies?: CurrencyByAccount): { mes: string; ingresos: number; gastos: number; neto: number }[] {
   return getMonthWindow(endMonthKey, monthCount).map((month) => {
-    const { ingresos, gastos, neto } = getMonthTotalsByString(transactions, month)
+    const { ingresos, gastos, neto } = getMonthTotalsByString(transactions, month, currencies)
     return { mes: formatMonth(parseMonthKey(month)), ingresos, gastos, neto }
   })
 }

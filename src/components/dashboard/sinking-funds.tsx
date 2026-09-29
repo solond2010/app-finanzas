@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useToast } from "@/components/ui/toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type SinkingFund, generateId } from "@/lib/store"
 import { useDisplayAccounts } from "@/lib/investments"
-import { calculateMonthlySaving, fundCurrentAmount, countsTowardCashFlow } from "@/lib/calculations"
+import { calculateMonthlySaving, fundCurrentAmount } from "@/lib/calculations"
 import { CircularProgress } from "@/components/ui/circular-progress"
-import { PiggyBank, Plus, Pencil, Trash2, Target, TrendingUp, Clock, AlertCircle } from "lucide-react"
+import { PiggyBank, Plus, Pencil, Trash2, Target, AlertCircle } from "lucide-react"
 import { currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -114,30 +114,6 @@ function SinkingFundForm({
   )
 }
 
-function PredictionTooltip({ remaining, avgMonthly, symbol }: { remaining: number; avgMonthly: number; symbol: string }) {
-  if (remaining <= 0 || avgMonthly <= 0) return null
-
-  const monthsNeeded = Math.ceil(remaining / avgMonthly)
-  const estimated = new Date()
-  estimated.setMonth(estimated.getMonth() + monthsNeeded)
-  const label = estimated.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
-
-  return (
-    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20">
-      <div className="rounded-xl bg-foreground/10 backdrop-blur-xl px-3 py-2 text-[11px] leading-relaxed text-foreground shadow-xl ring-1 ring-border/30 whitespace-nowrap">
-        <div className="flex items-center gap-1.5 font-medium">
-          <TrendingUp className="h-3 w-3 text-emerald-500" />
-          Al ritmo actual (~{avgMonthly.toLocaleString("es-ES")} {symbol}/mes),
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Clock className="h-3 w-3 text-amber-500" />
-          completarás en <strong>{monthsNeeded} {monthsNeeded === 1 ? "mes" : "meses"}</strong> ({label})
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export function SinkingFundsGrid() {
   const { state, loading, dispatch } = useFinance()
   // Con saldo real (valor de mercado en cuentas de inversión): el progreso de
@@ -149,24 +125,7 @@ export function SinkingFundsGrid() {
   const [showNew, setShowNew] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<SinkingFund | null>(null)
 
-  const averageMonthlySavings = useMemo(() => {
-    const now = new Date()
-    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1)
-    const filtered = state.transactions
-      .filter((t) => !t.id.startsWith("init_"))
-      .filter((t) => new Date(t.fecha) >= threeMonthsAgo && new Date(t.fecha) <= now)
-    const netPerMonth: number[] = []
-    for (let i = 0; i < 3; i++) {
-      const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const key = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}`
-      const monthTxns = filtered.filter((t) => t.fecha.startsWith(key))
-      const ingresos = monthTxns.filter((t) => t.tipo === "ingreso" && countsTowardCashFlow(t, state.transactions)).reduce((s, t) => s + t.monto, 0)
-      const gastos = monthTxns.filter((t) => t.tipo === "gasto" && countsTowardCashFlow(t, state.transactions)).reduce((s, t) => s + t.monto, 0)
-      netPerMonth.push(ingresos - gastos)
-    }
-    const total = netPerMonth.reduce((s, v) => s + v, 0)
-    return Math.round(total / netPerMonth.length)
-  }, [state.transactions])
+
 
   return (
     <Card className="col-span-full">
@@ -213,12 +172,10 @@ export function SinkingFundsGrid() {
               const monthly = calculateMonthlySaving(fund.cantidad_objetivo, ahorradoActual, fund.fecha_limite)
               const account = displayAccounts.find((a) => a.id === fund.cuenta_id)
               const symbol = currencySymbol(account?.currency ?? "EUR")
-              const remaining = fund.cantidad_objetivo - ahorradoActual
               const circleColor = progress >= 100 ? "var(--accent-green)" : progress >= 50 ? "var(--accent-amber)" : "var(--accent-blue)"
 
               return (
                 <div key={fund.id} className="group relative rounded-[14px] border border-border bg-card p-5 transition-colors hover:border-foreground/15">
-                  <PredictionTooltip remaining={remaining} avgMonthly={averageMonthlySavings} symbol={symbol} />
                   <button
                     className="absolute top-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                     onClick={() => setDeleteConfirm(fund)}
@@ -262,24 +219,10 @@ export function SinkingFundsGrid() {
                     {account && <p>Cuenta: {account.nombre}</p>}
                     {monthly > 0 && (
                       <p className="font-medium text-foreground">
-                        <Sensitive as="span" className="tabular-nums">{monthly.toLocaleString("es-ES")} {symbol}/mes</Sensitive>
+                        <span className="mr-1 text-muted-foreground">Aportación necesaria:</span><Sensitive as="span" className="tabular-nums">{monthly.toLocaleString("es-ES")} {symbol}/mes</Sensitive>
                       </p>
                     )}
-                    {remaining > 0 && averageMonthlySavings > 0 && (() => {
-                      // Estimación visible también en móvil (el tooltip solo
-                      // aparece con hover): meses restantes al ritmo de ahorro
-                      // medio real de los últimos 3 meses.
-                      const monthsNeeded = Math.ceil(remaining / averageMonthlySavings)
-                      const estimated = new Date()
-                      estimated.setMonth(estimated.getMonth() + monthsNeeded)
-                      return (
-                        <p className="pt-1">
-                          <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-500 ring-1 ring-inset ring-emerald-500/20">
-                            A tu ritmo: {estimated.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
-                          </span>
-                        </p>
-                      )
-                    })()}
+
                   </div>
                 </div>
               )

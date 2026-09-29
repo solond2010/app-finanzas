@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress"
 import { Sensitive } from "@/components/shared/sensitive"
 import { formatMoney } from "@/lib/currency"
 import { type Budget, type Transaction, type Category } from "@/lib/store"
-import { countsTowardCashFlow } from "@/lib/calculations"
+import { countsTowardCashFlow, reportingAmount, type CurrencyByAccount } from "@/lib/calculations"
 import { BudgetDialog } from "@/components/dashboard/budget-dialog"
 import { EmptyState } from "@/components/shared/empty-state"
 import { cn } from "@/lib/utils"
@@ -20,11 +20,12 @@ interface MonthlyBudgetProps {
   transactions: Transaction[]
   categories: Category[]
   selectedMonth: string
+  currencyByAccount: CurrencyByAccount
 }
 
 const CARD = "rounded-[14px] border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 
-export function MonthlyBudget({ budgets, transactions, categories, selectedMonth }: MonthlyBudgetProps) {
+export function MonthlyBudget({ budgets, transactions, categories, selectedMonth, currencyByAccount }: MonthlyBudgetProps) {
   const [open, setOpen] = useState(false)
 
   const budgetProgress = useMemo(() => {
@@ -36,7 +37,7 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
     const spentByCategory = new Map<string, number>()
     for (const t of transactions) {
       if (t.tipo !== "gasto" || !t.fecha.startsWith(selectedMonth) || !countsTowardCashFlow(t, transactions)) continue
-      spentByCategory.set(t.categoria, (spentByCategory.get(t.categoria) ?? 0) + t.monto)
+      spentByCategory.set(t.categoria, (spentByCategory.get(t.categoria) ?? 0) + reportingAmount(t, currencyByAccount))
     }
 
     return budgets
@@ -55,7 +56,7 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
         }
       })
       .sort((a, b) => b.percentage - a.percentage)
-  }, [budgets, transactions, categories, selectedMonth])
+  }, [budgets, transactions, categories, selectedMonth, currencyByAccount])
 
   const overCount = budgetProgress.filter((b) => b.percentage >= 100).length
   const warningCount = budgetProgress.filter((b) => b.percentage >= WARNING_THRESHOLD && b.percentage < 100).length

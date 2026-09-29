@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { useFinance, type CategoryKind } from "@/lib/store"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
-import { Plus, Trash2, Download, Sparkles, Tags, FileDown, Layers } from "lucide-react"
+import { Plus, Trash2, Download, Sparkles, Tags, FileDown, Layers, Search, Pencil, Check, X } from "lucide-react"
 import { Skeleton } from "@/components/shared/skeleton"
 
 export default function ConfiguracionPage() {
@@ -15,6 +15,9 @@ export default function ConfiguracionPage() {
   const { toast } = useToast()
   const [newCat, setNewCat] = useState("")
   const [newCatKind, setNewCatKind] = useState<"ingreso" | "gasto">("gasto")
+  const [categorySearch, setCategorySearch] = useState("")
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState("")
 
   const addCategory = () => {
     const name = newCat.trim()
@@ -51,6 +54,28 @@ export default function ConfiguracionPage() {
     }
     dispatch({ type: "DELETE_CATEGORY", payload: id })
     toast(`Categoría "${name}" eliminada`, "success")
+  }
+
+  const saveCategoryName = (id: string) => {
+    const category = state.categories.find((c) => c.id === id)
+    const name = editingName.trim()
+    if (!category || !name) return
+    if (state.categories.some((c) => c.id !== id && c.name.trim().toLowerCase() === name.toLowerCase())) { toast("Ya existe una categoría con ese nombre", "error"); return }
+    if (state.categories.filter((c) => c.name === category.name).length > 1 && name !== category.name) { toast("Hay categorías duplicadas con este nombre; renombra primero las otras para evitar mover movimientos incorrectos", "error"); return }
+    dispatch({ type: "UPDATE_CATEGORY", payload: { ...category, name } })
+    setEditingId(null)
+    toast("Categoría actualizada; sus movimientos conservaron la categoría", "success")
+  }
+
+  const exportBackup = () => {
+    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), app: "app-finanzas", version: 1, data: state }, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `app-finanzas-backup_${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast("Copia de seguridad descargada", "success")
   }
 
   const exportCSV = () => {
@@ -124,18 +149,19 @@ export default function ConfiguracionPage() {
                 </Button>
               </div>
             </div>
+            <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} placeholder="Buscar categoría…" className="pl-9" /></div>
             <div className="space-y-4">
               {catGroups.map(({ key, label }) => {
-                const cats = state.categories.filter((c) => (c.kind ?? "both") === key)
+                const cats = state.categories.filter((c) => (c.kind ?? "both") === key && c.name.toLowerCase().includes(categorySearch.trim().toLowerCase()))
                 if (cats.length === 0) return null
                 return (
                   <div key={key} className="space-y-2">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
                     <div className="flex flex-wrap gap-2">
                       {cats.map((cat) => (
-                        <div key={cat.id} className="stagger-fade group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 bg-slate-100 text-slate-800 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+                        <div key={cat.id} className="stagger-fade group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 bg-muted/60 text-foreground ring-border/40">
                           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: cat.color }} />
-                          {cat.name}
+                          {editingId === cat.id ? <><Input autoFocus value={editingName} onChange={(e) => setEditingName(e.target.value)} className="h-7 w-32 bg-background px-2 text-xs" onKeyDown={(e) => { if (e.key === "Enter") saveCategoryName(cat.id); if (e.key === "Escape") setEditingId(null) }} /><button onClick={() => saveCategoryName(cat.id)} aria-label="Guardar categoría"><Check className="h-3 w-3 text-emerald-500" /></button><button onClick={() => setEditingId(null)} aria-label="Cancelar"><X className="h-3 w-3" /></button></> : <><span>{cat.name}</span><button onClick={() => { setEditingId(cat.id); setEditingName(cat.name) }} aria-label={`Renombrar categoría ${cat.name}`} className="opacity-50 hover:opacity-100"><Pencil className="h-3 w-3" /></button></>}
                           <button onClick={() => deleteCategory(cat.id, cat.name)} className="opacity-40 group-hover:opacity-100 transition-opacity hover:opacity-100 cursor-pointer" aria-label={`Eliminar categoría ${cat.name}`}>
                             <Trash2 className="h-3 w-3" />
                           </button>
@@ -145,6 +171,7 @@ export default function ConfiguracionPage() {
                   </div>
                 )
               })}
+              {categorySearch && !state.categories.some((c) => c.name.toLowerCase().includes(categorySearch.trim().toLowerCase())) && <p className="py-5 text-center text-sm text-muted-foreground">No hay categorías coincidentes.</p>}
             </div>
           </CardContent>
         </Card>
@@ -157,7 +184,7 @@ export default function ConfiguracionPage() {
             </CardTitle>
             <p className="text-sm text-muted-foreground font-normal">{state.transactions.length} transacciones registradas</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <div className="flex items-center justify-between rounded-2xl bg-muted/30 p-4 ring-1 ring-border/20">
               <div className="space-y-1">
                 <p className="text-sm font-medium">Descarga tu histórico</p>
@@ -166,6 +193,10 @@ export default function ConfiguracionPage() {
               <Button variant="outline" size="sm" className="gap-1.5 shrink-0 ml-4" onClick={exportCSV}>
                 <Download className="h-3.5 w-3.5" /> CSV
               </Button>
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-muted/30 p-4 ring-1 ring-border/20">
+              <div className="space-y-1"><p className="text-sm font-medium">Copia completa</p><p className="text-xs text-muted-foreground">Guarda cuentas, movimientos, metas, categorías y presupuestos en un archivo JSON.</p></div>
+              <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={exportBackup}><Download className="h-3.5 w-3.5" /> JSON</Button>
             </div>
           </CardContent>
         </Card>

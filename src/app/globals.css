@@ -128,7 +128,7 @@
   /* En tema claro el antiguo champán se sustituye por azul acero. */
   --gold: oklch(0.66 0.12 248);
   --gold-foreground: oklch(0.24 0.055 255);
-  --hero-bg: oklch(0.94 0.025 248);
+  --hero-bg: oklch(0.975 0.008 248);
   --hero-border: oklch(0.86 0.04 248);
 }
 
@@ -495,7 +495,7 @@
 
 /* Fondos más limpios en claro; el modo oscuro conserva su firma champagne. */
 :root:not(.dark) .hero-panel {
-  background: linear-gradient(145deg, color-mix(in oklch, var(--primary), transparent 96%), transparent 62%), var(--hero-bg);
+  background: linear-gradient(145deg, color-mix(in oklch, var(--primary), transparent 98%), transparent 62%), var(--hero-bg);
 }
 
 /* Tablas y tarjetas comparten una jerarquía más nítida y menos ruido de borde. */

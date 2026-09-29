@@ -6,7 +6,6 @@ import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, Chevro
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { ImportCsvButton } from "@/components/dashboard/import-csv-button"
 import { getSetting, setSetting } from "@/lib/settings"
-import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { TickerTile } from "@/components/shared/ticker-tile"
@@ -14,7 +13,7 @@ import { EmptyState, EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { useFinance, generateId } from "@/lib/store"
 import { useDisplayAccounts } from "@/lib/investments"
-import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, getUpcomingRecurring, isTransfer } from "@/lib/calculations"
+import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, getUpcomingRecurring, isTransfer, getCurrencyByAccount } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
 import { formatMonth, isInitialBalanceTransaction, chartFormatter } from "@/lib/format"
 import { formatMoney, convertToEur } from "@/lib/currency"
@@ -42,6 +41,7 @@ function Gauge({ value, max, color = "var(--accent-blue)" }: { value: number; ma
 
 export default function IngresosGastosPage() {
   const { state, loading, dispatch } = useFinance()
+  const currencyByAccount = useMemo(() => getCurrencyByAccount(state.accounts), [state.accounts])
   const { toast } = useToast()
   const today = useMemo(() => new Date(), [])
   const [monthOffset, setMonthOffset] = useState(0)
@@ -74,7 +74,7 @@ export default function IngresosGastosPage() {
   const selectedDate = useMemo(() => new Date(today.getFullYear(), today.getMonth() - monthOffset, 1), [today, monthOffset])
   const selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
-  const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
 
   // Próximos pagos: se calculan a partir de transacciones marcadas como
@@ -130,7 +130,7 @@ export default function IngresosGastosPage() {
       const off = rangeM - 1 - i
       const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - off, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-      const t = getMonthTotalsByString(analysisTransactions, key)
+      const t = getMonthTotalsByString(analysisTransactions, key, currencyByAccount)
       return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), Ingresos: t.ingresos, Gastos: t.gastos }
     }),
     [rangeM, selectedDate, analysisTransactions]
@@ -138,7 +138,7 @@ export default function IngresosGastosPage() {
   const cashflowHasData = cashflow.some((c) => c.Ingresos > 0 || c.Gastos > 0)
   const savingsRateTrend = useMemo(() => cashflow.map((c) => (c.Ingresos > 0 ? Math.max(((c.Ingresos - c.Gastos) / c.Ingresos) * 100, 0) : 0)), [cashflow])
 
-  const categoryBreakdown = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth), [analysisTransactions, selectedMonth])
+  const categoryBreakdown = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   const topCategory = categoryBreakdown[0]
   const categoryTotal = categoryBreakdown.reduce((sum, item) => sum + item.monto, 0)
   const topCategoryPct = topCategory && categoryTotal > 0 ? Math.round((topCategory.monto / categoryTotal) * 100) : 0
@@ -319,8 +319,6 @@ export default function IngresosGastosPage() {
       </>
       )}
 
-      {/* Planes de ahorro */}
-      <SinkingFundsGrid />
 
       {/* Transacciones */}
       <TransactionsTable selectedMonth={selectedMonth} />

@@ -3,15 +3,16 @@
 import { useRouter } from "next/navigation"
 import { useFinance, type Account, type SinkingFund } from "@/lib/store"
 import { usePortfolioValue, accountDisplayValue, useDisplayAccounts } from "@/lib/investments"
-import { accountGoal, fundCurrentAmount, getFinancialTips } from "@/lib/calculations"
+import { accountGoal, fundCurrentAmount, getCurrencyByAccount, getFinancialTips } from "@/lib/calculations"
 import { TipsCard } from "@/components/shared/tips-card"
 import { AnimatedNumber } from "@/components/shared/animated-number"
-import { Wallet as WalletIcon, Plus, Target, TrendingUp } from "lucide-react"
+import { Wallet as WalletIcon, Plus, Target, TrendingUp, Search } from "lucide-react"
 import { formatMoney, currencySymbol, convertToEur } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { useMemo, useState } from "react"
+import { Input } from "@/components/ui/input"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { useToast } from "@/components/ui/toast"
 import { TickerTile } from "@/components/shared/ticker-tile"
@@ -27,12 +28,14 @@ export default function CuentasPage() {
   const { toast } = useToast()
   const { valueByAccount, investedByAccount } = usePortfolioValue()
   const [showNewAccount, setShowNewAccount] = useState(false)
+  const [accountSearch, setAccountSearch] = useState("")
+  const [accountType, setAccountType] = useState("all")
   // Los consejos comparan saldos con metas y pagos: deben ver el valor real
   // de las cuentas de inversión (displayAccounts), igual que el resto de la página.
   const displayAccounts = useDisplayAccounts()
   const tips = useMemo(
-    () => getFinancialTips(state.transactions, displayAccounts, state.sinkingFunds),
-    [state.transactions, displayAccounts, state.sinkingFunds]
+    () => getFinancialTips(state.transactions, displayAccounts, state.sinkingFunds, undefined, 4, getCurrencyByAccount(state.accounts)),
+    [state.transactions, displayAccounts, state.sinkingFunds, state.accounts]
   )
 
   // Para cuentas de inversión, el saldo bruto no baja al comprar una posición
@@ -45,6 +48,7 @@ export default function CuentasPage() {
   // una cuenta individual, no para totales conjuntos.
   const accountValueEur = (a: Account) => convertToEur(accountValue(a), a.currency)
   const netWorth = state.accounts.reduce((s, a) => s + accountValueEur(a), 0)
+  const visibleAccounts = state.accounts.filter((a) => (accountType === "all" || a.tipo === accountType) && `${a.nombre} ${a.banco ?? ""}`.toLowerCase().includes(accountSearch.trim().toLowerCase()))
 
   // Cuenta con mayor saldo y cuenta más cerca de completar su objetivo, para
   // el ticker superior (solo cuando hay cuentas registradas).
@@ -125,10 +129,15 @@ export default function CuentasPage() {
             <TickerTile label="Liquidez" value={`${liquidPct}%`} valueColor="var(--accent-blue)" />
           </section>
 
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={accountSearch} onChange={(e) => setAccountSearch(e.target.value)} placeholder="Buscar cuenta o banco…" className="pl-9" /></div>
+            <select value={accountType} onChange={(e) => setAccountType(e.target.value)} aria-label="Filtrar cuentas por tipo" className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground">
+              <option value="all">Todos los tipos</option>{Object.entries(typeConfig).map(([key, cfg]) => <option key={key} value={key}>{cfg.label}</option>)}
+            </select>
+          </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {state.accounts.map((account, index) => {
+            {visibleAccounts.map((account, index) => {
               const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
-              const goal = accountGoal(account, state.sinkingFunds)
               return (
                 <button
                   key={account.id}
@@ -156,27 +165,12 @@ export default function CuentasPage() {
                       </p>
                     </div>
 
-                    {goal > 0 && (
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Objetivo: <Sensitive>{goal.toLocaleString("es-ES")} {currencySymbol(account.currency)}</Sensitive></span>
-                          <span>{Math.round((accountValue(account) / goal) * 100)}%</span>
-                        </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-muted/50">
-                          <div
-                            className="h-full rounded-full transition-all duration-700 ease-out"
-                            style={{
-                              width: `${Math.min((accountValue(account) / goal) * 100, 100)}%`,
-                              backgroundColor: cfg.color,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
+
                   </div>
                 </button>
               )
             })}
+            {visibleAccounts.length === 0 && <div className="col-span-full rounded-2xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground">No hay cuentas que coincidan con la búsqueda.</div>}
             <button
               onClick={() => setShowNewAccount(true)}
               className="stagger-fade flex flex-col items-center justify-center gap-3 rounded-[16px] border border-dashed border-muted-foreground/25 p-6 text-muted-foreground transition-colors hover:border-[color-mix(in_oklch,var(--gold),transparent_40%)] hover:bg-[color-mix(in_oklch,var(--gold),transparent_94%)] hover:text-foreground"

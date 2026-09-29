@@ -440,7 +440,7 @@ export function QuickActionsFAB() {
   return (
     <>
       <div
-        className={`fixed right-5 bottom-[calc(var(--bottom-nav-h)+1rem)] z-50 transition-all duration-300 lg:right-8 lg:bottom-8 ${
+        className={`fixed right-5 bottom-[calc(var(--bottom-nav-h)+1rem)] z-50 transition-all duration-300 lg:hidden ${
           isScrolling ? "scale-90 opacity-60" : "scale-100 opacity-100"
         }`}
       >

@@ -359,6 +359,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const [deleteConfirm, setDeleteConfirm] = useState<Transaction | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [showAdjustments, setShowAdjustments] = useState(false)
   const PAGE_SIZE = 25
 
   const toggleSelected = (id: string) => {
@@ -370,11 +371,12 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   }
   const clearSelection = () => setSelectedIds(new Set())
   const bulkDelete = () => {
-    for (const id of selectedIds) {
+    const deletableIds = [...selectedIds].filter((id) => !isInitialBalanceTransaction(id))
+    for (const id of deletableIds) {
       dispatch({ type: "DELETE_TRANSACTION", payload: id })
       dbDeleteEq("transactions", "id", id).then(() => {}, () => {})
     }
-    toast(`${selectedIds.size} transacciones eliminadas`, "success")
+    toast(`${deletableIds.length} transacciones eliminadas`, "success")
     clearSelection()
     setBulkDeleteConfirm(false)
   }
@@ -434,6 +436,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
 
   const handleInlineDone = (t: Transaction, field: EditField, committed: boolean, rawValue: string) => {
     setEditingCell(null)
+    if (isInitialBalanceTransaction(t.id)) return
     if (!committed) return
     if (field === "descripcion") {
       dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, descripcion: rawValue } })
@@ -456,6 +459,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
       const safeTime = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? 0 : d.getTime() }
       const orderIndex = new Map(state.transactions.map((t, i) => [t.id, i] as const))
       return filterTransactionsByMonth(state.transactions, selectedMonth)
+        .filter((t) => showAdjustments || !isInitialBalanceTransaction(t.id))
         .filter((t) => filterAccount === "all" || t.cuenta_id === filterAccount)
         .filter((t) => filterCategory === "all" || t.categoria === filterCategory)
         .filter((t) => {
@@ -470,7 +474,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
           || (orderIndex.get(b.id) ?? 0) - (orderIndex.get(a.id) ?? 0)
         )
     },
-    [state.transactions, filterAccount, filterCategory, filterTipo, search, selectedMonth]
+    [state.transactions, filterAccount, filterCategory, filterTipo, search, selectedMonth, showAdjustments]
   )
 
   const grouped = useMemo(() => {
@@ -494,7 +498,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const totalPages = Math.max(1, Math.ceil(grouped.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages - 1)
   const currentGrouped = useMemo(() => grouped.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE), [grouped, safePage])
-  const currentPageIds = useMemo(() => currentGrouped.flatMap((g) => g.transactions.map((t) => t.id)), [currentGrouped])
+  const currentPageIds = useMemo(() => currentGrouped.flatMap((g) => g.transactions.filter((t) => !isInitialBalanceTransaction(t.id)).map((t) => t.id)), [currentGrouped])
   // Delay incremental (acotado) para que las filas entren en cascada al
   // cambiar de mes/filtro/página, en vez de aparecer todas de golpe.
   const rowDelay = useMemo(() => new Map(currentPageIds.map((id, i) => [id, Math.min(i, 14) * 18])), [currentPageIds])
@@ -507,6 +511,10 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
               <Download className="h-3.5 w-3.5" /> Exportar CSV
             </Button>
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border px-2.5 py-2 text-xs text-muted-foreground">
+              <input type="checkbox" checked={showAdjustments} onChange={(e) => { setShowAdjustments(e.target.checked); setPage(0) }} />
+              Ver ajustes de saldo
+            </label>
             <Filter className="h-4 w-4 text-muted-foreground" />
             {!cuentaId && (
               <Select value={filterAccount} onValueChange={handleAccountFilter} items={{ all: "Todas las cuentas", ...Object.fromEntries(state.accounts.map((a) => [a.id, a.nombre])) }}>
@@ -687,6 +695,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                     const transfer = isTransfer(t)
                     const recurring = isRecurringTransaction(t)
                     const isSystemTag = (tag: string) => tag === "traspaso" || tag === "recurrente" || tag.startsWith("recurrente:")
+                    const systemAdjustment = isInitialBalanceTransaction(t.id)
                     return (
                       <TableRow
                         key={t.id}
@@ -702,6 +711,8 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                             className="rounded border-muted-foreground opacity-30 transition-opacity group-hover:opacity-100 checked:opacity-100 focus-visible:opacity-100"
                             aria-label="Seleccionar transacción"
                             checked={selectedIds.has(t.id)}
+                            disabled={systemAdjustment}
+                            title={systemAdjustment ? "Los ajustes de saldo son de solo lectura" : undefined}
                             onChange={() => toggleSelected(t.id)}
                           />
                         </TableCell>
@@ -709,7 +720,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                           {isEditing("fecha") ? (
                             <InlineEditInput type="date" defaultValue={t.fecha} onDone={(ok, v) => handleInlineDone(t, "fecha", ok, v)} />
                           ) : (
-                            <button onClick={() => setEditingCell({ id: t.id, field: "fecha" })} className="cursor-text rounded px-1 py-0.5 -mx-1 hover:bg-muted/60" aria-label="Editar fecha">
+                            <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setEditingCell({ id: t.id, field: "fecha" })} className="cursor-text rounded px-1 py-0.5 -mx-1 hover:bg-muted/60" aria-label="Editar fecha">
                               {new Date(t.fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
                             </button>
                           )}
@@ -718,7 +729,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                           {isEditing("descripcion") ? (
                             <InlineEditInput defaultValue={t.descripcion} onDone={(ok, v) => handleInlineDone(t, "descripcion", ok, v)} />
                           ) : (
-                            <button onClick={() => setEditingCell({ id: t.id, field: "descripcion" })} className="flex w-full items-center gap-2 rounded px-1 py-0.5 -mx-1 text-left hover:bg-muted/60" aria-label="Editar descripción">
+                            <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setEditingCell({ id: t.id, field: "descripcion" })} className="flex w-full items-center gap-2 rounded px-1 py-0.5 -mx-1 text-left hover:bg-muted/60" aria-label="Editar descripción">
                               <span className="inline-flex h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: catHex ?? "var(--muted-foreground)" }} />
                               <span className="truncate font-medium">{t.descripcion || t.categoria}</span>
                             </button>
@@ -730,7 +741,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                             <InlineEditSelect defaultValue={t.categoria} options={categoryOptions} onDone={(ok, v) => handleInlineDone(t, "categoria", ok, v)} />
                           ) : (
                             <button
-                              onClick={() => setEditingCell({ id: t.id, field: "categoria" })}
+                              disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setEditingCell({ id: t.id, field: "categoria" })}
                               className={cn(
                                 "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium",
                                 !chipStyle && "bg-muted/60 text-muted-foreground ring-1 ring-inset ring-border/20"
@@ -774,7 +785,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                             {isEditing("monto") ? (
                               <InlineEditInput type="number" defaultValue={String(t.monto)} onDone={(ok, v) => handleInlineDone(t, "monto", ok, v)} />
                             ) : (
-                              <button onClick={() => setEditingCell({ id: t.id, field: "monto" })} className="rounded px-1 py-0.5 -mx-1 hover:bg-muted/60" aria-label="Editar monto">
+                              <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setEditingCell({ id: t.id, field: "monto" })} className="rounded px-1 py-0.5 -mx-1 hover:bg-muted/60" aria-label="Editar monto">
                                 <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(t.monto), account?.currency ?? "EUR")}</Sensitive>
                               </button>
                             )}
@@ -792,10 +803,10 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => setEditingTxn(t)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90" aria-label="Editar transacción">
+                            <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setEditingTxn(t)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90" aria-label="Editar transacción">
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
-                            <button onClick={() => setDeleteConfirm(t)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-90" aria-label="Eliminar transacción">
+                            <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setDeleteConfirm(t)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-90" aria-label="Eliminar transacción">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>

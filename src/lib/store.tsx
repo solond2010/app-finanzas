@@ -100,6 +100,7 @@ type Action =
   | { type: "DELETE_SINKING_FUND"; payload: string }
   | { type: "RESET" }
   | { type: "ADD_CATEGORY"; payload: Omit<Category, 'id'> }
+  | { type: "UPDATE_CATEGORY"; payload: Category }
   | { type: "DELETE_CATEGORY"; payload: string }
   | { type: "ADD_BUDGET"; payload: Omit<Budget, 'id'> }
   | { type: "UPDATE_BUDGET"; payload: Budget }
@@ -343,6 +344,15 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
       return state.categories.some((c) => c.name.trim().toLowerCase() === action.payload.name.trim().toLowerCase())
         ? state
         : { ...state, categories: [...state.categories, { id: generateId(), ...action.payload }] }
+    case "UPDATE_CATEGORY": {
+      const previous = state.categories.find((c) => c.id === action.payload.id)
+      if (!previous) return state
+      return {
+        ...state,
+        categories: state.categories.map((c) => c.id === action.payload.id ? action.payload : c),
+        transactions: previous.name === action.payload.name ? state.transactions : state.transactions.map((t) => t.categoria === previous.name ? { ...t, categoria: action.payload.name } : t),
+      }
+    }
     case "DELETE_CATEGORY":
       // Al borrar una categoría también eliminamos sus presupuestos dependientes
       // (budgets.category_id → categories.id) para no dejar filas huérfanas ni
