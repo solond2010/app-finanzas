@@ -12,6 +12,17 @@ export const TRACK: [number, number, number] = [43, 59, 77]
 export const CARD: [number, number, number] = [15, 30, 46]
 const PIE_COLORS = ["rgb(239,199,128)", "#4db99f", "#f08079", "#7793c7", "#a995d0", "#56a8c0", "#79a982", "#e6a754"]
 
+/** jsPDF's built-in Helvetica is WinAnsi; normalize separators and strip pictographs. */
+export function pdfText(value: string): string {
+  return value
+    .replace(/[\u00a0\u202f]/g, " ")
+    .replace(/[\u2212\u2013\u2014]/g, "-")
+    .replace(/[\u2190-\u21ff]/g, " a ")
+    .replace(/[\u200b-\u200f\uFE0E\uFE0F]/g, "")
+    .replace(/\p{Extended_Pictographic}/gu, "")
+    .replace(/\s{2,}/g, " ")
+}
+
 export function drawPageBackground(doc: jsPDF) {
   doc.setFillColor(...BRAND)
   doc.rect(0, 0, doc.internal.pageSize.getWidth(), doc.internal.pageSize.getHeight(), "F")
@@ -67,12 +78,7 @@ export function renderBarChart(data: { label: string; value: number }[], w: numb
   return canvas.toDataURL("image/png")
 }
 
-/**
- * Dibuja un gráfico de tarta en un canvas oculto y devuelve su dataURL PNG.
- * Círculo centrado arriba y leyenda a ancho completo debajo (en vez de al
- * lado): con columnas estrechas, una leyenda lateral se corta sin espacio
- * para el texto.
- */
+/** Gráfico de composición con tarta amplia y leyenda legible en columna. */
 export function renderPieChart(data: { name: string; value: number }[], w: number, h: number): string {
   const scale = 2
   const canvas = document.createElement("canvas")
@@ -83,8 +89,8 @@ export function renderPieChart(data: { name: string; value: number }[], w: numbe
   ctx.fillStyle = `rgb(${CARD.join(",")})`
   ctx.fillRect(0, 0, w, h)
   const total = data.reduce((s, d) => s + d.value, 0) || 1
-  const r = Math.min(w * 0.22, h * 0.19)
-  const cx = w / 2, cy = r + 6
+  const r = Math.min(h * 0.39, w * 0.22)
+  const cx = Math.max(r + 8, w * 0.27), cy = h / 2
   let angle = -Math.PI / 2
   data.forEach((d, i) => {
     const slice = (d.value / total) * Math.PI * 2
@@ -96,19 +102,21 @@ export function renderPieChart(data: { name: string; value: number }[], w: numbe
     ctx.fill()
     angle += slice
   })
-  const legendTop = cy + r + 8
-  const rowH = 11
+  const legendTop = Math.max(10, (h - data.length * 18) / 2 + 9)
+  const rowH = Math.min(18, (h - 12) / Math.max(data.length, 1))
+  const legendX = Math.min(w - 116, cx + r + 15)
   ctx.textAlign = "left"
   ctx.textBaseline = "middle"
   data.forEach((d, i) => {
     const ly = legendTop + i * rowH
-    if (ly > h - 4) return
     ctx.fillStyle = PIE_COLORS[i % PIE_COLORS.length]
-    ctx.fillRect(6, ly - 4, 8, 8)
+    ctx.beginPath()
+    ctx.arc(legendX + 4, ly, 4, 0, Math.PI * 2)
+    ctx.fill()
     ctx.fillStyle = "#f1f4f9"
-    ctx.font = "7px Helvetica, Arial, sans-serif"
+    ctx.font = "10px Helvetica, Arial, sans-serif"
     const pct = ((d.value / total) * 100).toFixed(1)
-    ctx.fillText(`${d.name} (${pct}%)`, 18, ly)
+    ctx.fillText(`${pdfText(d.name)} · ${pct}%`, legendX + 13, ly, w - legendX - 17)
   })
   return canvas.toDataURL("image/png")
 }
@@ -124,7 +132,9 @@ export function drawTile(doc: jsPDF, x: number, y: number, w: number, h: number,
   doc.setTextColor(...(t.color ?? INK))
   doc.setFont("helvetica", "bold")
   doc.setFontSize(13)
-  doc.text(t.value, x + 12, y + 40, { maxWidth: w - 24 })
+  let size = 13
+  while (size > 8 && doc.getTextWidth(t.value) > w - 24) { size--; doc.setFontSize(size) }
+  doc.text(t.value, x + 12, y + 40)
 }
 
 /** Dibuja una cuadrícula de tarjetas y devuelve el nuevo Y tras la cuadrícula. */

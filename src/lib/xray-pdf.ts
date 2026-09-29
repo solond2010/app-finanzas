@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
-import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, CARD, drawPageBackground, type Tile, renderBarChart, renderPieChart, drawTile, drawTileGrid, drawProgressBar, ensureSpace, drawFooter } from "@/lib/pdf-helpers"
+import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, CARD, drawPageBackground, type Tile, renderBarChart, renderPieChart, drawTile, drawTileGrid, drawProgressBar, ensureSpace, drawFooter, pdfText } from "@/lib/pdf-helpers"
 
 interface XrayPosition {
   name: string
@@ -44,8 +44,8 @@ export function generateXrayPdf(data: XrayData) {
   drawPageBackground(doc)
   const W = doc.internal.pageSize.getWidth()
   const M = 40
-  const m = (v: number) => formatMoney(v, data.currency)
-  const signed = (v: number) => `${v >= 0 ? "+" : "−"}${formatMoney(Math.abs(v), data.currency)}`
+  const m = (v: number) => pdfText(formatMoney(v, data.currency))
+  const signed = (v: number) => `${v >= 0 ? "+" : "-"}${m(Math.abs(v))}`
 
   // Header band
   doc.setFillColor(...BRAND)
@@ -59,7 +59,7 @@ export function generateXrayPdf(data: XrayData) {
   doc.setFont("helvetica", "normal")
   doc.setFontSize(10)
   const today = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" })
-  doc.text(`${data.owner} · ${data.month} · Generado el ${today}`, M, 62)
+  doc.text(pdfText(`${data.owner} · ${data.month} · Generado el ${today}`), M, 62)
 
   let y = 120
 
@@ -109,7 +109,7 @@ export function generateXrayPdf(data: XrayData) {
     y += 14
     const total = data.byType.reduce((s, t) => s + t.value, 0) || 1
     const classTiles: Tile[] = data.byType.map((t) => ({
-      label: t.name,
+      label: pdfText(t.name),
       value: `${m(t.value)}  (${((t.value / total) * 100).toFixed(1)}%)`,
     }))
     const cols = 3
@@ -171,8 +171,8 @@ export function generateXrayPdf(data: XrayData) {
     willDrawPage: ({ pageNumber }) => { if (pageNumber > 1) drawPageBackground(doc) },
     head: [["Activo", "Cuenta", "Uds.", "P. medio", "P. actual", "Valor", "P&L", "%"]],
     body: data.positions.map((p) => [
-      p.name,
-      p.account,
+      pdfText(p.name),
+      pdfText(p.account),
       String(p.units),
       m(p.buyPrice),
       m(p.current),

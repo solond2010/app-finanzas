@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { formatMoney } from "@/lib/currency"
-import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, CARD, drawPageBackground, renderBarChart, drawTileGrid, drawProgressBar, ensureSpace, drawFooter } from "@/lib/pdf-helpers"
+import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, CARD, drawPageBackground, renderBarChart, drawTileGrid, drawProgressBar, ensureSpace, drawFooter, pdfText } from "@/lib/pdf-helpers"
 
 interface AnalyticsPdfBudgetRow {
   categoria: string
@@ -45,8 +45,8 @@ export function generateAnalyticsPdf(data: AnalyticsPdfData) {
   drawPageBackground(doc)
   const W = doc.internal.pageSize.getWidth()
   const M = 40
-  const m = (v: number) => formatMoney(v, "EUR")
-  const signed = (v: number) => `${v >= 0 ? "+" : "−"}${formatMoney(Math.abs(v), "EUR")}`
+  const m = (v: number) => pdfText(formatMoney(v, "EUR"))
+  const signed = (v: number) => `${v >= 0 ? "+" : "-"}${m(Math.abs(v))}`
 
   doc.setFillColor(...BRAND)
   doc.rect(0, 0, W, 90, "F")
@@ -59,7 +59,7 @@ export function generateAnalyticsPdf(data: AnalyticsPdfData) {
   doc.setFont("helvetica", "normal")
   doc.setFontSize(10)
   const today = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" })
-  doc.text(`${data.owner} · ${data.month} · Generado el ${today}`, M, 62)
+  doc.text(pdfText(`${data.owner} · ${data.month} · Generado el ${today}`), M, 62)
 
   let y = 120
 
@@ -130,7 +130,7 @@ export function generateAnalyticsPdf(data: AnalyticsPdfData) {
       doc.setTextColor(...(insight.isNew || insight.deltaPct > 0 ? [217, 119, 6] as [number, number, number] : GREEN))
       doc.text("•", M, y)
       doc.setTextColor(...INK)
-      doc.text(text, M + 12, y, { maxWidth: W - M * 2 - 12 })
+      doc.text(pdfText(text), M + 12, y, { maxWidth: W - M * 2 - 12 })
       y += 16
     })
     y += 8
@@ -148,7 +148,7 @@ export function generateAnalyticsPdf(data: AnalyticsPdfData) {
       startY: y,
       willDrawPage: ({ pageNumber }) => { if (pageNumber > 1) drawPageBackground(doc) },
       head: [["Categoría", "Gastado", "Límite", "% usado"]],
-      body: data.budgets.map((b) => [b.categoria, m(b.gastado), m(b.limite), `${Math.round((b.gastado / b.limite) * 100)}%`]),
+      body: data.budgets.map((b) => [pdfText(b.categoria), m(b.gastado), m(b.limite), `${Math.round((b.gastado / b.limite) * 100)}%`]),
       theme: "plain",
       headStyles: { fillColor: CARD, textColor: GOLD, fontSize: 8, lineColor: TRACK },
       bodyStyles: { fontSize: 8, textColor: INK, fillColor: BRAND, lineColor: TRACK },
@@ -177,7 +177,7 @@ export function generateAnalyticsPdf(data: AnalyticsPdfData) {
       startY: y,
       willDrawPage: ({ pageNumber }) => { if (pageNumber > 1) drawPageBackground(doc) },
       head: [["Categoría", "Importe", "%"]],
-      body: data.categoryBreakdown.map((c) => [c.categoria, m(c.monto), `${((c.monto / total) * 100).toFixed(1)}%`]),
+      body: data.categoryBreakdown.map((c) => [pdfText(c.categoria), m(c.monto), `${((c.monto / total) * 100).toFixed(1)}%`]),
       theme: "plain",
       headStyles: { fillColor: CARD, textColor: GOLD, fontSize: 8, lineColor: TRACK },
       bodyStyles: { fontSize: 8, textColor: INK, fillColor: BRAND, lineColor: TRACK },

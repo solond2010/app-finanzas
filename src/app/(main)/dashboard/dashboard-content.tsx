@@ -225,6 +225,7 @@ export default function DashboardContent() {
     // Para cada mes del rango (excepto el actual si monthOffset===0), calcular pico diario
     // y si supera el valor de fin de mes, añadirlo como punto extra
     const enrichedTrend = [...baseTrend]
+    let insertedPeaks = 0
     for (let i = 0; i < baseTrend.length; i++) {
       const monthPoint = baseTrend[i]
       // Saltar el mes actual (se maneja aparte con currentMonthDailyPeak)
@@ -254,12 +255,14 @@ export default function DashboardContent() {
       
       // Si el pico supera el valor de fin de mes en más de 0.5%, insertarlo antes del punto de fin de mes
       if (dailyPeak.patrimonio > monthPoint.patrimonio + 0.005) {
-        // Insertar antes del índice actual (fin de mes)
-        enrichedTrend.splice(i, 0, {
+        // Insertar antes del cierre de mes; compensar los picos añadidos antes
+        // para mantener el orden cronológico de todos los puntos.
+        enrichedTrend.splice(i + insertedPeaks, 0, {
           mes: dailyPeak.label.replace(" · pico", ""),
           patrimonio: dailyPeak.patrimonio,
           breakdown: dailyPeak.breakdown
         })
+        insertedPeaks++
       }
     }
     
