@@ -14,8 +14,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  const { data, error } = await supabaseServer.from("accounts").select("id, nombre, tipo, saldo, currency")
+  // El Atajo pide esta lista cada vez que se abre. Deja explícito que tanto
+  // Vercel como los clientes intermedios no deben conservar cuentas antiguas.
+  const { data, error } = await supabaseServer
+    .from("accounts")
+    .select("id, nombre, banco, tipo, currency")
+    .order("nombre", { ascending: true })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ accounts: data })
+  const accounts = (data ?? []).map((account) => ({
+    // Shortcuts presenta el valor `Name` como etiqueta al elegir un elemento
+    // de una lista de diccionarios; el id viaja aparte y no se muestra.
+    Name: [account.nombre, account.banco || account.tipo, account.currency || "EUR"].join(" · "),
+    id: account.id,
+  }))
+
+  return NextResponse.json(
+    { accounts },
+    { headers: { "Cache-Control": "private, no-store, max-age=0" } },
+  )
 }
