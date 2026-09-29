@@ -72,66 +72,65 @@
      demasiado baja y el título de cada página aparecía tapado arriba. */
   --mobile-header-h: calc(52px + env(safe-area-inset-top));
   --bottom-nav-h: 64px;
-  /* A · Editorial marfil + bronce refinado: fondo marfil cálido, cards
-     blancas, bronce suave solo en acentos (menos saturación dorada). */
-  --background: oklch(0.976 0.006 85);
-  --foreground: oklch(0.22 0.012 70);
+  /* A · Niebla azul: fondo frío azul grisáceo, tarjetas blancas y oro
+     reservado a pequeños acentos. */
+  --background: oklch(0.965 0.012 245);
+  --foreground: oklch(0.24 0.035 255);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.012 70);
+  --card-foreground: oklch(0.24 0.035 255);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.012 70);
-  /* Bronce reservado a acentos/acciones; chroma baja para no competir con
-     las cifras. El azul queda en datos (--accent-blue, charts). */
-  --primary: oklch(0.48 0.085 68);
-  --primary-foreground: oklch(0.985 0.005 85);
-  --secondary: oklch(0.955 0.006 85);
-  --secondary-foreground: oklch(0.22 0.012 70);
-  --muted: oklch(0.962 0.005 85);
-  --muted-foreground: oklch(0.50 0.015 70);
-  --accent: oklch(0.955 0.006 85);
-  --accent-foreground: oklch(0.22 0.012 70);
+  --popover-foreground: oklch(0.24 0.035 255);
+  /* Azul tinta para acciones, con champán suave en elementos destacados. */
+  --primary: oklch(0.48 0.12 252);
+  --primary-foreground: oklch(0.99 0.004 245);
+  --secondary: oklch(0.94 0.018 245);
+  --secondary-foreground: oklch(0.27 0.04 255);
+  --muted: oklch(0.945 0.014 245);
+  --muted-foreground: oklch(0.49 0.035 255);
+  --accent: oklch(0.94 0.018 245);
+  --accent-foreground: oklch(0.27 0.04 255);
   --destructive: oklch(0.55 0.18 27);
-  --border: oklch(0.905 0.008 85);
-  --input: oklch(0.905 0.008 85);
-  --ring: oklch(0.48 0.085 68);
-  --chart-1: oklch(0.45 0.02 70);
+  --border: oklch(0.89 0.018 245);
+  --input: oklch(0.89 0.018 245);
+  --ring: oklch(0.58 0.12 252);
+  --chart-1: oklch(0.57 0.12 252);
   --chart-2: oklch(0.55 0.11 165);
   --chart-3: oklch(0.58 0.10 55);
   --chart-4: oklch(0.55 0.11 310);
   --chart-5: oklch(0.55 0.10 190);
   /* Radio base ~9px; cards usan ~14px (ver CARD / ui/card). */
   --radius: 0.5625rem;
-  --sidebar: oklch(0.988 0.004 85);
-  --sidebar-foreground: oklch(0.22 0.012 70);
-  --sidebar-primary: oklch(0.48 0.085 68);
-  --sidebar-primary-foreground: oklch(0.985 0.005 85);
-  --sidebar-accent: oklch(0.955 0.006 85);
-  --sidebar-accent-foreground: oklch(0.22 0.012 70);
-  --sidebar-border: oklch(0.905 0.008 85);
-  --sidebar-ring: oklch(0.45 0.04 68);
+  --sidebar: oklch(0.982 0.008 245);
+  --sidebar-foreground: oklch(0.24 0.035 255);
+  --sidebar-primary: oklch(0.48 0.12 252);
+  --sidebar-primary-foreground: oklch(0.99 0.004 245);
+  --sidebar-accent: oklch(0.94 0.018 245);
+  --sidebar-accent-foreground: oklch(0.27 0.04 255);
+  --sidebar-border: oklch(0.89 0.018 245);
+  --sidebar-ring: oklch(0.58 0.12 252);
   --tremor-background: #ffffff;
   --tremor-content: #6b7280;
-  --tremor-content-emphasis: #1c1917;
-  --tremor-border: #ebe6df;
+  --tremor-content-emphasis: #1d2a3b;
+  --tremor-border: #dbe4ef;
   --tremor-label: #9ca3af;
-  --tremor-brand: #8a6a3a;
-  --tremor-brand-emphasis: #6f5430;
-  --tremor-ring: #d6d0c8;
+  --tremor-brand: #496da8;
+  --tremor-brand-emphasis: #345887;
+  --tremor-ring: #cbd7e5;
   --brand-purple: oklch(0.55 0.16 295);
   --brand-teal: oklch(0.58 0.11 185);
   --brand-rose: oklch(0.58 0.12 15);
-  /* Money states: verdes/rojos más calmados (editorial). */
+  /* Importes positivos y negativos conservan sus colores semánticos. */
   --accent-green: oklch(0.52 0.10 160);
   --accent-red: oklch(0.54 0.13 25);
   --accent-amber: oklch(0.60 0.11 78);
   --accent-blue: oklch(0.52 0.15 264);
   --accent-violet: oklch(0.55 0.15 295);
-  --card-glow: oklch(0.35 0.03 70 / 0.04);
-  --gold: oklch(0.66 0.08 75);
-  --gold-foreground: oklch(0.36 0.06 65);
-  /* Hero marfil-champán suave, borde fino. */
-  --hero-bg: oklch(0.968 0.012 88);
-  --hero-border: oklch(0.88 0.035 82);
+  --card-glow: oklch(0.35 0.04 255 / 0.04);
+  --gold: oklch(0.76 0.10 80);
+  --gold-foreground: oklch(0.32 0.055 75);
+  /* Superficie azul muy pálida para destacar paneles sin volver al beige. */
+  --hero-bg: oklch(0.95 0.022 245);
+  --hero-border: oklch(0.87 0.035 245);
 }
 
 .dark {
@@ -444,10 +443,10 @@
    elements that are both bordered and card-backgrounded (actual cards),
    leaving chips, pills and progress bars untouched. */
 .border-border.bg-card {
-  /* A: sombra editorial suave; B (oscuro): elevación navy sutil. */
+  /* Sombra azul neutra en claro; en oscuro, elevación navy sutil. */
   box-shadow:
-    0 1px 2px -1px oklch(0.35 0.03 70 / 0.04),
-    0 6px 18px -12px oklch(0.35 0.03 70 / 0.07);
+    0 1px 2px -1px oklch(0.30 0.04 255 / 0.04),
+    0 6px 18px -12px oklch(0.30 0.04 255 / 0.07);
   transition:
     box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
     border-color 0.25s ease;
@@ -455,8 +454,8 @@
 
 .border-border.bg-card:hover {
   box-shadow:
-    0 2px 4px -1px oklch(0.35 0.03 70 / 0.05),
-    0 10px 26px -14px oklch(0.35 0.03 70 / 0.10);
+    0 2px 4px -1px oklch(0.30 0.04 255 / 0.05),
+    0 10px 26px -14px oklch(0.30 0.04 255 / 0.10);
 }
 
 .dark .border-border.bg-card {
