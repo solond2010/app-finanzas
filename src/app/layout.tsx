@@ -41,7 +41,9 @@ export default async function RootLayout({
   // directamente en el HTML. Así no hay flash ni desincronización: React hidrata
   // con la misma clase que ya trae el <html>, sin necesidad de un script previo
   // (que además generaba avisos de "script tag" y podía ser borrado al hidratar).
-  const isDark = (await cookies()).get("app-finanzas-theme")?.value === "dark"
+  // Midnight premium es el tema inicial. Quienes ya eligieron un tema
+  // explícitamente conservan esa preferencia en su cookie.
+  const isDark = (await cookies()).get("app-finanzas-theme")?.value !== "light"
 
   return (
     <html
