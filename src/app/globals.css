@@ -137,21 +137,21 @@
 .dark {
   /* B · Midnight premium + champagne: navy profundo, cards en capas navy
      elevadas, acento champagne suave alineado con --gold. */
-  --background: oklch(0.048 0.022 265);
+  --background: oklch(0.105 0.035 255);
   --foreground: oklch(0.96 0.01 85);
-  --card: oklch(0.088 0.028 264);
+  --card: oklch(0.155 0.035 255);
   --card-foreground: oklch(0.96 0.01 85);
-  --popover: oklch(0.105 0.028 264);
+  --popover: oklch(0.18 0.035 255);
   --popover-foreground: oklch(0.96 0.01 85);
   /* Champagne / soft gold: mismo valor en --primary y --gold. Texto casi
      negro encima para contraste en botones. */
   --primary: oklch(0.82 0.09 85);
   --primary-foreground: oklch(0.22 0.04 75);
-  --secondary: oklch(0.125 0.024 264);
+  --secondary: oklch(0.19 0.032 255);
   --secondary-foreground: oklch(0.96 0.01 85);
-  --muted: oklch(0.115 0.022 264);
+  --muted: oklch(0.18 0.028 255);
   --muted-foreground: oklch(0.64 0.025 264);
-  --accent: oklch(0.14 0.03 264);
+  --accent: oklch(0.22 0.035 255);
   --accent-foreground: oklch(0.96 0.01 85);
   --destructive: oklch(0.68 0.14 22);
   --border: oklch(1 0 0 / 8%);
@@ -162,18 +162,18 @@
   --chart-3: oklch(0.68 0.10 55);
   --chart-4: oklch(0.58 0.11 310);
   --chart-5: oklch(0.58 0.10 190);
-  --sidebar: oklch(0.058 0.024 265);
+  --sidebar: oklch(0.12 0.032 255);
   --sidebar-foreground: oklch(0.96 0.01 85);
   --sidebar-primary: oklch(0.82 0.09 85);
   --sidebar-primary-foreground: oklch(0.22 0.04 75);
-  --sidebar-accent: oklch(0.14 0.03 264);
+  --sidebar-accent: oklch(0.20 0.035 255);
   --sidebar-accent-foreground: oklch(0.96 0.01 85);
   --sidebar-border: oklch(1 0 0 / 7%);
   --sidebar-ring: oklch(0.70 0.05 85);
-  --tremor-background: #070a14;
-  --tremor-content: #9aa3bb;
+  --tremor-background: #0b1928;
+  --tremor-content: #aab7c9;
   --tremor-content-emphasis: #f7f3ea;
-  --tremor-border: #1a2238;
+  --tremor-border: #263749;
   --tremor-label: #6b7387;
   --tremor-brand: #d4b56a;
   --tremor-brand-emphasis: #e4c98a;
@@ -191,7 +191,7 @@
   --gold: oklch(0.82 0.09 85);
   --gold-foreground: oklch(0.26 0.05 70);
   /* Hero navy con tinte champagne (el .hero-panel añade el velo dorado). */
-  --hero-bg: oklch(0.10 0.04 265);
+  --hero-bg: oklch(0.17 0.045 255);
   --hero-border: oklch(0.32 0.05 85);
 }
 

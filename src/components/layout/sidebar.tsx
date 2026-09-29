@@ -140,7 +140,7 @@ export function Sidebar() {
         onClick={toggleSidebar}
         className={cn(
           "fixed top-[72px] z-50 hidden -translate-x-1/2 lg:flex items-center justify-center transition-all duration-300 active:scale-90 press-effect",
-          sidebarOpen ? "left-64" : "left-16"
+          sidebarOpen ? "left-52" : "left-16"
         )}
         style={{ transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}
         aria-label={sidebarOpen ? "Colapsar menú" : "Expandir menú"}
@@ -222,7 +222,7 @@ export function Sidebar() {
       {/* Desktop full sidebar (when open) + mobile sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r bg-sidebar py-6 shadow-xl shadow-sidebar-border/50 transition-all duration-300 ease-in-out",
+          "fixed left-0 top-0 z-40 flex h-full w-52 flex-col border-r bg-sidebar py-6 shadow-xl shadow-sidebar-border/50 transition-all duration-300 ease-in-out",
           "max-lg:top-[var(--mobile-header-h)] max-lg:h-[calc(100vh-var(--mobile-header-h))] max-lg:shadow-2xl",
           mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full",
           sidebarOpen ? "lg:translate-x-0 lg:opacity-100" : "lg:-translate-x-full lg:opacity-0 lg:pointer-events-none"

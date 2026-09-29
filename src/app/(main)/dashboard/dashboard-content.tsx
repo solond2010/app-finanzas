@@ -445,6 +445,7 @@ export default function DashboardContent() {
         ? `${scoreTier.label} en flujo · pendiente el colchón`
         : `${scoreTier.label} · prioriza el colchón`)
     : scoreTier.label
+  const scoreColor = scoreTier.label === "Excelente" ? "var(--gold)" : scoreTier.color
 
   const emergencyAction = useMemo(() => {
     if (!emergency || emergency.isComplete || emergency.remaining <= 0) return null
@@ -607,7 +608,7 @@ export default function DashboardContent() {
       ) : (
         <div className="space-y-5 sm:space-y-5 lg:space-y-5">
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-3 lg:gap-5" style={{ animationDelay: "0ms" }}>
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-4 lg:gap-5" style={{ animationDelay: "0ms" }}>
             {/* Patrimonio + rango */}
             <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -626,7 +627,7 @@ export default function DashboardContent() {
                   </p>
                   {showRangeMax && rangeMaxPoint && (
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Máximo del periodo: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive> ({"mes" in rangeMaxPoint ? rangeMaxPoint.mes : rangeMaxPoint.label}.replace(" · pico", ""))
+                      Máximo del periodo: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive> ({("mes" in rangeMaxPoint ? rangeMaxPoint.mes : rangeMaxPoint.label).replace(" · pico", "")})
                       {showVsPeakDelta && (
                         <Sensitive as="span" className="ml-1 font-semibold text-red-500">
                           · {formatMoney(vsPeakDelta, "EUR")}{Math.abs(vsPeakPct) > 0.05 ? ` (${formatCappedPct(vsPeakPct)})` : ""} desde el pico
@@ -670,13 +671,13 @@ export default function DashboardContent() {
                 <p className="text-sm font-semibold text-foreground">Puntuación financiera</p>
               </div>
               <div className="relative mx-auto my-4 flex items-center justify-center">
-                <CircularProgress value={score} size={148} strokeWidth={11} color={scoreTier.color} />
+                <CircularProgress value={score} size={136} strokeWidth={10} color={scoreColor} />
                 <div className="absolute flex flex-col items-center">
                   <span className="text-4xl font-bold tabular-nums text-foreground">{score}</span>
                   <span className="text-xs text-muted-foreground">de 100</span>
                 </div>
               </div>
-              <p className="text-center text-sm font-semibold" style={{ color: scoreTier.color }}>{scoreDisplayLabel}</p>
+              <p className="text-center text-sm font-semibold" style={{ color: scoreColor }}>{scoreDisplayLabel}</p>
               <div className="mt-4 space-y-2 border-t border-border pt-4">
                 {scoreFactors.map((f) => (
                   <div key={f.label} className="flex items-center gap-2 text-xs">
@@ -687,6 +688,110 @@ export default function DashboardContent() {
                   </div>
                 ))}
               </div>
+            </div>
+            <div className="flex min-w-0 flex-col gap-4">
+            <div className={`${CARD} flex min-w-0 flex-col p-4 sm:p-4`}>
+              <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Layers3 className="h-4 w-4 text-primary" /> Composición del patrimonio</p>
+              {composicion.length === 0 ? (
+                <p className="mt-4 text-sm text-muted-foreground">Sin datos todavía.</p>
+              ) : (
+                <>
+                  <div className="mt-5 flex h-2.5 w-full overflow-hidden rounded-full">
+                    {composicion.map((c) => (
+                      <div key={c.tipo} style={{ width: `${c.pct}%`, backgroundColor: c.color }} title={c.label} />
+                    ))}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+                    {composicion.map((c) => (
+                      <div key={c.tipo} className="flex items-center gap-2 text-xs">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
+                        <span className="text-foreground">{c.label}</span>
+                        <span className="tabular-nums text-muted-foreground">{Math.round(c.pct)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              <div className="mt-5 space-y-3 border-t border-border pt-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><Flame className="h-3.5 w-3.5 text-amber-500" /> Racha de ahorro</span>
+                  <span className="text-sm font-semibold tabular-nums text-foreground">{streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> Mejor mes</span>
+                  <span className="text-sm font-semibold tabular-nums text-emerald-500">{bestMonth ? <Sensitive>{formatMoney(bestMonth.value, "EUR")}</Sensitive> : "—"}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><Target className="h-3.5 w-3.5 text-primary" /> Próximo objetivo</span>
+                  <span className="truncate text-sm font-semibold tabular-nums text-foreground">{nextGoal ? <Sensitive>{formatMoney(nextGoal.objetivo, "EUR")}</Sensitive> : "—"}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className={`${CARD} min-w-0 p-4 sm:p-4`}>
+              <div className="mb-5 flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground">Mis cuentas</p>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setShowNewAccount(true)} className="text-sm font-medium text-primary transition-colors hover:opacity-70">+ Nueva</button>
+                  {accCount > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setAccIdx((p) => p - 1)} aria-label="Cuenta anterior" className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
+                      <button onClick={() => setAccIdx((p) => p + 1)} aria-label="Cuenta siguiente" className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {currentAccount && (() => {
+                const cfg = typeConfig[currentAccount.tipo] ?? typeConfig.efectivo
+                const objetivo = accountGoal(currentAccount, state.sinkingFunds)
+                const pct = objetivo > 0 ? Math.min((currentAccount.saldo / objetivo) * 100, 100) : 0
+                return (
+                  <button
+                    onClick={() => router.push(`/cuentas/${currentAccount.id}`)}
+                    className="group flex w-full flex-col gap-3 rounded-[14px] border border-border bg-muted/30 p-4 text-left transition-colors hover:bg-muted/60"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <AccountLogo account={currentAccount} className="h-11 w-11" />
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-foreground">{currentAccount.nombre}</p>
+                          <p className="truncate text-xs text-muted-foreground">{currentAccount.banco || cfg.label}</p>
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-card px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{cfg.label}</span>
+                    </div>
+                    <p className="text-2xl font-bold tabular-nums tracking-tight text-foreground">
+                      <Sensitive>{formatMoney(currentAccount.saldo, currentAccount.currency)}</Sensitive>
+                    </p>
+                    {objetivo > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Objetivo</span>
+                          <span className="tabular-nums">{Math.round(pct)}%</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-card">
+                          <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                )
+              })()}
+
+              {accCount > 1 && (
+                <div className="mt-4 flex items-center justify-center gap-1.5">
+                  {sortedAccounts.map((a, i) => (
+                    <button
+                      key={a.id}
+                      onClick={() => setAccIdx(i)}
+                      aria-label={`Ver ${a.nombre}`}
+                      className={cn("h-1.5 rounded-full transition-all", i === safeAccIdx ? "w-5 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground/40")}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
             </div>
           </section>
 
@@ -746,161 +851,11 @@ export default function DashboardContent() {
             </section>
           )}
 
-          {/* Middle (lg+): composición + cuentas + presupuesto lado a lado.
-              En móvil sigue siendo stack vertical. La racha/mejor mes/objetivo
-              vive dentro de la card de composición para densificar el boceto. */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-3 lg:items-start" style={{ animationDelay: "80ms" }}>
-            <div className={`${CARD} flex min-w-0 flex-col`}>
-              <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Layers3 className="h-4 w-4 text-primary" /> Composición del patrimonio</p>
-              {composicion.length === 0 ? (
-                <p className="mt-4 text-sm text-muted-foreground">Sin datos todavía.</p>
-              ) : (
-                <>
-                  <div className="mt-5 flex h-2.5 w-full overflow-hidden rounded-full">
-                    {composicion.map((c) => (
-                      <div key={c.tipo} style={{ width: `${c.pct}%`, backgroundColor: c.color }} title={c.label} />
-                    ))}
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
-                    {composicion.map((c) => (
-                      <div key={c.tipo} className="flex items-center gap-2 text-xs">
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
-                        <span className="text-foreground">{c.label}</span>
-                        <span className="tabular-nums text-muted-foreground">{Math.round(c.pct)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-              <div className="mt-5 space-y-3 border-t border-border pt-4">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><Flame className="h-3.5 w-3.5 text-amber-500" /> Racha de ahorro</span>
-                  <span className="text-sm font-semibold tabular-nums text-foreground">{streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> Mejor mes</span>
-                  <span className="text-sm font-semibold tabular-nums text-emerald-500">{bestMonth ? <Sensitive>{formatMoney(bestMonth.value, "EUR")}</Sensitive> : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><Target className="h-3.5 w-3.5 text-primary" /> Próximo objetivo</span>
-                  <span className="truncate text-sm font-semibold tabular-nums text-foreground">{nextGoal ? <Sensitive>{formatMoney(nextGoal.objetivo, "EUR")}</Sensitive> : "—"}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className={`${CARD} min-w-0`}>
-              <div className="mb-5 flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground">Mis cuentas</p>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setShowNewAccount(true)} className="text-sm font-medium text-primary transition-colors hover:opacity-70">+ Nueva</button>
-                  {accCount > 1 && (
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setAccIdx((p) => p - 1)} aria-label="Cuenta anterior" className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-                      <button onClick={() => setAccIdx((p) => p + 1)} aria-label="Cuenta siguiente" className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {currentAccount && (() => {
-                const cfg = typeConfig[currentAccount.tipo] ?? typeConfig.efectivo
-                const objetivo = accountGoal(currentAccount, state.sinkingFunds)
-                const pct = objetivo > 0 ? Math.min((currentAccount.saldo / objetivo) * 100, 100) : 0
-                return (
-                  <button
-                    onClick={() => router.push(`/cuentas/${currentAccount.id}`)}
-                    className="group flex w-full flex-col gap-5 rounded-[14px] border border-border bg-muted/30 p-5 text-left transition-colors hover:bg-muted/60 sm:p-6"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <AccountLogo account={currentAccount} className="h-11 w-11" />
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-foreground">{currentAccount.nombre}</p>
-                          <p className="truncate text-xs text-muted-foreground">{currentAccount.banco || cfg.label}</p>
-                        </div>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-card px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{cfg.label}</span>
-                    </div>
-                    <p className="text-3xl font-bold tabular-nums tracking-tight text-foreground">
-                      <Sensitive>{formatMoney(currentAccount.saldo, currentAccount.currency)}</Sensitive>
-                    </p>
-                    {objetivo > 0 && (
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Objetivo</span>
-                          <span className="tabular-nums">{Math.round(pct)}%</span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-card">
-                          <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    )}
-                  </button>
-                )
-              })()}
-
-              {accCount > 1 && (
-                <div className="mt-4 flex items-center justify-center gap-1.5">
-                  {sortedAccounts.map((a, i) => (
-                    <button
-                      key={a.id}
-                      onClick={() => setAccIdx(i)}
-                      aria-label={`Ver ${a.nombre}`}
-                      className={cn("h-1.5 rounded-full transition-all", i === safeAccIdx ? "w-5 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground/40")}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
+          {/* El presupuesto tiene ancho completo para dar aire a las categorías. */}
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:items-start" style={{ animationDelay: "80ms" }}>
             <MonthlyBudget budgets={state.budgets} transactions={analysisTransactions} categories={state.categories} selectedMonth={selectedMonth} />
           </section>
 
-          {/* Acumulado anual: colapsado por defecto; detalle denso vive en Analíticas */}
-          <section className="stagger-fade" style={{ animationDelay: "120ms" }}>
-            <div className={`${CARD} space-y-4`}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAnnual((v) => !v)}
-                  className="flex items-center gap-2 text-sm font-semibold text-foreground transition-colors hover:opacity-80"
-                  aria-expanded={showAnnual}
-                >
-                  <PiggyBank className="h-4 w-4 text-primary" />
-                  Acumulado {year}
-                  <span className="text-xs font-medium text-muted-foreground">{showAnnual ? "Ocultar" : "Ver más"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.push("/analytics")}
-                  className="text-xs font-medium text-primary transition-colors hover:opacity-70"
-                >
-                  Ver en Analíticas
-                </button>
-              </div>
-              {!showAnnual && (
-                <p className="text-sm text-muted-foreground">
-                  Neto anual:{" "}
-                  <Sensitive as="span" className={cn("font-semibold tabular-nums", annualNeto >= 0 ? "text-emerald-500" : "text-red-500")}>
-                    {formatMoney(annualNeto, "EUR")}
-                  </Sensitive>
-                </p>
-              )}
-              {showAnnual && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="var(--accent-green)" icon={ArrowUpRight}>
-                    <MiniBars values={monthlyYear.map((m) => m.ingresos)} color="var(--accent-green)" />
-                  </AnnualStat>
-                  <AnnualStat label="Gastos totales" year={year} value={annualGastos} accent="var(--accent-red)" icon={ArrowDownRight}>
-                    <MiniBars values={monthlyYear.map((m) => m.gastos)} color="var(--accent-red)" />
-                  </AnnualStat>
-                  <AnnualStat label="Ahorro neto anual" year={year} value={annualNeto} accent={annualNeto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} icon={PiggyBank}>
-                    <MiniBars values={monthlyYear.map((m) => m.neto)} color="var(--accent-blue)" signed />
-                  </AnnualStat>
-                </div>
-              )}
-            </div>
-          </section>
 
           {topSpending.length > 0 && (
             <div className={`${CARD} stagger-fade min-w-0`} style={{ animationDelay: "200ms" }}>
@@ -954,9 +909,50 @@ export default function DashboardContent() {
             </div>
           )}
 
-          {/* Bottom (lg+): movimientos + metas en fila equilibrada de 2 cols.
-              Móvil: stack. */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2 lg:items-start" style={{ animationDelay: "240ms" }}>
+          {/* Resumen, movimientos y metas comparten la última fila del panel. */}
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-4 lg:items-start" style={{ animationDelay: "240ms" }}>
+            <div className={`${CARD} space-y-4`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAnnual((v) => !v)}
+                  className="flex items-center gap-2 text-sm font-semibold text-foreground transition-colors hover:opacity-80"
+                  aria-expanded={showAnnual}
+                >
+                  <PiggyBank className="h-4 w-4 text-primary" />
+                  Acumulado {year}
+                  <span className="text-xs font-medium text-muted-foreground">{showAnnual ? "Ocultar" : "Ver más"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/analytics")}
+                  className="text-xs font-medium text-primary transition-colors hover:opacity-70"
+                >
+                  Ver en Analíticas
+                </button>
+              </div>
+              {!showAnnual && (
+                <p className="text-sm text-muted-foreground">
+                  Neto anual:{" "}
+                  <Sensitive as="span" className={cn("font-semibold tabular-nums", annualNeto >= 0 ? "text-emerald-500" : "text-red-500")}>
+                    {formatMoney(annualNeto, "EUR")}
+                  </Sensitive>
+                </p>
+              )}
+              {showAnnual && (
+                <div className="grid grid-cols-1 gap-3">
+                  <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="var(--accent-green)" icon={ArrowUpRight}>
+                    <MiniBars values={monthlyYear.map((m) => m.ingresos)} color="var(--accent-green)" />
+                  </AnnualStat>
+                  <AnnualStat label="Gastos totales" year={year} value={annualGastos} accent="var(--accent-red)" icon={ArrowDownRight}>
+                    <MiniBars values={monthlyYear.map((m) => m.gastos)} color="var(--accent-red)" />
+                  </AnnualStat>
+                  <AnnualStat label="Ahorro neto anual" year={year} value={annualNeto} accent={annualNeto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} icon={PiggyBank}>
+                    <MiniBars values={monthlyYear.map((m) => m.neto)} color="var(--accent-blue)" signed />
+                  </AnnualStat>
+                </div>
+              )}
+            </div>
             <div className={`${CARD} min-w-0`}>
               <div className="mb-4 flex items-center justify-between">
                 <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Receipt className="h-4 w-4 text-primary" /> Últimos movimientos</p>
@@ -987,7 +983,7 @@ export default function DashboardContent() {
                 </div>
               )}
             </div>
-            <div className="min-w-0 [&_[data-slot=card]]:h-full">
+            <div className="min-w-0 lg:col-span-2 [&_[data-slot=card]]:h-full">
               <SinkingFundsGrid />
             </div>
           </section>
