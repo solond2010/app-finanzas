@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
-import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, type Tile, renderBarChart, renderPieChart, drawTile, drawTileGrid, drawProgressBar, ensureSpace, drawFooter } from "@/lib/pdf-helpers"
+import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, CARD, drawPageBackground, type Tile, renderBarChart, renderPieChart, drawTile, drawTileGrid, drawProgressBar, ensureSpace, drawFooter } from "@/lib/pdf-helpers"
 
 interface XrayPosition {
   name: string
@@ -41,6 +41,7 @@ export interface XrayData {
 
 export function generateXrayPdf(data: XrayData) {
   const doc = new jsPDF({ unit: "pt", format: "a4" })
+  drawPageBackground(doc)
   const W = doc.internal.pageSize.getWidth()
   const M = 40
   const m = (v: number) => formatMoney(v, data.currency)
@@ -69,7 +70,7 @@ export function generateXrayPdf(data: XrayData) {
     const objX = M + netWorthW + 16
     const objW = W - M * 2 - netWorthW - 16
     doc.setDrawColor(...TRACK)
-    doc.setFillColor(249, 250, 251)
+    doc.setFillColor(...CARD)
     doc.roundedRect(objX, y, objW, 70, 8, 8, "FD")
     doc.setTextColor(...MUTED)
     doc.setFont("helvetica", "normal")
@@ -167,6 +168,7 @@ export function generateXrayPdf(data: XrayData) {
   y += 8
   autoTable(doc, {
     startY: y,
+    willDrawPage: ({ pageNumber }) => { if (pageNumber > 1) drawPageBackground(doc) },
     head: [["Activo", "Cuenta", "Uds.", "P. medio", "P. actual", "Valor", "P&L", "%"]],
     body: data.positions.map((p) => [
       p.name,
@@ -178,9 +180,9 @@ export function generateXrayPdf(data: XrayData) {
       signed(p.pl),
       `${p.plPct >= 0 ? "+" : ""}${p.plPct.toFixed(1)}%`,
     ]),
-    theme: "striped",
-    headStyles: { fillColor: BRAND, fontSize: 8 },
-    bodyStyles: { fontSize: 8, textColor: INK },
+    theme: "plain",
+    headStyles: { fillColor: CARD, textColor: GOLD, fontSize: 8, lineColor: TRACK },
+    bodyStyles: { fontSize: 8, textColor: INK, fillColor: BRAND, lineColor: TRACK },
     margin: { left: M, right: M },
     columnStyles: {
       2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" },

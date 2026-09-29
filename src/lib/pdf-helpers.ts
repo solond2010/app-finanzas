@@ -1,20 +1,21 @@
 import { jsPDF } from "jspdf"
 
-// Bronce de marca (el --primary del tema claro, oklch(0.5 0.12 72) → sRGB):
-// los PDF se imprimen sobre blanco, así que usan la variante clara del acento.
-export const BRAND: [number, number, number] = [140, 85, 0]
-// Dorado de marca (--gold de globals.css), usado como línea de firma bajo la
-// cabecera — el mismo acento que hero-panel/login/sidebar en el resto de la app.
-export const GOLD: [number, number, number] = [232, 182, 74]
-export const INK: [number, number, number] = [17, 24, 39]
-export const MUTED: [number, number, number] = [107, 114, 128]
-// Verde/rojo de dinero = --accent-green/--accent-red del tema claro.
-export const GREEN: [number, number, number] = [0, 137, 84]
-export const RED: [number, number, number] = [197, 55, 50]
-export const TRACK: [number, number, number] = [229, 231, 235]
-// El primer color (la porción mayor) es el bronce de marca; el resto son
-// colores de distinción categórica, igual que en los donuts de la app.
-const PIE_COLORS = ["rgb(140,85,0)", "#0ea5e9", "#6366f1", "#8b5cf6", "#0891b2", "#64748b", "#10b981", "#f59e0b"]
+// Paleta compartida de los informes PDF: midnight navy, tarjetas elevadas,
+// champagne, verde menta y coral, igual que el tema oscuro de la web.
+export const BRAND: [number, number, number] = [8, 19, 34]
+export const GOLD: [number, number, number] = [239, 199, 128]
+export const INK: [number, number, number] = [241, 244, 249]
+export const MUTED: [number, number, number] = [151, 164, 182]
+export const GREEN: [number, number, number] = [74, 198, 155]
+export const RED: [number, number, number] = [238, 116, 109]
+export const TRACK: [number, number, number] = [43, 59, 77]
+export const CARD: [number, number, number] = [15, 30, 46]
+const PIE_COLORS = ["rgb(239,199,128)", "#4db99f", "#f08079", "#7793c7", "#a995d0", "#56a8c0", "#79a982", "#e6a754"]
+
+export function drawPageBackground(doc: jsPDF) {
+  doc.setFillColor(...BRAND)
+  doc.rect(0, 0, doc.internal.pageSize.getWidth(), doc.internal.pageSize.getHeight(), "F")
+}
 
 export interface Tile { label: string; value: string; color?: [number, number, number] }
 
@@ -39,6 +40,8 @@ export function renderBarChart(data: { label: string; value: number }[], w: numb
   canvas.height = h * scale
   const ctx = canvas.getContext("2d")!
   ctx.scale(scale, scale)
+  ctx.fillStyle = `rgb(${BRAND.join(",")})`
+  ctx.fillRect(0, 0, w, h)
   const max = Math.max(...data.map((d) => d.value), 1)
   const padTop = 18, padBottom = 16
   const chartH = h - padTop - padBottom
@@ -49,14 +52,14 @@ export function renderBarChart(data: { label: string; value: number }[], w: numb
     const barH = Math.max(2, (d.value / max) * chartH)
     const x = i * (barW + gap)
     const y = padTop + (chartH - barH)
-    ctx.fillStyle = `rgb(${BRAND.join(",")})`
+    ctx.fillStyle = `rgb(${GOLD.join(",")})`
     roundRectPath(ctx, x, y, barW, barH, 3)
     ctx.fill()
-    ctx.fillStyle = "#6b7280"
+    ctx.fillStyle = "#aab7c9"
     ctx.font = "9px Helvetica, Arial, sans-serif"
     ctx.fillText(d.label, x + barW / 2, h - 4)
     if (barW > 26) {
-      ctx.fillStyle = "#111827"
+      ctx.fillStyle = "#f1f4f9"
       ctx.font = "8px Helvetica, Arial, sans-serif"
       ctx.fillText(valueFormatter(d.value), x + barW / 2, y - 4)
     }
@@ -77,8 +80,10 @@ export function renderPieChart(data: { name: string; value: number }[], w: numbe
   canvas.height = h * scale
   const ctx = canvas.getContext("2d")!
   ctx.scale(scale, scale)
+  ctx.fillStyle = `rgb(${CARD.join(",")})`
+  ctx.fillRect(0, 0, w, h)
   const total = data.reduce((s, d) => s + d.value, 0) || 1
-  const r = Math.min(w, h) * 0.26
+  const r = Math.min(w * 0.22, h * 0.19)
   const cx = w / 2, cy = r + 6
   let angle = -Math.PI / 2
   data.forEach((d, i) => {
@@ -91,8 +96,8 @@ export function renderPieChart(data: { name: string; value: number }[], w: numbe
     ctx.fill()
     angle += slice
   })
-  const legendTop = cy + r + 12
-  const rowH = 12
+  const legendTop = cy + r + 8
+  const rowH = 11
   ctx.textAlign = "left"
   ctx.textBaseline = "middle"
   data.forEach((d, i) => {
@@ -100,8 +105,8 @@ export function renderPieChart(data: { name: string; value: number }[], w: numbe
     if (ly > h - 4) return
     ctx.fillStyle = PIE_COLORS[i % PIE_COLORS.length]
     ctx.fillRect(6, ly - 4, 8, 8)
-    ctx.fillStyle = "#111827"
-    ctx.font = "8px Helvetica, Arial, sans-serif"
+    ctx.fillStyle = "#f1f4f9"
+    ctx.font = "7px Helvetica, Arial, sans-serif"
     const pct = ((d.value / total) * 100).toFixed(1)
     ctx.fillText(`${d.name} (${pct}%)`, 18, ly)
   })
@@ -110,7 +115,7 @@ export function renderPieChart(data: { name: string; value: number }[], w: numbe
 
 export function drawTile(doc: jsPDF, x: number, y: number, w: number, h: number, t: Tile) {
   doc.setDrawColor(...TRACK)
-  doc.setFillColor(249, 250, 251)
+  doc.setFillColor(...CARD)
   doc.roundedRect(x, y, w, h, 8, 8, "FD")
   doc.setTextColor(...MUTED)
   doc.setFont("helvetica", "normal")
@@ -147,6 +152,7 @@ export function ensureSpace(doc: jsPDF, y: number, needed: number): number {
   const pageH = doc.internal.pageSize.getHeight()
   if (y + needed > pageH - 50) {
     doc.addPage()
+    drawPageBackground(doc)
     return 40
   }
   return y

@@ -512,10 +512,14 @@ export default function DashboardContent() {
     setExportingPdf(true)
     try {
       const { generateDashboardPdf } = await import("@/lib/dashboard-pdf")
+      const { getSetting } = await import("@/lib/settings")
+      const netWorthTarget = Number(localStorage.getItem("networth-target")) || Number(await getSetting("networth-target").catch(() => null)) || 0
+      const investmentInvested = investmentAccounts.reduce((sum, account) => sum + convertToEur(investedByAccount[account.id] ?? 0, account.currency), 0)
       generateDashboardPdf({
         owner: "Mohamed",
         month: formatMonth(selectedDate),
         netWorth: netWorthDisplay,
+        netWorthTarget,
         netWorthTrend: netWorthTrend.map((d) => ({ label: d.mes, value: Math.round(d.patrimonio) })),
         rangeLabel: activeRange.id,
         score,
@@ -528,7 +532,16 @@ export default function DashboardContent() {
         annualGastos,
         annualNeto,
         year,
-        accounts: sortedAccounts.map((a) => ({ nombre: a.nombre, tipo: typeConfig[a.tipo]?.label ?? a.tipo, banco: a.banco, saldo: convertToEur(a.saldo, a.currency) })),
+        investmentValue: investmentDisplayTotal,
+        investmentInvested,
+        investmentPnl: investmentDisplayTotal - investmentInvested,
+        accountComposition: composicion.map(({ label, value }) => ({ name: label, value })),
+        accounts: sortedAccounts.map((a) => ({ nombre: a.nombre, tipo: typeConfig[a.tipo]?.label ?? a.tipo, banco: a.banco, saldo: convertToEur(accountDisplayValue(a, valueByAccount, investedByAccount), a.currency) })),
+        goals: state.sinkingFunds.map((fund) => {
+          const account = displayAccounts.find((item) => item.id === fund.cuenta_id)
+          const currency = account?.currency ?? "EUR"
+          return { nombre: fund.nombre, actual: convertToEur(fundCurrentAmount(fund, displayAccounts), currency), objetivo: convertToEur(fund.cantidad_objetivo, currency), fecha: fund.fecha_limite }
+        }),
         budgets: budgetRows,
         spending: topSpending.map((c) => ({ categoria: c.categoria, monto: c.monto })),
         transactions: filterTransactionsByMonth(analysisTransactions, selectedMonth).map((t) => ({
@@ -561,8 +574,8 @@ export default function DashboardContent() {
             <Plus className="h-4 w-4" /> Nuevo movimiento
           </Button>
           {hasAnyData && (
-            <Button onClick={handleExportDashboard} disabled={exportingPdf} variant="outline" className="gap-1.5 rounded-full">
-              <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Descargar PDF"}
+            <Button onClick={handleExportDashboard} disabled={exportingPdf} variant="outline" className="gap-1.5 rounded-full" title="Incluye resumen, gráficos, cuentas, metas, presupuestos y movimientos del mes seleccionado.">
+              <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Informe mensual PDF"}
             </Button>
           )}
         </div>

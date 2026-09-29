@@ -6,12 +6,12 @@ import { cn } from "@/lib/utils"
 import { useSyncStatus } from "@/lib/store"
 import { usePrivacy } from "@/lib/privacy"
 import {
-  LayoutDashboard,
-  ArrowLeftRight,
-  Settings,
-  BarChart3,
-  LineChart,
-  Wallet,
+  House,
+  ReceiptText,
+  SlidersHorizontal,
+  ChartPie,
+  ChartNoAxesCombined,
+  Landmark,
   Cloud,
   CloudOff,
   Loader2,
@@ -28,12 +28,12 @@ import { useEffect, useState } from "react"
 import { useSidebar } from "@/lib/sidebar"
 
 const navItems = [
-  { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
-  { href: "/transactions", label: "Movimientos", icon: ArrowLeftRight },
-  { href: "/cuentas", label: "Cuentas", icon: Wallet },
-  { href: "/inversiones", label: "Inversiones", icon: LineChart },
-  { href: "/analytics", label: "Analíticas", icon: BarChart3 },
-  { href: "/configuracion", label: "Configuración", icon: Settings },
+  { href: "/dashboard", label: "Inicio", icon: House },
+  { href: "/transactions", label: "Movimientos", icon: ReceiptText },
+  { href: "/cuentas", label: "Cuentas", icon: Landmark },
+  { href: "/inversiones", label: "Inversiones", icon: ChartNoAxesCombined },
+  { href: "/analytics", label: "Analíticas", icon: ChartPie },
+  { href: "/configuracion", label: "Configuración", icon: SlidersHorizontal },
 ]
 
 function Tooltip({ label, children }: { label: string; children: React.ReactNode }) {
@@ -276,7 +276,7 @@ export function Sidebar() {
                 : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
             )}
           >
-            <Settings className="h-4 w-4 shrink-0" />
+            <SlidersHorizontal className="h-4 w-4 shrink-0" />
             Configuración
           </Link>
           <button

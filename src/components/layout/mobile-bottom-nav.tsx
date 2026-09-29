@@ -2,15 +2,15 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, ArrowLeftRight, Wallet, BarChart3, LineChart } from "lucide-react"
+import { House, ReceiptText, Landmark, ChartNoAxesCombined, ChartPie } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const items = [
-  { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
-  { href: "/transactions", label: "Movimientos", icon: ArrowLeftRight },
-  { href: "/cuentas", label: "Cuentas", icon: Wallet },
-  { href: "/inversiones", label: "Inversiones", icon: LineChart },
-  { href: "/analytics", label: "Analíticas", icon: BarChart3 },
+  { href: "/dashboard", label: "Inicio", icon: House },
+  { href: "/transactions", label: "Movimientos", icon: ReceiptText },
+  { href: "/cuentas", label: "Cuentas", icon: Landmark },
+  { href: "/inversiones", label: "Inversiones", icon: ChartNoAxesCombined },
+  { href: "/analytics", label: "Analíticas", icon: ChartPie },
 ]
 
 export function MobileBottomNav() {

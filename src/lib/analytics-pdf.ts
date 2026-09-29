@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { formatMoney } from "@/lib/currency"
-import { BRAND, GOLD, INK, MUTED, GREEN, RED, renderBarChart, drawTileGrid, drawProgressBar, ensureSpace, drawFooter } from "@/lib/pdf-helpers"
+import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, CARD, drawPageBackground, renderBarChart, drawTileGrid, drawProgressBar, ensureSpace, drawFooter } from "@/lib/pdf-helpers"
 
 interface AnalyticsPdfBudgetRow {
   categoria: string
@@ -42,6 +42,7 @@ export interface AnalyticsPdfData {
 
 export function generateAnalyticsPdf(data: AnalyticsPdfData) {
   const doc = new jsPDF({ unit: "pt", format: "a4" })
+  drawPageBackground(doc)
   const W = doc.internal.pageSize.getWidth()
   const M = 40
   const m = (v: number) => formatMoney(v, "EUR")
@@ -145,11 +146,12 @@ export function generateAnalyticsPdf(data: AnalyticsPdfData) {
     y += 8
     autoTable(doc, {
       startY: y,
+      willDrawPage: ({ pageNumber }) => { if (pageNumber > 1) drawPageBackground(doc) },
       head: [["Categoría", "Gastado", "Límite", "% usado"]],
       body: data.budgets.map((b) => [b.categoria, m(b.gastado), m(b.limite), `${Math.round((b.gastado / b.limite) * 100)}%`]),
-      theme: "striped",
-      headStyles: { fillColor: BRAND, fontSize: 8 },
-      bodyStyles: { fontSize: 8, textColor: INK },
+      theme: "plain",
+      headStyles: { fillColor: CARD, textColor: GOLD, fontSize: 8, lineColor: TRACK },
+      bodyStyles: { fontSize: 8, textColor: INK, fillColor: BRAND, lineColor: TRACK },
       margin: { left: M, right: M },
       columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" } },
       didParseCell: (hook) => {
@@ -173,11 +175,12 @@ export function generateAnalyticsPdf(data: AnalyticsPdfData) {
     const total = data.categoryBreakdown.reduce((s, c) => s + c.monto, 0) || 1
     autoTable(doc, {
       startY: y,
+      willDrawPage: ({ pageNumber }) => { if (pageNumber > 1) drawPageBackground(doc) },
       head: [["Categoría", "Importe", "%"]],
       body: data.categoryBreakdown.map((c) => [c.categoria, m(c.monto), `${((c.monto / total) * 100).toFixed(1)}%`]),
-      theme: "striped",
-      headStyles: { fillColor: BRAND, fontSize: 8 },
-      bodyStyles: { fontSize: 8, textColor: INK },
+      theme: "plain",
+      headStyles: { fillColor: CARD, textColor: GOLD, fontSize: 8, lineColor: TRACK },
+      bodyStyles: { fontSize: 8, textColor: INK, fillColor: BRAND, lineColor: TRACK },
       margin: { left: M, right: M },
       columnStyles: { 1: { halign: "right" }, 2: { halign: "right" } },
     })
