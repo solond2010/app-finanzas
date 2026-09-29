@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { createHash, createHmac } from "node:crypto"
+import { createHash } from "node:crypto"
 import { appendFile, chmod, mkdir, readFile, readdir, rename, unlink, writeFile } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -53,16 +53,18 @@ async function main() {
     await log(`La copia de ${monthKey} ya existe; no se reemplaza.`)
     return
   }
-  const password = envValue(await readFile(envFile, "utf8"), "APP_PASSWORD")
-  if (!password) throw new Error(`No se encontró APP_PASSWORD en ${envFile}`)
+  const secret = envValue(await readFile(envFile, "utf8"), "SHORTCUTS_SECRET")
+  if (!secret) throw new Error(`No se encontró SHORTCUTS_SECRET en ${envFile}`)
 
-  const session = createHmac("sha256", password).update("finanzas-app-auth-v1", "utf8").digest("hex")
   const response = await fetch(backupUrl, {
-    headers: { Cookie: `app-auth=${session}`, Accept: "application/json" },
+    headers: { "x-shortcuts-secret": secret, Accept: "application/json" },
     signal: AbortSignal.timeout(60_000),
     cache: "no-store",
   })
   if (!response.ok) throw new Error(`El servidor rechazó la copia (HTTP ${response.status})`)
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    throw new Error("El servidor no devolvió JSON; no se guardó ninguna copia")
+  }
   const payload = await response.json()
   const requiredTables = ["accounts", "transactions", "sinking_funds", "categories", "budgets", "watchlist", "investments", "investment_contributions", "settings"]
   if (payload?.app !== "app-finanzas" || payload?.formatVersion !== 1 || !payload.tables) {
@@ -109,6 +111,5 @@ async function main() {
 
 main().catch((error) => {
   const message = error instanceof Error ? error.message : "Error inesperado"
-  void log(`Error: ${message}`)
-  process.exitCode = 1
+  log(`Error: ${message}`).finally(() => { process.exitCode = 1 })
 })

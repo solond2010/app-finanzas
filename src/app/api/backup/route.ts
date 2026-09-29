@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { selectAllRows } from "@/lib/supabase-server"
+import { timingSafeEqualString } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -16,7 +17,12 @@ const BACKUP_TABLES = [
 ] as const
 
 /** Read-only complete snapshot. The app-auth proxy protects this route. */
-export async function GET() {
+export async function GET(request: Request) {
+  const secret = process.env.SHORTCUTS_SECRET
+  const provided = request.headers.get("x-shortcuts-secret")
+  if (!secret || !provided || !timingSafeEqualString(provided, secret)) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401, headers: { "Cache-Control": "no-store" } })
+  }
   try {
     const entries = await Promise.all(BACKUP_TABLES.map(async (table) => [table, await selectAllRows(table)] as const))
 
