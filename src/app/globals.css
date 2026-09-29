@@ -72,9 +72,8 @@
      demasiado baja y el título de cada página aparecía tapado arriba. */
   --mobile-header-h: calc(52px + env(safe-area-inset-top));
   --bottom-nav-h: 64px;
-  /* A · Niebla azul: fondo frío azul grisáceo, tarjetas blancas y oro
-     reservado a pequeños acentos. */
-  --background: oklch(0.965 0.012 245);
+  /* Claro frío: azul niebla muy pálido, superficies blancas, cero subtono crema. */
+  --background: oklch(0.958 0.018 248);
   --foreground: oklch(0.24 0.035 255);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.24 0.035 255);
@@ -126,11 +125,11 @@
   --accent-blue: oklch(0.52 0.15 264);
   --accent-violet: oklch(0.55 0.15 295);
   --card-glow: oklch(0.35 0.04 255 / 0.04);
-  --gold: oklch(0.76 0.10 80);
-  --gold-foreground: oklch(0.32 0.055 75);
-  /* Superficie azul muy pálida para destacar paneles sin volver al beige. */
-  --hero-bg: oklch(0.95 0.022 245);
-  --hero-border: oklch(0.87 0.035 245);
+  /* En tema claro el antiguo champán se sustituye por azul acero. */
+  --gold: oklch(0.66 0.12 248);
+  --gold-foreground: oklch(0.24 0.055 255);
+  --hero-bg: oklch(0.94 0.025 248);
+  --hero-border: oklch(0.86 0.04 248);
 }
 
 .dark {
@@ -202,14 +201,13 @@
   body {
     @apply text-foreground;
     background-color: var(--background);
-    /* Luz ambiental: dos radiales muy tenues (dorado arriba-derecha, azul
-       abajo-izquierda) sobre el color de fondo. Quitan la sensación de vacío
+    /* Luz ambiental fría y muy tenue sobre el color de fondo. Quitan la sensación de vacío
        plano sin competir con las tarjetas; `fixed` para que la luz no se
        desplace con el scroll (iOS ignora fixed y la deja scrollear: aceptable
        por lo sutil que es). */
     background-image:
-      radial-gradient(1100px 700px at 88% -12%, color-mix(in oklch, var(--gold), transparent 95%), transparent 62%),
-      radial-gradient(900px 650px at -12% 112%, color-mix(in oklch, var(--accent-blue), transparent 96%), transparent 62%);
+      radial-gradient(1100px 700px at 88% -12%, color-mix(in oklch, var(--gold), transparent 96%), transparent 62%),
+      radial-gradient(900px 650px at -12% 112%, color-mix(in oklch, var(--accent-blue), transparent 97%), transparent 62%);
     background-attachment: fixed;
     /* App de finanzas: todas las cifras con dígitos de ancho fijo para que
        las columnas de importes queden alineadas sin repartir `tabular-nums`
@@ -493,6 +491,25 @@
     var(--hero-bg);
   border: 1px solid var(--hero-border);
   border-top-color: color-mix(in oklch, var(--gold), transparent 45%);
+}
+
+/* Fondos más limpios en claro; el modo oscuro conserva su firma champagne. */
+:root:not(.dark) .hero-panel {
+  background: linear-gradient(145deg, color-mix(in oklch, var(--primary), transparent 96%), transparent 62%), var(--hero-bg);
+}
+
+/* Tablas y tarjetas comparten una jerarquía más nítida y menos ruido de borde. */
+.rounded-\[14px\].border-border.bg-card,
+.rounded-\[16px\].border-border.bg-card {
+  backdrop-filter: saturate(1.04);
+}
+
+@media (min-width: 1024px) {
+  main > .content-fade,
+  main > .w-full.max-w-full {
+    max-width: 1680px;
+    margin-inline: auto;
+  }
 }
 
 /* Cifra protagonista de una hero-panel: color sólido, sin degradado de

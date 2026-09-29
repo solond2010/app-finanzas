@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowDownRight, ArrowRightLeft, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, PiggyBank, Receipt, ShieldAlert, Target, TrendingDown, TrendingUp } from "lucide-react"
+import { AlertTriangle, ArrowDownRight, ArrowRightLeft, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
 import { BudgetDialog } from "@/components/dashboard/budget-dialog"
 import { openMovementDialog } from "@/components/layout/quick-actions"
@@ -17,7 +17,7 @@ import { usePortfolioValue, accountDisplayValue, type Position } from "@/lib/inv
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, accountGoal, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow, suggestEmergencyTransfer } from "@/lib/calculations"
+import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow, suggestEmergencyTransfer } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -97,7 +97,6 @@ export default function DashboardContent() {
   const [monthOffset, setMonthOffset] = useState(0)
   const [rangeId, setRangeId] = useState<string>("6M")
   const activeRange = RANGES.find((r) => r.id === rangeId) ?? RANGES[3]
-  const [accIdx, setAccIdx] = useState(0)
   const [showNewAccount, setShowNewAccount] = useState(false)
   const [showAnnual, setShowAnnual] = useState(false)
   const [showSpendBreakdown, setShowSpendBreakdown] = useState(false)
@@ -465,9 +464,6 @@ export default function DashboardContent() {
   }, [emergency, monthTotals.neto, displayAccounts])
 
   const sortedAccounts = useMemo(() => displayAccounts.slice().sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo)), [displayAccounts])
-  const accCount = sortedAccounts.length
-  const safeAccIdx = accCount > 0 ? ((accIdx % accCount) + accCount) % accCount : 0
-  const currentAccount = sortedAccounts[safeAccIdx]
 
   const handleCreateAccount = (account: Account) => {
     dispatch({ type: "ADD_ACCOUNT", payload: account })
@@ -557,6 +553,9 @@ export default function DashboardContent() {
             <span className="w-28 text-center text-sm font-medium text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
             <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
           </div>
+          <Button onClick={() => openMovementDialog()} className="gap-2 rounded-full px-4 shadow-sm">
+            <Plus className="h-4 w-4" /> Nuevo movimiento
+          </Button>
           {hasAnyData && (
             <Button onClick={handleExportDashboard} disabled={exportingPdf} variant="outline" className="gap-1.5 rounded-full">
               <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Descargar PDF"}
@@ -578,20 +577,6 @@ export default function DashboardContent() {
             <span className="block truncate text-xs text-muted-foreground">{overduePayments.map((p) => p.descripcion || p.categoria).join(" · ")}</span>
           </span>
         </button>
-      )}
-
-      {!loading && hasAnyData && emergency?.isLow && (
-        <div className="flex w-full items-center gap-3 rounded-[14px] border border-emerald-500/25 bg-emerald-500/[0.07] p-4 text-left">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500"><ShieldAlert className="h-4 w-4" /></span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold text-foreground">Prioridad: reforzar tu {emergency.name}</span>
-            <span className="block text-xs text-muted-foreground">
-              Llevas <Sensitive as="span" className="font-medium text-foreground">{formatMoney(emergency.current, "EUR")}</Sensitive> de{" "}
-              <Sensitive as="span" className="font-medium text-foreground">{formatMoney(emergency.target, "EUR")}</Sensitive>
-              {" "}({Math.round(emergency.progress * 100)}%). El colchón va primero: sin él, una puntuación alta no significa seguridad.
-            </span>
-          </span>
-        </div>
       )}
 
       {loading ? (
@@ -729,68 +714,29 @@ export default function DashboardContent() {
             </div>
 
             <div className={`${CARD} min-w-0 p-4 sm:p-4`}>
-              <div className="mb-5 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between">
                 <p className="text-sm font-semibold text-foreground">Mis cuentas</p>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setShowNewAccount(true)} className="text-sm font-medium text-primary transition-colors hover:opacity-70">+ Nueva</button>
-                  {accCount > 1 && (
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setAccIdx((p) => p - 1)} aria-label="Cuenta anterior" className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-                      <button onClick={() => setAccIdx((p) => p + 1)} aria-label="Cuenta siguiente" className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
-                    </div>
-                  )}
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setShowNewAccount(true)} className="text-xs font-medium text-primary transition-colors hover:opacity-70">+ Nueva</button>
+                  <button onClick={() => router.push("/cuentas")} className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">Ver todas</button>
                 </div>
               </div>
-
-              {currentAccount && (() => {
-                const cfg = typeConfig[currentAccount.tipo] ?? typeConfig.efectivo
-                const objetivo = accountGoal(currentAccount, state.sinkingFunds)
-                const pct = objetivo > 0 ? Math.min((currentAccount.saldo / objetivo) * 100, 100) : 0
-                return (
-                  <button
-                    onClick={() => router.push(`/cuentas/${currentAccount.id}`)}
-                    className="group flex w-full flex-col gap-3 rounded-[14px] border border-border bg-muted/30 p-4 text-left transition-colors hover:bg-muted/60"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <AccountLogo account={currentAccount} className="h-11 w-11" />
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-foreground">{currentAccount.nombre}</p>
-                          <p className="truncate text-xs text-muted-foreground">{currentAccount.banco || cfg.label}</p>
-                        </div>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-card px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{cfg.label}</span>
-                    </div>
-                    <p className="text-2xl font-bold tabular-nums tracking-tight text-foreground">
-                      <Sensitive>{formatMoney(currentAccount.saldo, currentAccount.currency)}</Sensitive>
-                    </p>
-                    {objetivo > 0 && (
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Objetivo</span>
-                          <span className="tabular-nums">{Math.round(pct)}%</span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-card">
-                          <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    )}
-                  </button>
-                )
-              })()}
-
-              {accCount > 1 && (
-                <div className="mt-4 flex items-center justify-center gap-1.5">
-                  {sortedAccounts.map((a, i) => (
-                    <button
-                      key={a.id}
-                      onClick={() => setAccIdx(i)}
-                      aria-label={`Ver ${a.nombre}`}
-                      className={cn("h-1.5 rounded-full transition-all", i === safeAccIdx ? "w-5 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground/40")}
-                    />
-                  ))}
-                </div>
-              )}
+              <div className="divide-y divide-border/70">
+                {sortedAccounts.slice(0, 4).map((account) => {
+                  const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
+                  return (
+                    <button key={account.id} onClick={() => router.push(`/cuentas/${account.id}`)} className="flex w-full items-center gap-2.5 py-2.5 text-left first:pt-1 last:pb-1 hover:text-primary">
+                      <AccountLogo account={account} className="h-8 w-8 shrink-0 rounded-lg" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-semibold text-foreground">{account.nombre}</span>
+                        <span className="block truncate text-[10px] text-muted-foreground">{account.banco || cfg.label}</span>
+                      </span>
+                      <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground"><Sensitive>{formatMoney(accountDisplayValue(account, valueByAccount, investedByAccount), account.currency)}</Sensitive></span>
+                    </button>
+                  )
+                })}
+                {sortedAccounts.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">Aún no hay cuentas.</p>}
+              </div>
             </div>
             </div>
           </section>
