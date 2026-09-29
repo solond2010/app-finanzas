@@ -38,11 +38,15 @@ export async function dbUpsert(table: string, rows: unknown[]): Promise<void> {
 }
 
 export async function dbDeleteEq(table: string, column: string, value: string): Promise<void> {
-  await fetch(`/api/data/${table}`, {
+  const res = await fetch(`/api/data/${table}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ column, value }),
   })
+  if (!res.ok) {
+    const body = await parseJson(res)
+    throw new Error(body?.error ?? `Fallo al borrar en ${table}`)
+  }
 }
 
 export async function dbDeleteIn(table: string, ids: string[]): Promise<void> {

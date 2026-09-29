@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { supabaseServer } from "@/lib/supabase-server"
+import { supabaseServer, selectAllRows } from "@/lib/supabase-server"
 
 // Únicas tablas a las que esta ruta puede dar acceso — evita que un valor de
 // [table] arbitrario llegue a supabase.from(). El navegador ya no tiene la
@@ -25,9 +25,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ tabl
   if (!checkTable(table)) return NextResponse.json({ error: "Tabla no permitida" }, { status: 400 })
 
   const fields = new URL(request.url).searchParams.get("fields") ?? "*"
-  const { data, error } = await supabaseServer.from(table).select(fields)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+  try {
+    const data = await selectAllRows(table, fields)
+    return NextResponse.json({ data }, { headers: { "Cache-Control": "private, no-store, max-age=0" } })
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudieron leer los datos" }, { status: 500 })
+  }
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ table: string }> }) {

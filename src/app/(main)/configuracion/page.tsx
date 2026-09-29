@@ -4,7 +4,8 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useFinance, type CategoryKind } from "@/lib/store"
+import { useFinance, useSyncStatus, type CategoryKind } from "@/lib/store"
+import { useInvestmentSyncStatus } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X } from "lucide-react"
@@ -12,6 +13,9 @@ import { Skeleton } from "@/components/shared/skeleton"
 
 export default function ConfiguracionPage() {
   const { state, loading, dispatch } = useFinance()
+  const { status: syncStatus } = useSyncStatus()
+  const { status: investmentSyncStatus } = useInvestmentSyncStatus()
+  const backupBlocked = ["syncing", "error", "offline"].includes(syncStatus) || ["syncing", "error", "offline"].includes(investmentSyncStatus)
   const { toast } = useToast()
   const [newCat, setNewCat] = useState("")
   const [newCatKind, setNewCatKind] = useState<"ingreso" | "gasto">("gasto")
@@ -67,24 +71,37 @@ export default function ConfiguracionPage() {
     toast("Categoría actualizada; sus movimientos conservaron la categoría", "success")
   }
 
-  const exportBackup = () => {
-    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), app: "app-finanzas", version: 1, data: state }, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `app-finanzas-backup_${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-    toast("Copia de seguridad descargada", "success")
+  const exportBackup = async () => {
+    try {
+      const response = await fetch("/api/backup", { cache: "no-store" })
+      if (!response.ok) throw new Error("No se pudo leer la copia completa desde la nube")
+      const backup = await response.blob()
+      if (!backup.size) throw new Error("La copia recibida está vacía")
+      const url = URL.createObjectURL(backup)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `app-finanzas-backup_${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 30_000)
+      toast("Copia completa descargada", "success")
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "No se pudo descargar la copia", "error")
+    }
+  }
+
+  const csvCell = (value: unknown) => {
+    const text = String(value ?? "")
+    const safe = /^[\u0000-\u0020]*[=+\-@]/.test(text) ? `'${text}` : text
+    return `"${safe.replaceAll('"', '""')}"`
   }
 
   const exportCSV = () => {
     const headers = ["fecha", "tipo", "categoria", "descripcion", "monto", "cuenta", "tags"]
     const rows = state.transactions.map((t) => {
       const account = state.accounts.find((a) => a.id === t.cuenta_id)
-      return [t.fecha, t.tipo, t.categoria, `"${t.descripcion.replaceAll('"', '""')}"`, t.monto, account?.nombre ?? "", `"${t.tags.join(", ").replaceAll('"', '""')}"`].join(",")
+      return [t.fecha, t.tipo, t.categoria, t.descripcion, t.monto, account?.nombre ?? "", t.tags.join(", ")].map(csvCell).join(",")
     })
-    const csv = [headers.join(","), ...rows].join("\n")
+    const csv = [headers.map(csvCell).join(","), ...rows].join("\r\n")
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -195,9 +212,12 @@ export default function ConfiguracionPage() {
               </Button>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-2xl bg-muted/30 p-4 ring-1 ring-border/20">
-              <div className="space-y-1"><p className="text-sm font-medium">Copia completa</p><p className="text-xs text-muted-foreground">Guarda cuentas, movimientos, metas, categorías y presupuestos en un archivo JSON.</p></div>
-              <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={exportBackup}><Download className="h-3.5 w-3.5" /> JSON</Button>
+              <div className="space-y-1"><p className="text-sm font-medium">Copia completa</p><p className="text-xs text-muted-foreground">Incluye cuentas, movimientos, metas, presupuestos, inversiones y ajustes. Solo descarga datos ya sincronizados.</p></div>
+              <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={exportBackup} disabled={backupBlocked}>
+                <Download className="h-3.5 w-3.5" /> JSON
+              </Button>
             </div>
+            <p className="px-1 text-xs text-muted-foreground">En este Mac se guarda al iniciar sesión si falta la copia del mes y los días 1 y 2 a las 09:15, en Documentos → Finanzas Backups.</p>
           </CardContent>
         </Card>
       </div>

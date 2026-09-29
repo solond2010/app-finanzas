@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { addMonths, addWeeks, format, parseISO } from "date-fns"
 import { dbSelect, dbUpsert, dbDeleteEq } from "./db-client"
 import { USER_ID, useFinance, type Account } from "./store"
@@ -87,6 +87,44 @@ interface ContributionRow {
   date: string
 }
 
+type InvestmentTable = "investments" | "watchlist" | "investment_contributions"
+type InvestmentSyncStatus = "idle" | "syncing" | "saved" | "error" | "offline"
+interface PendingInvestmentWrite {
+  id: string
+  table: InvestmentTable
+  keyField: "id" | "symbol"
+  key: string
+  operation: "upsert" | "delete"
+  row?: Record<string, unknown>
+}
+
+const OUTBOX_KEY = "app-finanzas-investment-outbox"
+
+function readInvestmentOutbox(): PendingInvestmentWrite[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(OUTBOX_KEY) ?? "[]")
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((item): item is PendingInvestmentWrite =>
+      item && typeof item.id === "string" &&
+      ["investments", "watchlist", "investment_contributions"].includes(item.table) &&
+      ["upsert", "delete"].includes(item.operation) &&
+      typeof item.key === "string" && typeof item.keyField === "string"
+    )
+  } catch {
+    return []
+  }
+}
+
+function overlayPendingRows<T>(rows: T[], table: InvestmentTable, keyField: "id" | "symbol", pending: PendingInvestmentWrite[], parse: (row: Record<string, unknown>) => T): T[] {
+  const byKey = new Map(rows.map((row) => [String((row as Record<string, unknown>)[keyField]), row]))
+  for (const item of pending) {
+    if (item.table !== table) continue
+    if (item.operation === "delete") byKey.delete(item.key)
+    else if (item.row) byKey.set(item.key, parse(item.row))
+  }
+  return [...byKey.values()]
+}
+
 function contributionToRow(c: Contribution): Record<string, unknown> {
   return { id: c.id, position_id: c.positionId, amount: c.amount, date: c.date, user_id: USER_ID }
 }
@@ -167,6 +205,8 @@ interface InvestmentsContextValue {
   applyDca: (positionId: string, price: number) => number
   contributions: Contribution[]
   addContribution: (positionId: string, amount: number, date: string) => void
+  syncStatus: InvestmentSyncStatus
+  retrySync: () => void
 }
 
 const InvestmentsContext = createContext<InvestmentsContextValue | null>(null)
@@ -216,6 +256,83 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([])
   const [watchlist, setWatchlist] = useState<WatchItem[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
+  const [syncStatus, setSyncStatus] = useState<InvestmentSyncStatus>("idle")
+  const pendingRef = useRef<PendingInvestmentWrite[]>([])
+  const flushingRef = useRef(false)
+  const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const retryCountRef = useRef(0)
+
+  const saveOutbox = () => {
+    try {
+      localStorage.setItem(OUTBOX_KEY, JSON.stringify(pendingRef.current))
+      return true
+    } catch {
+      setSyncStatus("error")
+      return false
+    }
+  }
+
+  const flushOutbox = async () => {
+    if (flushingRef.current) return
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      if (pendingRef.current.length) setSyncStatus("offline")
+      return
+    }
+    flushingRef.current = true
+    if (pendingRef.current.length) setSyncStatus("syncing")
+    try {
+      while (pendingRef.current.length > 0) {
+        const write = pendingRef.current[0]
+        if (write.operation === "upsert" && write.row) await dbUpsert(write.table, [write.row])
+        else await dbDeleteEq(write.table, write.keyField, write.key)
+        const current = pendingRef.current.findIndex((item) => item.id === write.id)
+        if (current >= 0) {
+          pendingRef.current = pendingRef.current.filter((item) => item.id !== write.id)
+          saveOutbox()
+        }
+      }
+      retryCountRef.current = 0
+      setSyncStatus("saved")
+    } catch (error) {
+      console.error("[Finance] Error al sincronizar inversiones:", error)
+      setSyncStatus(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error")
+      if (retryRef.current) clearTimeout(retryRef.current)
+      const delay = Math.min(3000 * 2 ** retryCountRef.current, 30_000)
+      retryCountRef.current++
+      retryRef.current = setTimeout(() => { void flushOutbox() }, delay)
+    } finally {
+      flushingRef.current = false
+    }
+  }
+
+  const enqueue = (write: Omit<PendingInvestmentWrite, "id">) => {
+    const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    pendingRef.current = pendingRef.current.filter((item) => !(item.table === write.table && item.keyField === write.keyField && item.key === write.key))
+    pendingRef.current.push({ ...write, id })
+    saveOutbox()
+    void flushOutbox()
+  }
+
+  const retrySync = () => {
+    if (retryRef.current) clearTimeout(retryRef.current)
+    retryRef.current = null
+    retryCountRef.current = 0
+    void flushOutbox()
+  }
+
+  useEffect(() => {
+    pendingRef.current = readInvestmentOutbox()
+    if (pendingRef.current.length) void flushOutbox()
+    const onOnline = () => retrySync()
+    const onOffline = () => { if (pendingRef.current.length) setSyncStatus("offline") }
+    window.addEventListener("online", onOnline)
+    window.addEventListener("offline", onOffline)
+    return () => {
+      window.removeEventListener("online", onOnline)
+      window.removeEventListener("offline", onOffline)
+      if (retryRef.current) clearTimeout(retryRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     queueMicrotask(async () => {
@@ -229,13 +346,14 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
       try {
         const data = await dbSelect<{ symbol: string; name: string }>("watchlist")
         if (data) {
-          if (data.length === 0 && localWatch.length > 0) {
-            await dbUpsert("watchlist", localWatch.map((w) => ({ symbol: w.symbol, name: w.name, user_id: USER_ID })))
-          } else {
-            const remote = data.map((w) => ({ symbol: w.symbol, name: w.name }))
-            setWatchlist(remote)
-            try { localStorage.setItem(WATCH_KEY, JSON.stringify(remote)) } catch {}
+          let remote = data.map((w) => ({ symbol: w.symbol, name: w.name }))
+          if (data.length === 0 && localWatch.length > 0 && !pendingRef.current.some((item) => item.table === "watchlist")) {
+            remote = localWatch
+            localWatch.forEach((w) => enqueue({ table: "watchlist", keyField: "symbol", key: w.symbol, operation: "upsert", row: { ...w, user_id: USER_ID } }))
           }
+          remote = overlayPendingRows(remote, "watchlist", "symbol", pendingRef.current, (row) => ({ symbol: String(row.symbol), name: String(row.name) }))
+          setWatchlist(remote)
+          try { localStorage.setItem(WATCH_KEY, JSON.stringify(remote)) } catch {}
         }
       } catch {
         // sin tabla / sin red → seguimos solo con localStorage
@@ -251,15 +369,14 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
       try {
         const data = await dbSelect<InvestmentRow>("investments")
         if (!data) return
-        if (data.length === 0 && local.length > 0) {
+        if (data.length === 0 && local.length > 0 && !pendingRef.current.some((item) => item.table === "investments")) {
           // La tabla existe pero está vacía: migra lo que había en localStorage.
-          await dbUpsert("investments", local.map(toRow))
-        } else {
-          const remote = data.map(fromRow)
-          loadedPositions = remote
-          setPositions(remote)
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(remote)) } catch {}
+          local.forEach((position) => enqueue({ table: "investments", keyField: "id", key: position.id, operation: "upsert", row: toRow(position) }))
         }
+        const remote = overlayPendingRows(data.map(fromRow), "investments", "id", pendingRef.current, (row) => fromRow(row as unknown as InvestmentRow))
+        loadedPositions = remote
+        setPositions(remote)
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(remote)) } catch {}
       } catch {
         // Sin tabla / sin red → seguimos solo con localStorage.
       }
@@ -275,6 +392,11 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
         const data = await dbSelect<ContributionRow>("investment_contributions")
         if (!data) return
         let remote = data.map(contributionFromRow)
+        if (data.length === 0 && localContrib.length > 0 && !pendingRef.current.some((item) => item.table === "investment_contributions")) {
+          remote = localContrib
+          localContrib.forEach((contribution) => enqueue({ table: "investment_contributions", keyField: "id", key: contribution.id, operation: "upsert", row: contributionToRow(contribution) }))
+        }
+        remote = overlayPendingRows(remote, "investment_contributions", "id", pendingRef.current, (row) => contributionFromRow(row as unknown as ContributionRow))
         // Backfill: cada posición sin ningún aporte registrado (típicamente porque
         // ya existía antes de esta función) recibe uno inicial con su compra
         // original, para que el histórico mensual no empiece vacío.
@@ -287,7 +409,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
             date: p.date,
           }))
         if (missing.length > 0) {
-          await dbUpsert("investment_contributions", missing.map(contributionToRow))
+          missing.forEach((contribution) => enqueue({ table: "investment_contributions", keyField: "id", key: contribution.id, operation: "upsert", row: contributionToRow(contribution) }))
           remote = [...remote, ...missing]
         }
         setContributions(remote)
@@ -300,7 +422,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
 
   const persistLocal = (next: Position[]) => {
     setPositions(next)
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { setSyncStatus("error") }
   }
 
   const add = (p: Omit<Position, "id">) => {
@@ -319,44 +441,44 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const pos: Position = { ...p, id }
     persistLocal([...positions, pos])
-    dbUpsert("investments", [toRow(pos)]).then(() => {}, () => {})
+    enqueue({ table: "investments", keyField: "id", key: id, operation: "upsert", row: toRow(pos) })
     if (pos.units * pos.buyPrice > 0) addContribution(id, pos.units * pos.buyPrice, pos.date)
     return { id, merged: false }
   }
 
   const update = (pos: Position) => {
     persistLocal(positions.map((x) => (x.id === pos.id ? pos : x)))
-    dbUpsert("investments", [toRow(pos)]).then(() => {}, () => {})
+    enqueue({ table: "investments", keyField: "id", key: pos.id, operation: "upsert", row: toRow(pos) })
   }
 
   const remove = (id: string) => {
     persistLocal(positions.filter((x) => x.id !== id))
-    dbDeleteEq("investments", "id", id).then(() => {}, () => {})
+    enqueue({ table: "investments", keyField: "id", key: id, operation: "delete" })
   }
 
   const persistWatch = (next: WatchItem[]) => {
     setWatchlist(next)
-    try { localStorage.setItem(WATCH_KEY, JSON.stringify(next)) } catch {}
+    try { localStorage.setItem(WATCH_KEY, JSON.stringify(next)) } catch { setSyncStatus("error") }
   }
   const addWatch = (w: WatchItem) => {
     if (watchlist.some((x) => x.symbol === w.symbol)) return
     persistWatch([...watchlist, w])
-    dbUpsert("watchlist", [{ symbol: w.symbol, name: w.name, user_id: USER_ID }]).then(() => {}, () => {})
+    enqueue({ table: "watchlist", keyField: "symbol", key: w.symbol, operation: "upsert", row: { symbol: w.symbol, name: w.name, user_id: USER_ID } })
   }
   const removeWatch = (symbol: string) => {
     persistWatch(watchlist.filter((x) => x.symbol !== symbol))
-    dbDeleteEq("watchlist", "symbol", symbol).then(() => {}, () => {})
+    enqueue({ table: "watchlist", keyField: "symbol", key: symbol, operation: "delete" })
   }
 
   const persistContrib = (next: Contribution[]) => {
     setContributions(next)
-    try { localStorage.setItem(CONTRIB_KEY, JSON.stringify(next)) } catch {}
+    try { localStorage.setItem(CONTRIB_KEY, JSON.stringify(next)) } catch { setSyncStatus("error") }
   }
   const addContribution = (positionId: string, amount: number, date: string) => {
     const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const c: Contribution = { id, positionId, amount, date }
     persistContrib([...contributions, c])
-    dbUpsert("investment_contributions", [contributionToRow(c)]).then(() => {}, () => {})
+    enqueue({ table: "investment_contributions", keyField: "id", key: c.id, operation: "upsert", row: contributionToRow(c) })
   }
 
   // Aplica los aportes vencidos al precio actual: suma participaciones, recalcula
@@ -378,13 +500,18 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     return due.length
   }
 
-  return <InvestmentsContext.Provider value={{ positions, add, update, remove, watchlist, addWatch, removeWatch, applyDca, contributions, addContribution }}>{children}</InvestmentsContext.Provider>
+  return <InvestmentsContext.Provider value={{ positions, add, update, remove, watchlist, addWatch, removeWatch, applyDca, contributions, addContribution, syncStatus, retrySync }}>{children}</InvestmentsContext.Provider>
 }
 
 export function useInvestments() {
   const ctx = useContext(InvestmentsContext)
   if (!ctx) throw new Error("useInvestments must be used within InvestmentsProvider")
   return ctx
+}
+
+export function useInvestmentSyncStatus() {
+  const { syncStatus, retrySync } = useInvestments()
+  return { status: syncStatus, retrySync }
 }
 
 interface Quote { price: number; currency: string; changePct?: number | null; name?: string }

@@ -13,3 +13,38 @@ const supabaseUrl = process.env.SUPABASE_URL!
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!
 
 export const supabaseServer = createClient(supabaseUrl, supabaseAnonKey)
+
+const PRIMARY_KEYS: Record<string, string> = {
+  accounts: "id",
+  transactions: "id",
+  sinking_funds: "id",
+  categories: "id",
+  budgets: "id",
+  watchlist: "symbol",
+  investments: "id",
+  investment_contributions: "id",
+  settings: "key",
+}
+
+/** Read complete tables in stable, bounded pages instead of silently stopping at PostgREST's row limit. */
+export async function selectAllRows(table: string, fields = "*") {
+  const primaryKey = PRIMARY_KEYS[table]
+  if (!primaryKey) throw new Error(`Tabla de lectura desconocida: ${table}`)
+  const pageSize = 500
+  const maxRows = 250_000
+  const rows: Record<string, unknown>[] = []
+
+  for (let offset = 0; offset < maxRows; offset += pageSize) {
+    const { data, error } = await supabaseServer
+      .from(table)
+      .select(fields)
+      .order(primaryKey, { ascending: true })
+      .range(offset, offset + pageSize - 1)
+    if (error) throw new Error(`No se pudo leer ${table}: ${error.message}`)
+    const page = (data ?? []) as unknown as Record<string, unknown>[]
+    rows.push(...page)
+    if (page.length < pageSize) return rows
+  }
+
+  throw new Error(`La tabla ${table} supera el límite de seguridad de ${maxRows} filas`)
+}

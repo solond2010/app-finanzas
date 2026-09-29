@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useSyncStatus } from "@/lib/store"
+import { useInvestmentSyncStatus } from "@/lib/investments"
 import { usePrivacy } from "@/lib/privacy"
 import {
   House,
@@ -50,6 +51,8 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
 export function Sidebar() {
   const pathname = usePathname()
   const { status: syncStatus, retrySync } = useSyncStatus()
+  const { status: investmentSyncStatus, retrySync: retryInvestmentSync } = useInvestmentSyncStatus()
+  const retryAllSync = () => { retrySync(); retryInvestmentSync() }
   const { privacy, toggle: togglePrivacy } = usePrivacy()
   const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -93,15 +96,15 @@ export function Sidebar() {
   }
 
   const syncMeta =
-    syncStatus === "syncing"
+    syncStatus === "error" || investmentSyncStatus === "error"
+      ? { label: "Error al guardar · toca para reintentar", icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-red-500", retry: true }
+      : syncStatus === "offline" || investmentSyncStatus === "offline"
+        ? { label: "Sin conexión · se guardará al reconectar", icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-muted-foreground", retry: true }
+        : syncStatus === "syncing" || investmentSyncStatus === "syncing"
       ? { label: "Sincronizando...", icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, className: "text-amber-500", retry: false }
-      : syncStatus === "saved"
+      : syncStatus === "saved" || investmentSyncStatus === "saved"
         ? { label: "Guardado en nube", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-emerald-500", retry: false }
-        : syncStatus === "error"
-          ? { label: "Error de sincronización · toca para reintentar", icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-red-500", retry: true }
-          : syncStatus === "offline"
-            ? { label: "Sin conexión · se guardará al reconectar", icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-muted-foreground", retry: true }
-            : { label: "Sin cambios pendientes", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-muted-foreground", retry: false }
+        : { label: "Sin cambios pendientes", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-muted-foreground", retry: false }
 
   return (
     <>
@@ -203,7 +206,7 @@ export function Sidebar() {
             <Tooltip label={syncMeta.label}>
               {syncMeta.retry ? (
                 <button
-                  onClick={retrySync}
+                  onClick={retryAllSync}
                   aria-label={syncMeta.label}
                   className="flex items-center justify-center rounded-xl p-2.5 transition-colors hover:bg-sidebar-accent/50"
                 >
@@ -303,7 +306,7 @@ export function Sidebar() {
           </button>
           {syncMeta.retry ? (
             <button
-              onClick={retrySync}
+              onClick={retryAllSync}
               className={cn("flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition-colors hover:bg-sidebar-accent/50", syncMeta.className)}
             >
               {syncMeta.icon}
