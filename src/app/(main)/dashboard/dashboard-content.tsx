@@ -50,6 +50,13 @@ function toLocalDateKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
+function monthOverMonthDetail(current: number, previous: number) {
+  if (previous === 0) return current === 0 ? "Sin actividad el mes anterior" : "Sin referencia el mes anterior"
+  const change = ((current - previous) / Math.abs(previous)) * 100
+  const sign = change > 0 ? "+" : change < 0 ? "−" : ""
+  return `${sign}${Math.round(Math.abs(change))}% vs. mes anterior`
+}
+
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
   const max = Math.max(...values.map((v) => Math.abs(v)), 1)
   return (
@@ -111,6 +118,11 @@ export default function DashboardContent() {
   const overduePayments = useMemo(() => getUpcomingRecurring(state.transactions).filter((p) => p.overdueDays > 0), [state.transactions])
 
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
+  const previousMonth = useMemo(() => {
+    const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1)
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+  }, [selectedDate])
+  const previousMonthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, previousMonth, currencyByAccount), [analysisTransactions, previousMonth, currencyByAccount])
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const { positions: investPositions, value: portfolioValue, invested: investedTotal, pnl: portfolioPnl, valueByAccount, investedByAccount } = usePortfolioValue()
@@ -785,7 +797,6 @@ export default function DashboardContent() {
                   </div>
                 ))}
               </div>
-              <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Guía basada en reglas y datos de tu app; no llama a una IA ni a un servicio externo.</p>
             </div>
             </div>
           </section>
@@ -794,8 +805,8 @@ export default function DashboardContent() {
           <section className="stagger-fade grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-4" style={{ animationDelay: "40ms" }}>
             {/* <Sensitive> en todos los valores monetarios: el modo privacidad
                 difuminaba el hero pero estas fichas seguían enseñando importes. */}
-            <TickerTile label="Ingresos" value={<Sensitive>+{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push("/transactions?tipo=ingreso")} />
-            <TickerTile label="Gastos" value={<Sensitive>-{formatMoney(monthTotals.gastos, "EUR")}</Sensitive>} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" onClick={() => router.push("/transactions?tipo=gasto")} />
+            <TickerTile label="Ingresos" value={<Sensitive>+{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} detail={monthOverMonthDetail(monthTotals.ingresos, previousMonthTotals.ingresos)} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push("/transactions?tipo=ingreso")} />
+            <TickerTile label="Gastos" value={<Sensitive>-{formatMoney(monthTotals.gastos, "EUR")}</Sensitive>} detail={monthOverMonthDetail(monthTotals.gastos, previousMonthTotals.gastos)} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" onClick={() => router.push("/transactions?tipo=gasto")} />
             <TickerTile
               label="Presupuesto restante"
               value={budgetTotals.limite > 0 ? <Sensitive>{formatMoney(budgetTotals.disponible, "EUR")}</Sensitive> : "—"}
@@ -805,7 +816,7 @@ export default function DashboardContent() {
               valueColor={budgetTotals.limite > 0 ? (budgetTotals.disponible >= 0 ? "var(--gold)" : "var(--accent-red)") : undefined}
               onClick={() => setShowBudgetDialog(true)}
             />
-            <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" onClick={() => router.push("/analytics")} />
+            <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(monthTotals.neto, "EUR")}</Sensitive>} detail={`${savingsRate}% de tus ingresos`} valueColor={monthTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" onClick={() => router.push("/analytics")} />
           </section>
 
           {/* Siguiente paso del mes: aportar al colchón si aún falta */}
