@@ -190,12 +190,16 @@ export function SinkingFundsGrid() {
                         {progress}%
                       </span>
                     </div>
-                    <h3
-                      className="font-semibold text-[15px] tracking-tight cursor-pointer hover:text-primary transition-colors flex items-center gap-2 text-center"
-                      onClick={() => setEditingFund(fund)}
-                    >
-                      {fund.nombre}
-                      <Pencil className="h-3 w-3 text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100" />
+                    <h3 className="text-center">
+                      <button
+                        type="button"
+                        aria-label={`Editar meta ${fund.nombre}`}
+                        className="inline-flex items-center gap-2 rounded-md text-[15px] font-semibold tracking-tight transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                        onClick={() => setEditingFund(fund)}
+                      >
+                        {fund.nombre}
+                        <Pencil aria-hidden="true" className="h-3 w-3 text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100" />
+                      </button>
                     </h3>
                     <div className="text-center">
                       <p className="text-sm font-semibold tabular-nums text-foreground">

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowDownRight, ArrowRightLeft, ArrowUpRight, Check, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
+import { AlertTriangle, ArrowDownRight, ArrowRightLeft, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
 import { BudgetDialog } from "@/components/dashboard/budget-dialog"
 import { openMovementDialog } from "@/components/layout/quick-actions"
@@ -12,11 +12,11 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { usePortfolioValue, accountDisplayValue, type Position } from "@/lib/investments"
+import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { buildNetWorthHistoryDaily, buildNetWorthHistoryToday, filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getNetWorthAtMonthFromGroups, groupTransactionsByAccount, getSavingsRate, getUpcomingRecurring, getCurrencyByAccount, reportingAmount, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow, suggestEmergencyTransfer } from "@/lib/calculations"
+import { filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getSavingsRate, getUpcomingRecurring, getCurrencyByAccount, reportingAmount, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow, suggestEmergencyTransfer } from "@/lib/calculations"
 import { convertFromEur, convertToEur, formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
@@ -44,17 +44,16 @@ const RANGES = [
   { id: "Todo", count: 0, unit: "all" as const },
 ]
 
-// Misma clave de fecha (YYYY-MM-DD, en huso local) que toDateKey en
-// calculations.ts, para comparar con el campo `date` de NetWorthSnapshot.
-function toLocalDateKey(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-}
-
-function monthOverMonthDetail(current: number, previous: number) {
-  if (previous === 0) return current === 0 ? "Sin actividad el mes anterior" : "Sin referencia el mes anterior"
-  const change = ((current - previous) / Math.abs(previous)) * 100
+function comparisonDetail(current: number, reference: number, period: string, expense = false) {
+  if (reference === 0) return { text: `Sin referencia ${period}`, tone: "neutral" as const }
+  const change = ((current - reference) / Math.abs(reference)) * 100
   const sign = change > 0 ? "+" : change < 0 ? "−" : ""
-  return `${sign}${Math.round(Math.abs(change))}% vs. mes anterior`
+  const worsened = expense ? change > 0 : change < 0
+  const magnitude = Math.round(Math.abs(change)) || (change === 0 ? "0" : "<1")
+  return {
+    text: `${sign}${magnitude}% ${period}`,
+    tone: change === 0 ? "neutral" as const : worsened ? "negative" as const : "positive" as const,
+  }
 }
 
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
@@ -115,7 +114,12 @@ export default function DashboardContent() {
 
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
   const hasAnyData = state.accounts.length > 0 || analysisTransactions.length > 0 || state.sinkingFunds.length > 0
-  const overduePayments = useMemo(() => getUpcomingRecurring(state.transactions).filter((p) => p.overdueDays > 0), [state.transactions])
+  const recurringPayments = useMemo(() => getUpcomingRecurring(state.transactions), [state.transactions])
+  const overduePayments = useMemo(() => recurringPayments.filter((p) => p.overdueDays > 0), [recurringPayments])
+  const dueSoonPayments = useMemo(
+    () => recurringPayments.filter((p) => p.overdueDays <= 0 && p.overdueDays >= -7).sort((a, b) => b.overdueDays - a.overdueDays).slice(0, 3),
+    [recurringPayments]
+  )
 
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   const previousMonth = useMemo(() => {
@@ -125,7 +129,7 @@ export default function DashboardContent() {
   const previousMonthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, previousMonth, currencyByAccount), [analysisTransactions, previousMonth, currencyByAccount])
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
-  const { positions: investPositions, value: portfolioValue, invested: investedTotal, pnl: portfolioPnl, valueByAccount, investedByAccount } = usePortfolioValue()
+  const { positions: investPositions, value: portfolioValue, pnl: portfolioPnl, valueByAccount, investedByAccount } = usePortfolioValue()
   // El saldo de las cuentas de inversión no baja al comprar una posición (no
   // genera un gasto), así que solo se sustituye la parte ya invertida por el
   // valor de mercado actual — el efectivo aún sin invertir se mantiene intacto
@@ -170,6 +174,22 @@ export default function DashboardContent() {
     }),
     [selectedDate, analysisTransactions, currencyByAccount]
   )
+
+  const previousSixMonthAverage = useMemo(() => {
+    const totals = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - index - 1, 1)
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+      return getMonthTotalsByString(analysisTransactions, key, currencyByAccount)
+    })
+    return {
+      ingresos: totals.reduce((sum, item) => sum + item.ingresos, 0) / totals.length,
+      gastos: totals.reduce((sum, item) => sum + item.gastos, 0) / totals.length,
+    }
+  }, [selectedDate, analysisTransactions, currencyByAccount])
+  const incomeVsPrevious = comparisonDetail(monthTotals.ingresos, previousMonthTotals.ingresos, "vs. mes anterior")
+  const expensesVsPrevious = comparisonDetail(monthTotals.gastos, previousMonthTotals.gastos, "vs. mes anterior", true)
+  const incomeVsAverage = comparisonDetail(monthTotals.ingresos, previousSixMonthAverage.ingresos, "vs. media 6M")
+  const expensesVsAverage = comparisonDetail(monthTotals.gastos, previousSixMonthAverage.gastos, "vs. media 6M", true)
 
   const year = selectedDate.getFullYear()
   const monthlyYear = useMemo(
@@ -251,7 +271,6 @@ export default function DashboardContent() {
       const year = parseInt("20" + yearStr, 10)
       if (monthIdx === -1) continue
       
-      const monthStart = new Date(year, monthIdx, 1)
       const monthEnd = new Date(year, monthIdx + 1, 0)
       const daysInMonth = monthEnd.getDate()
       
@@ -279,7 +298,6 @@ export default function DashboardContent() {
     }
     
     return enrichedTrend
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRange, selectedDate, monthOffset, today, selectedMonth, state.accounts, state.transactions, investPositions, priceHistory])
 
   // En los rangos por mes (6M/12M/24M) el mes en curso solo aporta UN punto a
@@ -300,7 +318,6 @@ export default function DashboardContent() {
       today
     )
     return daily.length === 0 ? null : daily.reduce((best, d) => (d.patrimonio > best.patrimonio ? d : best), daily[0])
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthOffset, today, state.accounts, state.transactions, investPositions, priceHistory])
 
   // Serie que se PINTA: en rangos por mes y "Todo", si el pico diario supera
@@ -359,6 +376,27 @@ export default function DashboardContent() {
   const spendTotal = spending.reduce((s, c) => s + c.monto, 0)
   const topSpending = spending.slice(0, 6)
   const maxSpend = topSpending[0]?.monto ?? 1
+  const unusualSpend = useMemo(() => {
+    const historyByCategory = new Map<string, { total: number; months: number }>()
+    for (let offset = 1; offset <= 3; offset++) {
+      const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
+      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+      for (const item of getCategoryBreakdown(analysisTransactions, month, currencyByAccount)) {
+        const prior = historyByCategory.get(item.categoria) ?? { total: 0, months: 0 }
+        historyByCategory.set(item.categoria, { total: prior.total + item.monto, months: prior.months + 1 })
+      }
+    }
+    return spending.slice(0, 6)
+      .map((item) => {
+        const history = historyByCategory.get(item.categoria)
+        if (!history || history.months < 2) return null
+        const average = history.total / history.months
+        return item.monto >= 150 && item.monto >= average * 1.5 && item.monto - average >= 100
+          ? { category: item.categoria, current: item.monto, average }
+          : null
+      })
+      .find((item) => item !== null) ?? null
+  }, [selectedDate, analysisTransactions, currencyByAccount, spending])
   const needsVsWants = useMemo(() => getNeedsVsWantsForMonth(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   const needsVsWantsTotal = needsVsWants.necesidades + needsVsWants.deseos
   const needsPct = needsVsWantsTotal > 0 ? Math.round((needsVsWants.necesidades / needsVsWantsTotal) * 100) : 0
@@ -621,10 +659,29 @@ export default function DashboardContent() {
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500"><AlertTriangle className="h-4 w-4" /></span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold text-foreground">
-              {overduePayments.length === 1 ? "Tienes 1 pago recurrente atrasado" : `Tienes ${overduePayments.length} pagos recurrentes atrasados`}
+              {overduePayments.length === 1
+                ? overduePayments[0].tipo === "ingreso" ? "Tienes un ingreso recurrente pendiente" : "Tienes 1 pago recurrente atrasado"
+                : `Tienes ${overduePayments.length} movimientos recurrentes atrasados`}
             </span>
             <span className="block truncate text-xs text-muted-foreground">{overduePayments.map((p) => p.descripcion || p.categoria).join(" · ")}</span>
           </span>
+        </button>
+      )}
+
+      {!loading && dueSoonPayments.length > 0 && (
+        <button
+          type="button"
+          onClick={() => router.push("/transactions")}
+          className="flex w-full items-center gap-3 rounded-[14px] border border-primary/20 bg-primary/[0.05] p-4 text-left transition-colors hover:bg-primary/[0.09]"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarClock className="h-4 w-4" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-foreground">Movimientos recurrentes próximos</span>
+            <span className="block truncate text-xs text-muted-foreground">
+              {dueSoonPayments.map((payment) => `${payment.descripcion || payment.categoria} · ${payment.overdueDays === 0 ? "hoy" : `en ${Math.abs(payment.overdueDays)} días`}`).join("  ·  ")}
+            </span>
+          </span>
+          <span className="hidden shrink-0 text-xs font-medium text-primary sm:block">Ver movimientos</span>
         </button>
       )}
 
@@ -805,8 +862,8 @@ export default function DashboardContent() {
           <section className="stagger-fade grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-4" style={{ animationDelay: "40ms" }}>
             {/* <Sensitive> en todos los valores monetarios: el modo privacidad
                 difuminaba el hero pero estas fichas seguían enseñando importes. */}
-            <TickerTile label="Ingresos" value={<Sensitive>+{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} detail={monthOverMonthDetail(monthTotals.ingresos, previousMonthTotals.ingresos)} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push("/transactions?tipo=ingreso")} />
-            <TickerTile label="Gastos" value={<Sensitive>-{formatMoney(monthTotals.gastos, "EUR")}</Sensitive>} detail={monthOverMonthDetail(monthTotals.gastos, previousMonthTotals.gastos)} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" onClick={() => router.push("/transactions?tipo=gasto")} />
+            <TickerTile label="Ingresos" value={<Sensitive>+{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} detail={incomeVsPrevious.text} detailTone={incomeVsPrevious.tone} secondaryDetail={incomeVsAverage.text} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push(`/transactions?tipo=ingreso&mes=${selectedMonth}`)} />
+            <TickerTile label="Gastos" value={<Sensitive>-{formatMoney(monthTotals.gastos, "EUR")}</Sensitive>} detail={expensesVsPrevious.text} detailTone={expensesVsPrevious.tone} secondaryDetail={expensesVsAverage.text} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" onClick={() => router.push(`/transactions?tipo=gasto&mes=${selectedMonth}`)} />
             <TickerTile
               label="Presupuesto restante"
               value={budgetTotals.limite > 0 ? <Sensitive>{formatMoney(budgetTotals.disponible, "EUR")}</Sensitive> : "—"}
@@ -816,7 +873,7 @@ export default function DashboardContent() {
               valueColor={budgetTotals.limite > 0 ? (budgetTotals.disponible >= 0 ? "var(--gold)" : "var(--accent-red)") : undefined}
               onClick={() => setShowBudgetDialog(true)}
             />
-            <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(monthTotals.neto, "EUR")}</Sensitive>} detail={`${savingsRate}% de tus ingresos`} valueColor={monthTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" onClick={() => router.push("/analytics")} />
+            <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(monthTotals.neto, "EUR")}</Sensitive>} detail={monthTotals.ingresos > 0 ? `${savingsRate}% de tus ingresos` : "Sin ingresos para calcular la tasa"} detailTone={savingsRate > 0 ? "positive" : savingsRate < 0 ? "negative" : "neutral"} valueColor={monthTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" onClick={() => router.push("/analytics")} />
           </section>
 
           {/* Siguiente paso del mes: aportar al colchón si aún falta */}
@@ -872,6 +929,16 @@ export default function DashboardContent() {
                   <button type="button" onClick={() => router.push("/analytics")} className="text-xs font-medium text-primary transition-colors hover:opacity-70">Ver en Analíticas</button>
                 </div>
               </div>
+              {unusualSpend && (
+                <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-3.5 py-3">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                  <p className="min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground">
+                    <span className="font-semibold text-foreground">{unusualSpend.category} supera tu referencia reciente.</span>{" "}
+                <Sensitive>{formatMoney(unusualSpend.current, "EUR")}</Sensitive> frente a una media de <Sensitive>{formatMoney(unusualSpend.average, "EUR")}</Sensitive> en hasta 3 meses con actividad. Aviso orientativo: supera la media al menos un 50 % y 100 €.
+                  </p>
+                  <button type="button" onClick={() => router.push(`/transactions?tipo=gasto&categoria=${encodeURIComponent(unusualSpend.category)}&mes=${selectedMonth}`)} className="text-xs font-semibold text-amber-600 hover:underline dark:text-amber-400">Revisar</button>
+                </div>
+              )}
               {needsVsWantsTotal > 0 && (
                 <div className="mb-4 space-y-1.5">
                   <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
@@ -895,7 +962,7 @@ export default function DashboardContent() {
               {showSpendBreakdown && (
                 <div className="grid grid-cols-1 gap-x-8 gap-y-3.5 sm:grid-cols-2">
                   {topSpending.map((c) => (
-                    <div key={c.categoria} className="space-y-1.5">
+                    <button key={c.categoria} type="button" aria-label={`Ver gastos de ${c.categoria}`} onClick={() => router.push(`/transactions?tipo=gasto&categoria=${encodeURIComponent(c.categoria)}&mes=${selectedMonth}`)} className="group space-y-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card rounded-md">
                       <div className="flex items-center justify-between gap-2 text-xs">
                         <span className="flex min-w-0 items-center gap-2 font-medium text-foreground">
                           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: catColor(c.categoria) }} />
@@ -908,7 +975,7 @@ export default function DashboardContent() {
                       <div className="h-2 overflow-hidden rounded-full bg-muted">
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `max(${(c.monto / maxSpend) * 100}%, 10px)`, backgroundColor: catColor(c.categoria) }} />
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}

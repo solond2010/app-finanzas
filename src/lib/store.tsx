@@ -431,11 +431,13 @@ const FinanceContext = createContext<FinanceContextValue | null>(null)
 interface SyncStatusContextValue {
   status: SyncStatus
   retrySync: () => void
+  lastSyncedAt: number | null
 }
-const SyncStatusContext = createContext<SyncStatusContextValue>({ status: "idle", retrySync: () => {} })
+const SyncStatusContext = createContext<SyncStatusContextValue>({ status: "idle", retrySync: () => {}, lastSyncedAt: null })
 
 const LOCAL_STATE_KEY = "app-finanzas-data"
 const LOCAL_OUTBOX_KEY = "app-finanzas-outbox-v1"
+const LOCAL_SYNCED_AT_KEY = "app-finanzas-last-synced-at"
 
 function serializePendingDeletes(pending: PendingDeletes) {
   return Object.fromEntries(Object.entries(pending).map(([key, ids]) => [key, [...ids]]))
@@ -458,6 +460,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, defaultState)
   const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle")
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null)
   const [initialized, setInitialized] = useState(false)
   const loadedRef = useRef(false)
   const syncChainRef = useRef(Promise.resolve())
@@ -499,6 +502,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         }
       }
     }).finally(() => {
+      try {
+        const savedAt = Number(localStorage.getItem(LOCAL_SYNCED_AT_KEY))
+        if (Number.isFinite(savedAt) && savedAt > 0) setLastSyncedAt(savedAt)
+      } catch { /* el estado financiero sigue disponible aunque falle el indicador */ }
       setLoading(false)
       setInitialized(true)
     })
@@ -599,6 +606,9 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           try { localStorage.removeItem(LOCAL_OUTBOX_KEY) } catch { /* sync succeeded; next state write retries */ }
         }
         retryAttemptRef.current = 0
+        const savedAt = Date.now()
+        setLastSyncedAt(savedAt)
+        try { localStorage.setItem(LOCAL_SYNCED_AT_KEY, String(savedAt)) } catch { /* el estado ya quedó guardado en Supabase */ }
         setSyncStatus("saved")
       })
       .catch((err) => {
@@ -675,7 +685,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // cambio en cualquier parte del árbol forzaba un re-render de absolutamente
   // todo lo que usa useFinance() en la app.
   const contextValue = useMemo(() => ({ state, dispatch: trackedDispatch, loading }), [state, trackedDispatch, loading])
-  const syncStatusValue = useMemo(() => ({ status: syncStatus, retrySync }), [syncStatus, retrySync])
+  const syncStatusValue = useMemo(() => ({ status: syncStatus, retrySync, lastSyncedAt }), [syncStatus, retrySync, lastSyncedAt])
 
   return (
     <FinanceContext.Provider value={contextValue}>

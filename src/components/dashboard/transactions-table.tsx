@@ -344,7 +344,10 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const { toast } = useToast()
   const searchParams = useSearchParams()
   const [filterAccount, setFilterAccount] = useState<string>(cuentaId ?? "all")
-  const [filterCategory, setFilterCategory] = useState<string>("all")
+  const [filterCategory, setFilterCategory] = useState<string>(() => {
+    const requested = searchParams.get("categoria")?.trim()
+    return requested ? requested.slice(0, 100) : "all"
+  })
   // Permite llegar aquí desde otra página con el tipo ya filtrado, ej. al
   // pinchar el ticker "Ingresos"/"Gastos" del Dashboard (/transactions?tipo=...).
   const [filterTipo, setFilterTipo] = useState<"all" | "ingreso" | "gasto" | "traspaso">(() => {
@@ -361,6 +364,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [showAdjustments, setShowAdjustments] = useState(false)
   const PAGE_SIZE = 25
+
 
   const toggleSelected = (id: string) => {
     setSelectedIds((prev) => {

@@ -50,12 +50,15 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { status: syncStatus, retrySync } = useSyncStatus()
+  const { status: syncStatus, retrySync, lastSyncedAt } = useSyncStatus()
   const { status: investmentSyncStatus, retrySync: retryInvestmentSync } = useInvestmentSyncStatus()
   const retryAllSync = () => { retrySync(); retryInvestmentSync() }
   const { privacy, toggle: togglePrivacy } = usePrivacy()
   const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const lastSyncedLabel = lastSyncedAt
+    ? new Date(lastSyncedAt).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+    : null
 
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : ""
@@ -97,13 +100,13 @@ export function Sidebar() {
 
   const syncMeta =
     syncStatus === "error" || investmentSyncStatus === "error"
-      ? { label: "Error al guardar · toca para reintentar", icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-red-500", retry: true }
+      ? { label: `Error al guardar${lastSyncedLabel ? ` · último OK ${lastSyncedLabel}` : ""} · toca para reintentar`, icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-red-500", retry: true }
       : syncStatus === "offline" || investmentSyncStatus === "offline"
-        ? { label: "Sin conexión · se guardará al reconectar", icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-muted-foreground", retry: true }
+        ? { label: `Sin conexión · se guardará al reconectar${lastSyncedLabel ? ` · último OK ${lastSyncedLabel}` : ""}`, icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-muted-foreground", retry: true }
         : syncStatus === "syncing" || investmentSyncStatus === "syncing"
       ? { label: "Sincronizando...", icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, className: "text-amber-500", retry: false }
       : syncStatus === "saved" || investmentSyncStatus === "saved"
-        ? { label: "Guardado en nube", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-emerald-500", retry: false }
+        ? { label: lastSyncedLabel ? `Guardado en nube · ${lastSyncedLabel}` : "Guardado en nube", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-emerald-500", retry: false }
         : { label: "Sin cambios pendientes", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-muted-foreground", retry: false }
 
   return (

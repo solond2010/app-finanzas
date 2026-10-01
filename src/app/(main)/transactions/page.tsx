@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { AreaChart } from "@tremor/react"
 import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp, X } from "lucide-react"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
@@ -40,11 +41,21 @@ function Gauge({ value, max, color = "var(--accent-blue)" }: { value: number; ma
 }
 
 export default function IngresosGastosPage() {
+  const searchParams = useSearchParams()
   const { state, loading, dispatch } = useFinance()
   const currencyByAccount = useMemo(() => getCurrencyByAccount(state.accounts), [state.accounts])
   const { toast } = useToast()
   const today = useMemo(() => new Date(), [])
-  const [monthOffset, setMonthOffset] = useState(0)
+  const [monthOffset, setMonthOffset] = useState(() => {
+    const requested = searchParams.get("mes")
+    const match = requested?.match(/^(\d{4})-(\d{2})$/)
+    if (!match) return 0
+    const year = Number(match[1])
+    const month = Number(match[2])
+    if (month < 1 || month > 12) return 0
+    const now = new Date()
+    return Math.max(0, (now.getFullYear() - year) * 12 + now.getMonth() + 1 - month)
+  })
   const [rangeM, setRangeM] = useState(6)
   const [target, setTarget] = useState(2000)
   const [accIdx, setAccIdx] = useState(0)
@@ -133,7 +144,7 @@ export default function IngresosGastosPage() {
       const t = getMonthTotalsByString(analysisTransactions, key, currencyByAccount)
       return { mes: d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), Ingresos: t.ingresos, Gastos: t.gastos }
     }),
-    [rangeM, selectedDate, analysisTransactions]
+    [rangeM, selectedDate, analysisTransactions, currencyByAccount]
   )
   const cashflowHasData = cashflow.some((c) => c.Ingresos > 0 || c.Gastos > 0)
   const savingsRateTrend = useMemo(() => cashflow.map((c) => (c.Ingresos > 0 ? Math.max(((c.Ingresos - c.Gastos) / c.Ingresos) * 100, 0) : 0)), [cashflow])

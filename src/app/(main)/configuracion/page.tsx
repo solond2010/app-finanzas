@@ -8,14 +8,23 @@ import { useFinance, useSyncStatus, type CategoryKind } from "@/lib/store"
 import { useInvestmentSyncStatus } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
-import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X } from "lucide-react"
+import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X, Cloud, CloudOff, Loader2 } from "lucide-react"
 import { Skeleton } from "@/components/shared/skeleton"
 
 export default function ConfiguracionPage() {
   const { state, loading, dispatch } = useFinance()
-  const { status: syncStatus } = useSyncStatus()
-  const { status: investmentSyncStatus } = useInvestmentSyncStatus()
+  const { status: syncStatus, lastSyncedAt, retrySync } = useSyncStatus()
+  const { status: investmentSyncStatus, retrySync: retryInvestmentSync } = useInvestmentSyncStatus()
   const backupBlocked = ["syncing", "error", "offline"].includes(syncStatus) || ["syncing", "error", "offline"].includes(investmentSyncStatus)
+  const syncFailed = syncStatus === "error" || syncStatus === "offline" || investmentSyncStatus === "error" || investmentSyncStatus === "offline"
+  const syncIcon = syncFailed ? CloudOff : backupBlocked ? Loader2 : Cloud
+  const SyncIcon = syncIcon
+  const lastSyncLabel = lastSyncedAt
+    ? new Date(lastSyncedAt).toLocaleString("es-ES", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "Aún no hay un guardado confirmado desde este navegador"
+  const syncLabel = syncFailed
+    ? syncStatus === "offline" || investmentSyncStatus === "offline" ? "Sin conexión" : "No se pudo guardar"
+    : backupBlocked ? "Sincronizando cambios…" : syncStatus === "saved" || investmentSyncStatus === "saved" ? "Guardado en la nube" : "Último estado de sincronización"
   const { toast } = useToast()
   const [newCat, setNewCat] = useState("")
   const [newCatKind, setNewCatKind] = useState<"ingreso" | "gasto">("gasto")
@@ -216,6 +225,16 @@ export default function ConfiguracionPage() {
               <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={exportBackup} disabled={backupBlocked}>
                 <Download className="h-3.5 w-3.5" /> JSON
               </Button>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/35 p-4" role="status" aria-live="polite">
+              <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", syncFailed ? "bg-red-500/10 text-red-500" : backupBlocked ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500")}>
+                <SyncIcon className={cn("h-4 w-4", backupBlocked && !syncFailed && "animate-spin")} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">{syncLabel}</span>
+                <span className="block truncate text-xs text-muted-foreground">Último guardado confirmado: {lastSyncLabel}</span>
+              </span>
+              {syncFailed && <Button variant="outline" size="sm" className="shrink-0" onClick={() => { retrySync(); retryInvestmentSync() }}>Reintentar</Button>}
             </div>
             <p className="px-1 text-xs text-muted-foreground">En este Mac se guarda al iniciar sesión si falta la copia del mes y los días 1 y 2 a las 09:15, en Documentos → Finanzas Backups.</p>
           </CardContent>
