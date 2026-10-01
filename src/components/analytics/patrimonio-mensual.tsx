@@ -133,7 +133,9 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
   const areaData = useMemo(
     () =>
       rows.map((r) => ({
-        mensualidad: r.mensualidad,
+        // Eje X corto ("sep 26"): la fecha larga DD/MM/YYYY hacía que las
+        // etiquetas se montaran en el gráfico estrecho de variación neta.
+        mensualidad: r.label,
         patrimonio: Math.round(r.patrimonio * 100) / 100,
       })),
     [rows]
@@ -142,7 +144,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
   const barData = useMemo(
     () =>
       rows.map((r) => ({
-        mensualidad: r.mensualidad,
+        mensualidad: r.label,
         "Variación positiva": r.variacion > 0 ? Math.round(r.variacion * 100) / 100 : 0,
         "Variación negativa": r.variacion < 0 ? Math.round(Math.abs(r.variacion) * 100) / 100 : 0,
       })),
