@@ -646,6 +646,36 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Interacción más natural en táctil y mejor contención en móviles estrechos. */
+button,
+[role="button"],
+a {
+  touch-action: manipulation;
+}
+
+body {
+  overflow-x: clip;
+}
+
+@media (max-width: 767px) {
+  /* Evita el zoom automático de Safari al enfocar campos de formulario. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 380px) {
+  :root {
+    --bottom-nav-h: 60px;
+  }
+
+  .page-section-label {
+    letter-spacing: 0.09em;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

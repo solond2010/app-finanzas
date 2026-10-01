@@ -22,7 +22,7 @@ export function MobileBottomNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navegación principal"
     >
-      <div className="mx-auto flex h-[var(--bottom-nav-h)] max-w-lg items-stretch justify-around px-1">
+      <div className="mx-auto flex h-[var(--bottom-nav-h)] max-w-lg items-stretch justify-around px-1.5 sm:px-3">
         {items.map((item) => {
           const Icon = item.icon
           const active = pathname === item.href || pathname.startsWith(item.href + "/")
@@ -32,7 +32,7 @@ export function MobileBottomNav() {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-95 touch-manipulation",
+                "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl transition-colors active:scale-95 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >

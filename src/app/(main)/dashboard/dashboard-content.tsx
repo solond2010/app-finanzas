@@ -699,16 +699,16 @@ export default function DashboardContent() {
       ) : (
         <div className="space-y-5 sm:space-y-5 lg:space-y-5">
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-4 lg:gap-5" style={{ animationDelay: "0ms" }}>
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:gap-5" style={{ animationDelay: "0ms" }}>
             {/* Patrimonio + rango */}
-            <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
+            <div className={`${CARD_HERO} min-w-0 md:col-span-2 xl:col-span-2`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="page-section-label">Evolución del patrimonio</p>
                     {isAllTimeHigh && <span className="gold-badge rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">Máximo histórico</span>}
                   </div>
-                  <p className="hero-figure mt-2 text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
+                  <p className="hero-figure mt-2 text-[clamp(1.8rem,7vw,2.5rem)] font-bold tracking-tight tabular-nums">
                     <AnimatedNumber value={netWorthDisplay} />
                   </p>
                   <p className={cn("mt-1 inline-flex flex-wrap items-center gap-x-1.5 text-sm font-medium", rangeDelta >= 0 ? "text-emerald-500" : "text-red-500")}>
@@ -825,7 +825,6 @@ export default function DashboardContent() {
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Target className="h-4 w-4" /></span>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">Tu camino financiero</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">Guía local · privada</p>
                   </div>
                 </div>
                 <span className="rounded-full border border-border/70 px-2 py-1 text-[10px] font-medium text-muted-foreground">3 hitos</span>
@@ -848,9 +847,9 @@ export default function DashboardContent() {
 
               <div className="mt-3 grid grid-cols-3 gap-2" aria-label="Próximos hitos de patrimonio">
                 {wealthMilestones.map((milestone, index) => (
-                  <div key={milestone} className={cn("min-w-0 rounded-xl border px-2 py-2.5", index === 0 ? "border-primary/30 bg-primary/[0.07]" : "border-border/70 bg-background/35")}>
-                    <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{index === 0 ? "Ahora" : `Hito ${index + 1}`}</p>
-                    <p className={cn("mt-1 truncate text-xs font-semibold tabular-nums", index === 0 ? "text-primary" : "text-foreground")}><Sensitive>{formatMoney(milestone, "EUR")}</Sensitive></p>
+                  <div key={milestone} className={cn("min-w-0 rounded-xl border px-1.5 py-2.5 sm:px-2", index === 0 ? "border-primary/30 bg-primary/[0.07]" : "border-border/70 bg-background/35")}>
+                    <p className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">{index === 0 ? "Ahora" : `Hito ${index + 1}`}</p>
+                    <p className={cn("mt-1 truncate text-[11px] font-semibold tabular-nums sm:text-xs", index === 0 ? "text-primary" : "text-foreground")}><Sensitive>{formatMoney(milestone, "EUR")}</Sensitive></p>
                   </div>
                 ))}
               </div>
@@ -859,7 +858,7 @@ export default function DashboardContent() {
           </section>
 
           {/* Ticker: pulso del mes con mini-tendencia de 6 meses */}
-          <section className="stagger-fade grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-4" style={{ animationDelay: "40ms" }}>
+          <section className="stagger-fade grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 xl:gap-4" style={{ animationDelay: "40ms" }}>
             {/* <Sensitive> en todos los valores monetarios: el modo privacidad
                 difuminaba el hero pero estas fichas seguían enseñando importes. */}
             <TickerTile label="Ingresos" value={<Sensitive>+{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} detail={incomeVsPrevious.text} detailTone={incomeVsPrevious.tone} secondaryDetail={incomeVsAverage.text} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push(`/transactions?tipo=ingreso&mes=${selectedMonth}`)} />
@@ -983,7 +982,7 @@ export default function DashboardContent() {
           )}
 
           {/* Resumen, movimientos y metas comparten la última fila del panel. */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-4 lg:items-start" style={{ animationDelay: "240ms" }}>
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:items-start" style={{ animationDelay: "240ms" }}>
             <div className={`${CARD} space-y-4`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
@@ -1056,7 +1055,7 @@ export default function DashboardContent() {
                 </div>
               )}
             </div>
-            <div className="min-w-0 lg:col-span-2 [&_[data-slot=card]]:h-full">
+            <div className="min-w-0 md:col-span-2 xl:col-span-2 [&_[data-slot=card]]:h-full">
               <SinkingFundsGrid />
             </div>
           </section>

@@ -61,12 +61,24 @@ export function MountainChart<T extends object>({
       ? `${linePath} L${points.at(-1)!.x},${VB_H - PAD_BOTTOM} L${points[0].x},${VB_H - PAD_BOTTOM} Z`
       : ""
 
-  const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handlePointer = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!containerRef.current || points.length === 0) return
     const rect = containerRef.current.getBoundingClientRect()
     const ratio = (e.clientX - rect.left) / rect.width
     const idx = Math.round(ratio * (points.length - 1))
     setHoverIdx(Math.max(0, Math.min(points.length - 1, idx)))
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!points.length) return
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Home" && e.key !== "End") return
+    e.preventDefault()
+    setHoverIdx((current) => {
+      if (e.key === "Home") return 0
+      if (e.key === "End") return points.length - 1
+      const start = current ?? (e.key === "ArrowRight" ? -1 : points.length)
+      return Math.max(0, Math.min(points.length - 1, start + (e.key === "ArrowRight" ? 1 : -1)))
+    })
   }
 
   const hovered = hoverIdx !== null ? points[hoverIdx] : null
@@ -80,7 +92,19 @@ export function MountainChart<T extends object>({
     : "Gráfico de evolución sin datos."
 
   return (
-    <div ref={containerRef} className={`relative select-none ${className ?? ""}`} onMouseMove={handleMove} onMouseLeave={() => setHoverIdx(null)} role="img" aria-label={trendSummary}>
+    <div
+      ref={containerRef}
+      className={`relative select-none outline-none focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-primary ${className ?? ""}`}
+      onPointerMove={handlePointer}
+      onPointerDown={(e) => { if (e.pointerType === "touch") handlePointer(e) }}
+      onPointerLeave={(e) => { if (e.pointerType !== "touch") setHoverIdx(null) }}
+      onKeyDown={handleKeyDown}
+      role="group"
+      aria-roledescription="gráfico interactivo"
+      aria-label={`${trendSummary} Usa las flechas para recorrer los puntos.`}
+      tabIndex={points.length ? 0 : -1}
+      style={{ touchAction: "pan-y" }}
+    >
       <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="h-full w-full overflow-visible" aria-hidden="true">
         <defs>
 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -110,12 +134,16 @@ export function MountainChart<T extends object>({
       {hovered && (
         <div
           className="pointer-events-none absolute top-0 z-10 -translate-y-full rounded-xl border border-border bg-popover px-3 py-2 text-xs shadow-lg"
-          style={{ left: `${(hovered.x / VB_W) * 100}%`, transform: `translate(-50%, -8px)` }}
+          style={{ left: `${Math.max(6, Math.min(94, (hovered.x / VB_W) * 100))}%`, transform: `translate(-50%, -8px)` }}
         >
           <p className="font-semibold text-foreground tabular-nums">{valueFormatter(hovered.v)}</p>
           <p className="text-muted-foreground">{hovered.label}</p>
         </div>
       )}
+
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {hovered ? `${hovered.label}: ${valueFormatter(hovered.v)}` : ""}
+      </span>
 
       <div className={`mt-2 grid ${points.length > 2 ? "grid-cols-3" : "grid-cols-2"} items-center text-[10px] leading-4 text-muted-foreground sm:text-[11px]`}>
         <span className="min-w-0 truncate text-left">{points[0]?.label}</span>

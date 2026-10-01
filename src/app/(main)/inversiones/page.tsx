@@ -338,7 +338,7 @@ export default function InversionesPage() {
       ) : (
         <>
           {/* Ticker: pulso de la cartera */}
-          <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <TickerTile label="Valor cartera" value={<Sensitive>{formatMoney(value, baseCurrency)}</Sensitive>} />
             <TickerTile label="Rentabilidad" value={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`} valueColor={pnlPct >= 0 ? "var(--accent-green)" : "var(--accent-red)"} />
             <TickerTile label="Invertido" value={<Sensitive>{formatMoney(invested, baseCurrency)}</Sensitive>} />
@@ -379,12 +379,12 @@ export default function InversionesPage() {
           <WatchlistRow leading={<AccountCards accounts={investAccounts} valueByAccount={valueByAccount} investedByAccount={investedByAccount} />} />
 
           {/* Evolución (izq) + Posiciones / Detalle (der) */}
-          <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-            <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
+          <section className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-3">
+            <div className={`${CARD_HERO} min-w-0 xl:col-span-2`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="page-section-label">{detailPosition ? `Rendimiento · ${(quotes[detailPosition.symbol]?.name && quotes[detailPosition.symbol]!.name !== detailPosition.symbol) ? quotes[detailPosition.symbol]!.name : detailPosition.name}` : "Evolución cartera"}</p>
-                  <p className="hero-figure mt-2 text-3xl font-bold tabular-nums tracking-tight sm:text-4xl">
+                  <p className="hero-figure mt-2 text-[clamp(1.8rem,7vw,2.5rem)] font-bold tabular-nums tracking-tight">
                     <Sensitive>{formatMoney(detailPosition ? detailPosition.units * (detailPosition.kind === "custom" ? detailPosition.buyPrice : quotes[detailPosition.symbol]?.price ?? detailPosition.buyPrice) : value, baseCurrency)}</Sensitive>
                   </p>
                   {!detailPosition && (
