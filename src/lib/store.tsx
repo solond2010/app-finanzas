@@ -434,6 +434,26 @@ interface SyncStatusContextValue {
 }
 const SyncStatusContext = createContext<SyncStatusContextValue>({ status: "idle", retrySync: () => {} })
 
+const LOCAL_STATE_KEY = "app-finanzas-data"
+const LOCAL_OUTBOX_KEY = "app-finanzas-outbox-v1"
+
+function serializePendingDeletes(pending: PendingDeletes) {
+  return Object.fromEntries(Object.entries(pending).map(([key, ids]) => [key, [...ids]]))
+}
+
+function restorePendingDeletes(): PendingDeletes {
+  const pending = emptyPendingDeletes()
+  try {
+    const raw = localStorage.getItem(LOCAL_OUTBOX_KEY)
+    if (!raw) return pending
+    const parsed = JSON.parse(raw) as Partial<Record<keyof PendingDeletes, unknown>>
+    for (const key of Object.keys(pending) as (keyof PendingDeletes)[]) {
+      if (Array.isArray(parsed[key])) pending[key] = new Set(parsed[key].filter((id): id is string => typeof id === "string"))
+    }
+  } catch { /* se conserva la copia local aunque el outbox esté corrupto */ }
+  return pending
+}
+
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, defaultState)
   const [loading, setLoading] = useState(true)
@@ -464,11 +484,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     // terminan antes de quitar el loading: así ninguna cifra convertida entre
     // divisas llega a pintarse con los valores de respaldo desactualizados.
     Promise.all([loadFromSupabase(), refreshExchangeRates()]).then(([remote]) => {
-      if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
+      const local = loadLocalBackup()
+      const hasOutbox = typeof window !== "undefined" && localStorage.getItem(LOCAL_OUTBOX_KEY) !== null
+      if (hasOutbox && local) {
+        pendingDeletesRef.current = restorePendingDeletes()
+        dirtyRef.current = true
+        dispatch({ type: "SET_STATE", payload: { ...local, categories: mergeDefaultCategories(local.categories) } })
+      } else if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
         skipNextSyncRef.current = true
         dispatch({ type: "SET_STATE", payload: { ...remote, categories: mergeDefaultCategories(remote.categories) } })
       } else {
-        const local = loadLocalBackup()
         if (local && (local.accounts.length > 0 || local.transactions.length > 0 || local.sinkingFunds.length > 0)) {
           dispatch({ type: "SET_STATE", payload: { ...local, categories: mergeDefaultCategories(local.categories) } })
         }
@@ -569,7 +594,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         for (const id of deletesSnapshot.sinking_funds) pendingDeletesRef.current.sinking_funds.delete(id)
         for (const id of deletesSnapshot.budgets) pendingDeletesRef.current.budgets.delete(id)
         for (const id of deletesSnapshot.categories) pendingDeletesRef.current.categories.delete(id)
-        if (dirtyGenerationRef.current === generationAtStart) dirtyRef.current = false
+        if (dirtyGenerationRef.current === generationAtStart) {
+          dirtyRef.current = false
+          try { localStorage.removeItem(LOCAL_OUTBOX_KEY) } catch { /* sync succeeded; next state write retries */ }
+        }
         retryAttemptRef.current = 0
         setSyncStatus("saved")
       })
@@ -599,7 +627,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     if (!initialized) return
     // Copia de seguridad local en cada cambio (red de seguridad ante pérdidas en
     // Supabase). La app la usa como fallback si Supabase está vacío/caído.
-    try { localStorage.setItem("app-finanzas-data", JSON.stringify(state)) } catch {}
+    try {
+      localStorage.setItem(LOCAL_STATE_KEY, JSON.stringify(state))
+      if (dirtyRef.current) localStorage.setItem(LOCAL_OUTBOX_KEY, JSON.stringify(serializePendingDeletes(pendingDeletesRef.current)))
+    } catch (error) {
+      console.error("[Finance] No se pudo guardar la copia local:", error)
+    }
     if (skipNextSyncRef.current) {
       skipNextSyncRef.current = false
       return
@@ -766,7 +799,7 @@ async function syncToSupabase(state: FinanceState, pending: PendingDeletes) {
 function loadLocalBackup(): FinanceState | null {
   if (typeof window === "undefined") return null
   try {
-    const saved = localStorage.getItem("app-finanzas-data")
+    const saved = localStorage.getItem(LOCAL_STATE_KEY)
     if (!saved) return null
     const parsed = JSON.parse(saved) as FinanceState
     if (!parsed.accounts?.length && !parsed.transactions?.length && !parsed.sinkingFunds?.length) return null
