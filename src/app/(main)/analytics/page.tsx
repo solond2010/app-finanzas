@@ -23,6 +23,7 @@ import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 import { PatrimonioMensualSection } from "@/components/analytics/patrimonio-mensual"
+import { PatrimonioHitos } from "@/components/analytics/patrimonio-hitos"
 
 // Mismo umbral que MonthlyBudget (src/components/dashboard/monthly-budget.tsx).
 const BUDGET_WARNING_THRESHOLD = 80
@@ -500,6 +501,8 @@ export default function AnalyticsPage() {
               delay={140}
             />
           </section>
+
+          <PatrimonioHitos value={currentNetWorth} />
 
           <PatrimonioMensualSection dailyHistory={fullHistory} cashByMonth={cashByMonthKey} />
 
