@@ -472,6 +472,18 @@ svg.lucide {
   box-shadow:
     0 1px 2px -1px oklch(0 0 0 / 0.45),
     0 0 0 1px color-mix(in oklch, var(--gold), transparent 92%);
+  background-image: linear-gradient(145deg, color-mix(in oklch, var(--accent-blue), transparent 97%), transparent 52%);
+}
+
+/* Acabado compartido: un radio coherente y una luz muy leve que ayuda a
+   separar las superficies sin cambiar la paleta ni competir con los datos. */
+.rounded-\[14px\].border-border.bg-card,
+.rounded-\[16px\].border-border.bg-card {
+  border-radius: 16px;
+}
+
+:root:not(.dark) .border-border.bg-card {
+  background-image: linear-gradient(145deg, color-mix(in oklch, var(--primary), transparent 98%), transparent 58%);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -486,6 +498,7 @@ svg.lucide {
       0 8px 24px -14px oklch(0 0 0 / 0.55),
       0 0 0 1px color-mix(in oklch, var(--gold), transparent 85%);
     border-color: color-mix(in oklch, var(--gold), transparent 78%);
+    transform: translateY(-1px);
   }
 }
 

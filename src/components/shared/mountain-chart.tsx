@@ -117,10 +117,10 @@ export function MountainChart<T extends object>({
         </div>
       )}
 
-      <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
-        <span>{points[0]?.label}</span>
-        {points.length > 2 && <span>{points[Math.floor((points.length - 1) / 2)]?.label}</span>}
-        <span>{points.at(-1)?.label}</span>
+      <div className={`mt-2 grid ${points.length > 2 ? "grid-cols-3" : "grid-cols-2"} items-center text-[10px] leading-4 text-muted-foreground sm:text-[11px]`}>
+        <span className="min-w-0 truncate text-left">{points[0]?.label}</span>
+        {points.length > 2 && <span className="min-w-0 truncate px-1 text-center">{points[Math.floor((points.length - 1) / 2)]?.label}</span>}
+        <span className="min-w-0 truncate text-right">{points.at(-1)?.label}</span>
       </div>
     </div>
   )

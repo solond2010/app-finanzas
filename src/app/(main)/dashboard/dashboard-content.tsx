@@ -8,7 +8,6 @@ import { BudgetDialog } from "@/components/dashboard/budget-dialog"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
-import { AccountLogo } from "@/components/dashboard/account-logo"
 import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
@@ -25,6 +24,7 @@ import { formatMonth, isInitialBalanceTransaction, chartFormatter, formatCappedP
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
+import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
 
 const CARD = "rounded-[14px] border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
@@ -406,6 +406,27 @@ export default function DashboardContent() {
       .sort((a, b) => b.pct - a.pct)[0] ?? null
   }, [state.sinkingFunds, state.accounts])
 
+  const emergency = useMemo(
+    () => getEmergencyCushionStatus(displayAccounts, state.sinkingFunds),
+    [displayAccounts, state.sinkingFunds]
+  )
+
+  const wealthMilestones = useMemo(() => upcomingMilestones(netWorthDisplay, 3), [netWorthDisplay])
+  const currentMilestoneStep = milestoneStepFor(Math.max(netWorthDisplay, 0))
+  const previousMilestone = Math.max(wealthMilestones[0] - currentMilestoneStep, 0)
+  const milestoneProgress = currentMilestoneStep > 0
+    ? Math.max(0, Math.min(((netWorthDisplay - previousMilestone) / currentMilestoneStep) * 100, 100))
+    : 0
+  const goalGuidance = emergency && !emergency.isComplete
+    ? { title: "Completa tu colchón", detail: `${Math.round(emergency.progress * 100)} % de la meta de emergencia` }
+    : monthTotals.neto < 0
+      ? { title: "Recupera el balance del mes", detail: "El flujo seleccionado está en negativo" }
+      : nextGoal
+        ? { title: `Avanza en ${nextGoal.nombre}`, detail: `Meta de ahorro al ${Math.round(nextGoal.pct)} %` }
+        : savingsRate >= 20
+          ? { title: "Mantén este ritmo", detail: `Tasa de ahorro actual: ${savingsRate} %` }
+          : { title: "Construye el siguiente hito", detail: "Un paso cada vez, según tu patrimonio" }
+
   const recentTransactions = useMemo(
     () => analysisTransactions.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5),
     [analysisTransactions]
@@ -439,10 +460,6 @@ export default function DashboardContent() {
   // Colchón de emergencia: prioridad UX cuando va muy por debajo del objetivo.
   // No altera el número de la puntuación; solo contextualiza la etiqueta y
   // alimenta el banner / bloque "Este mes, haz esto".
-  const emergency = useMemo(
-    () => getEmergencyCushionStatus(displayAccounts, state.sinkingFunds),
-    [displayAccounts, state.sinkingFunds]
-  )
   const scoreDisplayLabel = emergency?.isLow
     ? (score >= 60
         ? `${scoreTier.label} en flujo · pendiente el colchón`
@@ -660,7 +677,7 @@ export default function DashboardContent() {
               ) : netWorthHasData ? (
                 <div className="mt-4">
                   <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-44 sm:h-52" />
-                  <p className="mt-2 text-xs text-muted-foreground text-center">
+                  <p className="mx-auto mt-4 max-w-[58ch] border-t border-border/60 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
                     Los valores históricos son estimaciones basadas en posiciones actuales y precios históricos; pueden no reflejar el patrimonio exacto en fechas pasadas.
                   </p>
                 </div>
@@ -734,29 +751,41 @@ export default function DashboardContent() {
             </div>
 
             <div className={`${CARD} min-w-0 p-4 sm:p-4`}>
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground">Mis cuentas</p>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setShowNewAccount(true)} className="text-xs font-medium text-primary transition-colors hover:opacity-70">+ Nueva</button>
-                  <button onClick={() => router.push("/cuentas")} className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">Ver todas</button>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Target className="h-4 w-4" /></span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Tu camino financiero</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">Guía local · privada</p>
+                  </div>
                 </div>
+                <span className="rounded-full border border-border/70 px-2 py-1 text-[10px] font-medium text-muted-foreground">3 hitos</span>
               </div>
-              <div className="divide-y divide-border/70">
-                {sortedAccounts.slice(0, 4).map((account) => {
-                  const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
-                  return (
-                    <button key={account.id} onClick={() => router.push(`/cuentas/${account.id}`)} className="flex w-full items-center gap-2.5 py-2.5 text-left first:pt-1 last:pb-1 hover:text-primary">
-                      <AccountLogo account={account} className="h-8 w-8 shrink-0 rounded-lg" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-xs font-semibold text-foreground">{account.nombre}</span>
-                        <span className="block truncate text-[10px] text-muted-foreground">{account.banco || cfg.label}</span>
-                      </span>
-                      <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground"><Sensitive>{formatMoney(accountDisplayValue(account, valueByAccount, investedByAccount), account.currency)}</Sensitive></span>
-                    </button>
-                  )
-                })}
-                {sortedAccounts.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">Aún no hay cuentas.</p>}
+
+              <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.06] p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Siguiente paso</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-foreground">{goalGuidance.title}</p>
+                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{goalGuidance.detail}</p>
+                  </div>
+                  <p className="shrink-0 text-right text-sm font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(wealthMilestones[0], "EUR")}</Sensitive></p>
+                </div>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted/80">
+                  <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${milestoneProgress}%` }} />
+                </div>
+                <p className="mt-1.5 text-right text-[10px] tabular-nums text-muted-foreground"><Sensitive>{formatMoney(Math.max(wealthMilestones[0] - netWorthDisplay, 0), "EUR")}</Sensitive> restantes</p>
               </div>
+
+              <div className="mt-3 grid grid-cols-3 gap-2" aria-label="Próximos hitos de patrimonio">
+                {wealthMilestones.map((milestone, index) => (
+                  <div key={milestone} className={cn("min-w-0 rounded-xl border px-2 py-2.5", index === 0 ? "border-primary/30 bg-primary/[0.07]" : "border-border/70 bg-background/35")}>
+                    <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{index === 0 ? "Ahora" : `Hito ${index + 1}`}</p>
+                    <p className={cn("mt-1 truncate text-xs font-semibold tabular-nums", index === 0 ? "text-primary" : "text-foreground")}><Sensitive>{formatMoney(milestone, "EUR")}</Sensitive></p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Guía basada en reglas y datos de tu app; no llama a una IA ni a un servicio externo.</p>
             </div>
             </div>
           </section>

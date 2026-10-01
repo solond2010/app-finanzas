@@ -6,38 +6,18 @@ import { Progress } from "@/components/ui/progress"
 import { Sensitive } from "@/components/shared/sensitive"
 import { formatMoney } from "@/lib/currency"
 import { cn } from "@/lib/utils"
+import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
 
 const EUR = (amount: number) => formatMoney(amount, "EUR")
 const milestoneLabel = (amount: number) => `${amount.toLocaleString("es-ES", { maximumFractionDigits: 0 })} €`
 
-function stepFor(value: number) {
-  if (value < 25_000) return 2_500
-  if (value < 100_000) return 5_000
-  if (value < 250_000) return 10_000
-  if (value < 500_000) return 25_000
-  if (value < 1_000_000) return 50_000
-  return 100_000
-}
-
-function upcomingMilestones(value: number, count: number) {
-  const result: number[] = []
-  let cursor = Math.max(value, 0)
-  for (let i = 0; i < count; i++) {
-    const step = stepFor(cursor)
-    const target = (Math.floor(cursor / step) + 1) * step
-    result.push(target)
-    cursor = target
-  }
-  return result
-}
-
 function milestoneTrail(value: number, count: number) {
   const safeValue = Math.max(Number.isFinite(value) ? value : 0, 0)
-  const step = stepFor(safeValue)
+  const step = milestoneStepFor(safeValue)
   let cursor = Math.max(step, Math.floor(safeValue / step) * step)
   return Array.from({ length: count }, () => {
     const milestone = cursor
-    cursor += stepFor(cursor)
+    cursor += milestoneStepFor(cursor)
     return milestone
   })
 }
@@ -89,7 +69,7 @@ function MilestoneTrail({ value }: { value: number }) {
                 </span>
                 {active && (
                   <div className="absolute inset-x-3 bottom-0 h-0.5 overflow-hidden rounded-full bg-muted">
-                    <span className="block h-full bg-[var(--gold)]" style={{ width: `${Math.max(0, Math.min(((safeValue - (milestone - stepFor(safeValue))) / stepFor(safeValue)) * 100, 100))}%` }} />
+                    <span className="block h-full bg-[var(--gold)]" style={{ width: `${Math.max(0, Math.min(((safeValue - (milestone - milestoneStepFor(safeValue))) / milestoneStepFor(safeValue)) * 100, 100))}%` }} />
                   </div>
                 )}
               </div>
@@ -105,7 +85,7 @@ function MilestoneTrail({ value }: { value: number }) {
 export function PatrimonioHitos({ value }: { value: number }) {
   const safeValue = Number.isFinite(value) ? value : 0
   const [target, next, afterNext] = upcomingMilestones(safeValue, 3)
-  const previous = Math.max(target - stepFor(Math.max(safeValue, 0)), 0)
+  const previous = Math.max(target - milestoneStepFor(Math.max(safeValue, 0)), 0)
   const range = target - previous
   const progress = range > 0 ? Math.min(Math.max(((safeValue - previous) / range) * 100, 0), 100) : 0
   const remaining = Math.max(target - safeValue, 0)
