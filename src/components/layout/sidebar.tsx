@@ -119,7 +119,7 @@ export function Sidebar() {
           <span className="gold-badge flex size-8 items-center justify-center rounded-lg" aria-hidden="true">
             <CircleDollarSign className="h-4 w-4" />
           </span>
-          <h1 className="text-base font-bold tracking-tight">Finanzas</h1>
+          <span className="text-base font-bold tracking-tight">Finanzas</span>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -133,6 +133,8 @@ export function Sidebar() {
             onClick={() => setMobileOpen(!mobileOpen)}
             className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-90 touch-manipulation"
             aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={mobileOpen}
+            aria-controls="main-navigation-sidebar"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -152,6 +154,8 @@ export function Sidebar() {
         )}
         style={{ transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}
         aria-label={sidebarOpen ? "Colapsar menú" : "Expandir menú"}
+        aria-expanded={sidebarOpen}
+        aria-controls="main-navigation-sidebar"
       >
         <span className="flex h-7 w-7 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground/60 shadow-md hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all">
           <ChevronLeft className={cn("h-3.5 w-3.5 transition-transform duration-300", !sidebarOpen && "rotate-180")} />
@@ -166,7 +170,7 @@ export function Sidebar() {
               <CircleDollarSign className="h-4 w-4" />
             </div>
           </div>
-          <nav className="flex flex-col gap-1 flex-1">
+          <nav className="flex flex-col gap-1 flex-1" aria-label="Navegación principal">
             {navItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
@@ -174,6 +178,8 @@ export function Sidebar() {
                 <Tooltip key={item.href} label={item.label}>
                   <Link
                     href={item.href}
+                    aria-label={item.label}
+                    aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "flex items-center justify-center rounded-xl p-2.5 transition-all duration-200",
                       isActive
@@ -229,6 +235,7 @@ export function Sidebar() {
 
       {/* Desktop full sidebar (when open) + mobile sidebar */}
       <aside
+        id="main-navigation-sidebar"
         className={cn(
           "fixed left-0 top-0 z-40 flex h-full w-52 flex-col border-r bg-sidebar py-6 shadow-xl shadow-sidebar-border/50 transition-all duration-300 ease-in-out",
           "max-lg:top-[var(--mobile-header-h)] max-lg:h-[calc(100vh-var(--mobile-header-h))] max-lg:shadow-2xl",
@@ -247,7 +254,7 @@ export function Sidebar() {
         </div>
 
         {/* Rutas principales: solo en desktop. En móvil la bottom nav ya las cubre. */}
-        <nav className="hidden flex-col gap-0.5 flex-1 px-3 lg:flex">
+        <nav className="hidden flex-col gap-0.5 flex-1 px-3 lg:flex" aria-label="Navegación principal">
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
@@ -256,6 +263,7 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   isActive
