@@ -115,7 +115,13 @@ export function Sidebar() {
         className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b bg-background/80 backdrop-blur-md px-3 py-2.5 lg:hidden"
         style={{ paddingTop: "calc(0.625rem + env(safe-area-inset-top))" }}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="gold-badge flex size-8 items-center justify-center rounded-lg" aria-hidden="true">
+            <CircleDollarSign className="h-4 w-4" />
+          </span>
+          <h1 className="text-base font-bold tracking-tight">Finanzas</h1>
+        </div>
+        <div className="flex items-center gap-1">
           <button
             onClick={togglePrivacy}
             className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-90 touch-manipulation"
@@ -123,15 +129,14 @@ export function Sidebar() {
           >
             {privacy ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
           </button>
-          <h1 className="text-base font-bold tracking-tight">Finanzas</h1>
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-90 touch-manipulation"
+            aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-90 touch-manipulation"
-          aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
       </div>
 
       {mobileOpen && (
@@ -255,7 +260,7 @@ export function Sidebar() {
                   "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   isActive
                     ? "bg-primary/10 text-primary shadow-sm"
-                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:scale-[1.02] active:scale-[0.98]"
+                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground active:scale-[0.98]"
                 )}
               >
                 <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary" : "text-sidebar-foreground/40")} />
@@ -273,7 +278,7 @@ export function Sidebar() {
             href="/configuracion"
             onClick={() => setMobileOpen(false)}
             className={cn(
-              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] lg:hidden",
+              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150 active:scale-[0.98] lg:hidden",
               pathname === "/configuracion" || pathname.startsWith("/configuracion/")
                 ? "bg-primary/10 text-primary shadow-sm"
                 : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
@@ -284,7 +289,7 @@ export function Sidebar() {
           </Link>
           <button
             onClick={togglePrivacy}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors duration-150 active:scale-[0.98]"
             aria-label={privacy ? "Desactivar modo privacidad" : "Activar modo privacidad"}
           >
             <div className="flex size-4 items-center justify-center">
@@ -294,7 +299,7 @@ export function Sidebar() {
           </button>
           <button
             onClick={toggleTheme}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors duration-150 active:scale-[0.98]"
             aria-label="Cambiar tema"
           >
             <div className="flex size-4 items-center justify-center">

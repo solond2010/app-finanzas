@@ -352,23 +352,23 @@ svg.lucide {
 /* ── Utility classes ── */
 
 .stagger-fade {
-  animation: fade-slide-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fade-slide-up 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .stagger-fade-fast {
-  animation: fade-slide-up-fast 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fade-slide-up-fast 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-fade-in {
-  animation: fade-in 0.4s ease-out both;
+  animation: fade-in 0.26s ease-out both;
 }
 
 .animate-scale-in {
-  animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: scale-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-slide-up-reveal {
-  animation: slide-up-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: slide-up-reveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-float {
@@ -407,7 +407,7 @@ svg.lucide {
 }
 
 .content-fade {
-  animation: fade-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fade-slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-shimmer-wide {
@@ -429,6 +429,9 @@ svg.lucide {
 
 .card-glow {
   border: 1px solid var(--border);
+  box-shadow: 0 1px 2px -1px color-mix(in oklch, var(--foreground), transparent 96%),
+    0 8px 22px -18px color-mix(in oklch, var(--foreground), transparent 84%);
+  transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
 }
 
 .card-glow-lg {
@@ -438,6 +441,13 @@ svg.lucide {
 .card-elevated {
   border: 1px solid var(--border);
   box-shadow: 0 6px 18px -12px color-mix(in oklch, var(--foreground), transparent 90%);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card-glow:hover {
+    border-color: color-mix(in oklch, var(--foreground), var(--border) 72%);
+    box-shadow: 0 4px 14px -10px color-mix(in oklch, var(--foreground), transparent 68%);
+  }
 }
 
 .glass-card {
@@ -458,23 +468,25 @@ svg.lucide {
     border-color 0.25s ease;
 }
 
-.border-border.bg-card:hover {
-  box-shadow:
-    0 2px 4px -1px oklch(0.30 0.04 255 / 0.05),
-    0 10px 26px -14px oklch(0.30 0.04 255 / 0.10);
-}
-
 .dark .border-border.bg-card {
   box-shadow:
     0 1px 2px -1px oklch(0 0 0 / 0.45),
     0 0 0 1px color-mix(in oklch, var(--gold), transparent 92%);
 }
 
-.dark .border-border.bg-card:hover {
-  box-shadow:
-    0 8px 24px -14px oklch(0 0 0 / 0.55),
-    0 0 0 1px color-mix(in oklch, var(--gold), transparent 85%);
-  border-color: color-mix(in oklch, var(--gold), transparent 78%);
+@media (hover: hover) and (pointer: fine) {
+  .border-border.bg-card:hover {
+    box-shadow:
+      0 2px 4px -1px oklch(0.30 0.04 255 / 0.05),
+      0 10px 26px -14px oklch(0.30 0.04 255 / 0.10);
+  }
+
+  .dark .border-border.bg-card:hover {
+    box-shadow:
+      0 8px 24px -14px oklch(0 0 0 / 0.55),
+      0 0 0 1px color-mix(in oklch, var(--gold), transparent 85%);
+    border-color: color-mix(in oklch, var(--gold), transparent 78%);
+  }
 }
 
 .glass-card-hover {
@@ -483,6 +495,12 @@ svg.lucide {
 
 .glass-card-hover:hover {
   border-color: color-mix(in oklch, var(--foreground), transparent 78%);
+}
+
+@media (hover: none) {
+  .glass-card-hover:hover {
+    border-color: var(--border);
+  }
 }
 
 /* Tarjeta destacada para las cifras "de riqueza" (patrimonio, puntuación,
@@ -613,6 +631,17 @@ svg.lucide {
 
 html {
   scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Contorno de foco de teclado por defecto para toda la app. Los componentes
