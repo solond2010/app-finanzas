@@ -23,7 +23,7 @@ import {
   ChevronLeft,
   Eye,
   EyeOff,
-  Sparkles,
+  CircleDollarSign,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useSidebar } from "@/lib/sidebar"
@@ -158,7 +158,7 @@ export function Sidebar() {
         <aside className="fixed left-0 top-0 z-40 hidden h-full w-16 flex-col items-center border-r bg-sidebar py-5 shadow-xl shadow-sidebar-border/50 lg:flex">
           <div className="mb-6">
             <div className="gold-badge flex size-9 items-center justify-center rounded-xl">
-              <Sparkles className="h-4 w-4" />
+              <CircleDollarSign className="h-4 w-4" />
             </div>
           </div>
           <nav className="flex flex-col gap-1 flex-1">
@@ -233,7 +233,7 @@ export function Sidebar() {
       >
         <div className="flex items-center gap-3 mb-8 px-4">
           <div className="gold-badge flex size-9 items-center justify-center rounded-xl">
-            <Sparkles className="h-4 w-4" />
+            <CircleDollarSign className="h-4 w-4" />
           </div>
           <div>
             <h1 className="text-base font-bold tracking-tight text-sidebar-foreground">Finanzas</h1>
