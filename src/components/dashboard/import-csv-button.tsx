@@ -15,6 +15,7 @@ interface ImportSummary {
   unmatched: number
   invalidAmount: number
   invalidDate: number
+  invalidType: number
 }
 
 export function ImportCsvButton() {
@@ -25,11 +26,13 @@ export function ImportCsvButton() {
 
   const handleFile = async (file: File) => {
     try {
+      if (file.size > 10 * 1024 * 1024) { toast("El CSV supera el límite de 10 MB", "error"); return }
       const text = await readFileSmart(file)
       const firstLine = text.split(/\r?\n/, 1)[0] ?? ""
       const delimiter = detectDelimiter(firstLine)
       const rows = parseCsv(text, delimiter)
       if (rows.length < 2) { toast("El CSV está vacío", "error"); return }
+      if (rows.length > 20_001) { toast("El CSV supera el límite de 20.000 movimientos por importación", "error"); return }
 
       const header = rows[0].map((h) => h.trim().toLowerCase())
       const col = (name: string) => header.indexOf(name)
@@ -42,7 +45,7 @@ export function ImportCsvButton() {
       const existing = new Set(state.transactions.map(sig))
 
       const toImport: Transaction[] = []
-      let duplicates = 0, unmatched = 0, invalidAmount = 0, invalidDate = 0
+      let duplicates = 0, unmatched = 0, invalidAmount = 0, invalidDate = 0, invalidType = 0
 
       for (const r of rows.slice(1)) {
         const categoria = (r[iCat] ?? "").trim()
@@ -51,7 +54,9 @@ export function ImportCsvButton() {
         if (!cuenta_id) { unmatched++; continue }
         const fecha = normalizeDate(r[iFecha] ?? "")
         if (!fecha) { invalidDate++; continue }
-        const tipo = (r[iTipo] ?? "").trim() === "ingreso" ? "ingreso" : "gasto"
+        const rawType = (r[iTipo] ?? "").trim().toLocaleLowerCase("es-ES")
+        if (rawType !== "ingreso" && rawType !== "gasto") { invalidType++; continue }
+        const tipo = rawType
         const monto = Math.abs(Number((r[iMonto] ?? "").replace(",", ".")))
         if (!Number.isFinite(monto) || monto <= 0) { invalidAmount++; continue }
         const tx: Transaction = {
@@ -70,7 +75,7 @@ export function ImportCsvButton() {
         toImport.push(tx)
       }
 
-      setSummary({ toImport, added: toImport.length, duplicates, unmatched, invalidAmount, invalidDate })
+      setSummary({ toImport, added: toImport.length, duplicates, unmatched, invalidAmount, invalidDate, invalidType })
     } catch {
       toast("No se pudo leer el archivo", "error")
     }
@@ -78,7 +83,7 @@ export function ImportCsvButton() {
 
   const confirmImport = () => {
     if (!summary) return
-    for (const tx of summary.toImport) dispatch({ type: "ADD_TRANSACTION", payload: tx })
+    if (summary.toImport.length > 0) dispatch({ type: "ADD_TRANSACTIONS", payload: summary.toImport })
     toast(`${summary.added} movimiento${summary.added === 1 ? "" : "s"} importado${summary.added === 1 ? "" : "s"}`, summary.added > 0 ? "success" : "info")
     setSummary(null)
   }
@@ -110,6 +115,7 @@ export function ImportCsvButton() {
               {summary.unmatched > 0 && <p>· {summary.unmatched} sin cuenta coincidente</p>}
               {summary.invalidDate > 0 && <p>· {summary.invalidDate} con fecha no reconocida</p>}
               {summary.invalidAmount > 0 && <p>· {summary.invalidAmount} con importe no válido</p>}
+              {summary.invalidType > 0 && <p>· {summary.invalidType} con tipo no reconocido (solo ingreso o gasto)</p>}
             </div>
           )
         }

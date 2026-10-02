@@ -135,10 +135,11 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId }
     }
 
     if (editing) {
-      update({ ...payload, id: editing.id })
+      if (!update({ ...payload, id: editing.id })) { toast("No se pudo guardar de forma segura: falta espacio para la cola local", "error"); return }
       toast("Posición actualizada", "success")
     } else {
-      const { merged } = add(payload)
+      const { merged, saved } = add(payload)
+      if (!saved) { toast("No se pudo guardar de forma segura: falta espacio para la cola local", "error"); return }
       toast(merged ? "Sumado a tu posición existente" : "Posición añadida", "success")
     }
     onOpenChange(false)

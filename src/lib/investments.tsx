@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { addMonths, addWeeks, format, parseISO } from "date-fns"
 import { dbSelect, dbUpsert, dbDeleteEq } from "./db-client"
 import { USER_ID, useFinance, type Account } from "./store"
@@ -196,15 +196,15 @@ export function mergedPosition(existing: Position, incoming: Omit<Position, "id"
 
 interface InvestmentsContextValue {
   positions: Position[]
-  add: (p: Omit<Position, "id">) => { id: string; merged: boolean }
-  update: (p: Position) => void
-  remove: (id: string) => void
+  add: (p: Omit<Position, "id">) => { id: string; merged: boolean; saved: boolean }
+  update: (p: Position) => boolean
+  remove: (id: string) => boolean
   watchlist: WatchItem[]
   addWatch: (w: WatchItem) => void
   removeWatch: (symbol: string) => void
   applyDca: (positionId: string, price: number) => number
   contributions: Contribution[]
-  addContribution: (positionId: string, amount: number, date: string) => void
+  addContribution: (positionId: string, amount: number, date: string) => boolean
   syncStatus: InvestmentSyncStatus
   retrySync: () => void
 }
@@ -262,7 +262,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const retryCountRef = useRef(0)
 
-  const saveOutbox = () => {
+  const saveOutbox = useCallback(() => {
     try {
       localStorage.setItem(OUTBOX_KEY, JSON.stringify(pendingRef.current))
       return true
@@ -270,9 +270,10 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
       setSyncStatus("error")
       return false
     }
-  }
+  }, [])
 
-  const flushOutbox = async () => {
+  const flushOutboxRef = useRef<() => Promise<void>>(async () => {})
+  const flushOutbox = useCallback(async () => {
     if (flushingRef.current) return
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       if (pendingRef.current.length) setSyncStatus("offline")
@@ -299,26 +300,32 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
       if (retryRef.current) clearTimeout(retryRef.current)
       const delay = Math.min(3000 * 2 ** retryCountRef.current, 30_000)
       retryCountRef.current++
-      retryRef.current = setTimeout(() => { void flushOutbox() }, delay)
+      retryRef.current = setTimeout(() => { void flushOutboxRef.current() }, delay)
     } finally {
       flushingRef.current = false
     }
-  }
+  }, [saveOutbox])
+  useEffect(() => { flushOutboxRef.current = flushOutbox }, [flushOutbox])
 
-  const enqueue = (write: Omit<PendingInvestmentWrite, "id">) => {
+  const enqueue = useCallback((write: Omit<PendingInvestmentWrite, "id">) => {
     const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-    pendingRef.current = pendingRef.current.filter((item) => !(item.table === write.table && item.keyField === write.keyField && item.key === write.key))
+    const previous = pendingRef.current
+    pendingRef.current = previous.filter((item) => !(item.table === write.table && item.keyField === write.keyField && item.key === write.key))
     pendingRef.current.push({ ...write, id })
-    saveOutbox()
+    if (!saveOutbox()) {
+      pendingRef.current = previous
+      return false
+    }
     void flushOutbox()
-  }
+    return true
+  }, [flushOutbox, saveOutbox])
 
-  const retrySync = () => {
+  const retrySync = useCallback(() => {
     if (retryRef.current) clearTimeout(retryRef.current)
     retryRef.current = null
     retryCountRef.current = 0
     void flushOutbox()
-  }
+  }, [flushOutbox])
 
   useEffect(() => {
     pendingRef.current = readInvestmentOutbox()
@@ -332,7 +339,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("offline", onOffline)
       if (retryRef.current) clearTimeout(retryRef.current)
     }
-  }, [])
+  }, [flushOutbox, retrySync])
 
   useEffect(() => {
     queueMicrotask(async () => {
@@ -418,7 +425,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
         // Sin tabla / sin red → seguimos solo con localStorage.
       }
     })
-  }, [])
+  }, [enqueue])
 
   const persistLocal = (next: Position[]) => {
     setPositions(next)
@@ -432,28 +439,30 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     const existing = positions.find((x) => x.symbol === p.symbol && x.accountId === p.accountId)
     if (existing) {
       const merged = mergedPosition(existing, p)
-      update(merged)
+      if (!update(merged)) return { id: existing.id, merged: true, saved: false }
       const addedCost = p.units * p.buyPrice
       if (addedCost > 0) addContribution(existing.id, addedCost, p.date)
-      return { id: existing.id, merged: true }
+      return { id: existing.id, merged: true, saved: true }
     }
     // eslint-disable-next-line react-hooks/purity -- event-handler code, not render; needs a fresh id per call
     const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const pos: Position = { ...p, id }
+    if (!enqueue({ table: "investments", keyField: "id", key: id, operation: "upsert", row: toRow(pos) })) return { id, merged: false, saved: false }
     persistLocal([...positions, pos])
-    enqueue({ table: "investments", keyField: "id", key: id, operation: "upsert", row: toRow(pos) })
     if (pos.units * pos.buyPrice > 0) addContribution(id, pos.units * pos.buyPrice, pos.date)
-    return { id, merged: false }
+    return { id, merged: false, saved: true }
   }
 
   const update = (pos: Position) => {
+    if (!enqueue({ table: "investments", keyField: "id", key: pos.id, operation: "upsert", row: toRow(pos) })) return false
     persistLocal(positions.map((x) => (x.id === pos.id ? pos : x)))
-    enqueue({ table: "investments", keyField: "id", key: pos.id, operation: "upsert", row: toRow(pos) })
+    return true
   }
 
   const remove = (id: string) => {
+    if (!enqueue({ table: "investments", keyField: "id", key: id, operation: "delete" })) return false
     persistLocal(positions.filter((x) => x.id !== id))
-    enqueue({ table: "investments", keyField: "id", key: id, operation: "delete" })
+    return true
   }
 
   const persistWatch = (next: WatchItem[]) => {
@@ -462,12 +471,12 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
   }
   const addWatch = (w: WatchItem) => {
     if (watchlist.some((x) => x.symbol === w.symbol)) return
+    if (!enqueue({ table: "watchlist", keyField: "symbol", key: w.symbol, operation: "upsert", row: { symbol: w.symbol, name: w.name, user_id: USER_ID } })) return
     persistWatch([...watchlist, w])
-    enqueue({ table: "watchlist", keyField: "symbol", key: w.symbol, operation: "upsert", row: { symbol: w.symbol, name: w.name, user_id: USER_ID } })
   }
   const removeWatch = (symbol: string) => {
+    if (!enqueue({ table: "watchlist", keyField: "symbol", key: symbol, operation: "delete" })) return
     persistWatch(watchlist.filter((x) => x.symbol !== symbol))
-    enqueue({ table: "watchlist", keyField: "symbol", key: symbol, operation: "delete" })
   }
 
   const persistContrib = (next: Contribution[]) => {
@@ -477,8 +486,9 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
   const addContribution = (positionId: string, amount: number, date: string) => {
     const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const c: Contribution = { id, positionId, amount, date }
+    if (!enqueue({ table: "investment_contributions", keyField: "id", key: c.id, operation: "upsert", row: contributionToRow(c) })) return false
     persistContrib([...contributions, c])
-    enqueue({ table: "investment_contributions", keyField: "id", key: c.id, operation: "upsert", row: contributionToRow(c) })
+    return true
   }
 
   // Aplica los aportes vencidos al precio actual: suma participaciones, recalcula
@@ -495,7 +505,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     const newUnits = pos.units + unitsAdded
     const newBuyPrice = newUnits > 0 ? (pos.units * pos.buyPrice + totalAmount) / newUnits : pos.buyPrice
     const lastDate = format(due[due.length - 1], "yyyy-MM-dd")
-    update({ ...pos, units: newUnits, buyPrice: newBuyPrice, dcaLast: lastDate })
+    if (!update({ ...pos, units: newUnits, buyPrice: newBuyPrice, dcaLast: lastDate })) return 0
     for (const d of due) addContribution(positionId, plan.amount, format(d, "yyyy-MM-dd"))
     return due.length
   }

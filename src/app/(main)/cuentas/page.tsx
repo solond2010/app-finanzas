@@ -7,7 +7,7 @@ import { accountGoal, fundCurrentAmount, getCurrencyByAccount, getFinancialTips 
 import { TipsCard } from "@/components/shared/tips-card"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Wallet as WalletIcon, Plus, Target, TrendingUp, Search } from "lucide-react"
-import { formatMoney, currencySymbol, convertToEur } from "@/lib/currency"
+import { formatMoney, convertToEur } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
 import { AccountLogo } from "@/components/dashboard/account-logo"

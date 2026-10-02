@@ -735,9 +735,6 @@ export function buildPreciseNetWorthHistory(
     if (transfers.length > 0) transfersByAccount.set(accountId, transfers)
   }
   
-  // 5. Para cada posición, ordenar por fecha de compra
-  const positionsSorted = [...positions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-  
   // 6. Función helper: precio de un símbolo en una fecha
   const getPriceAt = (symbol: string, atDate: Date, fallbackBuyPrice: number): number => {
     const hist = priceHistory[symbol]

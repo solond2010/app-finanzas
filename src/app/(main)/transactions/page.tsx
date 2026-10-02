@@ -67,7 +67,7 @@ export default function IngresosGastosPage() {
       if (local > 0) setTarget(local)
       const remote = Number(await getSetting("income-target"))
       if (remote > 0) { setTarget(remote); try { localStorage.setItem("income-target", String(remote)) } catch {} }
-      else if (local > 0) { setSetting("income-target", String(local)) } // migra local → nube
+      else if (remote === null && local > 0) { setSetting("income-target", String(local)) } // solo migrar si se confirmó que aún no existe en la nube
     })
   }, [])
 

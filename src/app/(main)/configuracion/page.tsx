@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,12 +8,13 @@ import { useFinance, useSyncStatus, type CategoryKind } from "@/lib/store"
 import { useInvestmentSyncStatus } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
-import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X, Cloud, CloudOff, Loader2 } from "lucide-react"
+import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X, Cloud, CloudOff, Loader2, HardDrive, ShieldCheck, ShieldAlert } from "lucide-react"
 import { Skeleton } from "@/components/shared/skeleton"
+import { auditFinanceState } from "@/lib/finance-integrity"
 
 export default function ConfiguracionPage() {
   const { state, loading, dispatch } = useFinance()
-  const { status: syncStatus, lastSyncedAt, retrySync } = useSyncStatus()
+  const { status: syncStatus, lastSyncedAt, retrySync, localBackupStatus, retryLocalBackup } = useSyncStatus()
   const { status: investmentSyncStatus, retrySync: retryInvestmentSync } = useInvestmentSyncStatus()
   const backupBlocked = ["syncing", "error", "offline"].includes(syncStatus) || ["syncing", "error", "offline"].includes(investmentSyncStatus)
   const syncFailed = syncStatus === "error" || syncStatus === "offline" || investmentSyncStatus === "error" || investmentSyncStatus === "offline"
@@ -31,6 +32,7 @@ export default function ConfiguracionPage() {
   const [categorySearch, setCategorySearch] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState("")
+  const integrityFindings = useMemo(() => auditFinanceState(state), [state])
 
   const addCategory = () => {
     const name = newCat.trim()
@@ -235,6 +237,24 @@ export default function ConfiguracionPage() {
                 <span className="block truncate text-xs text-muted-foreground">Último guardado confirmado: {lastSyncLabel}</span>
               </span>
               {syncFailed && <Button variant="outline" size="sm" className="shrink-0" onClick={() => { retrySync(); retryInvestmentSync() }}>Reintentar</Button>}
+            </div>
+            <div className={cn("flex items-center gap-3 rounded-2xl border p-4", localBackupStatus === "error" ? "border-red-500/25 bg-red-500/5" : "border-border/70 bg-background/35")} role="status" aria-live="polite">
+              <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", localBackupStatus === "error" ? "bg-red-500/10 text-red-500" : "bg-blue-500/10 text-blue-500")}><HardDrive className="h-4 w-4" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">{localBackupStatus === "error" ? "Copia local no actualizada" : localBackupStatus === "saved" ? "Copia local actualizada" : "Copia local de este navegador"}</span>
+                <span className="block text-xs text-muted-foreground">{localBackupStatus === "error" ? "El almacenamiento del navegador puede estar lleno; comprueba que la nube figure como guardada." : "Último estado de recuperación disponible en este navegador y dispositivo."}</span>
+              </span>
+              {localBackupStatus === "error" && <Button variant="outline" size="sm" className="shrink-0" onClick={retryLocalBackup}>Reintentar</Button>}
+            </div>
+            <div className={cn("rounded-2xl border p-4", integrityFindings.length ? "border-amber-500/25 bg-amber-500/5" : "border-emerald-500/20 bg-emerald-500/5")}>
+              <div className="flex items-start gap-3">
+                {integrityFindings.length ? <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> : <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{integrityFindings.length ? "Revisión de datos: requiere atención" : "Revisión de datos: sin incidencias detectadas"}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">Se comprueban identificadores, referencias entre registros, importes, fechas y consistencia entre saldos e historial. La revisión no modifica tus datos.</p>
+                  {integrityFindings.length > 0 && <ul className="mt-2 space-y-1 text-xs text-amber-700 dark:text-amber-300">{integrityFindings.map((finding) => <li key={finding.code}>{finding.count} · {finding.label}</li>)}</ul>}
+                </div>
+              </div>
             </div>
             <p className="px-1 text-xs text-muted-foreground">En este Mac se guarda al iniciar sesión si falta la copia del mes y los días 1 y 2 a las 09:15, en Documentos → Finanzas Backups.</p>
           </CardContent>

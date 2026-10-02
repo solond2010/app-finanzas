@@ -89,20 +89,21 @@ type SyncStatus = "idle" | "syncing" | "saved" | "error" | "offline"
 
 type Action =
   | { type: "SET_STATE"; payload: FinanceState }
-  | { type: "ADD_ACCOUNT"; payload: Account }
-  | { type: "UPDATE_ACCOUNT"; payload: Account }
+  | { type: "ADD_ACCOUNT"; payload: Account; initialBalanceDate?: string; initialBalanceCreatedAt?: string }
+  | { type: "UPDATE_ACCOUNT"; payload: Account; adjustment?: Transaction }
   | { type: "DELETE_ACCOUNT"; payload: string }
   | { type: "ADD_TRANSACTION"; payload: Transaction }
+  | { type: "ADD_TRANSACTIONS"; payload: Transaction[] }
   | { type: "UPDATE_TRANSACTION"; payload: Transaction }
   | { type: "DELETE_TRANSACTION"; payload: string }
   | { type: "ADD_SINKING_FUND"; payload: SinkingFund }
   | { type: "UPDATE_SINKING_FUND"; payload: SinkingFund }
   | { type: "DELETE_SINKING_FUND"; payload: string }
   | { type: "RESET" }
-  | { type: "ADD_CATEGORY"; payload: Omit<Category, 'id'> }
+  | { type: "ADD_CATEGORY"; payload: Omit<Category, 'id'> & { id?: string } }
   | { type: "UPDATE_CATEGORY"; payload: Category }
   | { type: "DELETE_CATEGORY"; payload: string }
-  | { type: "ADD_BUDGET"; payload: Omit<Budget, 'id'> }
+  | { type: "ADD_BUDGET"; payload: Omit<Budget, 'id'> & { id?: string } }
   | { type: "UPDATE_BUDGET"; payload: Budget }
   | { type: "DELETE_BUDGET"; payload: string }
 
@@ -245,13 +246,13 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
           id: `init_${newAccount.id}`,
           cuenta_id: newAccount.id,
           monto: newAccount.saldo,
-          fecha: new Date().toISOString().split("T")[0],
+          fecha: action.initialBalanceDate ?? new Date().toISOString().split("T")[0],
           tipo: "ingreso",
           categoria: "Saldo inicial",
           es_necesidad: false,
           descripcion: `Saldo inicial de ${newAccount.nombre}`,
           tags: [],
-          created_at: new Date().toISOString(),
+          created_at: action.initialBalanceCreatedAt ?? new Date().toISOString(),
         })
       }
       return { ...state, accounts: [...state.accounts, newAccount], transactions: newTransactions }
@@ -271,16 +272,16 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
               {
                 // Prefijo "adj_" para que isInitialBalanceTransaction() la excluya
                 // de los totales de ingresos/gastos (no es actividad real del mes).
-                id: `adj_${generateId()}`,
+                id: action.adjustment?.id ?? `adj_${generateId()}`,
                 cuenta_id: action.payload.id,
                 monto: delta,
-                fecha: new Date().toISOString().split("T")[0],
+                fecha: action.adjustment?.fecha ?? new Date().toISOString().split("T")[0],
                 tipo: "ingreso" as const,
                 categoria: "Ajuste de saldo",
                 es_necesidad: false,
                 descripcion: `Ajuste de saldo de ${action.payload.nombre}`,
                 tags: [],
-                created_at: new Date().toISOString(),
+                created_at: action.adjustment?.created_at ?? new Date().toISOString(),
               },
             ]
           : state.transactions
@@ -327,6 +328,8 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
         ),
       }
     }
+    case "ADD_TRANSACTIONS":
+      return action.payload.reduce((next, transaction) => reducer(next, { type: "ADD_TRANSACTION", payload: transaction }), state)
     case "UPDATE_TRANSACTION":
       return updateTransactionWithBalance(state, action.payload)
     case "DELETE_TRANSACTION":
@@ -343,7 +346,7 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
       // ADD_CATEGORY llega a dispararse alguna vez desde otro punto de la app.
       return state.categories.some((c) => c.name.trim().toLowerCase() === action.payload.name.trim().toLowerCase())
         ? state
-        : { ...state, categories: [...state.categories, { id: generateId(), ...action.payload }] }
+        : { ...state, categories: [...state.categories, { id: action.payload.id ?? generateId(), ...action.payload }] }
     case "UPDATE_CATEGORY": {
       const previous = state.categories.find((c) => c.id === action.payload.id)
       if (!previous) return state
@@ -363,7 +366,7 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
         budgets: state.budgets.filter((b) => b.category_id !== action.payload),
       }
     case "ADD_BUDGET":
-      return { ...state, budgets: [...state.budgets, { id: generateId(), ...action.payload }] }
+      return { ...state, budgets: [...state.budgets, { id: action.payload.id ?? generateId(), ...action.payload }] }
     case "UPDATE_BUDGET":
       return { ...state, budgets: state.budgets.map((b) => (b.id === action.payload.id ? action.payload : b)) }
     case "DELETE_BUDGET":
@@ -432,23 +435,64 @@ interface SyncStatusContextValue {
   status: SyncStatus
   retrySync: () => void
   lastSyncedAt: number | null
+  localBackupStatus: "idle" | "saved" | "error"
+  retryLocalBackup: () => void
 }
-const SyncStatusContext = createContext<SyncStatusContextValue>({ status: "idle", retrySync: () => {}, lastSyncedAt: null })
+const SyncStatusContext = createContext<SyncStatusContextValue>({ status: "idle", retrySync: () => {}, lastSyncedAt: null, localBackupStatus: "idle", retryLocalBackup: () => {} })
 
 const LOCAL_STATE_KEY = "app-finanzas-data"
 const LOCAL_OUTBOX_KEY = "app-finanzas-outbox-v1"
+const LOCAL_JOURNAL_KEY = "app-finanzas-journal-v1"
 const LOCAL_SYNCED_AT_KEY = "app-finanzas-last-synced-at"
+
+type LocalJournal = { version: 1; writtenAt: number; state: FinanceState; pendingSync: boolean; pendingDeletes: Record<keyof PendingDeletes, string[]> }
+
+function writeLocalJournal(state: FinanceState, pending: PendingDeletes, pendingSync = false) {
+  const journal: LocalJournal = {
+    version: 1,
+    writtenAt: Date.now(),
+    state,
+    pendingSync,
+    pendingDeletes: serializePendingDeletes(pending) as LocalJournal["pendingDeletes"],
+  }
+  // Una sola escritura hace atómicos snapshot + borrados pendientes: evita que
+  // un cierre entre ambas escrituras resucite una cuenta recién eliminada.
+  localStorage.setItem(LOCAL_JOURNAL_KEY, JSON.stringify(journal))
+  // El diario sustituye las dos claves antiguas (estado y outbox separados).
+  // Borrarlas evita duplicar todo el historial y agotar la cuota del navegador.
+  try { localStorage.removeItem(LOCAL_STATE_KEY) } catch {}
+  try { localStorage.removeItem(LOCAL_OUTBOX_KEY) } catch {}
+}
 
 function serializePendingDeletes(pending: PendingDeletes) {
   return Object.fromEntries(Object.entries(pending).map(([key, ids]) => [key, [...ids]]))
 }
 
+function readLocalJournal(): LocalJournal | null {
+  try {
+    const raw = localStorage.getItem(LOCAL_JOURNAL_KEY)
+    if (!raw) return null
+    const value = JSON.parse(raw) as Partial<LocalJournal>
+    if (value.version !== 1 || !isFinanceState(value.state) || typeof value.pendingSync !== "boolean" || !value.pendingDeletes || typeof value.pendingDeletes !== "object") return null
+    return value as LocalJournal
+  } catch { return null }
+}
+
+function hasPendingLocalChanges() {
+  try {
+    const journal = readLocalJournal()
+    if (journal?.pendingSync || (journal && Object.values(journal.pendingDeletes).some((ids) => Array.isArray(ids) && ids.length > 0))) return true
+    return localStorage.getItem(LOCAL_OUTBOX_KEY) !== null
+  } catch { return false }
+}
+
 function restorePendingDeletes(): PendingDeletes {
   const pending = emptyPendingDeletes()
   try {
+    const journal = readLocalJournal()
     const raw = localStorage.getItem(LOCAL_OUTBOX_KEY)
-    if (!raw) return pending
-    const parsed = JSON.parse(raw) as Partial<Record<keyof PendingDeletes, unknown>>
+    const parsed = journal?.pendingDeletes ?? (raw ? JSON.parse(raw) as Partial<Record<keyof PendingDeletes, unknown>> : null)
+    if (!parsed) return pending
     for (const key of Object.keys(pending) as (keyof PendingDeletes)[]) {
       if (Array.isArray(parsed[key])) pending[key] = new Set(parsed[key].filter((id): id is string => typeof id === "string"))
     }
@@ -460,6 +504,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, defaultState)
   const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle")
+  const [localBackupStatus, setLocalBackupStatus] = useState<"idle" | "saved" | "error">("idle")
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null)
   const [initialized, setInitialized] = useState(false)
   const loadedRef = useRef(false)
@@ -488,7 +533,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     // divisas llega a pintarse con los valores de respaldo desactualizados.
     Promise.all([loadFromSupabase(), refreshExchangeRates()]).then(([remote]) => {
       const local = loadLocalBackup()
-      const hasOutbox = typeof window !== "undefined" && localStorage.getItem(LOCAL_OUTBOX_KEY) !== null
+      const hasOutbox = typeof window !== "undefined" && hasPendingLocalChanges()
       if (hasOutbox && local) {
         pendingDeletesRef.current = restorePendingDeletes()
         dirtyRef.current = true
@@ -603,7 +648,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         for (const id of deletesSnapshot.categories) pendingDeletesRef.current.categories.delete(id)
         if (dirtyGenerationRef.current === generationAtStart) {
           dirtyRef.current = false
-          try { localStorage.removeItem(LOCAL_OUTBOX_KEY) } catch { /* sync succeeded; next state write retries */ }
+          try {
+            localStorage.removeItem(LOCAL_OUTBOX_KEY)
+            writeLocalJournal(stateRef.current, emptyPendingDeletes(), false)
+          } catch { /* Supabase ya confirmó el guardado */ }
         }
         retryAttemptRef.current = 0
         const savedAt = Date.now()
@@ -633,15 +681,26 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     attemptSync()
   }, [attemptSync])
 
+  const retryLocalBackup = useCallback(() => {
+    try {
+      writeLocalJournal(stateRef.current, dirtyRef.current ? pendingDeletesRef.current : emptyPendingDeletes(), dirtyRef.current)
+      queueMicrotask(() => setLocalBackupStatus("saved"))
+    } catch (error) {
+      console.error("[Finance] No se pudo guardar la copia local:", error)
+      queueMicrotask(() => setLocalBackupStatus("error"))
+    }
+  }, [])
+
   useEffect(() => {
     if (!initialized) return
     // Copia de seguridad local en cada cambio (red de seguridad ante pérdidas en
     // Supabase). La app la usa como fallback si Supabase está vacío/caído.
     try {
-      localStorage.setItem(LOCAL_STATE_KEY, JSON.stringify(state))
-      if (dirtyRef.current) localStorage.setItem(LOCAL_OUTBOX_KEY, JSON.stringify(serializePendingDeletes(pendingDeletesRef.current)))
+      writeLocalJournal(state, dirtyRef.current ? pendingDeletesRef.current : emptyPendingDeletes(), dirtyRef.current)
+      queueMicrotask(() => setLocalBackupStatus("saved"))
     } catch (error) {
       console.error("[Finance] No se pudo guardar la copia local:", error)
+      queueMicrotask(() => setLocalBackupStatus("error"))
     }
     if (skipNextSyncRef.current) {
       skipNextSyncRef.current = false
@@ -671,12 +730,33 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // Envuelve dispatch para marcar dirty + acumular borrados explícitos antes
   // de reducir. SET_STATE (carga remota) no marca dirty.
   const trackedDispatch = useCallback((action: Action) => {
+    let prepared: Action = action
+    const today = new Date().toISOString().split("T")[0]
+    if (action.type === "ADD_ACCOUNT" && action.payload.saldo !== 0) prepared = { ...action, initialBalanceDate: today, initialBalanceCreatedAt: new Date().toISOString() }
+    if (action.type === "UPDATE_ACCOUNT") {
+      const oldAccount = stateRef.current.accounts.find((account) => account.id === action.payload.id)
+      const delta = oldAccount ? action.payload.saldo - oldAccount.saldo : 0
+      if (delta !== 0) prepared = { ...action, adjustment: { id: `adj_${generateId()}`, cuenta_id: action.payload.id, monto: delta, fecha: today, tipo: "ingreso", categoria: "Ajuste de saldo", es_necesidad: false, descripcion: `Ajuste de saldo de ${action.payload.nombre}`, tags: [], created_at: new Date().toISOString() } }
+    }
+    if (action.type === "ADD_TRANSACTION" && !action.payload.created_at) prepared = { ...action, payload: { ...action.payload, created_at: new Date().toISOString() } }
+    if (action.type === "ADD_TRANSACTIONS") prepared = { ...action, payload: action.payload.map((tx) => ({ ...tx, created_at: tx.created_at ?? new Date().toISOString() })) }
+    if (action.type === "ADD_CATEGORY" && !action.payload.id) prepared = { ...action, payload: { ...action.payload, id: generateId() } }
+    if (action.type === "ADD_BUDGET" && !action.payload.id) prepared = { ...action, payload: { ...action.payload, id: generateId() } }
     if (action.type !== "SET_STATE") {
       dirtyRef.current = true
       dirtyGenerationRef.current += 1
-      collectDeletesFromAction(stateRef.current, action, pendingDeletesRef.current)
+      collectDeletesFromAction(stateRef.current, prepared, pendingDeletesRef.current)
+      const next = reducer(stateRef.current, prepared)
+      stateRef.current = next
+      try {
+        writeLocalJournal(next, pendingDeletesRef.current, true)
+        setLocalBackupStatus("saved")
+      } catch (error) {
+        console.error("[Finance] No se pudo guardar la copia local inmediata:", error)
+        setLocalBackupStatus("error")
+      }
     }
-    dispatch(action)
+    dispatch(prepared)
   }, [])
 
   // Memoizado: si no, este objeto se recrea en cada render de FinanceProvider
@@ -685,7 +765,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // cambio en cualquier parte del árbol forzaba un re-render de absolutamente
   // todo lo que usa useFinance() en la app.
   const contextValue = useMemo(() => ({ state, dispatch: trackedDispatch, loading }), [state, trackedDispatch, loading])
-  const syncStatusValue = useMemo(() => ({ status: syncStatus, retrySync, lastSyncedAt }), [syncStatus, retrySync, lastSyncedAt])
+  const syncStatusValue = useMemo(() => ({ status: syncStatus, retrySync, lastSyncedAt, localBackupStatus, retryLocalBackup }), [syncStatus, retrySync, lastSyncedAt, localBackupStatus, retryLocalBackup])
 
   return (
     <FinanceContext.Provider value={contextValue}>
@@ -704,13 +784,14 @@ async function loadFromSupabase(): Promise<FinanceState | null> {
       dbSelect<Budget>("budgets"),
     ])
     if (!accData || !txData || !sfData || !catData || !budData) return null
-    return {
+    const state: FinanceState = {
       accounts: accData.map(formatAccount),
       transactions: txData.map(formatTransaction),
       sinkingFunds: sfData.map(formatSinkingFund),
       categories: catData,
       budgets: budData,
     }
+    return isFinanceState(state) ? state : null
   } catch {
     return null
   }
@@ -809,15 +890,30 @@ async function syncToSupabase(state: FinanceState, pending: PendingDeletes) {
 function loadLocalBackup(): FinanceState | null {
   if (typeof window === "undefined") return null
   try {
+    const journal = readLocalJournal()
+    if (journal) return journal.state
     const saved = localStorage.getItem(LOCAL_STATE_KEY)
     if (!saved) return null
     const parsed = JSON.parse(saved) as FinanceState
+    if (!isFinanceState(parsed)) return null
     if (!parsed.accounts?.length && !parsed.transactions?.length && !parsed.sinkingFunds?.length) return null
     console.warn("[Finance] Recuperando datos de localStorage (Supabase no tenía datos)")
     return { ...parsed, categories: parsed.categories ?? DEFAULT_CATEGORIES }
   } catch {
     return null
   }
+}
+
+function isFinanceState(value: unknown): value is FinanceState {
+  if (!value || typeof value !== "object") return false
+  const candidate = value as Partial<FinanceState>
+  return Array.isArray(candidate.accounts) && Array.isArray(candidate.transactions) &&
+    Array.isArray(candidate.sinkingFunds) && Array.isArray(candidate.categories) && Array.isArray(candidate.budgets) &&
+    candidate.accounts.every((a) => !!a && typeof a.id === "string" && typeof a.nombre === "string" && typeof a.saldo === "number" && Number.isFinite(a.saldo)) &&
+    candidate.transactions.every((t) => !!t && typeof t.id === "string" && typeof t.cuenta_id === "string" && typeof t.monto === "number" && Number.isFinite(t.monto) && typeof t.fecha === "string" && typeof t.categoria === "string" && (t.tipo === "ingreso" || t.tipo === "gasto") && Array.isArray(t.tags)) &&
+    candidate.sinkingFunds.every((f) => !!f && typeof f.id === "string" && typeof f.cuenta_id === "string" && Number.isFinite(f.cantidad_objetivo) && Number.isFinite(f.ahorrado_actual)) &&
+    candidate.categories.every((c) => !!c && typeof c.id === "string" && typeof c.name === "string" && typeof c.color === "string") &&
+    candidate.budgets.every((b) => !!b && typeof b.id === "string" && typeof b.category_id === "string" && Number.isFinite(b.amount) && typeof b.month === "string")
 }
 
 

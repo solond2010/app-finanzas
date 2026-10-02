@@ -61,26 +61,28 @@ export async function dbDeleteIn(table: string, ids: string[]): Promise<void> {
   }
 }
 
-export async function settingsGet(key: string): Promise<string | null> {
+export async function settingsGet(key: string): Promise<string | null | undefined> {
   try {
     const res = await fetch(`/api/settings/${encodeURIComponent(key)}`)
-    if (!res.ok) return null
+    if (!res.ok) return undefined
     const body = await parseJson(res)
-    return body?.value ?? null
+    if (body?.value === null || body?.value === undefined) return null
+    return typeof body.value === "string" ? body.value : undefined
   } catch {
-    return null
+    return undefined
   }
 }
 
-export async function settingsSet(key: string, value: string): Promise<void> {
+export async function settingsSet(key: string, value: string): Promise<boolean> {
   try {
-    await fetch(`/api/settings/${encodeURIComponent(key)}`, {
+    const res = await fetch(`/api/settings/${encodeURIComponent(key)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ value }),
     })
+    return res.ok
   } catch {
-    // sin red → no pasa nada, se reintentará en el próximo cambio de estado
+    return false
   }
 }
 

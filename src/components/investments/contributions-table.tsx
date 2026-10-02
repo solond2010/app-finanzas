@@ -11,6 +11,7 @@ import { useInvestments, type Position } from "@/lib/investments"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { cn } from "@/lib/utils"
 import { Sensitive } from "@/components/shared/sensitive"
+import { useToast } from "@/components/ui/toast"
 
 interface Quote { price: number; currency: string; changePct?: number | null }
 
@@ -115,6 +116,7 @@ function ContributionsGrid({ months, positions, cur }: { months: [string, Map<st
 }
 
 export function ContributionsTable({ quotes }: { quotes: Record<string, Quote> }) {
+  const { toast } = useToast()
   const { positions, contributions, addContribution } = useInvestments()
   const [expanded, setExpanded] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -138,7 +140,7 @@ export function ContributionsTable({ quotes }: { quotes: Record<string, Quote> }
   const handleAdd = () => {
     const amount = parseFloat(addAmount.replace(",", "."))
     if (!addPositionId || !amount || amount <= 0) return
-    addContribution(addPositionId, amount, addDate)
+    if (!addContribution(addPositionId, amount, addDate)) { toast("No se pudo guardar de forma segura: falta espacio para la cola local", "error"); return }
     setAddAmount("")
     setAddOpen(false)
   }

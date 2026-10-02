@@ -18,7 +18,7 @@ export type StoredNetWorthPeak = {
   label: string
 }
 
-function parseSnapshots(raw: string | null): StoredNetWorthSnapshot[] {
+function parseSnapshots(raw: string | null | undefined): StoredNetWorthSnapshot[] {
   if (!raw) return []
   try {
     const parsed = JSON.parse(raw) as unknown
@@ -41,7 +41,7 @@ function parseSnapshots(raw: string | null): StoredNetWorthSnapshot[] {
   }
 }
 
-function parsePeak(raw: string | null): StoredNetWorthPeak | null {
+function parsePeak(raw: string | null | undefined): StoredNetWorthPeak | null {
   if (!raw) return null
   try {
     const parsed = JSON.parse(raw) as Partial<StoredNetWorthPeak>
@@ -57,11 +57,15 @@ function parsePeak(raw: string | null): StoredNetWorthPeak | null {
 }
 
 export async function loadNetWorthSnapshots(): Promise<StoredNetWorthSnapshot[]> {
-  return parseSnapshots(await getSetting(SNAPSHOTS_KEY))
+  const raw = await getSetting(SNAPSHOTS_KEY)
+  if (raw === undefined) throw new Error("No se pudieron consultar los históricos guardados")
+  return parseSnapshots(raw)
 }
 
 export async function loadNetWorthPeak(): Promise<StoredNetWorthPeak | null> {
-  return parsePeak(await getSetting(PEAK_KEY))
+  const raw = await getSetting(PEAK_KEY)
+  if (raw === undefined) throw new Error("No se pudo consultar el máximo guardado")
+  return parsePeak(raw)
 }
 
 /**

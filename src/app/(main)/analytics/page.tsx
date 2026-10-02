@@ -154,7 +154,7 @@ export default function AnalyticsPage() {
   const shownBudgetIds = useRef(new Set<string>())
   const { toast } = useToast()
 
-  const today = new Date()
+  const today = useMemo(() => new Date(), [])
   const selectedDate = new Date(today.getFullYear(), today.getMonth() - monthOffset, 1)
   const selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
@@ -254,7 +254,11 @@ export default function AnalyticsPage() {
   const [priceHistory, setPriceHistory] = useState<Record<string, { t: number; c: number }[]>>({})
   useEffect(() => {
     const syms = historySymbolsKey ? historySymbolsKey.split(",") : []
-    if (syms.length === 0) { setPriceHistory({}); return }
+    if (syms.length === 0) {
+      let cancelled = false
+      queueMicrotask(() => { if (!cancelled) setPriceHistory({}) })
+      return () => { cancelled = true }
+    }
     let cancelled = false
     // Fetch 5 años (máximo de la API)
     fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}&interval=1mo&range=5y`)
@@ -388,7 +392,7 @@ export default function AnalyticsPage() {
       const peakData = { value: fullHistoryPeak.patrimonio, date: fullHistoryPeak.date, label: fullHistoryPeak.mes }
       if (!savedPeak || peakData.value > savedPeak.value) {
         try { localStorage.setItem('netWorthPeak', JSON.stringify(peakData)) } catch {}
-        setSavedPeak(peakData)
+        queueMicrotask(() => setSavedPeak((prev) => !prev || peakData.value > prev.value ? peakData : prev))
         import("@/lib/net-worth-snapshots").then(({ persistNetWorthPeakIfHigher }) => {
           persistNetWorthPeakIfHigher(peakData).catch(() => {})
         })

@@ -95,6 +95,13 @@ describe("reducer / ADD_TRANSACTION actualiza el saldo de la cuenta", () => {
     const next = reducer(state, { type: "ADD_TRANSACTION", payload: tx({ monto: 50, tipo: "ingreso" }) })
     expect(next.accounts[0].saldo).toBe(250)
   })
+
+  it("aplica una importación por lotes al historial y al saldo en una sola acción", () => {
+    const state: FinanceState = { ...emptyState, accounts: [{ ...baseAccount, saldo: 200 }] }
+    const next = reducer(state, { type: "ADD_TRANSACTIONS", payload: [tx({ id: "batch1", monto: 30, tipo: "gasto" }), tx({ id: "batch2", monto: 10, tipo: "ingreso" })] })
+    expect(next.transactions.map((item) => item.id)).toEqual(["batch1", "batch2"])
+    expect(next.accounts[0].saldo).toBe(180)
+  })
 })
 
 describe("reducer / UPDATE_TRANSACTION reajusta el saldo", () => {
