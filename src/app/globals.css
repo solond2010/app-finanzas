@@ -407,6 +407,8 @@ svg.lucide {
 }
 
 .content-fade {
+  min-width: 0;
+  width: 100%;
   animation: fade-slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -546,7 +548,7 @@ svg.lucide {
 @media (min-width: 1024px) {
   main > .content-fade,
   main > .w-full.max-w-full {
-    max-width: 1680px;
+    max-width: 1840px;
     margin-inline: auto;
   }
 }
@@ -624,6 +626,24 @@ svg.lucide {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted-foreground);
+}
+
+/* Focuses visibles coherentes en toda la aplicación, también al navegar con teclado. */
+:where(a, button, input, select, textarea, [role="button"]):focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--ring), transparent 12%);
+  outline-offset: 2px;
+}
+
+/* En escritorio ancho la página gana espacio útil sin estirar indefinidamente
+   líneas de texto; las cuadrículas de cada sección controlan sus columnas. */
+@media (min-width: 1600px) {
+  .content-fade {
+    --section-gap: 1.5rem;
+  }
+}
+
+@media (max-width: 380px) {
+  [data-slot="card"] { border-radius: 14px; }
 }
 
 /* ── Interactive elements ── */

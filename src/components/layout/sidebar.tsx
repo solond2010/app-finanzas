@@ -24,9 +24,11 @@ import {
   Eye,
   EyeOff,
   CircleDollarSign,
+  Plus,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useSidebar } from "@/lib/sidebar"
+import { openMovementDialog } from "@/components/layout/quick-actions"
 
 const navItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
@@ -173,6 +175,16 @@ export function Sidebar() {
               <CircleDollarSign className="h-4 w-4" />
             </div>
           </div>
+          <Tooltip label="Nuevo movimiento">
+            <button
+              type="button"
+              onClick={() => openMovementDialog()}
+              aria-label="Nuevo movimiento"
+              className="mb-4 flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-all hover:brightness-110 active:scale-95"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </Tooltip>
           <nav className="flex flex-col gap-1 flex-1" aria-label="Navegación principal">
             {navItems.map((item) => {
               const Icon = item.icon
@@ -255,6 +267,15 @@ export function Sidebar() {
             <p className="text-[10px] font-medium text-muted-foreground tracking-wider uppercase">Panel de Control</p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => openMovementDialog()}
+          className="mx-3 mb-4 hidden items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:brightness-110 active:scale-[0.98] lg:flex"
+        >
+          <Plus className="h-4 w-4" />
+          Nuevo movimiento
+        </button>
 
         {/* Rutas principales: solo en desktop. En móvil la bottom nav ya las cubre. */}
         <nav className="hidden flex-col gap-0.5 flex-1 px-3 lg:flex" aria-label="Navegación principal">

@@ -123,9 +123,9 @@ function TransactionForm({
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Cuenta</label>
+          <label htmlFor="transaction-account" className="text-xs text-muted-foreground">Cuenta</label>
           <Select value={cuentaId} onValueChange={(v) => v && setCuentaId(v)} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger id="transaction-account"><SelectValue /></SelectTrigger>
             <SelectContent>
               {accounts.map((a) => (
                 <SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>
@@ -159,17 +159,17 @@ function TransactionForm({
           </div>
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Monto ({currencySymbol((accounts.find((a) => a.id === cuentaId)?.currency ?? "EUR") as CurrencyCode)})</label>
-          <Input type="number" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" required />
+          <label htmlFor="transaction-amount" className="text-xs text-muted-foreground">Monto ({currencySymbol((accounts.find((a) => a.id === cuentaId)?.currency ?? "EUR") as CurrencyCode)})</label>
+          <Input id="transaction-amount" inputMode="decimal" type="number" min="0.01" step="0.01" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" required />
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Fecha</label>
-          <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
+          <label htmlFor="transaction-date" className="text-xs text-muted-foreground">Fecha</label>
+          <Input id="transaction-date" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Categoría</label>
+          <label htmlFor="transaction-category" className="text-xs text-muted-foreground">Categoría</label>
           <Select value={categoria} onValueChange={(v) => v && setCategoria(v)}>
-            <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+            <SelectTrigger id="transaction-category"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
             <SelectContent>
               {visibleCategories.map((c) => (
                 <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
@@ -178,8 +178,8 @@ function TransactionForm({
           </Select>
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Descripción</label>
-          <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Opcional" />
+          <label htmlFor="transaction-description" className="text-xs text-muted-foreground">Descripción</label>
+          <Input id="transaction-description" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Opcional" />
         </div>
       </div>
 
@@ -269,7 +269,7 @@ function TransactionForm({
       </div>
 
       {error && (
-        <p className="flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-500">
+        <p role="alert" aria-live="assertive" className="flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-500">
           <AlertCircle className="h-4 w-4 shrink-0" /> {error}
         </p>
       )}
@@ -355,6 +355,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
     return tipo === "ingreso" || tipo === "gasto" || tipo === "traspaso" ? tipo : "all"
   })
   const [search, setSearch] = useState("")
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest")
   const [page, setPage] = useState(0)
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null)
   const [editingCell, setEditingCell] = useState<{ id: string; field: EditField } | null>(null)
@@ -473,12 +474,12 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
         })
         .filter((t) => !search || t.descripcion.toLowerCase().includes(search.toLowerCase()) || t.categoria.toLowerCase().includes(search.toLowerCase()) || t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())))
         .sort((a, b) =>
-          safeTime(b.fecha) - safeTime(a.fecha)
+          (sortOrder === "newest" ? safeTime(b.fecha) - safeTime(a.fecha) : safeTime(a.fecha) - safeTime(b.fecha))
           || safeTime(b.created_at ?? "") - safeTime(a.created_at ?? "")
           || (orderIndex.get(b.id) ?? 0) - (orderIndex.get(a.id) ?? 0)
         )
     },
-    [state.transactions, filterAccount, filterCategory, filterTipo, search, selectedMonth, showAdjustments]
+    [state.transactions, filterAccount, filterCategory, filterTipo, search, selectedMonth, showAdjustments, sortOrder]
   )
 
   const grouped = useMemo(() => {
@@ -568,7 +569,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                 <X className="h-3.5 w-3.5" /> Limpiar filtros
               </Button>
             )}
-          <div className="relative">
+            <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             <Input
               type="text"
@@ -578,6 +579,16 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
               className="h-9 w-40 rounded-xl pl-7"
             />
           </div>
+          <label className="sr-only" htmlFor="transaction-sort">Ordenar movimientos</label>
+          <select
+            id="transaction-sort"
+            value={sortOrder}
+            onChange={(e) => { setSortOrder(e.target.value as "newest" | "oldest"); setPage(0) }}
+            className="h-9 min-w-36 rounded-xl border border-border bg-card px-3 text-xs font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <option value="newest">Más recientes</option>
+            <option value="oldest">Más antiguos</option>
+          </select>
           <Button size="sm" className="gap-1" onClick={() => setShowNew(true)}>
             <Plus className="h-3.5 w-3.5" /> Nueva
           </Button>
@@ -616,6 +627,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
         </div>
       )}
       <CardContent className="p-0">
+        <div className="hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -823,6 +835,75 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             )}
           </TableBody>
         </Table>
+        </div>
+        <div className="space-y-3 px-3 pb-3 md:hidden">
+          {loading ? (
+            <div className="space-y-3 py-3" aria-label="Cargando movimientos">
+              <Skeleton className="h-24 rounded-2xl" /><Skeleton className="h-24 rounded-2xl" /><Skeleton className="h-24 rounded-2xl" />
+            </div>
+          ) : sorted.length === 0 ? (
+            <div className="py-8">
+              {hasActiveFilters ? (
+                <EmptyState icon={Filter} title="Ningún movimiento coincide" description="Cambia o limpia los filtros para ver otros movimientos." action={{ label: "Limpiar filtros", icon: X, onClick: clearFilters }} />
+              ) : (
+                <EmptyState icon={Search} title="Sin movimientos este mes" description="Registra tu primer movimiento para verlo aquí." action={{ label: "Nueva transacción", icon: Plus, onClick: () => setShowNew(true) }} />
+              )}
+            </div>
+          ) : currentGrouped.map((group) => (
+            <section key={group.date} aria-label={group.label}>
+              <h3 className="px-1 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{group.label}</h3>
+              <div className="space-y-2">
+                {group.transactions.map((t) => {
+                  const account = state.accounts.find((a) => a.id === t.cuenta_id)
+                  const category = state.categories.find((c) => c.name === t.categoria)
+                  const transfer = isTransfer(t)
+                  const systemAdjustment = isInitialBalanceTransaction(t.id)
+                  const positive = t.tipo === "ingreso" && !transfer
+                  return (
+                    <article key={t.id} className={cn("rounded-2xl border border-border bg-card p-3.5 shadow-sm", transfer && "border-violet-500/20 bg-violet-500/[0.025]", selectedIds.has(t.id) && "ring-1 ring-primary/30")}>
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          className="mt-1 rounded border-muted-foreground"
+                          aria-label={`Seleccionar ${t.descripcion || t.categoria}`}
+                          checked={selectedIds.has(t.id)}
+                          disabled={systemAdjustment}
+                          onChange={() => toggleSelected(t.id)}
+                        />
+                        <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: category?.color ?? "var(--muted-foreground)" }} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="min-w-0 break-words text-sm font-semibold leading-snug text-foreground">{t.descripcion || t.categoria}</p>
+                            <span className={cn("shrink-0 text-sm font-bold tabular-nums", positive ? "text-emerald-500" : transfer ? "text-violet-500" : "text-foreground")}>
+                              <Sensitive>{positive ? "+" : transfer ? "" : "−"}{formatMoney(t.monto, account?.currency ?? "EUR")}</Sensitive>
+                            </span>
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                            <span>{t.categoria}</span><span aria-hidden="true">·</span><span className="max-w-full truncate">{account?.nombre ?? "Cuenta eliminada"}</span>
+                            <span aria-hidden="true">·</span><span className="tabular-nums">{dateLabel(t.fecha)}</span>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between gap-3">
+                            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", transfer ? "bg-violet-500/10 text-violet-500" : positive ? "bg-emerald-500/10 text-emerald-500" : systemAdjustment ? "bg-muted text-muted-foreground" : "bg-red-500/10 text-red-500")}>
+                              {systemAdjustment ? "Ajuste" : transfer ? "Traspaso" : positive ? "Ingreso" : "Gasto"}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <button type="button" disabled={systemAdjustment} onClick={() => setEditingTxn(t)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40" aria-label={`Editar ${t.descripcion || t.categoria}`}>
+                                <Pencil className="h-3.5 w-3.5" />Editar
+                              </button>
+                              <button type="button" disabled={systemAdjustment} onClick={() => setDeleteConfirm(t)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40" aria-label={`Eliminar ${t.descripcion || t.categoria}`}>
+                                <Trash2 className="h-3.5 w-3.5" />Eliminar
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t px-4 py-3">
             <p className="text-xs text-muted-foreground">

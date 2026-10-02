@@ -699,9 +699,9 @@ export default function DashboardContent() {
       ) : (
         <div className="space-y-5 sm:space-y-5 lg:space-y-5">
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:gap-5" style={{ animationDelay: "0ms" }}>
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:gap-5 2xl:grid-cols-12" style={{ animationDelay: "0ms" }}>
             {/* Patrimonio + rango */}
-            <div className={`${CARD_HERO} min-w-0 md:col-span-2 xl:col-span-2`}>
+            <div className={`${CARD_HERO} min-w-0 md:col-span-2 xl:col-span-2 2xl:col-span-6`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -745,7 +745,7 @@ export default function DashboardContent() {
                 <EmptyPlaceholder text="Sin movimientos registrados hoy todavía" className="mt-4 h-52 sm:h-64" />
               ) : netWorthHasData ? (
                 <div className="mt-4">
-                  <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-44 sm:h-52" />
+                  <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-44 sm:h-52 2xl:h-60" />
                   <p className="mx-auto mt-4 max-w-[58ch] border-t border-border/60 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
                     Los valores históricos son estimaciones basadas en posiciones actuales y precios históricos; pueden no reflejar el patrimonio exacto en fechas pasadas.
                   </p>
@@ -756,7 +756,7 @@ export default function DashboardContent() {
             </div>
 
             {/* Puntuación financiera */}
-            <div className={`${CARD_HERO} flex min-w-0 flex-col`}>
+            <div className={`${CARD_HERO} flex min-w-0 flex-col 2xl:col-span-3`}>
               <div className="flex items-center gap-2">
                 <Gauge className="h-4 w-4 text-primary" />
                 <p className="text-sm font-semibold text-foreground">Puntuación financiera</p>
@@ -780,7 +780,7 @@ export default function DashboardContent() {
                 ))}
               </div>
             </div>
-            <div className="flex min-w-0 flex-col gap-4">
+            <div className="flex min-w-0 flex-col gap-4 2xl:col-span-3">
             <div className={`${CARD} flex min-w-0 flex-col p-4 sm:p-4`}>
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Layers3 className="h-4 w-4 text-primary" /> Composición del patrimonio</p>
               {composicion.length === 0 ? (
