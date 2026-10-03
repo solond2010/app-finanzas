@@ -4,8 +4,8 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, ArrowDownRight, ArrowRightLeft, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
-import { BudgetDialog } from "@/components/dashboard/budget-dialog"
 import { openMovementDialog } from "@/components/layout/quick-actions"
+import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { MountainChart } from "@/components/shared/mountain-chart"
@@ -107,7 +107,6 @@ export default function DashboardContent() {
   const [showNewAccount, setShowNewAccount] = useState(false)
   const [showAnnual, setShowAnnual] = useState(false)
   const [showSpendBreakdown, setShowSpendBreakdown] = useState(false)
-  const [showBudgetDialog, setShowBudgetDialog] = useState(false)
 
   const selectedDate = useMemo(() => new Date(today.getFullYear(), today.getMonth() - monthOffset, 1), [today, monthOffset])
   const selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`
@@ -460,6 +459,11 @@ export default function DashboardContent() {
     () => getEmergencyCushionStatus(displayAccounts, state.sinkingFunds),
     [displayAccounts, state.sinkingFunds]
   )
+  const emergencyBalanceEur = emergency
+    ? convertToEur(emergency.current, displayAccounts.find((item) => item.id === emergency.accountId)?.currency ?? "EUR")
+    : displayAccounts
+      .filter((account) => account.tipo === "emergencia")
+      .reduce((total, account) => total + convertToEur(account.saldo, account.currency), 0)
 
   const wealthMilestones = useMemo(() => upcomingMilestones(netWorthDisplay, 3), [netWorthDisplay])
   const currentMilestoneStep = milestoneStepFor(Math.max(netWorthDisplay, 0))
@@ -567,15 +571,6 @@ export default function DashboardContent() {
       })
       .filter((b) => b.limite > 0)
   }, [state.budgets, state.categories, analysisTransactions, selectedMonth, currencyByAccount])
-
-  // Respuesta directa a "¿cuánto puedo gastar aún este mes?": suma de los
-  // presupuestos del mes menos lo ya gastado en esas categorías. Negativo si
-  // el presupuesto está excedido (se pinta en rojo).
-  const budgetTotals = useMemo(() => {
-    const limite = budgetRows.reduce((s, b) => s + b.limite, 0)
-    const gastado = budgetRows.reduce((s, b) => s + b.gastado, 0)
-    return { limite, gastado, disponible: limite - gastado }
-  }, [budgetRows])
 
   const [exportingPdf, setExportingPdf] = useState(false)
   const handleExportDashboard = async () => {
@@ -863,16 +858,8 @@ export default function DashboardContent() {
                 difuminaba el hero pero estas fichas seguían enseñando importes. */}
             <TickerTile label="Ingresos" value={<Sensitive>+{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} detail={incomeVsPrevious.text} detailTone={incomeVsPrevious.tone} secondaryDetail={incomeVsAverage.text} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push(`/transactions?tipo=ingreso&mes=${selectedMonth}`)} />
             <TickerTile label="Gastos" value={<Sensitive>-{formatMoney(monthTotals.gastos, "EUR")}</Sensitive>} detail={expensesVsPrevious.text} detailTone={expensesVsPrevious.tone} secondaryDetail={expensesVsAverage.text} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" onClick={() => router.push(`/transactions?tipo=gasto&mes=${selectedMonth}`)} />
-            <TickerTile
-              label="Presupuesto restante"
-              value={budgetTotals.limite > 0 ? <Sensitive>{formatMoney(budgetTotals.disponible, "EUR")}</Sensitive> : "—"}
-              detail={budgetTotals.limite > 0
-                ? <>Techo de categorías con límite · de <Sensitive as="span">{formatMoney(budgetTotals.limite, "EUR")}</Sensitive></>
-                : "No es efectivo libre · define límites"}
-              valueColor={budgetTotals.limite > 0 ? (budgetTotals.disponible >= 0 ? "var(--gold)" : "var(--accent-red)") : undefined}
-              onClick={() => setShowBudgetDialog(true)}
-            />
             <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(monthTotals.neto, "EUR")}</Sensitive>} detail={monthTotals.ingresos > 0 ? `${savingsRate}% de tus ingresos` : "Sin ingresos para calcular la tasa"} detailTone={savingsRate > 0 ? "positive" : savingsRate < 0 ? "negative" : "neutral"} valueColor={monthTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" onClick={() => router.push("/analytics")} />
+            <EmergencyRunwayCard balanceEur={emergencyBalanceEur} />
           </section>
 
           {/* Siguiente paso del mes: aportar al colchón si aún falta */}
@@ -1063,7 +1050,6 @@ export default function DashboardContent() {
       )}
 
       <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={handleCreateAccount} />
-      <BudgetDialog open={showBudgetDialog} onOpenChange={setShowBudgetDialog} selectedMonth={selectedMonth} />
     </div>
   )
 }
