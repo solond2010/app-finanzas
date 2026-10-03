@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowDownRight, ArrowRightLeft, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
@@ -16,8 +16,8 @@ import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getSavingsRate, getUpcomingRecurring, getCurrencyByAccount, reportingAmount, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow, suggestEmergencyTransfer } from "@/lib/calculations"
-import { convertFromEur, convertToEur, formatMoney } from "@/lib/currency"
+import { filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getSavingsRate, getUpcomingRecurring, getCurrencyByAccount, reportingAmount, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow } from "@/lib/calculations"
+import { convertToEur, formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
 import { formatMonth, isInitialBalanceTransaction, chartFormatter, formatCappedPct, PCT_CHANGE_CAP } from "@/lib/format"
@@ -512,34 +512,13 @@ export default function DashboardContent() {
   )
 
   // Colchón de emergencia: prioridad UX cuando va muy por debajo del objetivo.
-  // No altera el número de la puntuación; solo contextualiza la etiqueta y
-  // alimenta el banner / bloque "Este mes, haz esto".
+  // No altera el número de la puntuación; solo contextualiza su etiqueta.
   const scoreDisplayLabel = emergency?.isLow
     ? (score >= 60
         ? `${scoreTier.label} en flujo · pendiente el colchón`
         : `${scoreTier.label} · prioriza el colchón`)
     : scoreTier.label
   const scoreColor = scoreTier.label === "Excelente" ? "var(--gold)" : scoreTier.color
-
-  const emergencyAction = useMemo(() => {
-    if (!emergency || emergency.isComplete || emergency.remaining <= 0) return null
-    const targetAccount = displayAccounts.find((a) => a.id === emergency.accountId)
-    const remainingEur = convertToEur(emergency.remaining, targetAccount?.currency ?? "EUR")
-    const suggestedEur = suggestEmergencyTransfer(remainingEur, monthTotals.neto)
-    if (suggestedEur <= 0) return null
-    const months = Math.max(1, Math.ceil(remainingEur / suggestedEur))
-    const liquidTypes = new Set(["efectivo", "gastos", "ahorro"])
-    const targetCurrency = targetAccount?.currency ?? "EUR"
-    const source =
-      displayAccounts
-        .filter((a) => a.id !== emergency.accountId && a.currency === targetCurrency && liquidTypes.has(a.tipo) && a.saldo > 0)
-        .sort((a, b) => b.saldo - a.saldo)[0]
-      ?? displayAccounts
-        .filter((a) => a.id !== emergency.accountId && a.currency === targetCurrency && a.saldo > 0)
-        .sort((a, b) => b.saldo - a.saldo)[0]
-      ?? null
-    return { suggested: convertFromEur(suggestedEur, targetAccount?.currency ?? "EUR"), suggestedSource: convertFromEur(suggestedEur, source?.currency ?? "EUR"), months, sourceId: source?.id ?? "", surplus: monthTotals.neto }
-  }, [emergency, monthTotals.neto, displayAccounts])
 
   const sortedAccounts = useMemo(() => displayAccounts.slice().sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo)), [displayAccounts])
 
@@ -861,44 +840,6 @@ export default function DashboardContent() {
             <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(monthTotals.neto, "EUR")}</Sensitive>} detail={monthTotals.ingresos > 0 ? `${savingsRate}% de tus ingresos` : "Sin ingresos para calcular la tasa"} detailTone={savingsRate > 0 ? "positive" : savingsRate < 0 ? "negative" : "neutral"} valueColor={monthTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" onClick={() => router.push("/analytics")} />
             <EmergencyRunwayCard balanceEur={emergencyBalanceEur} />
           </section>
-
-          {/* Siguiente paso del mes: aportar al colchón si aún falta */}
-          {emergencyAction && emergency && !emergency.isComplete && (
-            <section className="stagger-fade" style={{ animationDelay: "50ms" }}>
-              <div className={`${CARD} flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between`}>
-                <div className="min-w-0 flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
-                    <ArrowRightLeft className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">Este mes, haz esto</p>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                      {emergencyAction.surplus > 0 ? (
-                        <>Te sobran ~<Sensitive as="span" className="font-semibold text-foreground">{formatMoney(emergencyAction.surplus, "EUR")}</Sensitive>. </>
-                      ) : (
-                        <>Este mes el flujo está justo. </>
-                      )}
-                      Si pasas <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(emergencyAction.suggested, state.accounts.find((a) => a.id === emergency.accountId)?.currency ?? "EUR")}</Sensitive> al {emergency.name},
-                      llegas a <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(emergency.target, state.accounts.find((a) => a.id === emergency.accountId)?.currency ?? "EUR")}</Sensitive> en unos {emergencyAction.months} {emergencyAction.months === 1 ? "mes" : "meses"}.
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  className="shrink-0 rounded-full"
-                  onClick={() => openMovementDialog({
-                    tipo: "traspaso",
-                    origenId: emergencyAction.sourceId || undefined,
-                    destinoId: emergency.accountId,
-                    monto: emergencyAction.suggestedSource,
-                    descripcion: `Aporte a ${emergency.name}`,
-                  })}
-                >
-                  Preparar traspaso
-                </Button>
-              </div>
-            </section>
-          )}
 
           {/* El presupuesto tiene ancho completo para dar aire a las categorías. */}
           <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:items-start" style={{ animationDelay: "80ms" }}>
