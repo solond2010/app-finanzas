@@ -684,9 +684,9 @@ export default function DashboardContent() {
           <Button onClick={() => setShowNewAccount(true)} className="mt-6 rounded-full px-6">Crear cuenta</Button>
         </div>
       ) : (
-        <div className="flex flex-col gap-5 sm:gap-5 lg:gap-5">
+        <div className="space-y-5 sm:space-y-5 lg:space-y-5">
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
-          <section className="stagger-fade order-2 grid grid-cols-1 gap-4 sm:gap-5 md:order-1 md:grid-cols-2 xl:grid-cols-4 xl:gap-5 2xl:grid-cols-12" style={{ animationDelay: "0ms" }}>
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:gap-5 2xl:grid-cols-12" style={{ animationDelay: "0ms" }}>
             {/* Patrimonio + rango */}
             <div className={`${CARD_HERO} min-w-0 md:col-span-2 xl:col-span-2 2xl:col-span-6`}>
               <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -845,7 +845,7 @@ export default function DashboardContent() {
           </section>
 
           {/* Ticker: pulso del mes con mini-tendencia de 6 meses */}
-          <section className="stagger-fade order-1 grid grid-cols-2 gap-3 sm:gap-4 md:order-2 xl:grid-cols-4 xl:gap-4" style={{ animationDelay: "40ms" }}>
+          <section className="stagger-fade grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 xl:gap-4" style={{ animationDelay: "40ms" }}>
             {/* <Sensitive> en todos los valores monetarios: el modo privacidad
                 difuminaba el hero pero estas fichas seguían enseñando importes. */}
             <TickerTile label="Ingresos" value={<Sensitive>+{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} detail={incomeVsPrevious.text} detailTone={incomeVsPrevious.tone} secondaryDetail={incomeVsAverage.text} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push(`/transactions?tipo=ingreso&mes=${selectedMonth}`)} />
@@ -855,7 +855,7 @@ export default function DashboardContent() {
           </section>
 
           {topSpending.length > 0 && (
-            <div className={`${CARD} order-3 stagger-fade min-w-0`} style={{ animationDelay: "200ms" }}>
+            <div className={`${CARD} stagger-fade min-w-0`} style={{ animationDelay: "200ms" }}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-foreground">Distribución de gastos</p>
                 <div className="flex items-center gap-3">
@@ -917,7 +917,7 @@ export default function DashboardContent() {
           )}
 
           {/* Resumen, movimientos y metas comparten la última fila del panel. */}
-          <section className="stagger-fade order-4 grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:items-start" style={{ animationDelay: "240ms" }}>
+          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:items-start" style={{ animationDelay: "240ms" }}>
             <div className={`${CARD} space-y-4`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
