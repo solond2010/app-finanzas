@@ -335,6 +335,7 @@ export default function IngresosGastosPage() {
       <TransactionsTable
         selectedMonth={selectedMonth}
         onMonthChange={(delta) => setMonthOffset((offset) => Math.max(0, offset + delta))}
+        onToday={() => setMonthOffset(0)}
         mobileSummary={{ ingresos: monthTotals.ingresos, gastos: monthTotals.gastos, neto: monthTotals.neto }}
       />
     </div>

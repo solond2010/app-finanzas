@@ -131,7 +131,7 @@ export default function CuentasPage() {
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={accountSearch} onChange={(e) => setAccountSearch(e.target.value)} placeholder="Buscar cuenta o banco…" className="pl-9" /></div>
-            <select value={accountType} onChange={(e) => setAccountType(e.target.value)} aria-label="Filtrar cuentas por tipo" className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground">
+            <select value={accountType} onChange={(e) => setAccountType(e.target.value)} aria-label="Filtrar cuentas por tipo" className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground sm:h-10 sm:w-auto">
               <option value="all">Todos los tipos</option>{Object.entries(typeConfig).map(([key, cfg]) => <option key={key} value={key}>{cfg.label}</option>)}
             </select>
           </div>
@@ -142,19 +142,19 @@ export default function CuentasPage() {
                 <button
                   key={account.id}
                   onClick={() => router.push(`/cuentas/${account.id}`)}
-                  className="stagger-fade group rounded-[16px] border border-border bg-card p-4 text-left glass-card-hover active:scale-[0.99] sm:p-6"
+                  className="stagger-fade group min-w-0 rounded-[16px] border border-border bg-card p-4 text-left glass-card-hover active:scale-[0.99] sm:p-6"
                   style={{ animationDelay: `${index * 60}ms` }}
                 >
                   <div className="space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-3">
                         <AccountLogo account={account} className="h-11 w-11" />
-                        <div>
-                        <h3 className="text-sm font-semibold sm:text-base">{account.nombre}</h3>
-                          <p className="text-xs text-muted-foreground">{account.banco || "Sin banco"}</p>
+                        <div className="min-w-0">
+                        <h3 className="truncate text-sm font-semibold sm:text-base">{account.nombre}</h3>
+                          <p className="truncate text-xs text-muted-foreground">{account.banco || "Sin banco"}</p>
                         </div>
                       </div>
-                      <span className="rounded-full bg-background/60 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground ring-1 ring-border/15">
+                      <span className="shrink-0 rounded-full bg-background/60 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground ring-1 ring-border/15">
                         {cfg.label}
                       </span>
                     </div>

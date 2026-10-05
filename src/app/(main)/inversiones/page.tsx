@@ -381,8 +381,8 @@ export default function InversionesPage() {
           {/* Evolución (izq) + Posiciones / Detalle (der) */}
           <section className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-3">
             <div className={`${CARD_HERO} min-w-0 xl:col-span-2`}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
+              <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="w-full min-w-0 sm:w-auto">
                   <p className="page-section-label">{detailPosition ? `Rendimiento · ${(quotes[detailPosition.symbol]?.name && quotes[detailPosition.symbol]!.name !== detailPosition.symbol) ? quotes[detailPosition.symbol]!.name : detailPosition.name}` : "Evolución cartera"}</p>
                   <p className="hero-figure mt-2 text-[clamp(1.8rem,7vw,2.5rem)] font-bold tabular-nums tracking-tight">
                     <Sensitive>{formatMoney(detailPosition ? detailPosition.units * (detailPosition.kind === "custom" ? detailPosition.buyPrice : quotes[detailPosition.symbol]?.price ?? detailPosition.buyPrice) : value, baseCurrency)}</Sensitive>
@@ -398,7 +398,7 @@ export default function InversionesPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+                <div className="flex w-full items-center justify-between gap-1 overflow-x-auto rounded-full border border-border bg-muted/40 p-1 sm:w-auto sm:justify-start">
                   {EVO_TABS.map((t) => (
                     <button key={t.id} onClick={() => setEvoTab(t.id)} className={cn("rounded-full px-2.5 py-1 text-xs font-semibold transition-colors", evoTab === t.id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>{t.label}</button>
                   ))}
@@ -406,7 +406,7 @@ export default function InversionesPage() {
               </div>
 
               {evoTab === "rendimiento" && (
-                <div className="range-tabs mt-3 w-fit">
+                <div className="range-tabs mt-3 max-w-full overflow-x-auto sm:w-fit">
                   {RANGES.map((r) => (
                     <button key={r.id} onClick={() => setEvoRange(r.id)} data-active={evoRange === r.id} className="range-tab">{r.id}</button>
                   ))}
@@ -456,7 +456,7 @@ export default function InversionesPage() {
                       <button key={f.id} onClick={() => setPosFilter(f.id)} className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors", posFilter === f.id ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>{f.label}</button>
                     ))}
                   </div>
-                  <div className="mt-3 max-h-[420px] space-y-2 overflow-y-auto pr-1">
+                  <div className="mt-3 space-y-2 sm:max-h-[420px] sm:overflow-y-auto sm:pr-1">
                     {filteredRows.length === 0 && (
                       <p className="rounded-2xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">Sin posiciones en esta categoría.</p>
                     )}

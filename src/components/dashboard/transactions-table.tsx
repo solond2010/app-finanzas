@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Category, generateId } from "@/lib/store"
 import { dbDeleteEq } from "@/lib/db-client"
-import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X, ArrowLeftRight, Repeat, ChevronLeft, ChevronRight, CalendarDays, List, TrendingDown, TrendingUp } from "lucide-react"
+import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X, ArrowLeftRight, Repeat, ChevronLeft, ChevronRight, CalendarDays, List, TrendingDown, TrendingUp, SlidersHorizontal } from "lucide-react"
 import { parseAmount } from "@/lib/validation"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
@@ -71,7 +71,7 @@ function TransactionForm({
   onSave: (t: Transaction) => void
   onCancel: () => void
 }) {
-  const today = new Date().toISOString().split("T")[0]
+  const today = localDateKey()
   const [cuentaId, setCuentaId] = useState(transaction?.cuenta_id ?? accounts[0]?.id ?? "")
   const [monto, setMonto] = useState(String(transaction?.monto ?? ""))
   const [fecha, setFecha] = useState(transaction?.fecha ?? today)
@@ -347,11 +347,13 @@ export function TransactionsTable({
   cuentaId,
   selectedMonth,
   onMonthChange,
+  onToday,
   mobileSummary,
 }: {
   cuentaId?: string
   selectedMonth?: string
   onMonthChange?: (delta: number) => void
+  onToday?: () => void
   mobileSummary?: { ingresos: number; gastos: number; neto: number }
 }) {
   const { state, loading, dispatch } = useFinance()
@@ -379,6 +381,7 @@ export function TransactionsTable({
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [showAdjustments, setShowAdjustments] = useState(false)
   const [mobileView, setMobileView] = useState<"list" | "calendar">("calendar")
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => ({ month: "", day: localDateKey() }))
   const mobileMode = selectedMonth && !cuentaId ? mobileView : "list"
   const PAGE_SIZE = 25
@@ -420,6 +423,7 @@ export function TransactionsTable({
     setFilterTipo(value); setPage(0)
   }
   const hasActiveFilters = filterAccount !== "all" || filterCategory !== "all" || filterTipo !== "all" || search !== ""
+  const activeFiltersCount = Number(filterAccount !== "all") + Number(filterCategory !== "all") + Number(filterTipo !== "all") + Number(search !== "")
   const clearFilters = () => {
     if (!cuentaId) setFilterAccount("all")
     setFilterCategory("all")
@@ -581,12 +585,14 @@ export function TransactionsTable({
           {selectedMonth && (
             <div className="flex w-full items-center justify-between gap-2 rounded-full border border-border bg-background/70 p-1 md:hidden">
               <button type="button" onClick={() => onMonthChange?.(1)} disabled={!onMonthChange} aria-label="Mes anterior" className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"><ChevronLeft className="size-4" /></button>
-              <span className="min-w-0 text-center text-sm font-semibold text-foreground">{calendarMonthLabel}</span>
+              <span className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-foreground">{calendarMonthLabel}</span>
+              {onToday && <button type="button" onClick={() => { onToday(); const today = localDateKey(); setSelectedCalendarDate({ month: today.slice(0, 7), day: today }) }} className="min-h-9 shrink-0 rounded-full px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10">Hoy</button>}
               <button type="button" onClick={() => onMonthChange?.(-1)} disabled={!onMonthChange || selectedMonth >= localDateKey().slice(0, 7)} aria-label="Mes siguiente" className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"><ChevronRight className="size-4" /></button>
             </div>
           )}
+          {selectedMonth && !cuentaId && mobileMode === "list" && <Button type="button" variant="outline" size="sm" className="h-10 w-full gap-2 md:hidden" onClick={() => setMobileFiltersOpen((open) => !open)} aria-expanded={mobileFiltersOpen}><SlidersHorizontal className="size-4" />Filtros{activeFiltersCount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{activeFiltersCount}</span>}</Button>}
         </div>
-          <div className={cn("grid w-full grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-2", mobileMode === "calendar" && "!hidden md:!flex")}>
+          <div className={cn("grid w-full grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-2", mobileMode === "calendar" || (selectedMonth && !cuentaId && mobileMode === "list" && !mobileFiltersOpen) ? "!hidden md:!flex" : "")}>
             <Button type="button" variant="outline" size="sm" className="h-10 w-full gap-1.5 px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm" onClick={exportCSV}>
               <Download className="h-3.5 w-3.5" /> Exportar CSV
             </Button>
@@ -699,9 +705,16 @@ export function TransactionsTable({
               </div>
             </div>
           )}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground" aria-label="Leyenda del calendario">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-full bg-emerald-500" />Ingresos</span>
+              <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-full bg-red-400" />Gastos</span>
+            </div>
+            <span className="hidden min-[380px]:inline">Color de fondo = saldo del día</span>
+          </div>
           {hasActiveFilters && (
-            <button type="button" onClick={clearFilters} className="w-full rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2 text-left text-xs font-medium text-primary">
-              Hay filtros activos · toca para quitarlos
+            <button type="button" onClick={() => { setMobileView("list"); setMobileFiltersOpen(true) }} className="w-full rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2 text-left text-xs font-medium text-primary">
+              {activeFiltersCount} filtro{activeFiltersCount === 1 ? " activo" : "s activos"} · Abrir lista para revisarlos
             </button>
           )}
 
@@ -1027,11 +1040,11 @@ export function TransactionsTable({
                               {systemAdjustment ? "Ajuste" : transfer ? "Traspaso" : positive ? "Ingreso" : "Gasto"}
                             </span>
                             <div className="flex items-center gap-1">
-                              <button type="button" disabled={systemAdjustment} onClick={() => setEditingTxn(t)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40" aria-label={`Editar ${t.descripcion || t.categoria}`}>
-                                <Pencil className="h-3.5 w-3.5" />Editar
+                              <button type="button" disabled={systemAdjustment} onClick={() => setEditingTxn(t)} className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40" aria-label={`Editar ${t.descripcion || t.categoria}`} title="Editar">
+                                <Pencil className="size-4" /><span className="sr-only">Editar</span>
                               </button>
-                              <button type="button" disabled={systemAdjustment} onClick={() => setDeleteConfirm(t)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40" aria-label={`Eliminar ${t.descripcion || t.categoria}`}>
-                                <Trash2 className="h-3.5 w-3.5" />Eliminar
+                              <button type="button" disabled={systemAdjustment} onClick={() => setDeleteConfirm(t)} className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40" aria-label={`Eliminar ${t.descripcion || t.categoria}`} title="Eliminar">
+                                <Trash2 className="size-4" /><span className="sr-only">Eliminar</span>
                               </button>
                             </div>
                           </div>
@@ -1094,8 +1107,8 @@ export function TransactionsTable({
                             <div className="mt-3 flex items-center justify-between gap-3">
                               <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", transfer ? "bg-violet-500/10 text-violet-500" : positive ? "bg-emerald-500/10 text-emerald-500" : systemAdjustment ? "bg-muted text-muted-foreground" : "bg-red-500/10 text-red-500")}>{systemAdjustment ? "Ajuste" : transfer ? "Traspaso" : positive ? "Ingreso" : "Gasto"}</span>
                               <div className="flex items-center gap-1">
-                                <button type="button" disabled={systemAdjustment} onClick={() => setEditingTxn(t)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40" aria-label={`Editar ${t.descripcion || t.categoria}`}><Pencil className="size-3.5" />Editar</button>
-                                <button type="button" disabled={systemAdjustment} onClick={() => setDeleteConfirm(t)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40" aria-label={`Eliminar ${t.descripcion || t.categoria}`}><Trash2 className="size-3.5" />Eliminar</button>
+                                <button type="button" disabled={systemAdjustment} onClick={() => setEditingTxn(t)} className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40" aria-label={`Editar ${t.descripcion || t.categoria}`} title="Editar"><Pencil className="size-4" /><span className="sr-only">Editar</span></button>
+                                <button type="button" disabled={systemAdjustment} onClick={() => setDeleteConfirm(t)} className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40" aria-label={`Eliminar ${t.descripcion || t.categoria}`} title="Eliminar"><Trash2 className="size-4" /><span className="sr-only">Eliminar</span></button>
                               </div>
                             </div>
                           </div>
