@@ -284,7 +284,11 @@ function toDateKey(date: Date) {
 // "futura" respecto a dateKey solo si es de un día posterior (las del mismo
 // día ya forman parte del saldo de cierre de ese día).
 function isAfterDate(dateString: string, dateKey: string) {
-  return toDateKey(new Date(dateString)) > dateKey
+  // Transaction / position dates are date-only strings (YYYY-MM-DD). Parsing
+  // them with `new Date()` treats them as UTC, which shifts the calendar day
+  // in local timezones west/east of UTC and incorrectly drops activity on a
+  // snapshot day. ISO date keys sort lexicographically in calendar order.
+  return dateString.slice(0, 10) > dateKey
 }
 
 function getAccountsAtDate(accounts: Account[], txByAccount: Map<string, Transaction[]>, dateKey: string) {
@@ -764,7 +768,7 @@ export function buildPreciseNetWorthHistory(
       const accountTxs = txByAccount.get(account.id) ?? []
       let balance = account.saldo
       for (const t of accountTxs) {
-        if (new Date(t.fecha) > d) balance -= transactionDelta(t)
+        if (isAfterDate(t.fecha, dateKey)) balance -= transactionDelta(t)
       }
       cash += convertToEur(balance, account.currency)
     }
@@ -781,14 +785,14 @@ export function buildPreciseNetWorthHistory(
       const accountTxs = txByAccount.get(accountId) ?? []
       let balance = account.saldo
       for (const t of accountTxs) {
-        if (new Date(t.fecha) > d) balance -= transactionDelta(t)
+        if (isAfterDate(t.fecha, dateKey)) balance -= transactionDelta(t)
       }
       
       // Restar coste de posiciones compradas hasta esta fecha
       const accountPositions = positionByAccount.get(accountId) ?? []
       let investedCost = 0
       for (const p of accountPositions) {
-        if (new Date(p.date) <= d) {
+        if (!isAfterDate(p.date, dateKey)) {
           investedCost += p.units * p.buyPrice
         }
       }
@@ -799,7 +803,7 @@ export function buildPreciseNetWorthHistory(
       
       // Valor de cartera = sum(units * precio histórico) para posiciones compradas hasta esta fecha
       for (const p of accountPositions) {
-        if (new Date(p.date) <= d) {
+        if (!isAfterDate(p.date, dateKey)) {
           const price = getPriceAt(p.symbol, d, p.buyPrice)
           portfolioValue += p.units * price
         }

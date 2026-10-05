@@ -500,6 +500,20 @@ describe("extractMonthlyPatrimonioControl / buildMonthlyPatrimonioControl", () =
     expect(oct?.patrimonio).toBe(4300)
     expect(oct?.variacion).toBe(1100)
   })
+
+  it("incluye movimientos del propio día en el snapshot de cierre", () => {
+    const accounts = [account({ id: "acc_1", saldo: 1100 })]
+    const txns = [
+      tx({ id: "init_1", tipo: "ingreso", monto: 1000, fecha: "2026-09-01", cuenta_id: "acc_1" }),
+      tx({ id: "same_day", tipo: "ingreso", monto: 100, fecha: "2026-09-05", cuenta_id: "acc_1" }),
+    ]
+    const rows = buildMonthlyPatrimonioControl(accounts, txns, [], {}, {
+      dayOfMonth: 5,
+      asOf: new Date(2026, 8, 5),
+    })
+    const sep = rows.find((r) => r.mensualidad === "05/09/2026")
+    expect(sep?.patrimonio).toBe(1100)
+  })
 })
 
 
