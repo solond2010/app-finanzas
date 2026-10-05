@@ -19,7 +19,7 @@ function MainInner({ children }: { children: React.ReactNode }) {
       <main className={cn(
         // lg:pb-24: deja sitio al FAB (56px + margen) para que al llegar al
         // final de la página no tape la última fila de una tabla o un total.
-        "min-h-screen min-w-0 flex-1 overflow-x-hidden px-3 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom)+1.25rem)] pt-[var(--mobile-header-h)] animate-in fade-in duration-500 transition-[margin] sm:px-6 lg:px-8 lg:pb-24 lg:pt-8 2xl:px-10",
+        "min-h-screen min-w-0 flex-1 overflow-x-hidden px-3 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom)+1.25rem)] pt-[calc(var(--mobile-header-h)+1rem)] animate-in fade-in duration-500 transition-[margin] sm:px-6 lg:px-8 lg:pb-24 lg:pt-8 2xl:px-10",
         open ? "lg:ml-52" : "lg:ml-16"
       )}>
         <div className="mx-auto w-full max-w-[1840px]">
