@@ -678,6 +678,52 @@ body {
 }
 
 @media (max-width: 767px) {
+  /* Ritmo visual más compacto y coherente entre páginas en móvil. Las cards
+     conservan sus paddings propios, pero sus esquinas y separación dejan de
+     variar al pasar de una sección a otra. */
+  .content-fade {
+    scroll-margin-top: calc(var(--mobile-header-h) + 0.75rem);
+  }
+
+  .content-fade > header h1 {
+    font-size: clamp(1.55rem, 6vw, 1.9rem);
+    line-height: 1.12;
+    text-wrap: balance;
+  }
+
+  [data-slot="card"],
+  .rounded-\[14px\].border-border.bg-card,
+  .rounded-\[16px\].border-border.bg-card {
+    border-radius: 18px;
+  }
+
+  /* Los chips de rango se deslizan sin mostrar una barra que ensucie el
+     gráfico; el último tab mantiene espacio al llegar al borde. */
+  .range-tabs {
+    gap: 16px;
+    scroll-padding-inline: 0.5rem;
+    overscroll-behavior-x: contain;
+  }
+
+  .range-tab {
+    min-height: 36px;
+    padding-inline: 2px;
+  }
+
+  /* Evita que una etiqueta o ticker largo fuerce un scroll horizontal global. */
+  .content-fade,
+  .content-fade > *,
+  .content-fade [data-slot="card"] {
+    min-width: 0;
+  }
+
+  /* En pantallas táctiles el estado presionado da feedback sin el salto de
+     elevación hover pensado para ratón. */
+  a,
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   /* Evita el zoom automático de Safari al enfocar campos de formulario. */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
   select,

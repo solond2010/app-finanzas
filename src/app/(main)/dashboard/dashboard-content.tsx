@@ -607,17 +607,17 @@ export default function DashboardContent() {
           <p className="page-section-label">Resumen general</p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Hola, Mohamed</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+        <div className="flex w-full flex-wrap items-center gap-2 self-start sm:w-auto sm:self-auto">
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-1 rounded-full border border-border bg-card p-1 sm:flex-none">
             <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="w-28 text-center text-sm font-medium text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
+            <span className="min-w-0 flex-1 px-1 text-center text-sm font-medium capitalize text-foreground sm:w-32 sm:flex-none">{formatMonth(selectedDate)}</span>
             <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
           </div>
           <Button onClick={() => openMovementDialog()} className="hidden gap-2 rounded-full px-4 shadow-sm sm:inline-flex">
             <Plus className="h-4 w-4" /> Nuevo movimiento
           </Button>
           {hasAnyData && (
-            <Button onClick={handleExportDashboard} disabled={exportingPdf} variant="outline" className="gap-1.5 rounded-full" title="Incluye resumen, gráficos, cuentas, metas, presupuestos y movimientos del mes seleccionado.">
+            <Button onClick={handleExportDashboard} disabled={exportingPdf} variant="outline" className="min-w-0 flex-1 gap-1.5 whitespace-nowrap rounded-full px-3 text-xs sm:flex-none sm:px-4 sm:text-sm" title="Incluye resumen, gráficos, cuentas, metas, presupuestos y movimientos del mes seleccionado.">
               <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Informe mensual PDF"}
             </Button>
           )}
