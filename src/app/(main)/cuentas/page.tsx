@@ -160,6 +160,7 @@ export default function CuentasPage() {
                     </div>
 
                     <div>
+                      <p className="page-section-label mb-1">{account.tipo === "inversion" ? "Valor de mercado" : "Saldo actual"}</p>
                       <p className="text-[clamp(1.35rem,7vw,1.875rem)] font-bold tabular-nums tracking-tight sm:text-3xl">
                         <Sensitive>{formatMoney(accountValue(account), account.currency)}</Sensitive>
                       </p>
@@ -170,7 +171,16 @@ export default function CuentasPage() {
                 </button>
               )
             })}
-            {visibleAccounts.length === 0 && <div className="col-span-full rounded-2xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground">No hay cuentas que coincidan con la búsqueda.</div>}
+            {visibleAccounts.length === 0 && (
+              <div className="col-span-full rounded-2xl border border-dashed border-border px-4 py-8">
+                <EmptyState
+                  icon={Search}
+                  title="No hay cuentas que coincidan"
+                  description="Prueba otro nombre o tipo de cuenta."
+                  action={{ label: "Limpiar búsqueda", onClick: () => { setAccountSearch(""); setAccountType("all") } }}
+                />
+              </div>
+            )}
             <button
               onClick={() => setShowNewAccount(true)}
               className="stagger-fade flex flex-col items-center justify-center gap-3 rounded-[16px] border border-dashed border-muted-foreground/25 p-6 text-muted-foreground transition-colors hover:border-[color-mix(in_oklch,var(--gold),transparent_40%)] hover:bg-[color-mix(in_oklch,var(--gold),transparent_94%)] hover:text-foreground"

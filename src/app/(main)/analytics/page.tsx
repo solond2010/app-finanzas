@@ -157,12 +157,16 @@ export default function AnalyticsPage() {
   const today = useMemo(() => new Date(), [])
   const selectedDate = new Date(today.getFullYear(), today.getMonth() - monthOffset, 1)
   const selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`
+  const previousMonthDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1)
+  const previousMonth = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, "0")}`
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
   const hasData = analysisTransactions.length > 0
 
   const [confirmReset, setConfirmReset] = useState(false)
 
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
+  const previousMonthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, previousMonth, currencyByAccount), [analysisTransactions, previousMonth, currencyByAccount])
+  const netVsPrevious = monthTotals.neto - previousMonthTotals.neto
   // Misma fuente de reglas que Cuentas/Inversiones (getFinancialTips): la
   // recomendación del diagnóstico rápido deja de ser un único if/else propio
   // de esta página y pasa a ser el consejo de mayor severidad del motor.
@@ -453,14 +457,15 @@ export default function AnalyticsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
-            <button onClick={() => setMonthOffset((p) => p + 1)} className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes anterior">
+            <button onClick={() => setMonthOffset((p) => p + 1)} className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes anterior">
               <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="w-28 text-center text-sm font-medium text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
-            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes siguiente">
+            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} disabled={monthOffset === 0} className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 active:scale-90" aria-label="Mes siguiente">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
+          {monthOffset > 0 && <Button type="button" variant="ghost" className="min-h-11 rounded-full px-3 text-xs font-semibold" onClick={() => setMonthOffset(0)}>Este mes</Button>}
           {hasData && (
             <Button variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={handleExportPdf} disabled={exportingPdf}>
               <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Descargar PDF"}
@@ -491,7 +496,9 @@ export default function AnalyticsPage() {
             <MetricCard
               label="Neto del mes"
               value={<AnimatedNumber value={monthTotals.neto} />}
-              subtitle={<><Sensitive>{money(monthTotals.ingresos)}</Sensitive> ingresos · <Sensitive>{money(monthTotals.gastos)}</Sensitive> gastos</>}
+              subtitle={previousMonthTotals.ingresos > 0 || previousMonthTotals.gastos > 0
+                ? <><span className={netVsPrevious >= 0 ? "text-emerald-500" : "text-red-500"}>{netVsPrevious >= 0 ? "Mejora" : "Baja"} <Sensitive>{signedMoney(netVsPrevious)}</Sensitive></span> vs mes anterior</>
+                : "Sin actividad el mes anterior"}
               icon={Activity}
               tone={monthTotals.neto >= 0 ? "blue" : "amber"}
               delay={70}

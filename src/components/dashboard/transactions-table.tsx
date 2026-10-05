@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Category, generateId } from "@/lib/store"
 import { dbDeleteEq } from "@/lib/db-client"
-import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X, ArrowLeftRight, Repeat, ChevronLeft, ChevronRight, CalendarDays, List, TrendingDown, TrendingUp, SlidersHorizontal } from "lucide-react"
+import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X, ArrowLeftRight, Repeat, ChevronLeft, ChevronRight, CalendarDays, List, TrendingDown, TrendingUp, SlidersHorizontal, Copy } from "lucide-react"
 import { parseAmount } from "@/lib/validation"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
@@ -149,7 +149,7 @@ function TransactionForm({
                 type="button"
                 onClick={() => changeTipo(t.value)}
                 className={cn(
-                  "rounded-xl border px-3 py-2 text-sm font-semibold transition-all active:scale-[0.98]",
+              "min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold transition-all active:scale-[0.98]",
                   tipo === t.value
                     ? t.value === "gasto"
                       ? "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400"
@@ -279,8 +279,8 @@ function TransactionForm({
       )}
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="outline" size="sm" onClick={onCancel}>Cancelar</Button>
-        <Button type="submit" size="sm">{transaction ? "Guardar" : "Crear"}</Button>
+        <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={onCancel}>Cancelar</Button>
+        <Button type="submit" size="sm" className="min-h-11">{transaction ? "Guardar" : "Crear"}</Button>
       </div>
     </form>
   )
@@ -411,6 +411,21 @@ export function TransactionsTable({
     }
     toast(`${selectedIds.size} transacciones recategorizadas`, "success")
     clearSelection()
+  }
+
+  const duplicateTransaction = (transaction: Transaction) => {
+    if (isTransfer(transaction) || isInitialBalanceTransaction(transaction.id)) return
+    dispatch({
+      type: "ADD_TRANSACTION",
+      payload: {
+        ...transaction,
+        id: generateId(),
+        fecha: localDateKey(),
+        created_at: new Date().toISOString(),
+        tags: transaction.tags.filter((tag) => tag !== "recurrente" && !tag.startsWith("recurrente:")),
+      },
+    })
+    toast("Movimiento duplicado para hoy", "success")
   }
 
   const handleAccountFilter = (value: string | null) => {
@@ -584,13 +599,13 @@ export function TransactionsTable({
           )}
           {selectedMonth && (
             <div className="flex w-full items-center justify-between gap-2 rounded-full border border-border bg-background/70 p-1 md:hidden">
-              <button type="button" onClick={() => onMonthChange?.(1)} disabled={!onMonthChange} aria-label="Mes anterior" className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"><ChevronLeft className="size-4" /></button>
+              <button type="button" onClick={() => onMonthChange?.(1)} disabled={!onMonthChange} aria-label="Mes anterior" className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"><ChevronLeft className="size-4" /></button>
               <span className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-foreground">{calendarMonthLabel}</span>
-              {onToday && <button type="button" onClick={() => { onToday(); const today = localDateKey(); setSelectedCalendarDate({ month: today.slice(0, 7), day: today }) }} className="min-h-9 shrink-0 rounded-full px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10">Hoy</button>}
-              <button type="button" onClick={() => onMonthChange?.(-1)} disabled={!onMonthChange || selectedMonth >= localDateKey().slice(0, 7)} aria-label="Mes siguiente" className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"><ChevronRight className="size-4" /></button>
+              {onToday && <button type="button" onClick={() => { onToday(); const today = localDateKey(); setSelectedCalendarDate({ month: today.slice(0, 7), day: today }) }} className="min-h-11 shrink-0 rounded-full px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10">Hoy</button>}
+              <button type="button" onClick={() => onMonthChange?.(-1)} disabled={!onMonthChange || selectedMonth >= localDateKey().slice(0, 7)} aria-label="Mes siguiente" className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"><ChevronRight className="size-4" /></button>
             </div>
           )}
-          {selectedMonth && !cuentaId && mobileMode === "list" && <Button type="button" variant="outline" size="sm" className="h-10 w-full gap-2 md:hidden" onClick={() => setMobileFiltersOpen((open) => !open)} aria-expanded={mobileFiltersOpen}><SlidersHorizontal className="size-4" />Filtros{activeFiltersCount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{activeFiltersCount}</span>}</Button>}
+          {selectedMonth && !cuentaId && mobileMode === "list" && <Button type="button" variant="outline" size="sm" className="h-11 w-full gap-2 md:hidden" onClick={() => setMobileFiltersOpen((open) => !open)} aria-expanded={mobileFiltersOpen}><SlidersHorizontal className="size-4" />{activeFiltersCount > 0 ? `Filtros activos · ${activeFiltersCount}` : "Filtros"}{activeFiltersCount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{activeFiltersCount}</span>}</Button>}
         </div>
           <div className={cn("grid w-full grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-2", mobileMode === "calendar" || (selectedMonth && !cuentaId && mobileMode === "list" && !mobileFiltersOpen) ? "!hidden md:!flex" : "")}>
             <Button type="button" variant="outline" size="sm" className="h-10 w-full gap-1.5 px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm" onClick={exportCSV}>
@@ -1039,8 +1054,9 @@ export function TransactionsTable({
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", transfer ? "bg-violet-500/10 text-violet-500" : positive ? "bg-emerald-500/10 text-emerald-500" : systemAdjustment ? "bg-muted text-muted-foreground" : "bg-red-500/10 text-red-500")}>
                               {systemAdjustment ? "Ajuste" : transfer ? "Traspaso" : positive ? "Ingreso" : "Gasto"}
                             </span>
-                            <div className="flex items-center gap-1">
-                              <button type="button" disabled={systemAdjustment} onClick={() => setEditingTxn(t)} className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40" aria-label={`Editar ${t.descripcion || t.categoria}`} title="Editar">
+                              <div className="flex items-center gap-1">
+                                {!transfer && !systemAdjustment && <button type="button" onClick={() => duplicateTransaction(t)} className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary" aria-label={`Duplicar ${t.descripcion || t.categoria} para hoy`} title="Duplicar para hoy"><Copy className="size-4" /><span className="sr-only">Duplicar para hoy</span></button>}
+                                <button type="button" disabled={systemAdjustment} onClick={() => setEditingTxn(t)} className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40" aria-label={`Editar ${t.descripcion || t.categoria}`} title="Editar">
                                 <Pencil className="size-4" /><span className="sr-only">Editar</span>
                               </button>
                               <button type="button" disabled={systemAdjustment} onClick={() => setDeleteConfirm(t)} className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40" aria-label={`Eliminar ${t.descripcion || t.categoria}`} title="Eliminar">
@@ -1107,6 +1123,7 @@ export function TransactionsTable({
                             <div className="mt-3 flex items-center justify-between gap-3">
                               <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", transfer ? "bg-violet-500/10 text-violet-500" : positive ? "bg-emerald-500/10 text-emerald-500" : systemAdjustment ? "bg-muted text-muted-foreground" : "bg-red-500/10 text-red-500")}>{systemAdjustment ? "Ajuste" : transfer ? "Traspaso" : positive ? "Ingreso" : "Gasto"}</span>
                               <div className="flex items-center gap-1">
+                                {!transfer && !systemAdjustment && <button type="button" onClick={() => duplicateTransaction(t)} className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary" aria-label={`Duplicar ${t.descripcion || t.categoria} para hoy`} title="Duplicar para hoy"><Copy className="size-4" /><span className="sr-only">Duplicar para hoy</span></button>}
                                 <button type="button" disabled={systemAdjustment} onClick={() => setEditingTxn(t)} className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40" aria-label={`Editar ${t.descripcion || t.categoria}`} title="Editar"><Pencil className="size-4" /><span className="sr-only">Editar</span></button>
                                 <button type="button" disabled={systemAdjustment} onClick={() => setDeleteConfirm(t)} className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40" aria-label={`Eliminar ${t.descripcion || t.categoria}`} title="Eliminar"><Trash2 className="size-4" /><span className="sr-only">Eliminar</span></button>
                               </div>

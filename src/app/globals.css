@@ -575,6 +575,7 @@ svg.lucide {
 }
 
 .range-tab {
+  min-height: 44px;
   padding-bottom: 7px;
   font-size: 11px;
   font-weight: 600;
@@ -704,7 +705,7 @@ body {
   }
 
   .range-tab {
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 2px;
   }
 

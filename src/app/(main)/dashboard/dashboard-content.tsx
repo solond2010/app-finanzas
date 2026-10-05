@@ -29,7 +29,7 @@ import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
 const CARD = "rounded-[14px] border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
 // para las dos cifras más importantes de la página (patrimonio y puntuación).
-const CARD_HERO = "rounded-[14px] hero-panel p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
+const CARD_HERO = "rounded-[14px] hero-panel p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // "Hoy" usa un punto por transacción (orden real de alta vía created_at) en
 // vez de por día, para cuentas tan nuevas que varios movimientos del mismo
 // día esconderían un pico intermedio con resolución diaria. 7D/30D siguen a
@@ -622,10 +622,11 @@ export default function DashboardContent() {
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 self-start sm:w-auto sm:self-auto">
           <div className="flex w-full min-w-0 items-center justify-between gap-1 rounded-full border border-border bg-card p-1 sm:w-auto sm:flex-none">
-            <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
+            <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
             <span className="min-w-0 flex-1 whitespace-nowrap px-1 text-center text-sm font-medium text-foreground sm:w-32 sm:flex-none">{formatMonth(selectedDate)}</span>
-            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
+            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" disabled={monthOffset === 0} className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 active:scale-90"><ChevronRight className="h-4 w-4" /></button>
           </div>
+          {monthOffset > 0 && <Button type="button" variant="ghost" className="min-h-11 shrink-0 rounded-full px-3 text-xs font-semibold" onClick={() => setMonthOffset(0)}>Este mes</Button>}
           <Button onClick={() => openMovementDialog()} className="hidden gap-2 rounded-full px-4 shadow-sm sm:inline-flex">
             <Plus className="h-4 w-4" /> Nuevo movimiento
           </Button>
@@ -683,9 +684,9 @@ export default function DashboardContent() {
           <Button onClick={() => setShowNewAccount(true)} className="mt-6 rounded-full px-6">Crear cuenta</Button>
         </div>
       ) : (
-        <div className="space-y-5 sm:space-y-5 lg:space-y-5">
+        <div className="flex flex-col gap-5 sm:gap-5 lg:gap-5">
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:gap-5 2xl:grid-cols-12" style={{ animationDelay: "0ms" }}>
+          <section className="stagger-fade order-2 grid grid-cols-1 gap-4 sm:gap-5 md:order-1 md:grid-cols-2 xl:grid-cols-4 xl:gap-5 2xl:grid-cols-12" style={{ animationDelay: "0ms" }}>
             {/* Patrimonio + rango */}
             <div className={`${CARD_HERO} min-w-0 md:col-span-2 xl:col-span-2 2xl:col-span-6`}>
               <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -731,7 +732,7 @@ export default function DashboardContent() {
                 <EmptyPlaceholder text="Sin movimientos registrados hoy todavía" className="mt-4 h-52 sm:h-64" />
               ) : netWorthHasData ? (
                 <div className="mt-4">
-                  <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-44 sm:h-52 2xl:h-60" />
+                  <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-36 sm:h-52 2xl:h-60" />
                   <p className="mx-auto mt-4 max-w-[58ch] border-t border-border/60 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
                     Los valores históricos son estimaciones basadas en posiciones actuales y precios históricos; pueden no reflejar el patrimonio exacto en fechas pasadas.
                   </p>
@@ -844,7 +845,7 @@ export default function DashboardContent() {
           </section>
 
           {/* Ticker: pulso del mes con mini-tendencia de 6 meses */}
-          <section className="stagger-fade grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 xl:gap-4" style={{ animationDelay: "40ms" }}>
+          <section className="stagger-fade order-1 grid grid-cols-2 gap-3 sm:gap-4 md:order-2 xl:grid-cols-4 xl:gap-4" style={{ animationDelay: "40ms" }}>
             {/* <Sensitive> en todos los valores monetarios: el modo privacidad
                 difuminaba el hero pero estas fichas seguían enseñando importes. */}
             <TickerTile label="Ingresos" value={<Sensitive>+{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} detail={incomeVsPrevious.text} detailTone={incomeVsPrevious.tone} secondaryDetail={incomeVsAverage.text} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push(`/transactions?tipo=ingreso&mes=${selectedMonth}`)} />
@@ -854,7 +855,7 @@ export default function DashboardContent() {
           </section>
 
           {topSpending.length > 0 && (
-            <div className={`${CARD} stagger-fade min-w-0`} style={{ animationDelay: "200ms" }}>
+            <div className={`${CARD} order-3 stagger-fade min-w-0`} style={{ animationDelay: "200ms" }}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-foreground">Distribución de gastos</p>
                 <div className="flex items-center gap-3">
@@ -916,7 +917,7 @@ export default function DashboardContent() {
           )}
 
           {/* Resumen, movimientos y metas comparten la última fila del panel. */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:items-start" style={{ animationDelay: "240ms" }}>
+          <section className="stagger-fade order-4 grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:items-start" style={{ animationDelay: "240ms" }}>
             <div className={`${CARD} space-y-4`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
