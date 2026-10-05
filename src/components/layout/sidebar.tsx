@@ -18,15 +18,13 @@ import {
   Loader2,
   SunMedium,
   MoonStar,
-  Menu,
-  X,
   ChevronLeft,
   Eye,
   EyeOff,
   CircleDollarSign,
   Plus,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useSidebar } from "@/lib/sidebar"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 
@@ -57,15 +55,9 @@ export function Sidebar() {
   const retryAllSync = () => { retrySync(); retryInvestmentSync() }
   const { privacy, toggle: togglePrivacy } = usePrivacy()
   const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar()
-  const [mobileOpen, setMobileOpen] = useState(false)
   const lastSyncedLabel = lastSyncedAt
     ? new Date(lastSyncedAt).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
     : null
-
-  useEffect(() => {
-    document.body.style.overflow = mobileOpen ? "hidden" : ""
-    return () => { document.body.style.overflow = "" }
-  }, [mobileOpen])
 
   // El servidor ya renderiza la clase "dark" según la cookie, así que al montar
   // solo migramos a usuarios antiguos que solo tuvieran el tema en localStorage:
@@ -113,43 +105,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile header */}
-      <div
-        // backdrop-blur: con bg al 80% y sin blur, el contenido scrolleado se
-        // leía a través de la barra y chocaba con el título.
-        className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b bg-background/80 backdrop-blur-md px-3 py-2.5 lg:hidden"
-        style={{ paddingTop: "calc(0.625rem + env(safe-area-inset-top))" }}
-      >
-        <div className="flex items-center gap-2.5">
-          <span className="gold-badge flex size-8 items-center justify-center rounded-lg" aria-hidden="true">
-            <CircleDollarSign className="h-4 w-4" />
-          </span>
-          <span className="text-base font-bold tracking-tight">Finanzas</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={togglePrivacy}
-            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-90 touch-manipulation"
-            aria-label={privacy ? "Desactivar modo privacidad" : "Activar modo privacidad"}
-          >
-            {privacy ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-          </button>
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-90 touch-manipulation"
-            aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
-            aria-expanded={mobileOpen}
-            aria-controls="main-navigation-sidebar"
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-      </div>
-
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />
-      )}
-
       {/* Desktop collapse toggle */}
       <button
         onClick={toggleSidebar}
@@ -252,9 +207,7 @@ export function Sidebar() {
       <aside
         id="main-navigation-sidebar"
         className={cn(
-          "fixed left-0 top-0 z-40 flex h-full w-52 flex-col border-r bg-sidebar py-6 shadow-xl shadow-sidebar-border/50 transition-all duration-300 ease-in-out",
-          "max-lg:top-[var(--mobile-header-h)] max-lg:h-[calc(100vh-var(--mobile-header-h))] max-lg:shadow-2xl",
-          mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full",
+          "fixed left-0 top-0 z-40 hidden h-full w-52 flex-col border-r bg-sidebar py-6 shadow-xl shadow-sidebar-border/50 transition-all duration-300 ease-in-out lg:flex",
           sidebarOpen ? "lg:translate-x-0 lg:opacity-100" : "lg:-translate-x-full lg:opacity-0 lg:pointer-events-none"
         )}
       >
@@ -286,7 +239,6 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setMobileOpen(false)}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
@@ -303,22 +255,8 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Móvil: solo ajustes (tema, privacidad, sync) + Configuración. Desktop: mismos ajustes bajo la nav. */}
-        <div className="mt-auto space-y-1 px-3 pt-4 border-t border-sidebar-border/50 max-lg:flex-1">
-          <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:hidden">Ajustes</p>
-          <Link
-            href="/configuracion"
-            onClick={() => setMobileOpen(false)}
-            className={cn(
-              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150 active:scale-[0.98] lg:hidden",
-              pathname === "/configuracion" || pathname.startsWith("/configuracion/")
-                ? "bg-primary/10 text-primary shadow-sm"
-                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-            )}
-          >
-            <SlidersHorizontal className="h-4 w-4 shrink-0" />
-            Configuración
-          </Link>
+        {/* Ajustes globales de escritorio; en móvil viven en el panel «Más». */}
+        <div className="mt-auto space-y-1 px-3 pt-4 border-t border-sidebar-border/50">
           <button
             onClick={togglePrivacy}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors duration-150 active:scale-[0.98]"

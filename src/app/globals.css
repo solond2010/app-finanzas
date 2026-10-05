@@ -74,11 +74,9 @@ svg.lucide {
 }
 
 :root {
-  /* +env(safe-area-inset-top): en standalone (PWA anclada a inicio en iOS,
-     ver appleWebApp/status-bar-style en layout.tsx) el contenido se dibuja
-     bajo la barra de estado/notch — sin esto, la cabecera fija quedaba
-     demasiado baja y el título de cada página aparecía tapado arriba. */
-  --mobile-header-h: calc(52px + env(safe-area-inset-top));
+  /* En móvil solo reservamos el área segura del notch: el contenido ya no
+     lleva una barra fija de marca encima. */
+  --mobile-header-h: env(safe-area-inset-top);
   --bottom-nav-h: 68px;
   /* Claro frío: azul niebla muy pálido, superficies blancas, cero subtono crema. */
   --background: oklch(0.958 0.018 248);

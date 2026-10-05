@@ -3,9 +3,10 @@
 import { useEffect, useState, type ElementType } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChartNoAxesCombined, ChartPie, Ellipsis, House, Landmark, Plus, ReceiptText, SlidersHorizontal, X } from "lucide-react"
+import { ChartNoAxesCombined, ChartPie, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, Plus, ReceiptText, SlidersHorizontal, SunMedium, X } from "lucide-react"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { cn } from "@/lib/utils"
+import { usePrivacy } from "@/lib/privacy"
 
 const primaryItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
@@ -22,7 +23,18 @@ const moreItems = [
 export function MobileBottomNav() {
   const pathname = usePathname()
   const [moreOpen, setMoreOpen] = useState(false)
+  const { privacy, toggle: togglePrivacy } = usePrivacy()
   const moreActive = moreItems.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+
+  const toggleTheme = () => {
+    document.documentElement.classList.add("theme-transition")
+    window.setTimeout(() => document.documentElement.classList.remove("theme-transition"), 250)
+    const next = !document.documentElement.classList.contains("dark")
+    document.documentElement.classList.toggle("dark", next)
+    const value = next ? "dark" : "light"
+    localStorage.setItem("app-finanzas-theme", value)
+    document.cookie = `app-finanzas-theme=${value};path=/;max-age=31536000;samesite=lax`
+  }
 
   useEffect(() => {
     if (!moreOpen) return
@@ -82,6 +94,18 @@ export function MobileBottomNav() {
                 )
               })}
             </nav>
+            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3">
+              <button type="button" onClick={togglePrivacy} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-background/60 px-2 text-xs font-medium text-foreground transition-colors hover:bg-muted active:scale-[0.98]">
+                {privacy ? <EyeOff className="size-4 text-primary" /> : <Eye className="size-4 text-muted-foreground" />}
+                {privacy ? "Mostrar cifras" : "Ocultar cifras"}
+              </button>
+              <button type="button" onClick={toggleTheme} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-background/60 px-2 text-xs font-medium text-foreground transition-colors hover:bg-muted active:scale-[0.98]">
+                <SunMedium className="hidden size-4 dark:block" />
+                <MoonStar className="size-4 dark:hidden" />
+                <span className="hidden dark:inline">Modo claro</span>
+                <span className="dark:hidden">Modo oscuro</span>
+              </button>
+            </div>
           </section>
         </>
       )}

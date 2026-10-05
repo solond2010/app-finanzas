@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/toast"
 import { filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getSavingsRate, getUpcomingRecurring, getCurrencyByAccount, reportingAmount, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow } from "@/lib/calculations"
 import { convertToEur, formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
+import { usePrivacy } from "@/lib/privacy"
 import { typeConfig } from "@/lib/account-types"
 import { formatMonth, isInitialBalanceTransaction, chartFormatter, formatCappedPct, PCT_CHANGE_CAP } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
@@ -96,6 +97,7 @@ function AnnualStat({ label, year, value, accent, icon: Icon, children }: { labe
 
 export default function DashboardContent() {
   const { state, loading, dispatch } = useFinance()
+  const { privacy, toggle: togglePrivacy } = usePrivacy()
   const currencyByAccount = useMemo(() => getCurrencyByAccount(state.accounts), [state.accounts])
   const router = useRouter()
   const { toast } = useToast()
@@ -603,9 +605,20 @@ export default function DashboardContent() {
   return (
     <div className="content-fade w-full max-w-full space-y-6 overflow-x-hidden sm:space-y-7">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="page-section-label">Resumen general</p>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Hola, Mohamed</h1>
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="page-section-label hidden sm:block">Resumen general</p>
+            <h1 className="truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Hola, Mohamed</h1>
+          </div>
+          <button
+            type="button"
+            onClick={togglePrivacy}
+            className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95 lg:hidden"
+            aria-label={privacy ? "Mostrar cifras" : "Ocultar cifras"}
+            title={privacy ? "Mostrar cifras" : "Ocultar cifras"}
+          >
+            {privacy ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+          </button>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 self-start sm:w-auto sm:self-auto">
           <div className="flex w-full min-w-0 items-center justify-between gap-1 rounded-full border border-border bg-card p-1 sm:w-auto sm:flex-none">
