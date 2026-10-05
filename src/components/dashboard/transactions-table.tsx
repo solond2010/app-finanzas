@@ -28,12 +28,12 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Category, generateId } from "@/lib/store"
 import { dbDeleteEq } from "@/lib/db-client"
-import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X, ArrowLeftRight, Repeat } from "lucide-react"
+import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X, ArrowLeftRight, Repeat, ChevronLeft, ChevronRight, CalendarDays, List, TrendingDown, TrendingUp } from "lucide-react"
 import { parseAmount } from "@/lib/validation"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { formatMoney, currencySymbol, type CurrencyCode } from "@/lib/currency"
+import { formatMoney, convertToEur, currencySymbol, type CurrencyCode } from "@/lib/currency"
 import { dateLabel, isInitialBalanceTransaction } from "@/lib/format"
 import { Sensitive } from "@/components/shared/sensitive"
 import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurringFrequency, recurringTag, type RecurringFrequency } from "@/lib/calculations"
@@ -52,6 +52,10 @@ function categoryChipStyle(hex: string | undefined): CSSProperties | undefined {
     color: `color-mix(in oklch, ${hex}, var(--foreground) 45%)`,
     boxShadow: `inset 0 0 0 1px color-mix(in oklch, ${hex}, transparent 75%)`,
   }
+}
+
+function localDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 }
 
 function TransactionForm({
@@ -339,7 +343,17 @@ function InlineEditSelect({
   )
 }
 
-export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: string; selectedMonth?: string }) {
+export function TransactionsTable({
+  cuentaId,
+  selectedMonth,
+  onMonthChange,
+  mobileSummary,
+}: {
+  cuentaId?: string
+  selectedMonth?: string
+  onMonthChange?: (delta: number) => void
+  mobileSummary?: { ingresos: number; gastos: number; neto: number }
+}) {
   const { state, loading, dispatch } = useFinance()
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -364,6 +378,9 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [showAdjustments, setShowAdjustments] = useState(false)
+  const [mobileView, setMobileView] = useState<"list" | "calendar">("calendar")
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => ({ month: "", day: localDateKey() }))
+  const mobileMode = selectedMonth && !cuentaId ? mobileView : "list"
   const PAGE_SIZE = 25
 
 
@@ -494,6 +511,45 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
     }
     return groups
   }, [sorted])
+  const calendarMonth = selectedMonth ?? localDateKey().slice(0, 7)
+  const initialCalendarDay = useMemo(() => {
+    const txDays = state.transactions
+      .filter((t) => t.fecha.startsWith(calendarMonth) && !isInitialBalanceTransaction(t.id))
+      .map((t) => t.fecha)
+      .sort()
+    const today = localDateKey()
+    return today.startsWith(calendarMonth) ? today : txDays.at(-1) ?? `${calendarMonth}-01`
+  }, [calendarMonth, state.transactions])
+  const selectedDay = selectedCalendarDate.month === calendarMonth ? selectedCalendarDate.day : initialCalendarDay
+  const selectedDayTransactions = grouped.find((group) => group.date === selectedDay)?.transactions ?? []
+
+  const dailyTotals = useMemo(() => {
+    const totals = new Map<string, { ingresos: number; gastos: number; count: number }>()
+    for (const t of sorted) {
+      const entry = totals.get(t.fecha) ?? { ingresos: 0, gastos: 0, count: 0 }
+      const currency = state.accounts.find((a) => a.id === t.cuenta_id)?.currency ?? "EUR"
+      const amount = convertToEur(t.monto, currency)
+      if (!isTransfer(t) && !isInitialBalanceTransaction(t.id)) {
+        if (t.tipo === "ingreso") entry.ingresos += amount
+        else entry.gastos += amount
+      }
+      entry.count += 1
+      totals.set(t.fecha, entry)
+    }
+    return totals
+  }, [sorted, state.accounts])
+
+  const [calendarYear, calendarMonthNumber] = calendarMonth.split("-").map(Number)
+  const daysInMonth = new Date(calendarYear, calendarMonthNumber, 0).getDate()
+  const leadingDays = (new Date(calendarYear, calendarMonthNumber - 1, 1).getDay() + 6) % 7
+  const calendarCellCount = Math.ceil((leadingDays + daysInMonth) / 7) * 7
+  const calendarMonthLabel = new Date(calendarYear, calendarMonthNumber - 1, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" }).replace(/^./, (letter) => letter.toLocaleUpperCase("es-ES"))
+  const selectedDayLabel = (() => {
+    const [year, month, day] = selectedDay.split("-").map(Number)
+    return new Date(year, month - 1, day).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })
+  })()
+  const selectedDayStats = dailyTotals.get(selectedDay)
+  const selectedDayNet = (selectedDayStats?.ingresos ?? 0) - (selectedDayStats?.gastos ?? 0)
 
   const categoryFilterOptions = useMemo(
     () => [...state.categories].sort((a, b) => a.name.localeCompare(b.name, "es")),
@@ -503,6 +559,9 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   const totalPages = Math.max(1, Math.ceil(grouped.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages - 1)
   const currentGrouped = useMemo(() => grouped.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE), [grouped, safePage])
+  const mobileGroups = mobileMode === "calendar"
+    ? grouped.filter((group) => group.date === selectedDay)
+    : currentGrouped
   const currentPageIds = useMemo(() => currentGrouped.flatMap((g) => g.transactions.filter((t) => !isInitialBalanceTransaction(t.id)).map((t) => t.id)), [currentGrouped])
   // Delay incremental (acotado) para que las filas entren en cascada al
   // cambiar de mes/filtro/página, en vez de aparecer todas de golpe.
@@ -511,8 +570,23 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
   return (
     <Card className="col-span-full">
       <CardHeader className="flex flex-col gap-4 space-y-0 pb-2 lg:flex-row lg:items-center lg:justify-between">
-        <CardTitle className="text-lg font-semibold">Transacciones</CardTitle>
-          <div className="grid w-full grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-2">
+        <div className="w-full space-y-3 lg:w-auto lg:space-y-0">
+          <CardTitle className="text-lg font-semibold">Transacciones</CardTitle>
+          {selectedMonth && !cuentaId && (
+            <div className="grid grid-cols-2 rounded-full bg-muted/70 p-1 md:hidden" role="group" aria-label="Vista de movimientos">
+              <button type="button" aria-pressed={mobileView === "list"} onClick={() => setMobileView("list")} className={cn("flex min-h-10 items-center justify-center gap-2 rounded-full text-sm font-semibold transition-all", mobileView === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}><List className="size-4" />Lista</button>
+              <button type="button" aria-pressed={mobileView === "calendar"} onClick={() => setMobileView("calendar")} className={cn("flex min-h-10 items-center justify-center gap-2 rounded-full text-sm font-semibold transition-all", mobileView === "calendar" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}><CalendarDays className="size-4" />Calendario</button>
+            </div>
+          )}
+          {selectedMonth && (
+            <div className="flex w-full items-center justify-between gap-2 rounded-full border border-border bg-background/70 p-1 md:hidden">
+              <button type="button" onClick={() => onMonthChange?.(1)} disabled={!onMonthChange} aria-label="Mes anterior" className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"><ChevronLeft className="size-4" /></button>
+              <span className="min-w-0 text-center text-sm font-semibold text-foreground">{calendarMonthLabel}</span>
+              <button type="button" onClick={() => onMonthChange?.(-1)} disabled={!onMonthChange || selectedMonth >= localDateKey().slice(0, 7)} aria-label="Mes siguiente" className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"><ChevronRight className="size-4" /></button>
+            </div>
+          )}
+        </div>
+          <div className={cn("grid w-full grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-2", mobileMode === "calendar" && "!hidden md:!flex")}>
             <Button type="button" variant="outline" size="sm" className="h-10 w-full gap-1.5 px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm" onClick={exportCSV}>
               <Download className="h-3.5 w-3.5" /> Exportar CSV
             </Button>
@@ -607,6 +681,72 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
           </Dialog>
         </div>
       </CardHeader>
+      {mobileMode === "calendar" && (
+        <div className="space-y-3 px-3 pb-3 md:hidden">
+          {mobileSummary && (
+            <div className="grid grid-cols-3 gap-2">
+              <div className="min-w-0 rounded-2xl border border-border/70 bg-background/50 px-2.5 py-3">
+                <p className="truncate text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Ingresos</p>
+                <p className="mt-1 truncate text-xs font-bold tabular-nums text-emerald-500"><Sensitive>{formatMoney(mobileSummary.ingresos, "EUR")}</Sensitive></p>
+              </div>
+              <div className="min-w-0 rounded-2xl border border-border/70 bg-background/50 px-2.5 py-3">
+                <p className="truncate text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Gastos</p>
+                <p className="mt-1 truncate text-xs font-bold tabular-nums text-red-400"><Sensitive>{formatMoney(mobileSummary.gastos, "EUR")}</Sensitive></p>
+              </div>
+              <div className="min-w-0 rounded-2xl border border-border/70 bg-background/50 px-2.5 py-3">
+                <p className="truncate text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Ahorro neto</p>
+                <p className={cn("mt-1 truncate text-xs font-bold tabular-nums", mobileSummary.neto >= 0 ? "text-foreground" : "text-red-400")}><Sensitive>{formatMoney(mobileSummary.neto, "EUR")}</Sensitive></p>
+              </div>
+            </div>
+          )}
+          {hasActiveFilters && (
+            <button type="button" onClick={clearFilters} className="w-full rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2 text-left text-xs font-medium text-primary">
+              Hay filtros activos · toca para quitarlos
+            </button>
+          )}
+
+          <div className="rounded-[22px] border border-border bg-background/50 p-2.5 sm:p-3">
+            <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-muted-foreground">
+              {["L", "M", "X", "J", "V", "S", "D"].map((day, index) => <span key={`${day}-${index}`} className="py-1">{day}</span>)}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: calendarCellCount }, (_, index) => {
+                const day = index - leadingDays + 1
+                if (day < 1 || day > daysInMonth) return <span key={`empty-${index}`} aria-hidden="true" />
+                const dateKey = `${calendarMonth}-${String(day).padStart(2, "0")}`
+                const stats = dailyTotals.get(dateKey)
+                const net = (stats?.ingresos ?? 0) - (stats?.gastos ?? 0)
+                const selected = selectedDay === dateKey
+                const today = localDateKey() === dateKey
+                const readableDate = new Date(calendarYear, calendarMonthNumber - 1, day).toLocaleDateString("es-ES", { day: "numeric", month: "long" })
+                return (
+                  <button
+                    key={dateKey}
+                    type="button"
+                    aria-pressed={selected}
+                    aria-label={`${readableDate}${stats ? `, ${stats.count} movimientos` : ", sin movimientos"}`}
+                    onClick={() => setSelectedCalendarDate({ month: calendarMonth, day: dateKey })}
+                    className={cn(
+                      "flex min-h-[56px] min-w-0 flex-col items-center justify-between rounded-xl px-0.5 py-1.5 text-xs transition-colors active:scale-[0.97]",
+                      selected ? "bg-primary text-primary-foreground shadow-sm" : net > 0 ? "bg-emerald-500/[0.11] text-foreground" : net < 0 ? "bg-red-500/[0.10] text-foreground" : "text-muted-foreground hover:bg-muted/70",
+                      today && !selected && "ring-1 ring-[var(--gold)]/70"
+                    )}
+                  >
+                    <span className={cn("font-semibold tabular-nums", selected && "text-primary-foreground")}>{day}</span>
+                    {stats ? (
+                      <span className="flex h-3.5 max-w-full items-center justify-center gap-0.5" aria-hidden="true">
+                        {stats.ingresos > 0 && <span className={cn("size-1.5 rounded-full", selected ? "bg-primary-foreground" : "bg-emerald-500")} />}
+                        {stats.gastos > 0 && <span className={cn("size-1.5 rounded-full", selected ? "bg-primary-foreground/65" : "bg-red-400")} />}
+                        {stats.count > 0 && <span className={cn("ml-0.5 text-[9px] font-medium", selected ? "text-primary-foreground/80" : "text-muted-foreground")}>{stats.count > 1 ? `+${stats.count}` : "·"}</span>}
+                      </span>
+                    ) : <span className="h-3.5" />}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
       {selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-y border-primary/20 bg-primary/5 px-4 py-2 animate-fade-in">
           <span className="text-xs font-semibold text-foreground">{selectedIds.size} seleccionada{selectedIds.size === 1 ? "" : "s"}</span>
@@ -836,7 +976,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
           </TableBody>
         </Table>
         </div>
-        <div className="space-y-3 px-3 pb-3 md:hidden">
+        <div className={cn("space-y-3 px-3 pb-3 md:hidden", mobileMode === "calendar" && "hidden")}>
           {loading ? (
             <div className="space-y-3 py-3" aria-label="Cargando movimientos">
               <Skeleton className="h-24 rounded-2xl" /><Skeleton className="h-24 rounded-2xl" /><Skeleton className="h-24 rounded-2xl" />
@@ -849,9 +989,9 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                 <EmptyState icon={Search} title="Sin movimientos este mes" description="Registra tu primer movimiento para verlo aquí." action={{ label: "Nueva transacción", icon: Plus, onClick: () => setShowNew(true) }} />
               )}
             </div>
-          ) : currentGrouped.map((group) => (
+          ) : mobileGroups.map((group) => (
             <section key={group.date} aria-label={group.label}>
-              <h3 className="px-1 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{group.label}</h3>
+              {mobileMode === "list" && <h3 className="px-1 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{group.label}</h3>}
               <div className="space-y-2">
                 {group.transactions.map((t) => {
                   const account = state.accounts.find((a) => a.id === t.cuenta_id)
@@ -880,7 +1020,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
                             <span>{t.categoria}</span><span aria-hidden="true">·</span><span className="max-w-full truncate">{account?.nombre ?? "Cuenta eliminada"}</span>
-                            <span aria-hidden="true">·</span><span className="tabular-nums">{dateLabel(t.fecha)}</span>
+                            {mobileMode === "list" && <><span aria-hidden="true">·</span><span className="tabular-nums">{dateLabel(t.fecha)}</span></>}
                           </div>
                           <div className="mt-3 flex items-center justify-between gap-3">
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", transfer ? "bg-violet-500/10 text-violet-500" : positive ? "bg-emerald-500/10 text-emerald-500" : systemAdjustment ? "bg-muted text-muted-foreground" : "bg-red-500/10 text-red-500")}>
@@ -904,7 +1044,71 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             </section>
           ))}
         </div>
-        {totalPages > 1 && (
+        {mobileMode === "calendar" && (
+          <div className="space-y-3 px-3 pb-4 md:hidden">
+            <div className="flex items-end justify-between gap-3 px-1 pt-1">
+              <h3 className="min-w-0 truncate text-base font-bold capitalize text-foreground">{selectedDayLabel}</h3>
+              <span className={cn("flex shrink-0 items-center gap-1 text-sm font-bold tabular-nums", selectedDayNet >= 0 ? "text-emerald-500" : "text-red-400")}>
+                {selectedDayNet > 0 ? <TrendingUp className="size-3.5" /> : selectedDayNet < 0 ? <TrendingDown className="size-3.5" /> : null}
+                <Sensitive>
+                {selectedDayNet > 0 ? "+" : ""}{formatMoney(selectedDayNet, "EUR")}
+                </Sensitive>
+              </span>
+            </div>
+            {loading ? (
+              <div className="space-y-2" aria-label="Cargando movimientos"><Skeleton className="h-20 rounded-2xl" /><Skeleton className="h-20 rounded-2xl" /></div>
+            ) : selectedDayTransactions.length === 0 && sorted.length > 0 ? (
+              <div className="rounded-2xl border border-dashed border-border px-4 py-6 text-center">
+                <p className="text-sm font-medium text-foreground">Día tranquilo</p>
+                <p className="mt-1 text-xs text-muted-foreground">No hay movimientos este día. Elige otra fecha del calendario.</p>
+              </div>
+            ) : sorted.length === 0 ? (
+              <div className="py-4">
+                {hasActiveFilters ? (
+                  <EmptyState icon={Filter} title="Ningún movimiento coincide" description="Cambia o limpia los filtros para ver otros movimientos." action={{ label: "Limpiar filtros", icon: X, onClick: clearFilters }} />
+                ) : (
+                  <EmptyState icon={Search} title="Sin movimientos este mes" description="Registra tu primer movimiento para verlo aquí." action={{ label: "Nueva transacción", icon: Plus, onClick: () => setShowNew(true) }} />
+                )}
+              </div>
+            ) : mobileGroups.map((group) => (
+              <section key={group.date} aria-label={group.label}>
+                <div className="space-y-2">
+                  {group.transactions.map((t) => {
+                    const account = state.accounts.find((a) => a.id === t.cuenta_id)
+                    const category = state.categories.find((c) => c.name === t.categoria)
+                    const transfer = isTransfer(t)
+                    const systemAdjustment = isInitialBalanceTransaction(t.id)
+                    const positive = t.tipo === "ingreso" && !transfer
+                    return (
+                      <article key={t.id} className={cn("rounded-2xl border border-border bg-card p-3.5 shadow-sm", transfer && "border-violet-500/20 bg-violet-500/[0.025]", selectedIds.has(t.id) && "ring-1 ring-primary/30")}>
+                        <div className="flex items-start gap-3">
+                          <span className="mt-1.5 size-2.5 shrink-0 rounded-full" style={{ backgroundColor: category?.color ?? "var(--muted-foreground)" }} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="min-w-0 break-words text-sm font-semibold leading-snug text-foreground">{t.descripcion || t.categoria}</p>
+                              <span className={cn("shrink-0 text-sm font-bold tabular-nums", positive ? "text-emerald-500" : transfer ? "text-violet-500" : "text-foreground")}><Sensitive>{positive ? "+" : transfer ? "" : "−"}{formatMoney(t.monto, account?.currency ?? "EUR")}</Sensitive></span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                              <span>{t.categoria}</span><span aria-hidden="true">·</span><span className="max-w-full truncate">{account?.nombre ?? "Cuenta eliminada"}</span>
+                            </div>
+                            <div className="mt-3 flex items-center justify-between gap-3">
+                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", transfer ? "bg-violet-500/10 text-violet-500" : positive ? "bg-emerald-500/10 text-emerald-500" : systemAdjustment ? "bg-muted text-muted-foreground" : "bg-red-500/10 text-red-500")}>{systemAdjustment ? "Ajuste" : transfer ? "Traspaso" : positive ? "Ingreso" : "Gasto"}</span>
+                              <div className="flex items-center gap-1">
+                                <button type="button" disabled={systemAdjustment} onClick={() => setEditingTxn(t)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40" aria-label={`Editar ${t.descripcion || t.categoria}`}><Pencil className="size-3.5" />Editar</button>
+                                <button type="button" disabled={systemAdjustment} onClick={() => setDeleteConfirm(t)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40" aria-label={`Eliminar ${t.descripcion || t.categoria}`}><Trash2 className="size-3.5" />Eliminar</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+        {mobileMode === "list" && totalPages > 1 && (
           <div className="flex items-center justify-between border-t px-4 py-3">
             <p className="text-xs text-muted-foreground">
               Página {safePage + 1} de {totalPages} · {sorted.length} transacciones
