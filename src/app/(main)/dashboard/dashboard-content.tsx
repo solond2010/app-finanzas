@@ -608,16 +608,16 @@ export default function DashboardContent() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Hola, Mohamed</h1>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 self-start sm:w-auto sm:self-auto">
-          <div className="flex min-w-0 flex-1 items-center justify-between gap-1 rounded-full border border-border bg-card p-1 sm:flex-none">
+          <div className="flex w-full min-w-0 items-center justify-between gap-1 rounded-full border border-border bg-card p-1 sm:w-auto sm:flex-none">
             <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="min-w-0 flex-1 px-1 text-center text-sm font-medium capitalize text-foreground sm:w-32 sm:flex-none">{formatMonth(selectedDate)}</span>
+            <span className="min-w-0 flex-1 whitespace-nowrap px-1 text-center text-sm font-medium text-foreground sm:w-32 sm:flex-none">{formatMonth(selectedDate)}</span>
             <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
           </div>
           <Button onClick={() => openMovementDialog()} className="hidden gap-2 rounded-full px-4 shadow-sm sm:inline-flex">
             <Plus className="h-4 w-4" /> Nuevo movimiento
           </Button>
           {hasAnyData && (
-            <Button onClick={handleExportDashboard} disabled={exportingPdf} variant="outline" className="min-w-0 flex-1 gap-1.5 whitespace-nowrap rounded-full px-3 text-xs sm:flex-none sm:px-4 sm:text-sm" title="Incluye resumen, gráficos, cuentas, metas, presupuestos y movimientos del mes seleccionado.">
+            <Button onClick={handleExportDashboard} disabled={exportingPdf} variant="outline" className="w-full min-w-0 gap-1.5 whitespace-nowrap rounded-full px-3 text-xs sm:w-auto sm:flex-none sm:px-4 sm:text-sm" title="Incluye resumen, gráficos, cuentas, metas, presupuestos y movimientos del mes seleccionado.">
               <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Informe mensual PDF"}
             </Button>
           )}
@@ -675,11 +675,11 @@ export default function DashboardContent() {
           <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:gap-5 2xl:grid-cols-12" style={{ animationDelay: "0ms" }}>
             {/* Patrimonio + rango */}
             <div className={`${CARD_HERO} min-w-0 md:col-span-2 xl:col-span-2 2xl:col-span-6`}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="w-full min-w-0 flex-1 sm:w-auto">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                     <p className="page-section-label">Evolución del patrimonio</p>
-                    {isAllTimeHigh && <span className="gold-badge rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">Máximo histórico</span>}
+                    {isAllTimeHigh && <span className="gold-badge shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">Máximo histórico</span>}
                   </div>
                   <p className="hero-figure mt-2 text-[clamp(1.8rem,7vw,2.5rem)] font-bold tracking-tight tabular-nums">
                     <AnimatedNumber value={netWorthDisplay} />
@@ -706,7 +706,7 @@ export default function DashboardContent() {
                     </p>
                   )}
                 </div>
-                <div className="range-tabs">
+                <div className="range-tabs w-full justify-between sm:w-auto sm:justify-start">
                   {RANGES.map((r) => (
                     <button key={r.id} onClick={() => setRangeId(r.id)} data-active={rangeId === r.id} className="range-tab tabular-nums">
                       {r.id}
