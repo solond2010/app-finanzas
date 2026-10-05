@@ -68,7 +68,42 @@ function ContributionsGrid({ months, positions, cur }: { months: [string, Map<st
   const grandTotal = totalsByPosition.reduce((s, v) => s + v, 0)
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-border">
+    <>
+      <div className="space-y-2 sm:hidden">
+        {months.map(([mk, row], i) => {
+          const total = positions.reduce((s, p) => s + (row.get(p.id) ?? 0), 0)
+          const activePositions = positions.filter((p) => (row.get(p.id) ?? 0) > 0)
+          return (
+            <article key={mk} className={cn("rounded-2xl border border-border bg-background/45 p-3", i === months.length - 1 && "border-[color-mix(in_oklch,var(--gold),transparent_55%)]")}>
+              <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-2">
+                <p className={cn("text-xs font-semibold", i === months.length - 1 ? "text-gold" : "text-foreground")}>{monthLabel(mk)}</p>
+                <p className="shrink-0 text-sm font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(total, cur)}</Sensitive></p>
+              </div>
+              {activePositions.length > 0 ? (
+                <div className="mt-2 space-y-1.5">
+                  {activePositions.map((p) => (
+                    <div key={p.id} className="flex min-w-0 items-center justify-between gap-3 text-xs">
+                      <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
+                        <span className="gold-badge flex size-5 shrink-0 items-center justify-center rounded-md text-[8px] font-bold">{p.symbol.replace("custom:", "").slice(0, 2).toUpperCase()}</span>
+                        <span className="truncate">{p.name}</span>
+                      </span>
+                      <span className="shrink-0 font-medium tabular-nums"><Sensitive>{formatMoney(row.get(p.id) ?? 0, cur)}</Sensitive></span>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="mt-2 text-[11px] text-muted-foreground">Sin aportaciones registradas</p>}
+            </article>
+          )
+        })}
+        {months.length > 0 && (
+          <div className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2 text-xs">
+            <span className="font-medium text-muted-foreground">Total aportado</span>
+            <span className="font-bold tabular-nums"><Sensitive>{formatMoney(grandTotal, cur)}</Sensitive></span>
+          </div>
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-2xl border border-border sm:block">
       <table className="w-full min-w-[520px] border-collapse text-xs">
         <thead>
           <tr>
@@ -111,7 +146,8 @@ function ContributionsGrid({ months, positions, cur }: { months: [string, Map<st
           </tr>
         </tfoot>
       </table>
-    </div>
+      </div>
+    </>
   )
 }
 

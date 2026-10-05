@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { AlertCircle } from "lucide-react"
-import { Plus, ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, Send } from "lucide-react"
+import { ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, Send } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -374,25 +374,6 @@ export function QuickActionsFAB() {
     return () => window.removeEventListener(OPEN_MOVEMENT_EVENT, handler)
   }, [])
 
-  // En móvil el FAB flota fijo sobre el contenido con scroll y puede acabar
-  // tapando cifras justo debajo (ej. la puntuación financiera o una tarjeta
-  // de resumen). Al detectar scroll activo lo encogemos y atenuamos, y
-  // recupera su tamaño normal en cuanto el usuario deja de desplazarse.
-  const [isScrolling, setIsScrolling] = useState(false)
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout>
-    const onScroll = () => {
-      setIsScrolling(true)
-      clearTimeout(timeout)
-      timeout = setTimeout(() => setIsScrolling(false), 350)
-    }
-    window.addEventListener("scroll", onScroll, { passive: true })
-    return () => {
-      window.removeEventListener("scroll", onScroll)
-      clearTimeout(timeout)
-    }
-  }, [])
-
   const handleAddTransaction = (t: Transaction) => {
     dispatch({ type: "ADD_TRANSACTION", payload: t })
     setDialogOpen(false)
@@ -439,20 +420,6 @@ export function QuickActionsFAB() {
 
   return (
     <>
-      <div
-        className={`fixed right-5 bottom-[calc(var(--bottom-nav-h)+1rem)] z-50 transition-all duration-300 lg:hidden ${
-          isScrolling ? "scale-90 opacity-60" : "scale-100 opacity-100"
-        }`}
-      >
-        <button
-          onClick={() => { setPrefill(undefined); setDialogOpen(true) }}
-          aria-label="Nuevo movimiento"
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--gold)] shadow-md transition-colors hover:brightness-95 active:scale-95"
-        >
-          <Plus className="h-6 w-6 text-[var(--gold-foreground)]" />
-        </button>
-      </div>
-
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setPrefill(undefined) }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

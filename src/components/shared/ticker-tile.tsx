@@ -15,7 +15,7 @@ export function TickerTile({ label, value, detail, detailTone, secondaryDetail, 
     <>
       <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <div className="mt-1.5 flex items-end justify-between gap-2">
-        <span className="min-w-0 truncate text-base font-bold tabular-nums sm:text-lg" style={{ color: valueColor }}>{value}</span>
+        <span className="min-w-0 truncate text-[clamp(0.8rem,4vw,1rem)] font-bold tracking-tight tabular-nums sm:text-lg" style={{ color: valueColor }}>{value}</span>
         {data && data.length > 1 && (
           // Decorativo: la cifra de al lado ya dice lo mismo en texto, así que
           // se oculta a lectores de pantalla en vez de anunciar un SVG mudo.
@@ -30,10 +30,10 @@ export function TickerTile({ label, value, detail, detailTone, secondaryDetail, 
   )
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="min-w-0 w-full rounded-2xl border border-border bg-card p-3.5 text-left transition-all card-glow hover:border-primary/40 active:scale-[0.98]">
+      <button type="button" onClick={onClick} className="min-h-[92px] min-w-0 w-full rounded-2xl border border-border bg-card p-3 text-left transition-all card-glow hover:border-primary/40 active:scale-[0.98] sm:min-h-0 sm:p-3.5">
         {content}
       </button>
     )
   }
-  return <div className="min-w-0 rounded-2xl border border-border bg-card p-3.5 transition-colors card-glow">{content}</div>
+  return <div className="min-h-[92px] min-w-0 rounded-2xl border border-border bg-card p-3 transition-colors card-glow sm:min-h-0 sm:p-3.5">{content}</div>
 }

@@ -79,7 +79,7 @@ svg.lucide {
      bajo la barra de estado/notch — sin esto, la cabecera fija quedaba
      demasiado baja y el título de cada página aparecía tapado arriba. */
   --mobile-header-h: calc(52px + env(safe-area-inset-top));
-  --bottom-nav-h: 64px;
+  --bottom-nav-h: 68px;
   /* Claro frío: azul niebla muy pálido, superficies blancas, cero subtono crema. */
   --background: oklch(0.958 0.018 248);
   --foreground: oklch(0.24 0.035 255);
@@ -683,6 +683,12 @@ body {
   select,
   textarea {
     font-size: 16px;
+  }
+
+  /* El panel móvil se comporta como una hoja nativa: contenido desplazable,
+     esquinas superiores suaves y espacio real para el indicador de gesto. */
+  [data-slot="dialog-content"] {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
 }
 

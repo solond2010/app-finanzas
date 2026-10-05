@@ -142,7 +142,7 @@ export default function CuentasPage() {
                 <button
                   key={account.id}
                   onClick={() => router.push(`/cuentas/${account.id}`)}
-                  className="stagger-fade group rounded-[16px] border border-border bg-card p-6 text-left glass-card-hover"
+                  className="stagger-fade group rounded-[16px] border border-border bg-card p-4 text-left glass-card-hover active:scale-[0.99] sm:p-6"
                   style={{ animationDelay: `${index * 60}ms` }}
                 >
                   <div className="space-y-4">
@@ -150,7 +150,7 @@ export default function CuentasPage() {
                       <div className="flex items-center gap-3">
                         <AccountLogo account={account} className="h-11 w-11" />
                         <div>
-                          <h3 className="font-semibold text-base">{account.nombre}</h3>
+                        <h3 className="text-sm font-semibold sm:text-base">{account.nombre}</h3>
                           <p className="text-xs text-muted-foreground">{account.banco || "Sin banco"}</p>
                         </div>
                       </div>
@@ -160,7 +160,7 @@ export default function CuentasPage() {
                     </div>
 
                     <div>
-                      <p className="text-3xl font-bold tabular-nums tracking-tight">
+                      <p className="text-[clamp(1.35rem,7vw,1.875rem)] font-bold tabular-nums tracking-tight sm:text-3xl">
                         <Sensitive>{formatMoney(accountValue(account), account.currency)}</Sensitive>
                       </p>
                     </div>

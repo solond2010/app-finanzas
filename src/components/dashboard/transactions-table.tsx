@@ -512,18 +512,18 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
     <Card className="col-span-full">
       <CardHeader className="flex flex-col gap-4 space-y-0 pb-2 lg:flex-row lg:items-center lg:justify-between">
         <CardTitle className="text-lg font-semibold">Transacciones</CardTitle>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
+          <div className="grid w-full grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-2">
+            <Button type="button" variant="outline" size="sm" className="h-10 w-full gap-1.5 px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm" onClick={exportCSV}>
               <Download className="h-3.5 w-3.5" /> Exportar CSV
             </Button>
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border px-2.5 py-2 text-xs text-muted-foreground">
+            <label className="inline-flex min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-border px-2 py-2 text-[11px] text-muted-foreground sm:px-2.5 sm:text-xs">
               <input type="checkbox" checked={showAdjustments} onChange={(e) => { setShowAdjustments(e.target.checked); setPage(0) }} />
-              Ver ajustes de saldo
+              <span className="truncate">Ver ajustes de saldo</span>
             </label>
-            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Filter className="hidden h-4 w-4 text-muted-foreground sm:block" />
             {!cuentaId && (
               <Select value={filterAccount} onValueChange={handleAccountFilter} items={{ all: "Todas las cuentas", ...Object.fromEntries(state.accounts.map((a) => [a.id, a.nombre])) }}>
-                <SelectTrigger className="w-40" aria-label="Filtrar por cuenta">
+                <SelectTrigger className="h-10 w-full min-w-0 text-xs sm:h-9 sm:w-40 sm:text-sm" aria-label="Filtrar por cuenta">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent className="p-2">
@@ -535,7 +535,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
               </Select>
             )}
             <Select value={filterCategory} onValueChange={handleCategoryFilter} items={{ all: "Todas las categorías", ...Object.fromEntries(categoryFilterOptions.map((c) => [c.name, c.name])) }}>
-              <SelectTrigger className="w-40" aria-label="Filtrar por categoría">
+              <SelectTrigger className="h-10 w-full min-w-0 text-xs sm:h-9 sm:w-40 sm:text-sm" aria-label="Filtrar por categoría">
                 <SelectValue placeholder="Categoría" />
               </SelectTrigger>
               <SelectContent className="p-2">
@@ -545,7 +545,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+            <div className="col-span-2 flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border bg-card p-1 sm:col-span-1">
               {([
                 { value: "all" as const, label: "Todos" },
                 { value: "ingreso" as const, label: "Ingreso" },
@@ -556,7 +556,7 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                   key={tipo.value}
                   onClick={() => handleTipoFilter(tipo.value)}
                   className={cn(
-                    "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                    "shrink-0 rounded-full px-3 py-2 text-xs font-medium transition-colors sm:px-2.5 sm:py-1",
                     filterTipo === tipo.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -569,14 +569,14 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
                 <X className="h-3.5 w-3.5" /> Limpiar filtros
               </Button>
             )}
-            <div className="relative">
+            <div className="relative col-span-2 min-w-0 sm:col-span-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             <Input
               type="text"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0) }}
               placeholder="Buscar..."
-              className="h-9 w-40 rounded-xl pl-7"
+              className="h-10 w-full rounded-xl pl-8 sm:h-9 sm:w-40 sm:pl-7"
             />
           </div>
           <label className="sr-only" htmlFor="transaction-sort">Ordenar movimientos</label>
@@ -584,12 +584,12 @@ export function TransactionsTable({ cuentaId, selectedMonth }: { cuentaId?: stri
             id="transaction-sort"
             value={sortOrder}
             onChange={(e) => { setSortOrder(e.target.value as "newest" | "oldest"); setPage(0) }}
-            className="h-9 min-w-36 rounded-xl border border-border bg-card px-3 text-xs font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="col-span-2 h-10 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-xs font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary sm:col-span-1 sm:h-9 sm:w-auto sm:min-w-36"
           >
             <option value="newest">Más recientes</option>
             <option value="oldest">Más antiguos</option>
           </select>
-          <Button size="sm" className="gap-1" onClick={() => setShowNew(true)}>
+          <Button size="sm" className="hidden gap-1 sm:inline-flex" onClick={() => setShowNew(true)}>
             <Plus className="h-3.5 w-3.5" /> Nueva
           </Button>
           <Dialog open={showNew} onOpenChange={setShowNew}>

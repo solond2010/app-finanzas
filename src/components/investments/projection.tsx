@@ -115,7 +115,23 @@ export function ProjectionSimulator({ ahorros0, inversiones0 }: { ahorros0: numb
                 <BarChart data={rows} index="year" categories={["Ahorros", "Inversiones"]} colors={["blue", "emerald"]} stack valueFormatter={chartFormatter} showLegend showYAxis={false} customTooltip={ProjectionTooltip} className="h-60" showAnimation />
               </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-border">
+              <div className="space-y-2 sm:hidden">
+                {rows.map((r) => (
+                  <article key={r.year} className="rounded-xl border border-border bg-background/45 p-3">
+                    <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-2">
+                      <span className="text-sm font-semibold text-muted-foreground">{r.year}</span>
+                      <span className="text-sm font-bold tabular-nums text-foreground"><Sensitive>{eur(r.total)}</Sensitive></span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+                      <span className="text-muted-foreground">Ahorros</span><span className="text-right tabular-nums"><Sensitive>{eur(r.Ahorros)}</Sensitive></span>
+                      <span className="text-muted-foreground">Inversiones</span><span className="text-right tabular-nums"><Sensitive>{eur(r.Inversiones)}</Sensitive></span>
+                      <span className="text-muted-foreground">Aportación anual</span><span className="text-right tabular-nums"><Sensitive>{eur(r.aportAh + r.aportInv)}</Sensitive></span>
+                      <span className="text-muted-foreground">Rendimiento estimado</span><span className="text-right tabular-nums text-emerald-500"><Sensitive>{eur(r.intAh + r.intInv)}</Sensitive></span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto rounded-2xl border border-border sm:block">
                 <table className="w-full min-w-[640px] text-right text-xs tabular-nums">
                   <thead>
                     <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">

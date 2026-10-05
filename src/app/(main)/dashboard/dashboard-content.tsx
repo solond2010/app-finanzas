@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
-import { MonthlyBudget } from "@/components/dashboard/monthly-budget"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -614,7 +613,7 @@ export default function DashboardContent() {
             <span className="w-28 text-center text-sm font-medium text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
             <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
           </div>
-          <Button onClick={() => openMovementDialog()} className="gap-2 rounded-full px-4 shadow-sm">
+          <Button onClick={() => openMovementDialog()} className="hidden gap-2 rounded-full px-4 shadow-sm sm:inline-flex">
             <Plus className="h-4 w-4" /> Nuevo movimiento
           </Button>
           {hasAnyData && (
@@ -840,12 +839,6 @@ export default function DashboardContent() {
             <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(monthTotals.neto, "EUR")}</Sensitive>} detail={monthTotals.ingresos > 0 ? `${savingsRate}% de tus ingresos` : "Sin ingresos para calcular la tasa"} detailTone={savingsRate > 0 ? "positive" : savingsRate < 0 ? "negative" : "neutral"} valueColor={monthTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" onClick={() => router.push("/analytics")} />
             <EmergencyRunwayCard balanceEur={emergencyBalanceEur} />
           </section>
-
-          {/* El presupuesto tiene ancho completo para dar aire a las categorías. */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 lg:items-start" style={{ animationDelay: "80ms" }}>
-            <MonthlyBudget budgets={state.budgets} transactions={analysisTransactions} categories={state.categories} selectedMonth={selectedMonth} currencyByAccount={currencyByAccount} />
-          </section>
-
 
           {topSpending.length > 0 && (
             <div className={`${CARD} stagger-fade min-w-0`} style={{ animationDelay: "200ms" }}>
