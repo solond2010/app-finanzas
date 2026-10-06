@@ -196,6 +196,7 @@ export function mergedPosition(existing: Position, incoming: Omit<Position, "id"
 
 interface InvestmentsContextValue {
   positions: Position[]
+  loaded: boolean
   add: (p: Omit<Position, "id">) => { id: string; merged: boolean; saved: boolean }
   update: (p: Position) => boolean
   remove: (id: string) => boolean
@@ -254,6 +255,7 @@ function fromRow(r: InvestmentRow): Position {
 
 export function InvestmentsProvider({ children }: { children: ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [watchlist, setWatchlist] = useState<WatchItem[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [syncStatus, setSyncStatus] = useState<InvestmentSyncStatus>("idle")
@@ -342,7 +344,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
   }, [flushOutbox, retrySync])
 
   useEffect(() => {
-    queueMicrotask(async () => {
+    queueMicrotask(() => { void (async () => {
       let localWatch: WatchItem[] = []
       try {
         const wraw = localStorage.getItem(WATCH_KEY)
@@ -424,7 +426,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
       } catch {
         // Sin tabla / sin red → seguimos solo con localStorage.
       }
-    })
+    })().finally(() => setLoaded(true)) })
   }, [enqueue])
 
   const persistLocal = (next: Position[]) => {
@@ -510,7 +512,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     return due.length
   }
 
-  return <InvestmentsContext.Provider value={{ positions, add, update, remove, watchlist, addWatch, removeWatch, applyDca, contributions, addContribution, syncStatus, retrySync }}>{children}</InvestmentsContext.Provider>
+  return <InvestmentsContext.Provider value={{ positions, loaded, add, update, remove, watchlist, addWatch, removeWatch, applyDca, contributions, addContribution, syncStatus, retrySync }}>{children}</InvestmentsContext.Provider>
 }
 
 export function useInvestments() {

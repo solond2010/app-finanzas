@@ -63,7 +63,7 @@ const typeBadge: Record<string, { label: string; color: string }> = {
 function AccountSelectItem({ account, showBalance = true }: { account: Account; showBalance?: boolean }) {
   const badge = typeBadge[account.tipo]
   return (
-    <div className="grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_max-content] items-center gap-2.5">
+    <div className="grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-2 sm:gap-2.5">
       <AccountLogo account={account} className="h-10 w-10 rounded-xl" />
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold leading-tight">{account.nombre}</p>
@@ -77,7 +77,7 @@ function AccountSelectItem({ account, showBalance = true }: { account: Account; 
         </div>
       </div>
       {showBalance && (
-        <span className="max-w-[7.5rem] whitespace-nowrap text-right text-xs font-semibold tabular-nums text-foreground/90 sm:text-sm">
+        <span className="max-w-[6.25rem] whitespace-nowrap text-right text-[11px] font-semibold tabular-nums text-foreground/90 sm:max-w-[7.5rem] sm:text-sm">
           <Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive>
         </span>
       )}
@@ -212,7 +212,7 @@ function UnifiedMovementForm({
               <SelectTrigger className="h-12 w-full text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="w-[28rem] max-w-[calc(100vw-2rem)] p-2">
+              <SelectContent className="w-[min(28rem,calc(100vw-2rem))] p-1.5 sm:p-2">
                 {accounts.map((a) => (
                   <SelectItem key={a.id} value={a.id} className="min-h-14 py-2 pr-10">
                     <AccountSelectItem account={a} />
@@ -234,7 +234,7 @@ function UnifiedMovementForm({
               <SelectTrigger className="h-12 w-full text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="w-[28rem] max-w-[calc(100vw-2rem)] p-2">
+              <SelectContent className="w-[min(28rem,calc(100vw-2rem))] p-1.5 sm:p-2">
                 {accounts.filter((a) => a.id !== origenId).map((a) => (
                   <SelectItem key={a.id} value={a.id} className="min-h-14 py-2 pr-10">
                     <AccountSelectItem account={a} />
@@ -268,7 +268,7 @@ function UnifiedMovementForm({
               <SelectTrigger className="h-12 w-full text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="w-[28rem] max-w-[calc(100vw-2rem)] p-2">
+              <SelectContent className="w-[min(28rem,calc(100vw-2rem))] p-1.5 sm:p-2">
                 {accounts.map((a) => (
                   <SelectItem key={a.id} value={a.id} className="min-h-14 py-2 pr-10">
                     <AccountSelectItem account={a} />

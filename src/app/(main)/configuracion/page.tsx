@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useFinance, useSyncStatus, type CategoryKind } from "@/lib/store"
-import { useInvestmentSyncStatus } from "@/lib/investments"
+import { useInvestments } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X, Cloud, CloudOff, Loader2, HardDrive, ShieldCheck, ShieldAlert } from "lucide-react"
@@ -15,7 +15,7 @@ import { auditFinanceState } from "@/lib/finance-integrity"
 export default function ConfiguracionPage() {
   const { state, loading, dispatch } = useFinance()
   const { status: syncStatus, lastSyncedAt, retrySync, localBackupStatus, retryLocalBackup } = useSyncStatus()
-  const { status: investmentSyncStatus, retrySync: retryInvestmentSync } = useInvestmentSyncStatus()
+  const { positions, contributions, loaded: investmentsLoaded, syncStatus: investmentSyncStatus, retrySync: retryInvestmentSync } = useInvestments()
   const backupBlocked = ["syncing", "error", "offline"].includes(syncStatus) || ["syncing", "error", "offline"].includes(investmentSyncStatus)
   const syncFailed = syncStatus === "error" || syncStatus === "offline" || investmentSyncStatus === "error" || investmentSyncStatus === "offline"
   const syncIcon = syncFailed ? CloudOff : backupBlocked ? Loader2 : Cloud
@@ -32,7 +32,7 @@ export default function ConfiguracionPage() {
   const [categorySearch, setCategorySearch] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState("")
-  const integrityFindings = useMemo(() => auditFinanceState(state), [state])
+  const integrityFindings = useMemo(() => auditFinanceState(state, positions, contributions), [state, positions, contributions])
 
   const addCategory = () => {
     const name = newCat.trim()
@@ -248,11 +248,11 @@ export default function ConfiguracionPage() {
             </div>
             <div className={cn("rounded-2xl border p-4", integrityFindings.length ? "border-amber-500/25 bg-amber-500/5" : "border-emerald-500/20 bg-emerald-500/5")}>
               <div className="flex items-start gap-3">
-                {integrityFindings.length ? <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> : <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />}
+                {!investmentsLoaded ? <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-muted-foreground" /> : integrityFindings.length ? <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> : <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />}
                 <div className="min-w-0">
-                  <p className="text-sm font-medium">{integrityFindings.length ? "Revisión de datos: requiere atención" : "Revisión de datos: sin incidencias detectadas"}</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">Se comprueban identificadores, referencias entre registros, importes, fechas y consistencia entre saldos e historial. La revisión no modifica tus datos.</p>
-                  {integrityFindings.length > 0 && <ul className="mt-2 space-y-1 text-xs text-amber-700 dark:text-amber-300">{integrityFindings.map((finding) => <li key={finding.code}>{finding.count} · {finding.label}</li>)}</ul>}
+                  <p className="text-sm font-medium">{!investmentsLoaded ? "Revisión de datos: comprobando…" : integrityFindings.length ? "Revisión de datos: requiere atención" : "Revisión de datos: sin incidencias detectadas"}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">Se comprueban movimientos, saldos, referencias e inversiones. La revisión es de solo lectura: nunca corrige, elimina ni reescribe tus datos.</p>
+                  {investmentsLoaded && integrityFindings.length > 0 && <ul className="mt-2 space-y-2 text-xs text-amber-700 dark:text-amber-300">{integrityFindings.map((finding) => <li key={finding.code}><span className="font-medium">{finding.count} · {finding.label}</span>{finding.details?.length ? <ul className="mt-1 space-y-0.5 pl-3 text-amber-800/80 dark:text-amber-200/80">{finding.details.map((detail, index) => <li key={`${finding.code}-${index}`} className="break-words">{detail}</li>)}</ul> : null}</li>)}</ul>}
                 </div>
               </div>
             </div>

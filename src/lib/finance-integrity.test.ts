@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { auditFinanceState } from "./finance-integrity"
 import type { FinanceState } from "./store"
+import type { Contribution, Position } from "./investments"
 
 describe("auditFinanceState", () => {
   it("detecta referencias huérfanas, tipos inválidos y saldos que no cuadran sin mutar el estado", () => {
@@ -30,5 +31,19 @@ describe("auditFinanceState", () => {
       sinkingFunds: [], categories: [], budgets: [],
     } as unknown as FinanceState
     expect(auditFinanceState(state)).toEqual([])
+  })
+
+  it("detecta inversiones huérfanas y aportes sin posición sin modificar registros", () => {
+    const state = { accounts: [{ id: "a1", nombre: "Cuenta", saldo: 15 }], transactions: [], sinkingFunds: [], categories: [], budgets: [] } as unknown as FinanceState
+    const positions: Position[] = [{ id: "p1", kind: "stock", symbol: "ABC", name: "Acción ABC", date: "2026-10-01", units: 1, buyPrice: 10, currency: "EUR" }]
+    const contributions: Contribution[] = [{ id: "c1", positionId: "missing", amount: 10, date: "2026-10-01" }]
+    const original = JSON.stringify({ state, positions, contributions })
+
+    const findings = auditFinanceState(state, positions, contributions)
+
+    expect(findings.map((item) => item.code)).toContain("orphan-positions")
+    expect(findings.map((item) => item.code)).toContain("orphan-contributions")
+    expect(findings.find((item) => item.code === "orphan-positions")?.details).toEqual(["Acción ABC"])
+    expect(JSON.stringify({ state, positions, contributions })).toBe(original)
   })
 })
