@@ -125,14 +125,19 @@ export default function DashboardContent() {
   // el máximo que la app ya había observado.
   useEffect(() => {
     let cancelled = false
-    import("@/lib/net-worth-snapshots").then(({ loadNetWorthPeak }) =>
-      loadNetWorthPeak().then((cloudPeak) => {
-        if (cancelled || !cloudPeak) return
-        setStoredNetWorthPeak((previous) => {
-          const peak = previous && previous.value >= cloudPeak.value ? previous : cloudPeak
-          try { localStorage.setItem("netWorthPeak", JSON.stringify(peak)) } catch {}
-          return peak
-        })
+    import("@/lib/net-worth-snapshots").then(({ loadNetWorthPeak, persistNetWorthPeakIfHigher }) =>
+      loadNetWorthPeak().then(async (cloudPeak) => {
+        if (cancelled) return
+        // Recuperación puntual: el dashboard mostró 5.301,27 € en oct-2026,
+        // pero esa observación no llegó a guardarse como pico global. Se usa
+        // precisión mensual porque la captura no conservaba el día exacto.
+        const observedPeak = { value: 5301.27, date: "2026-10", label: "oct 26" }
+        const peak = cloudPeak && cloudPeak.value >= observedPeak.value
+          ? cloudPeak
+          : await persistNetWorthPeakIfHigher(observedPeak)
+        if (cancelled) return
+        setStoredNetWorthPeak((previous) => previous && previous.value >= peak.value ? previous : peak)
+        try { localStorage.setItem("netWorthPeak", JSON.stringify(peak)) } catch {}
       })
     ).catch(() => {})
     return () => { cancelled = true }
