@@ -25,6 +25,7 @@ import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
+import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 
 const CARD = "rounded-[14px] border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
@@ -108,6 +109,34 @@ export default function DashboardContent() {
   const [showNewAccount, setShowNewAccount] = useState(false)
   const [showAnnual, setShowAnnual] = useState(false)
   const [showSpendBreakdown, setShowSpendBreakdown] = useState(false)
+  const [storedNetWorthPeak, setStoredNetWorthPeak] = useState<StoredNetWorthPeak | null>(() => {
+    if (typeof window === "undefined") return null
+    try {
+      const parsed = JSON.parse(localStorage.getItem("netWorthPeak") ?? "null") as Partial<StoredNetWorthPeak> | null
+      if (parsed && typeof parsed.value === "number" && Number.isFinite(parsed.value) && parsed.value > 0) {
+        return { value: parsed.value, date: typeof parsed.date === "string" ? parsed.date : "", label: typeof parsed.label === "string" ? parsed.label : "" }
+      }
+    } catch {}
+    return null
+  })
+
+  // Conserva la referencia histórica que ya guardó Analíticas. Si una posición
+  // se elimina o cambia, la reconstrucción con la cartera actual no debe borrar
+  // el máximo que la app ya había observado.
+  useEffect(() => {
+    let cancelled = false
+    import("@/lib/net-worth-snapshots").then(({ loadNetWorthPeak }) =>
+      loadNetWorthPeak().then((cloudPeak) => {
+        if (cancelled || !cloudPeak) return
+        setStoredNetWorthPeak((previous) => {
+          const peak = previous && previous.value >= cloudPeak.value ? previous : cloudPeak
+          try { localStorage.setItem("netWorthPeak", JSON.stringify(peak)) } catch {}
+          return peak
+        })
+      })
+    ).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   const selectedDate = useMemo(() => new Date(today.getFullYear(), today.getMonth() - monthOffset, 1), [today, monthOffset])
   const selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`
@@ -218,6 +247,7 @@ export default function DashboardContent() {
       return precise.map((p) => ({
         mes: p.label,
         patrimonio: p.patrimonio,
+        date: p.date,
         breakdown: p.breakdown
       }))
     }
@@ -236,6 +266,7 @@ export default function DashboardContent() {
       return precise.map((p) => ({
         mes: p.label,
         patrimonio: p.patrimonio,
+        date: p.date,
         breakdown: p.breakdown
       }))
     }
@@ -251,6 +282,7 @@ export default function DashboardContent() {
     const baseTrend = preciseMonthly.map((p) => ({
       mes: p.label,
       patrimonio: p.patrimonio,
+      date: p.date,
       breakdown: p.breakdown
     }))
     
@@ -291,6 +323,7 @@ export default function DashboardContent() {
         enrichedTrend.splice(i + insertedPeaks, 0, {
           mes: dailyPeak.label.replace(" · pico", ""),
           patrimonio: dailyPeak.patrimonio,
+          date: dailyPeak.date,
           breakdown: dailyPeak.breakdown
         })
         insertedPeaks++
@@ -323,23 +356,70 @@ export default function DashboardContent() {
   // Serie que se PINTA: en rangos por mes y "Todo", si el pico diario supera
   // el valor final, se inserta como punto extra antes del último.
   const chartTrend = useMemo(() => {
+    let points = netWorthTrend
     // Para "months": usar currentMonthDailyPeak (pico del mes actual)
     // Para "all": calcular el pico global de todo el historial
-    if (activeRange.unit === "months") {
-      if (!currentMonthDailyPeak) return netWorthTrend
-      const last = netWorthTrend[netWorthTrend.length - 1]
-      if (!last || currentMonthDailyPeak.patrimonio <= last.patrimonio + 0.005) return netWorthTrend
-      return [...netWorthTrend.slice(0, -1), { mes: currentMonthDailyPeak.label.replace(" · pico", ""), patrimonio: currentMonthDailyPeak.patrimonio }, { ...last, mes: "hoy" }]
-    }
     if (activeRange.unit === "all") {
       // Encontrar el pico global en netWorthTrend (ya incluye picos diarios por mes)
-      const globalPeak = netWorthTrend.reduce((best, d) => (d.patrimonio > best.patrimonio ? d : best), netWorthTrend[0])
-      const last = netWorthTrend[netWorthTrend.length - 1]
-      if (!last || globalPeak.patrimonio <= last.patrimonio + 0.005) return netWorthTrend
-      return [...netWorthTrend.slice(0, -1), { mes: globalPeak.mes.replace(" · pico", ""), patrimonio: globalPeak.patrimonio }, { ...last, mes: "hoy" }]
+      const globalPeak = points.reduce((best, d) => (d.patrimonio > best.patrimonio ? d : best), points[0])
+      const last = points[points.length - 1]
+      if (last && globalPeak.patrimonio > last.patrimonio + 0.005) {
+        points = [...points.slice(0, -1), { ...globalPeak, mes: globalPeak.mes.replace(" · pico", "") }, { ...last, mes: "hoy" }]
+      }
     }
-    return netWorthTrend
-  }, [netWorthTrend, activeRange.unit, currentMonthDailyPeak])
+    // La reconstrucción diaria puede quedarse corta frente al saldo actual
+    // (p. ej. tras valorar posiciones). El último punto debe coincidir con la
+    // cifra grande del dashboard para que la gráfica no contradiga el resumen.
+    if (monthOffset === 0 && points.length > 0) {
+      const last = points[points.length - 1]
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+      const currentPoint = { mes: "hoy", date: todayKey, patrimonio: netWorthDisplay, breakdown: last.breakdown }
+      if (activeRange.unit === "months") {
+        // El último punto mensual representa el cierre estimado del mes, que
+        // puede estar por delante de hoy. Sustituirlo evita fechas fuera de
+        // orden y hace coincidir el final de la curva con el saldo del resumen.
+        const previousPoints = points.slice(0, -1)
+        if (currentMonthDailyPeak && currentMonthDailyPeak.patrimonio > Math.max(0, ...previousPoints.map((point) => point.patrimonio)) + 0.005) {
+          points = [...previousPoints, { ...currentMonthDailyPeak, mes: currentMonthDailyPeak.label.replace(" · pico", "") }, currentPoint]
+        } else {
+          points = [...previousPoints, currentPoint]
+        }
+      } else if (last.date !== todayKey || Math.abs(last.patrimonio - netWorthDisplay) > 0.005) {
+        points = [...points.slice(0, -1), currentPoint]
+      }
+    }
+
+    // Reinsertar en el gráfico el máximo ya guardado si cae dentro del periodo.
+    // La serie reconstruida usa posiciones actuales y por sí sola puede perder
+    // un pico pasado cuando una posición se elimina o se corrige.
+    if (storedNetWorthPeak?.date && points.length > 0) {
+      const peakMonth = storedNetWorthPeak.date.slice(0, 7)
+      const firstMonth = activeRange.unit === "all"
+        ? (points[0].date ?? "").slice(0, 7)
+        : activeRange.unit === "months"
+          ? `${new Date(selectedDate.getFullYear(), selectedDate.getMonth() - activeRange.count + 1, 1).getFullYear()}-${String(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - activeRange.count + 1, 1).getMonth() + 1).padStart(2, "0")}`
+          : (() => {
+              const end = monthOffset === 0 ? today : new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0)
+              const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - (activeRange.unit === "today" ? 1 : activeRange.count - 1))
+              return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`
+            })()
+      const lastMonth = monthOffset === 0 ? `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}` : selectedMonth
+      const inRange = peakMonth >= firstMonth && peakMonth <= lastMonth
+      const sameDay = points.findIndex((point) => point.date === storedNetWorthPeak.date)
+      if (inRange && (sameDay < 0 || points[sameDay].patrimonio < storedNetWorthPeak.value)) {
+        const date = new Date(`${storedNetWorthPeak.date}T12:00:00`)
+        const peakPoint = {
+          mes: storedNetWorthPeak.label || date.toLocaleDateString("es-ES", { day: "2-digit", month: "short" }),
+          date: storedNetWorthPeak.date,
+          patrimonio: storedNetWorthPeak.value,
+          breakdown: points[0].breakdown,
+        }
+        if (sameDay >= 0) points = points.map((point, index) => index === sameDay ? peakPoint : point)
+        else points = [...points, peakPoint].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""))
+      }
+    }
+    return points
+  }, [netWorthTrend, activeRange, currentMonthDailyPeak, storedNetWorthPeak, monthOffset, netWorthDisplay, today, selectedDate, selectedMonth])
 
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
@@ -351,9 +431,11 @@ export default function DashboardContent() {
   const showPct = Math.abs(rangeStart) >= 100 && Math.abs(rangePct) <= PCT_CHANGE_CAP
   // Candidatos al máximo del rango: los puntos del propio gráfico, más (solo
   // para rangos por mes) el pico diario real del mes en curso.
-  const maxCandidates = activeRange.unit === "months" && currentMonthDailyPeak ? [...netWorthTrend, currentMonthDailyPeak] : netWorthTrend
-  // Máximo histórico dentro del rango visible, para la insignia dorada del hero.
-  const isAllTimeHigh = netWorthHasData && rangeDelta > 0 && netWorthDisplay >= Math.max(...maxCandidates.map((t) => t.patrimonio))
+  const maxCandidates = chartTrend.length > 0 ? chartTrend : netWorthTrend
+  const allTimeObservedPeak = storedNetWorthPeak?.value ?? (activeRange.unit === "all" && maxCandidates.length > 0 ? Math.max(...maxCandidates.map((point) => point.patrimonio)) : null)
+  // Solo afirmar "máximo histórico" cuando se compara contra el pico persistido
+  // de toda la vida (o la serie completa si aún no existe referencia guardada).
+  const isAllTimeHigh = netWorthHasData && allTimeObservedPeak !== null && netWorthDisplay >= allTimeObservedPeak - 0.005
   // Punto más alto del rango visible y su etiqueta, para poder mostrar no solo
   // cuánto se ha caído desde el máximo sino la cifra total que se llegó a
   // tener (p.ej. "Máximo: 5.636 € el 8 jul"), sin tener que ir a Movimientos.
@@ -705,7 +787,7 @@ export default function DashboardContent() {
                   </p>
                   {showRangeMax && rangeMaxPoint && (
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Máximo del periodo: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive> ({("mes" in rangeMaxPoint ? rangeMaxPoint.mes : rangeMaxPoint.label).replace(" · pico", "")})
+                      Máximo del periodo: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive> ({rangeMaxPoint.mes.replace(" · pico", "")})
                       {showVsPeakDelta && (
                         <Sensitive as="span" className="ml-1 font-semibold text-red-500">
                           · {formatMoney(vsPeakDelta, "EUR")}{Math.abs(vsPeakPct) > 0.05 ? ` (${formatCappedPct(vsPeakPct)})` : ""} desde el pico
