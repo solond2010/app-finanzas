@@ -63,21 +63,21 @@ const typeBadge: Record<string, { label: string; color: string }> = {
 function AccountSelectItem({ account, showBalance = true }: { account: Account; showBalance?: boolean }) {
   const badge = typeBadge[account.tipo]
   return (
-    <div className="flex w-full items-center gap-3">
+    <div className="grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_max-content] items-center gap-2.5">
       <AccountLogo account={account} className="h-10 w-10 rounded-xl" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-[15px] font-semibold leading-tight">{account.nombre}</span>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${badge?.color ?? "bg-muted text-muted-foreground"}`}>
-            {badge?.label}
-          </span>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold leading-tight">{account.nombre}</p>
+        <div className="mt-1 flex min-w-0 items-center gap-1.5">
+          <p className="min-w-0 truncate text-xs leading-tight text-muted-foreground">{account.banco || "Sin banco"}</p>
+          {badge && (
+            <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${badge.color}`}>
+              {badge.label}
+            </span>
+          )}
         </div>
-        <p className="truncate text-xs leading-tight text-muted-foreground">
-          {account.banco || "Sin banco"}
-        </p>
       </div>
       {showBalance && (
-        <span className="text-sm font-semibold tabular-nums whitespace-nowrap text-foreground/90">
+        <span className="max-w-[7.5rem] whitespace-nowrap text-right text-xs font-semibold tabular-nums text-foreground/90 sm:text-sm">
           <Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive>
         </span>
       )}
@@ -214,7 +214,7 @@ function UnifiedMovementForm({
               </SelectTrigger>
               <SelectContent className="w-[28rem] max-w-[calc(100vw-2rem)] p-2">
                 {accounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id} className="py-0">
+                  <SelectItem key={a.id} value={a.id} className="min-h-14 py-2 pr-10">
                     <AccountSelectItem account={a} />
                   </SelectItem>
                 ))}
@@ -234,9 +234,9 @@ function UnifiedMovementForm({
               <SelectTrigger className="h-12 w-full text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="min-w-[var(--anchor-width)] p-2">
+              <SelectContent className="w-[28rem] max-w-[calc(100vw-2rem)] p-2">
                 {accounts.filter((a) => a.id !== origenId).map((a) => (
-                  <SelectItem key={a.id} value={a.id} className="py-0">
+                  <SelectItem key={a.id} value={a.id} className="min-h-14 py-2 pr-10">
                     <AccountSelectItem account={a} />
                   </SelectItem>
                 ))}
@@ -270,7 +270,7 @@ function UnifiedMovementForm({
               </SelectTrigger>
               <SelectContent className="w-[28rem] max-w-[calc(100vw-2rem)] p-2">
                 {accounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id} className="py-0">
+                  <SelectItem key={a.id} value={a.id} className="min-h-14 py-2 pr-10">
                     <AccountSelectItem account={a} />
                   </SelectItem>
                 ))}
