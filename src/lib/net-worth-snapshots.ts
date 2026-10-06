@@ -117,7 +117,8 @@ export async function persistMergedNetWorthSnapshots(
 export async function persistNetWorthPeakIfHigher(peak: StoredNetWorthPeak): Promise<StoredNetWorthPeak> {
   const prev = await loadNetWorthPeak()
   if (prev && prev.value >= peak.value) return prev
-  await setSetting(PEAK_KEY, JSON.stringify(peak))
+  const saved = await setSetting(PEAK_KEY, JSON.stringify(peak))
+  if (!saved) throw new Error("No se pudo guardar el máximo histórico en la nube")
   return peak
 }
 

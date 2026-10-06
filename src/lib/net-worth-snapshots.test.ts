@@ -1,9 +1,16 @@
-import { describe, it, expect } from "vitest"
+import { beforeEach, describe, it, expect, vi } from "vitest"
+import { getSetting, setSetting } from "./settings"
 import {
   mergeNetWorthSnapshots,
   applyStoredSnapshotsToRows,
+  persistNetWorthPeakIfHigher,
   type StoredNetWorthSnapshot,
 } from "./net-worth-snapshots"
+
+vi.mock("./settings", () => ({
+  getSetting: vi.fn(),
+  setSetting: vi.fn(),
+}))
 
 describe("mergeNetWorthSnapshots", () => {
   it("conserva el máximo patrimonio por fecha y añade fechas nuevas", () => {
@@ -44,5 +51,22 @@ describe("applyStoredSnapshotsToRows", () => {
     expect(applied).toHaveLength(2)
     expect(applied[0].patrimonio).toBe(5300)
     expect(applied[1].patrimonio).toBe(2200)
+  })
+})
+
+describe("persistNetWorthPeakIfHigher", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("no sustituye un pico guardado por uno menor", async () => {
+    vi.mocked(getSetting).mockResolvedValue(JSON.stringify({ value: 5301.27, date: "2026-10", label: "oct 26" }))
+    const result = await persistNetWorthPeakIfHigher({ value: 5296.62, date: "2026-10-06", label: "06 oct" })
+    expect(result.value).toBe(5301.27)
+    expect(setSetting).not.toHaveBeenCalled()
+  })
+
+  it("falla explícitamente si no se puede guardar el nuevo pico en la nube", async () => {
+    vi.mocked(getSetting).mockResolvedValue(null)
+    vi.mocked(setSetting).mockResolvedValue(false)
+    await expect(persistNetWorthPeakIfHigher({ value: 5301.27, date: "2026-10", label: "oct 26" })).rejects.toThrow("No se pudo guardar el máximo histórico en la nube")
   })
 })
