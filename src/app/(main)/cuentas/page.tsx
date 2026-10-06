@@ -6,7 +6,7 @@ import { usePortfolioValue, accountDisplayValue, useDisplayAccounts } from "@/li
 import { accountGoal, fundCurrentAmount, getCurrencyByAccount, getFinancialTips } from "@/lib/calculations"
 import { TipsCard } from "@/components/shared/tips-card"
 import { AnimatedNumber } from "@/components/shared/animated-number"
-import { Wallet as WalletIcon, Plus, Target, TrendingUp, Search } from "lucide-react"
+import { Wallet as WalletIcon, Plus, Target, TrendingUp, Search, ChevronDown, ChevronsDownUp, ChevronsUpDown, Building2, ArrowUpRight } from "lucide-react"
 import { formatMoney, convertToEur } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
@@ -30,6 +30,7 @@ export default function CuentasPage() {
   const [showNewAccount, setShowNewAccount] = useState(false)
   const [accountSearch, setAccountSearch] = useState("")
   const [accountType, setAccountType] = useState("all")
+  const [groupOpenState, setGroupOpenState] = useState<Record<string, boolean>>({})
   // Los consejos comparan saldos con metas y pagos: deben ver el valor real
   // de las cuentas de inversión (displayAccounts), igual que el resto de la página.
   const displayAccounts = useDisplayAccounts()
@@ -49,6 +50,23 @@ export default function CuentasPage() {
   const accountValueEur = (a: Account) => convertToEur(accountValue(a), a.currency)
   const netWorth = state.accounts.reduce((s, a) => s + accountValueEur(a), 0)
   const visibleAccounts = state.accounts.filter((a) => (accountType === "all" || a.tipo === accountType) && `${a.nombre} ${a.banco ?? ""}`.toLowerCase().includes(accountSearch.trim().toLowerCase()))
+  const accountGroups = useMemo(() => {
+    const groups = new Map<string, { title: string; accounts: Account[] }>()
+    for (const account of visibleAccounts) {
+      const bank = account.banco?.trim()
+      const kind = typeConfig[account.tipo]?.label ?? "Cuenta"
+      const key = bank ? `bank:${bank.toLocaleLowerCase("es-ES")}` : `type:${account.tipo}`
+      const title = bank || `${kind} · Sin entidad`
+      const group = groups.get(key) ?? { title, accounts: [] }
+      group.accounts.push(account)
+      groups.set(key, group)
+    }
+    return [...groups.entries()].map(([key, group]) => ({ key, ...group }))
+      .sort((a, b) => a.title.localeCompare(b.title, "es"))
+  }, [visibleAccounts])
+  const filtersActive = Boolean(accountSearch.trim()) || accountType !== "all"
+  const allGroupsExpanded = accountGroups.length > 0 && accountGroups.every((group) => groupOpenState[group.key] ?? filtersActive)
+  const toggleAllGroups = () => setGroupOpenState((current) => ({ ...current, ...Object.fromEntries(accountGroups.map((group) => [group.key, !allGroupsExpanded])) }))
 
   // Cuenta con mayor saldo y cuenta más cerca de completar su objetivo, para
   // el ticker superior (solo cuando hay cuentas registradas).
@@ -135,40 +153,42 @@ export default function CuentasPage() {
               <option value="all">Todos los tipos</option>{Object.entries(typeConfig).map(([key, cfg]) => <option key={key} value={key}>{cfg.label}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {visibleAccounts.map((account, index) => {
-              const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+            <p className="text-xs text-muted-foreground">{visibleAccounts.length} {visibleAccounts.length === 1 ? "cuenta" : "cuentas"}{filtersActive ? " encontradas" : ` · ${accountGroups.length} grupos`}</p>
+            {accountGroups.length > 1 && <button type="button" onClick={toggleAllGroups} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">{allGroupsExpanded ? <><ChevronsDownUp className="h-3.5 w-3.5" /> Contraer grupos</> : <><ChevronsUpDown className="h-3.5 w-3.5" /> Expandir grupos</>}</button>}
+          </div>
+          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3 sm:gap-4">
+            {accountGroups.map((group, index) => {
+              const isOpen = groupOpenState[group.key] ?? filtersActive
+              const groupValue = group.accounts.reduce((sum, account) => sum + accountValueEur(account), 0)
+              const kinds = [...new Set(group.accounts.map((account) => typeConfig[account.tipo]?.label ?? "Cuenta"))]
               return (
-                <button
-                  key={account.id}
-                  onClick={() => router.push(`/cuentas/${account.id}`)}
-                  className="stagger-fade group min-w-0 rounded-[16px] border border-border bg-card p-4 text-left glass-card-hover active:scale-[0.99] sm:p-6"
-                  style={{ animationDelay: `${index * 60}ms` }}
-                >
-                  <div className="space-y-4">
-                    <div className="flex min-w-0 items-start justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <AccountLogo account={account} className="h-11 w-11" />
-                        <div className="min-w-0">
-                        <h3 className="truncate text-sm font-semibold sm:text-base">{account.nombre}</h3>
-                          <p className="truncate text-xs text-muted-foreground">{account.banco || "Sin banco"}</p>
-                        </div>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-background/60 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground ring-1 ring-border/15">
-                        {cfg.label}
-                      </span>
-                    </div>
-
-                    <div>
-                      <p className="page-section-label mb-1">{account.tipo === "inversion" ? "Valor de mercado" : "Saldo actual"}</p>
-                      <p className="text-[clamp(1.35rem,7vw,1.875rem)] font-bold tabular-nums tracking-tight sm:text-3xl">
-                        <Sensitive>{formatMoney(accountValue(account), account.currency)}</Sensitive>
-                      </p>
-                    </div>
-
-
-                  </div>
-                </button>
+                <section key={group.key} className="stagger-fade min-w-0 overflow-hidden rounded-[18px] border border-border bg-card/90 shadow-sm transition-colors hover:border-border/90" style={{ animationDelay: `${index * 45}ms` }}>
+                  <button type="button" aria-expanded={isOpen} onClick={() => setGroupOpenState((current) => ({ ...current, [group.key]: !isOpen }))} className="flex min-h-[104px] w-full min-w-0 items-center gap-3 p-4 text-left transition-colors hover:bg-muted/25 sm:p-5">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border/60 bg-background/70 text-muted-foreground">{group.accounts[0].banco ? <AccountLogo account={group.accounts[0]} className="h-10 w-10 rounded-xl" /> : <Building2 className="h-5 w-5" />}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-foreground sm:text-base">{group.title}</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground"><span>{group.accounts.length} {group.accounts.length === 1 ? "cuenta" : "cuentas"}</span>{kinds.map((kind) => <span key={kind} className="rounded-full bg-background/70 px-1.5 py-0.5">{kind}</span>)}</span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Total aprox.</span>
+                      <span className="mt-0.5 block text-sm font-bold tabular-nums text-foreground sm:text-base"><Sensitive>{formatMoney(groupValue, "EUR")}</Sensitive></span>
+                    </span>
+                    <ChevronDown className={`ml-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {isOpen && <div className="border-t border-border/70 px-3 py-2 sm:px-4">
+                    {group.accounts.map((account) => {
+                      const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
+                      return <button key={account.id} type="button" onClick={() => router.push(`/cuentas/${account.id}`)} className="group/row flex min-h-[68px] w-full min-w-0 items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
+                        <AccountLogo account={account} className="h-10 w-10 shrink-0 rounded-xl" />
+                        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-foreground">{account.nombre}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{account.banco || cfg.label} · {account.tipo === "inversion" ? "Valor de mercado" : cfg.label}</span></span>
+                        <span className="shrink-0 text-right"><span className="block text-sm font-semibold tabular-nums text-foreground"><Sensitive>{formatMoney(accountValue(account), account.currency)}</Sensitive></span><span className="mt-0.5 block text-[10px] text-muted-foreground">{account.currency}</span></span>
+                        <ArrowUpRight className="ml-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover/row:text-primary" />
+                      </button>
+                    })}
+                    <p className="px-2 pb-1 pt-2 text-[10px] text-muted-foreground">Total aproximado convertido a euros</p>
+                  </div>}
+                </section>
               )
             })}
             {visibleAccounts.length === 0 && (
@@ -183,10 +203,10 @@ export default function CuentasPage() {
             )}
             <button
               onClick={() => setShowNewAccount(true)}
-              className="stagger-fade flex flex-col items-center justify-center gap-3 rounded-[16px] border border-dashed border-muted-foreground/25 p-6 text-muted-foreground transition-colors hover:border-[color-mix(in_oklch,var(--gold),transparent_40%)] hover:bg-[color-mix(in_oklch,var(--gold),transparent_94%)] hover:text-foreground"
+              className="stagger-fade flex min-h-[104px] items-center justify-center gap-3 rounded-[18px] border border-dashed border-muted-foreground/25 p-5 text-muted-foreground transition-colors hover:border-[color-mix(in_oklch,var(--gold),transparent_40%)] hover:bg-[color-mix(in_oklch,var(--gold),transparent_94%)] hover:text-foreground"
               style={{ animationDelay: `${state.accounts.length * 60}ms` }}
             >
-              <Plus className="h-8 w-8" />
+              <Plus className="h-5 w-5" />
               <span className="text-sm font-medium">Nueva Cuenta</span>
             </button>
           </div>
