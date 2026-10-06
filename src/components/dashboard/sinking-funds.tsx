@@ -29,6 +29,7 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { parseAmount } from "@/lib/validation"
+import { parseLocalDate } from "@/lib/date-utils"
 
 function SinkingFundForm({
   fund,
@@ -216,7 +217,7 @@ export function SinkingFundsGrid() {
                     <p>
                       Meta:{" "}
                       {(() => {
-                        const d = new Date(fund.fecha_limite)
+                        const d = parseLocalDate(fund.fecha_limite)
                         return isNaN(d.getTime()) ? "Sin fecha" : d.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
                       })()}
                     </p>

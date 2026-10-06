@@ -13,6 +13,7 @@ import { TickerTile } from "@/components/shared/ticker-tile"
 import { EmptyState, EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { useFinance, generateId } from "@/lib/store"
+import { parseLocalDate } from "@/lib/date-utils"
 import { useDisplayAccounts } from "@/lib/investments"
 import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, getUpcomingRecurring, isTransfer, getCurrencyByAccount } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
@@ -123,7 +124,7 @@ export default function IngresosGastosPage() {
   const recurringDateLabel = (item: ReturnType<typeof getUpcomingRecurring>[number]) => {
     if (item.overdueDays > 0) return `Atrasado ${item.overdueDays}d`
     if (item.overdueDays === 0) return "Hoy"
-    return new Date(item.nextDate).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
+    return parseLocalDate(item.nextDate).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
   }
 
   // Convertir a EUR antes de sumar: sumar saldos en crudo daría un total sin

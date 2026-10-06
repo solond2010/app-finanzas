@@ -33,7 +33,11 @@ export async function POST(request: Request) {
     )
   }
 
-  const { password } = await request.json()
+  let body: unknown
+  try { body = await request.json() } catch {
+    return NextResponse.json({ error: "El cuerpo JSON no es válido" }, { status: 400 })
+  }
+  const password = body && typeof body === "object" ? (body as { password?: unknown }).password : undefined
 
   if (typeof password !== "string" || !timingSafeEqualString(password, expected)) {
     recordFailedLogin(ip)

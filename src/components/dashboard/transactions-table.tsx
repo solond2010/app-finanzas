@@ -35,6 +35,7 @@ import { useToast } from "@/components/ui/toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { formatMoney, convertToEur, currencySymbol, type CurrencyCode } from "@/lib/currency"
 import { dateLabel, isInitialBalanceTransaction } from "@/lib/format"
+import { parseLocalDate } from "@/lib/date-utils"
 import { Sensitive } from "@/components/shared/sensitive"
 import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurringFrequency, recurringTag, type RecurringFrequency } from "@/lib/calculations"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -905,7 +906,7 @@ export function TransactionsTable({
                             <InlineEditInput type="date" defaultValue={t.fecha} onDone={(ok, v) => handleInlineDone(t, "fecha", ok, v)} />
                           ) : (
                             <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setEditingCell({ id: t.id, field: "fecha" })} className="cursor-text rounded px-1 py-0.5 -mx-1 hover:bg-muted/60" aria-label="Editar fecha">
-                              {new Date(t.fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
+                              {parseLocalDate(t.fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
                             </button>
                           )}
                         </TableCell>

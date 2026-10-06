@@ -26,6 +26,7 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
+import { parseLocalDate } from "@/lib/date-utils"
 
 const CARD = "rounded-[14px] border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
@@ -239,7 +240,7 @@ export default function DashboardContent() {
     // Rango "Todo": historial completo diario desde la primera transacción
     if (activeRange.unit === "all") {
       const firstTxDate = state.transactions.length > 0 
-        ? new Date(Math.min(...state.transactions.map(t => new Date(t.fecha).getTime())))
+        ? parseLocalDate(state.transactions.reduce((oldest, t) => t.fecha < oldest ? t.fecha : oldest, state.transactions[0].fecha))
         : today
       const totalDays = Math.ceil((today.getTime() - firstTxDate.getTime()) / 86400000) + 1
       const precise = buildPreciseNetWorthHistory(

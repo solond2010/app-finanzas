@@ -5,6 +5,7 @@ import { useMemo, useState, memo, useRef, useEffect } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
 import { Activity, AlertTriangle, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Target, Wallet, Wallet2 } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
+import { parseLocalDate } from "@/lib/date-utils"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -181,7 +182,7 @@ export default function AnalyticsPage() {
     const totals = new Array(daysInMonth).fill(0)
     for (const t of analysisTransactions) {
       if (t.tipo !== "gasto" || !countsTowardCashFlow(t, analysisTransactions) || !t.fecha.startsWith(selectedMonth)) continue
-      const day = new Date(t.fecha).getDate()
+      const day = parseLocalDate(t.fecha).getDate()
       totals[day - 1] += reportingAmount(t, currencyByAccount)
     }
     return totals
@@ -354,7 +355,7 @@ export default function AnalyticsPage() {
   const fullHistory = useMemo(() => {
     if (!hasData) return []
     const firstTxDate = state.transactions.length > 0
-      ? new Date(Math.min(...state.transactions.map(t => new Date(t.fecha).getTime())))
+      ? parseLocalDate(state.transactions.reduce((oldest, t) => t.fecha < oldest ? t.fecha : oldest, state.transactions[0].fecha))
       : today
     const totalDays = Math.ceil((today.getTime() - firstTxDate.getTime()) / 86400000) + 1
     const precise = buildPreciseNetWorthHistory(
@@ -596,7 +597,7 @@ export default function AnalyticsPage() {
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-xs font-semibold text-foreground">{item.descripcion || item.categoria}</p>
                             <p className={cn("text-[11px] font-medium", item.overdueDays > 0 ? "text-red-500" : "text-muted-foreground")}>
-                              {item.overdueDays > 0 ? `Atrasado ${item.overdueDays}d` : item.overdueDays === 0 ? "Hoy" : new Date(item.nextDate).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
+                              {item.overdueDays > 0 ? `Atrasado ${item.overdueDays}d` : item.overdueDays === 0 ? "Hoy" : parseLocalDate(item.nextDate).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
                               {item.frequency !== "mensual" && ` · ${item.frequency === "semanal" ? "Semanal" : "Anual"}`}
                             </p>
                           </div>

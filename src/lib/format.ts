@@ -1,3 +1,5 @@
+import { parseLocalDate } from "./date-utils"
+
 // Espacio fino inseparable entre cifra y símbolo (convención tipográfica
 // española); inseparable para que "1.234" y "€" nunca partan de línea.
 export const NNBSP = " "
@@ -46,7 +48,7 @@ export function isInitialBalanceTransaction(id: string) {
 }
 
 export function dateLabel(dateStr: string) {
-  const d = new Date(dateStr)
+  const d = parseLocalDate(dateStr)
   const today = new Date()
   const yesterday = new Date(today)
   yesterday.setDate(yesterday.getDate() - 1)

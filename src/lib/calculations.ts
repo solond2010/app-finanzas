@@ -1,6 +1,7 @@
 import type { Account, Transaction, MonthlySummary, NetWorthSnapshot, SinkingFund } from "./store"
 import { convertToEur, type CurrencyCode } from "./currency"
 import type { Position } from "./investments"
+import { parseLocalDate } from "./date-utils"
 
 export type CurrencyByAccount = ReadonlyMap<string, CurrencyCode>
 
@@ -135,9 +136,7 @@ function isInMonth(dateString: string, monthKey: string) {
 }
 
 function isAfterMonth(dateString: string, monthKey: string) {
-  const d = new Date(dateString)
-  const nextMonth = new Date(parseMonthKey(monthKey).getFullYear(), parseMonthKey(monthKey).getMonth() + 1, 1)
-  return d >= nextMonth
+  return dateString.slice(0, 7) > monthKey
 }
 
 function transactionDelta(t: Transaction) {
@@ -317,7 +316,7 @@ export function buildNetWorthHistoryDaily(accounts: Account[], transactions: Tra
   // transacciones en cada una de las `days` iteraciones del bucle de abajo.
   const txByDateKey = new Map<string, Transaction[]>()
   for (const t of transactions) {
-    const key = toDateKey(new Date(t.fecha))
+    const key = t.fecha.slice(0, 10)
     const arr = txByDateKey.get(key)
     if (arr) arr.push(t)
     else txByDateKey.set(key, [t])
@@ -345,7 +344,7 @@ export function buildNetWorthHistoryDaily(accounts: Account[], transactions: Tra
 // de un día posterior, o del mismo día pero dada de alta después (empate
 // resuelto por `created_at`, no por `fecha`, que no tiene hora).
 function isAfterMoment(t: Transaction, dateKey: string, createdAt: string) {
-  const tDateKey = toDateKey(new Date(t.fecha))
+  const tDateKey = t.fecha.slice(0, 10)
   if (tDateKey !== dateKey) return tDateKey > dateKey
   return (t.created_at ?? "") > createdAt
 }
@@ -363,7 +362,7 @@ export function buildNetWorthHistoryToday(accounts: Account[], transactions: Tra
   const todayKey = toDateKey(today)
   const yesterdayKey = toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1))
   const todaysTransactions = transactions
-    .filter((t) => toDateKey(new Date(t.fecha)) === todayKey)
+    .filter((t) => t.fecha.slice(0, 10) === todayKey)
     .slice()
     .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""))
 
@@ -554,7 +553,7 @@ export function getFinancialTips(
 
   for (const fund of sinkingFunds) {
     if (fundCurrentAmount(fund, accounts) >= fund.cantidad_objetivo) continue
-    const daysLeft = (new Date(fund.fecha_limite).getTime() - Date.now()) / 86400000
+    const daysLeft = (parseLocalDate(fund.fecha_limite).getTime() - Date.now()) / 86400000
     if (daysLeft > 0 && daysLeft <= GOAL_DEADLINE_SOON_DAYS) {
       tips.push({ id: `goal-deadline-${fund.id}`, severity: "warning", message: `Tu meta "${fund.nombre}" vence en menos de un mes y todavía no está completa.` })
     }
@@ -653,9 +652,9 @@ export function getUpcomingRecurring(transactions: Transaction[]): UpcomingRecur
   today.setHours(0, 0, 0, 0)
   const out: UpcomingRecurring[] = []
   for (const [key, txns] of groups) {
-    const last = txns.reduce((a, b) => (new Date(a.fecha) > new Date(b.fecha) ? a : b))
+    const last = txns.reduce((a, b) => (a.fecha > b.fecha ? a : b))
     const frequency = recurringFrequency(last)
-    const next = addFrequency(new Date(last.fecha), frequency)
+    const next = addFrequency(parseLocalDate(last.fecha), frequency)
     const overdueDays = Math.round((today.getTime() - next.getTime()) / 86400000)
 out.push({
       key,
@@ -668,7 +667,7 @@ out.push({
       es_necesidad: last.es_necesidad,
       tags: last.tags,
       frequency,
-      nextDate: next.toISOString().split("T")[0],
+      nextDate: toDateKey(next),
       overdueDays,
     })
   }
@@ -735,7 +734,7 @@ export function buildPreciseNetWorthHistory(
     const accountTxs = txByAccount.get(accountId) ?? []
     const transfers = accountTxs
       .filter((t) => isTransfer(t))
-      .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
     if (transfers.length > 0) transfersByAccount.set(accountId, transfers)
   }
   
@@ -889,7 +888,7 @@ export function diagnoseNetWorthCalculation(
   
   // 6. Primera transacción
   if (transactions.length > 0) {
-    const firstTx = transactions.reduce((oldest, t) => new Date(t.fecha) < new Date(oldest.fecha) ? t : oldest)
+    const firstTx = transactions.reduce((oldest, t) => t.fecha < oldest.fecha ? t : oldest)
     info.push(`Primera transacción: ${firstTx.fecha} (${firstTx.tipo} ${firstTx.monto}€ en ${firstTx.categoria})`)
   }
   
@@ -1072,7 +1071,7 @@ export function buildMonthlyPatrimonioControl(
 
   let start: Date
   if (transactions.length > 0) {
-    start = new Date(Math.min(...transactions.map((t) => new Date(t.fecha).getTime())))
+    start = parseLocalDate(transactions.reduce((oldest, t) => t.fecha < oldest ? t.fecha : oldest, transactions[0].fecha))
   } else {
     // Sin transacciones: un único punto con el patrimonio de hoy.
     start = new Date(asOf.getFullYear(), asOf.getMonth(), Math.min(dayOfMonth, asOf.getDate()))
