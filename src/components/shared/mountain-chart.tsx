@@ -1,6 +1,7 @@
 "use client"
 
 import { useId, useMemo, useRef, useState } from "react"
+import { getNetWorthChartDomain } from "@/lib/chart-scale"
 
 // Gráfico de línea limpia: el trazo, el punto final y un único velo dorado
 // muy tenue bajo la línea (degradado a transparente). Sustituye al antiguo
@@ -32,17 +33,9 @@ export function MountainChart<T extends object>({
   const PAD_BOTTOM = 8
 
   const values = data.map((d) => Number(d[category]) || 0)
-  const rawMax = Math.max(...values)
-  const rawMin = Math.min(...values)
-  const rawSpan = rawMax - rawMin
-  // Anclar siempre el eje a 0 aplastaba visualmente cualquier subida/bajada
-  // reciente cuando los valores son grandes (p.ej. un patrimonio de ~5000€
-  // cayendo 200€ se veía como una línea plana). En vez de eso, se escala al
-  // rango real de los datos visibles, con un margen para que el trazo no
-  // toque los bordes (o uno mínimo si todos los puntos son casi iguales).
-  const pad = rawSpan > 0 ? rawSpan * 0.12 : Math.max(Math.abs(rawMax), 1) * 0.05
-  const max = rawMax + pad
-  const min = rawMin - pad
+  // Escala lineal por euros: en rangos casi planos dejamos espacio alrededor
+  // del saldo para que una caída de 20 € sea leve y no ocupe media gráfica.
+  const { min, max } = getNetWorthChartDomain(values)
   const span = max - min || 1
 
   const points = useMemo(

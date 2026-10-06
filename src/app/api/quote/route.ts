@@ -24,7 +24,7 @@ async function fetchQuote(symbol: string): Promise<Quote | null> {
   try {
     const res = await fetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`,
-      { headers: { "User-Agent": UA }, next: { revalidate: 3600 } }
+      { headers: { "User-Agent": UA }, next: { revalidate: 300 } }
     )
     if (!res.ok) return null
     const data = (await res.json()) as { chart?: { result?: { meta?: ChartMeta }[] } }

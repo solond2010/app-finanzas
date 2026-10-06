@@ -743,7 +743,10 @@ export function buildPreciseNetWorthHistory(
   const getPriceAt = (symbol: string, atDate: Date, fallbackBuyPrice: number): number => {
     const hist = priceHistory[symbol]
     if (!hist || hist.length === 0) return fallbackBuyPrice
-    const atMs = atDate.getTime()
+    // Los puntos diarios de Yahoo llevan la hora de apertura de mercado, no
+    // la de cierre. Evaluar a medianoche asignaba el cierre del día anterior
+    // a la fecha actual; usar el final del día para obtener su cierre real.
+    const atMs = new Date(atDate.getFullYear(), atDate.getMonth(), atDate.getDate(), 23, 59, 59, 999).getTime()
     let best: { t: number; c: number } | null = null
     for (const point of hist) {
       const pointMs = point.t * 1000

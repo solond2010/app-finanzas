@@ -64,6 +64,14 @@ describe("persistNetWorthPeakIfHigher", () => {
     expect(setSetting).not.toHaveBeenCalled()
   })
 
+  it("actualiza una fecha mensual al día exacto sin cambiar el importe guardado", async () => {
+    vi.mocked(getSetting).mockResolvedValue(JSON.stringify({ value: 5301.27, date: "2026-10", label: "oct 26" }))
+    vi.mocked(setSetting).mockResolvedValue(true)
+    const result = await persistNetWorthPeakIfHigher({ value: 5301.27, date: "2026-10-05", label: "05 oct" })
+    expect(result.date).toBe("2026-10-05")
+    expect(setSetting).toHaveBeenCalledOnce()
+  })
+
   it("falla explícitamente si no se puede guardar el nuevo pico en la nube", async () => {
     vi.mocked(getSetting).mockResolvedValue(null)
     vi.mocked(setSetting).mockResolvedValue(false)

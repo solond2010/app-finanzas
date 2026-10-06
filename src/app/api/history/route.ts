@@ -14,7 +14,7 @@ async function fetchHistory(symbol: string, interval: string, range: string): Pr
   try {
     const res = await fetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`,
-      { headers: { "User-Agent": UA }, next: { revalidate: 3600 } }
+      { headers: { "User-Agent": UA }, next: { revalidate: interval === "1d" ? 900 : 3600 } }
     )
     if (!res.ok) return []
     const data = (await res.json()) as { chart?: { result?: ChartResult[] } }

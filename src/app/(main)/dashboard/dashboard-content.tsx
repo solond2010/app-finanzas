@@ -128,10 +128,9 @@ export default function DashboardContent() {
     import("@/lib/net-worth-snapshots").then(({ loadNetWorthPeak, persistNetWorthPeakIfHigher }) =>
       loadNetWorthPeak().then(async (cloudPeak) => {
         if (cancelled) return
-        // Recuperación puntual: el dashboard mostró 5.301,27 € en oct-2026,
-        // pero esa observación no llegó a guardarse como pico global. Se usa
-        // precisión mensual porque la captura no conservaba el día exacto.
-        const observedPeak = { value: 5301.27, date: "2026-10", label: "oct 26" }
+        // Recuperación puntual: el dashboard mostró 5.301,27 € el 5 oct 2026,
+        // pero esa observación no llegó a guardarse como pico global.
+        const observedPeak = { value: 5301.27, date: "2026-10-05", label: "05 oct" }
         const peak = cloudPeak && cloudPeak.value >= observedPeak.value
           ? cloudPeak
           : await persistNetWorthPeakIfHigher(observedPeak)
@@ -187,7 +186,9 @@ export default function DashboardContent() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on empty deps before the async fetch
     if (syms.length === 0) { setPriceHistory({}); return }
     let cancelled = false
-    fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}&interval=1mo&range=2y`)
+    // El intervalo mensual repetía la misma cotización para el 5 y el 6 del
+    // mes; la serie diaria es necesaria para reflejar cada cierre de mercado.
+    fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}&interval=1d&range=2y`)
       .then((r) => r.json())
       .then((d: { history?: Record<string, { t: number; c: number }[]> }) => { if (!cancelled) setPriceHistory(d.history ?? {}) })
       .catch(() => {})

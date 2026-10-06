@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import type { Account, SinkingFund, Transaction } from "./store"
+import type { Position } from "./investments"
 import {
   isTransfer,
   hasTransferPair,
@@ -21,7 +22,9 @@ import {
   extractMonthlyPatrimonioControl,
   buildMonthlyPatrimonioControl,
   getPatrimonioMensualKpis,
+  buildPreciseNetWorthHistory,
 } from "./calculations"
+import { getNetWorthChartDomain } from "./chart-scale"
 
 function account(overrides: Partial<Account> = {}): Account {
   return {
@@ -542,5 +545,42 @@ describe("suggestEmergencyTransfer", () => {
   it("cae a 200 € si no hay sobrante", () => {
     expect(suggestEmergencyTransfer(5000, 0)).toBe(200)
     expect(suggestEmergencyTransfer(100, -50)).toBe(100)
+  })
+})
+
+describe("buildPreciseNetWorthHistory", () => {
+  it("usa el cierre de cada día y refleja una bajada entre ayer y hoy", () => {
+    const investmentAccount = account({ id: "inv_1", tipo: "inversion", saldo: 1000 })
+    const position: Position = {
+      id: "pos_1", kind: "stock", symbol: "TEST", name: "Test", date: "2026-10-01",
+      units: 1, buyPrice: 100, currency: "EUR", accountId: "inv_1",
+    }
+    const prices = {
+      TEST: [
+        { t: new Date(2026, 9, 5, 12).getTime() / 1000, c: 120 },
+        { t: new Date(2026, 9, 6, 12).getTime() / 1000, c: 100 },
+      ],
+    }
+
+    const rows = buildPreciseNetWorthHistory([investmentAccount], [], [position], prices, 2, new Date(2026, 9, 6))
+    expect(rows[0].date).toBe("2026-10-05")
+    expect(rows[1].date).toBe("2026-10-06")
+    expect(rows[0].patrimonio).toBe(1020)
+    expect(rows[1].patrimonio).toBe(1000)
+  })
+})
+
+describe("getNetWorthChartDomain", () => {
+  it("mantiene las variaciones en escala lineal y no amplifica una caída pequeña", () => {
+    const moveFraction = (drop: number) => {
+      const { min, max } = getNetWorthChartDomain([5000, 5000 - drop])
+      return drop / (max - min)
+    }
+    const small = moveFraction(20)
+    const medium = moveFraction(100)
+    const large = moveFraction(500)
+    expect(medium / small).toBeCloseTo(5)
+    expect(large / medium).toBeCloseTo(5)
+    expect(large).toBeLessThan(0.5)
   })
 })
