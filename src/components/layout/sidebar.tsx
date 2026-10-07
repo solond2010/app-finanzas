@@ -11,7 +11,6 @@ import {
   ReceiptText,
   SlidersHorizontal,
   ChartPie,
-  ChartNoAxesCombined,
   Landmark,
   Cloud,
   CloudOff,
@@ -32,7 +31,6 @@ const navItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
   { href: "/transactions", label: "Movimientos", icon: ReceiptText },
   { href: "/cuentas", label: "Cuentas", icon: Landmark },
-  { href: "/inversiones", label: "Inversiones", icon: ChartNoAxesCombined },
   { href: "/analytics", label: "Analíticas", icon: ChartPie },
   { href: "/configuracion", label: "Configuración", icon: SlidersHorizontal },
 ]

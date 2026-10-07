@@ -53,9 +53,13 @@ export default function CuentasPage() {
   const accountGroups = useMemo(() => {
     const groups = new Map<string, { title: string; accounts: Account[] }>()
     for (const account of visibleAccounts) {
-      const bank = account.banco?.trim()
+      const rawBank = account.banco?.trim()
+      // Algunos registros antiguos guardan "Revolut Conjunta" como si fuera
+      // otra entidad. Agrupamos por marca sin reescribir los datos guardados.
+      const isRevolut = /^revolut\b/i.test(rawBank ?? "")
+      const bank = isRevolut ? "Revolut" : rawBank
       const kind = typeConfig[account.tipo]?.label ?? "Cuenta"
-      const key = bank ? `bank:${bank.toLocaleLowerCase("es-ES")}` : `type:${account.tipo}`
+      const key = isRevolut ? "bank:revolut" : bank ? `bank:${bank.toLocaleLowerCase("es-ES")}` : `type:${account.tipo}`
       const title = bank || `${kind} · Sin entidad`
       const group = groups.get(key) ?? { title, accounts: [] }
       group.accounts.push(account)
@@ -181,7 +185,7 @@ export default function CuentasPage() {
                       const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
                       return <button key={account.id} type="button" onClick={() => router.push(`/cuentas/${account.id}`)} className="group/row flex min-h-[68px] w-full min-w-0 items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
                         <AccountLogo account={account} className="h-10 w-10 shrink-0 rounded-xl" />
-                        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-foreground">{account.nombre}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{account.banco || cfg.label} · {account.tipo === "inversion" ? "Valor de mercado" : cfg.label}</span></span>
+                        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-foreground">{account.nombre}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{account.banco || cfg.label} · {cfg.label}</span></span>
                         <span className="shrink-0 text-right"><span className="block text-sm font-semibold tabular-nums text-foreground"><Sensitive>{formatMoney(accountValue(account), account.currency)}</Sensitive></span><span className="mt-0.5 block text-[10px] text-muted-foreground">{account.currency}</span></span>
                         <ArrowUpRight className="ml-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover/row:text-primary" />
                       </button>

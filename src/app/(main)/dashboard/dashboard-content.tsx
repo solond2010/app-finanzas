@@ -164,10 +164,7 @@ export default function DashboardContent() {
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const { positions: investPositions, value: portfolioValue, pnl: portfolioPnl, valueByAccount, investedByAccount } = usePortfolioValue()
-  // El saldo de las cuentas de inversión no baja al comprar una posición (no
-  // genera un gasto), así que solo se sustituye la parte ya invertida por el
-  // valor de mercado actual — el efectivo aún sin invertir se mantiene intacto
-  // en vez de perderse (ver accountDisplayValue).
+  // Las inversiones se controlan manualmente desde el saldo de cada cuenta.
   const investmentAccounts = useMemo(() => displayAccounts.filter((a) => a.tipo === "inversion"), [displayAccounts])
   const investmentSaldo = useMemo(() => investmentAccounts.reduce((s, a) => s + convertToEur(a.saldo, a.currency), 0), [investmentAccounts])
   const investmentDisplayTotal = useMemo(
@@ -648,7 +645,9 @@ export default function DashboardContent() {
       const { generateDashboardPdf } = await import("@/lib/dashboard-pdf")
       const { getSetting } = await import("@/lib/settings")
       const netWorthTarget = Number(localStorage.getItem("networth-target")) || Number(await getSetting("networth-target").catch(() => null)) || 0
-      const investmentInvested = investmentAccounts.reduce((sum, account) => sum + convertToEur(investedByAccount[account.id] ?? 0, account.currency), 0)
+      // El informe refleja el saldo manual; no se inventan coste ni beneficio
+      // a partir de posiciones o cotizaciones externas.
+      const investmentInvested = investmentDisplayTotal
       generateDashboardPdf({
         owner: "Mohamed",
         month: formatMonth(selectedDate),

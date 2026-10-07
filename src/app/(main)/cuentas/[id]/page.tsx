@@ -3,17 +3,15 @@
 import { useParams, useRouter } from "next/navigation"
 import { useFinance } from "@/lib/store"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
-import { ArrowLeft, Pencil, SearchX, Wallet, ArrowUpRight, ArrowDownRight, PiggyBank, TrendingUp, Copy } from "lucide-react"
+import { ArrowLeft, Pencil, SearchX, Wallet, ArrowUpRight, ArrowDownRight, Copy } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useState } from "react"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
-import { PositionDialog } from "@/components/investments/position-dialog"
 import { formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
-import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { accountGoal, countsTowardCashFlow } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
 
@@ -22,8 +20,6 @@ export default function AccountDetailPage() {
   const router = useRouter()
   const { state, dispatch } = useFinance()
   const [editing, setEditing] = useState(false)
-  const [investing, setInvesting] = useState(false)
-  const { valueByAccount, investedByAccount } = usePortfolioValue()
   const { toast } = useToast()
 
   const account = state.accounts.find((a) => a.id === id)
@@ -44,15 +40,7 @@ export default function AccountDetailPage() {
 
   const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
   const Icon = cfg.icon
-  // Para cuentas de inversión, comprar una posición no descuenta su coste del
-  // saldo (no genera un gasto): el saldo bruto mezcla efectivo sin invertir +
-  // el dinero que ya está en posiciones. displaySaldo separa ambas partes (ver
-  // accountDisplayValue) para que el total cuadre con el resto de la app.
-  const isInvestment = account.tipo === "inversion"
-  const investedCost = investedByAccount[account.id] ?? 0
-  const marketValue = valueByAccount[account.id] ?? investedCost
-  const idleCash = account.saldo - investedCost
-  const displaySaldo = isInvestment ? accountDisplayValue(account, valueByAccount, investedByAccount) : account.saldo
+  const displaySaldo = account.saldo
   const goal = accountGoal(account, state.sinkingFunds)
   const progress = goal > 0 ? Math.min((displaySaldo / goal) * 100, 100) : null
   const budgetUsed = account.limite_mensual && account.limite_mensual > 0
@@ -188,58 +176,6 @@ export default function AccountDetailPage() {
         )}
       </div>
 
-      {isInvestment && (
-        <Card className="rounded-[16px]">
-          <CardContent className="space-y-4 p-5 sm:p-6">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Desglose</p>
-              <h2 className="text-lg font-bold tracking-tight">De dónde sale el saldo de esta cuenta</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Comprar una posición no descuenta su coste del saldo (no genera un gasto), así que el efectivo sin invertir se calcula restando lo ya invertido.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="flex items-center gap-3 rounded-2xl bg-muted/30 p-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><Wallet className="h-4 w-4" /></span>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Efectivo aportado (transacciones)</p>
-                  <p className="text-base font-bold tabular-nums"><Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive></p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 rounded-2xl bg-muted/30 p-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><TrendingUp className="h-4 w-4" /></span>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Invertido en posiciones (coste)</p>
-                  <p className="text-base font-bold tabular-nums">− <Sensitive>{formatMoney(investedCost, account.currency)}</Sensitive></p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 rounded-2xl bg-muted/30 p-4">
-                <span className="gold-badge flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"><PiggyBank className="h-4 w-4" /></span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">= Efectivo sin invertir</p>
-                  <p className="text-base font-bold tabular-nums" style={{ color: "var(--gold)" }}><Sensitive>{formatMoney(idleCash, account.currency)}</Sensitive></p>
-                </div>
-                {idleCash > 0 && (
-                  <Button type="button" size="sm" className="shrink-0 rounded-full" onClick={() => setInvesting(true)}>
-                    Invertir esto
-                  </Button>
-                )}
-              </div>
-              <div className="flex items-center gap-3 rounded-2xl bg-muted/30 p-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><TrendingUp className="h-4 w-4" /></span>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">+ Valor de mercado de lo invertido</p>
-                  <p className="text-base font-bold tabular-nums"><Sensitive>{formatMoney(marketValue, account.currency)}</Sensitive></p>
-                </div>
-              </div>
-            </div>
-            {idleCash < 0 && (
-              <p className="rounded-xl bg-[color-mix(in_oklch,var(--accent-red),transparent_88%)] p-3 text-xs text-[color-mix(in_oklch,var(--accent-red),black_10%)]">
-                El efectivo sin invertir sale negativo: has invertido más de lo que esta cuenta registra como aportado. Revisa el saldo de la cuenta o el precio/unidades de tus posiciones en Inversiones.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
       <div className="space-y-1">
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Movimientos</p>
         <h2 className="text-xl font-bold tracking-tight">Historial de transacciones</h2>
@@ -257,9 +193,6 @@ export default function AccountDetailPage() {
         />
       )}
 
-      {investing && (
-        <PositionDialog open={investing} onOpenChange={setInvesting} defaultAccountId={account.id} />
-      )}
     </div>
   )
 }

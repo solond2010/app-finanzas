@@ -529,86 +529,27 @@ export function useInvestmentSyncStatus() {
 interface Quote { price: number; currency: string; changePct?: number | null; name?: string }
 
 export function usePortfolioValue() {
-  const { positions } = useInvestments()
-  const [quotes, setQuotes] = useState<Record<string, Quote>>({})
-  const [loading, setLoading] = useState(false)
-
-  const symbolsKey = useMemo(
-    () => [...new Set(positions.filter((p) => p.kind !== "custom").map((p) => p.symbol))].sort().join(","),
-    [positions]
-  )
-
-  useEffect(() => {
-    const syms = symbolsKey ? symbolsKey.split(",") : []
-    /* eslint-disable react-hooks/set-state-in-effect */
-    if (syms.length === 0) { setQuotes({}); return }
-    let cancelled = false
-    setLoading(true)
-    /* eslint-enable react-hooks/set-state-in-effect */
-    fetch(`/api/quote?symbols=${encodeURIComponent(syms.join(","))}`)
-      .then((r) => r.json())
-      .then((d: { quotes?: Record<string, Quote> }) => { if (!cancelled) setQuotes(d.quotes ?? {}) })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [symbolsKey])
-
-  const priceOf = (p: Position) => (p.kind === "custom" ? p.buyPrice : quotes[p.symbol]?.price ?? p.buyPrice)
-  const value = positions.reduce((s, p) => s + p.units * priceOf(p), 0)
-  const invested = positions.reduce((s, p) => s + p.units * p.buyPrice, 0)
-  const pnl = value - invested
-
-  // Memoizados para que su referencia sea estable entre renders: varios
-  // useMemo/useEffect de las páginas (y useDisplayAccounts) dependen de estos
-  // objetos; sin memo se recreaban en cada render y esas dependencias no
-  // servían de nada.
-  const valueByAccount = useMemo(() => positions.reduce<Record<string, number>>((m, p) => {
-    if (p.accountId) m[p.accountId] = (m[p.accountId] ?? 0) + p.units * (p.kind === "custom" ? p.buyPrice : quotes[p.symbol]?.price ?? p.buyPrice)
-    return m
-  }, {}), [positions, quotes])
-  // Coste de compra de las posiciones de cada cuenta: junto con el saldo bruto,
-  // permite separar "efectivo aún sin invertir" del valor ya invertido (ver
-  // accountDisplayValue). Comprar una posición no descuenta su coste del saldo
-  // de la cuenta (no genera un gasto), así que sin esto el saldo bruto no dice
-  // nada por sí solo una vez hay posiciones de por medio.
-  const investedByAccount = useMemo(() => positions.reduce<Record<string, number>>((m, p) => {
-    if (p.accountId) m[p.accountId] = (m[p.accountId] ?? 0) + p.units * p.buyPrice
-    return m
-  }, {}), [positions])
-
-  return { positions, quotes, loading, value, invested, pnl, pnlPct: invested > 0 ? (pnl / invested) * 100 : 0, valueByAccount, investedByAccount }
+  // Las cuentas de inversión son saldos manuales. La cartera antigua se
+  // conserva sincronizada para no borrar el historial, pero ya no modifica
+  // cifras, gráficos, informes ni consulta cotizaciones externas.
+  return { positions: EMPTY_POSITIONS, quotes: EMPTY_QUOTES, loading: false, value: 0, invested: 0, pnl: 0, pnlPct: 0, valueByAccount: EMPTY_ACCOUNT_VALUES, investedByAccount: EMPTY_ACCOUNT_VALUES }
 }
 
-/**
- * Valor real de una cuenta para patrimonio/listados: para cuentas normales, su
- * saldo. Para cuentas de inversión con posiciones, el saldo NO refleja lo
- * invertido (comprar una posición no lo descuenta), así que se sustituye la
- * parte ya invertida por el valor de mercado actual, dejando intacto el
- * efectivo restante que todavía no se ha invertido.
- */
+const EMPTY_POSITIONS: Position[] = []
+const EMPTY_QUOTES: Record<string, Quote> = {}
+const EMPTY_ACCOUNT_VALUES: Record<string, number> = {}
+
+/** El saldo manual de la cuenta es la única cifra que se muestra y contabiliza. */
 export function accountDisplayValue(
   account: { id: string; tipo: string; saldo: number },
   valueByAccount: Record<string, number>,
   investedByAccount: Record<string, number>
 ): number {
-  if (account.tipo !== "inversion") return account.saldo
-  const invested = investedByAccount[account.id] ?? 0
-  const marketValue = valueByAccount[account.id] ?? invested
-  return account.saldo - invested + marketValue
+  return account.saldo
 }
 
-/**
- * Cuentas del store con su `saldo` ya sustituido por el valor real de
- * accountDisplayValue. Cualquier widget que muestre o sume saldos debe usar
- * esto (no state.accounts directamente): si no, las cuentas de inversión
- * enseñan el saldo contable en unas páginas y el valor de mercado en otras,
- * y la misma cuenta aparece con cifras distintas según dónde se mire.
- */
+/** Compatibilidad: devuelve las cuentas guardadas sin valoración automática. */
 export function useDisplayAccounts(): Account[] {
   const { state } = useFinance()
-  const { valueByAccount, investedByAccount } = usePortfolioValue()
-  return useMemo(
-    () => state.accounts.map((a) => (a.tipo === "inversion" ? { ...a, saldo: accountDisplayValue(a, valueByAccount, investedByAccount) } : a)),
-    [state.accounts, valueByAccount, investedByAccount]
-  )
+  return state.accounts
 }
