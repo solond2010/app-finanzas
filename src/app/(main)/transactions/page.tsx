@@ -14,7 +14,6 @@ import { EmptyState, EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { useFinance, generateId } from "@/lib/store"
 import { parseLocalDate } from "@/lib/date-utils"
-import { useDisplayAccounts } from "@/lib/investments"
 import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, getUpcomingRecurring, isTransfer, getCurrencyByAccount } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
 import { formatMonth, isInitialBalanceTransaction, chartFormatter } from "@/lib/format"
@@ -60,7 +59,7 @@ export default function IngresosGastosPage() {
   const [rangeM, setRangeM] = useState(6)
   const [target, setTarget] = useState(2000)
   const [accIdx, setAccIdx] = useState(0)
-  const displayAccounts = useDisplayAccounts()
+  const displayAccounts = state.accounts
 
   useEffect(() => {
     queueMicrotask(async () => {

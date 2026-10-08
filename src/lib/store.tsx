@@ -4,6 +4,7 @@ import { createContext, useContext, useReducer, useEffect, useCallback, useMemo,
 import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
 import { type CurrencyCode, refreshExchangeRates } from "./currency"
 import { hasTransferPair, isTransfer } from "./calculations"
+import { localDateKey } from "./date-utils"
 
 export interface Account {
   id: string
@@ -93,6 +94,7 @@ type Action =
   | { type: "UPDATE_ACCOUNT"; payload: Account; adjustment?: Transaction }
   | { type: "DELETE_ACCOUNT"; payload: string }
   | { type: "ADD_TRANSACTION"; payload: Transaction }
+  | { type: "ADD_TRANSFER"; payload: [Transaction, Transaction] }
   | { type: "ADD_TRANSACTIONS"; payload: Transaction[] }
   | { type: "UPDATE_TRANSACTION"; payload: Transaction }
   | { type: "DELETE_TRANSACTION"; payload: string }
@@ -246,7 +248,7 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
           id: `init_${newAccount.id}`,
           cuenta_id: newAccount.id,
           monto: newAccount.saldo,
-          fecha: action.initialBalanceDate ?? new Date().toISOString().split("T")[0],
+          fecha: action.initialBalanceDate ?? localDateKey(),
           tipo: "ingreso",
           categoria: "Saldo inicial",
           es_necesidad: false,
@@ -275,7 +277,7 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
                 id: action.adjustment?.id ?? `adj_${generateId()}`,
                 cuenta_id: action.payload.id,
                 monto: delta,
-                fecha: action.adjustment?.fecha ?? new Date().toISOString().split("T")[0],
+                fecha: action.adjustment?.fecha ?? localDateKey(),
                 tipo: "ingreso" as const,
                 categoria: "Ajuste de saldo",
                 es_necesidad: false,
@@ -298,15 +300,26 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
       // dinero sí esté en el perímetro restante. Se le quita el tag.
       const deletedId = action.payload
       const deletedTransfers = state.transactions.filter((t) => t.cuenta_id === deletedId && isTransfer(t))
+      const deletedTransferPairTags = new Set(
+        deletedTransfers
+          .filter((t) => hasTransferPair(t, state.transactions))
+          .flatMap((t) => t.tags?.filter((tag) => tag.startsWith("traspaso:")) ?? [])
+      )
       const remaining = state.transactions
         .filter((t) => t.cuenta_id !== deletedId)
         .map((t) => {
           if (!isTransfer(t)) return t
+          const pairTag = t.tags?.find((tag) => tag.startsWith("traspaso:"))
+          const pairedById = pairTag != null && deletedTransferPairTags.has(pairTag)
           const wasPaired = deletedTransfers.some(
-            (d) => d.tipo !== t.tipo && d.monto === t.monto && d.fecha === t.fecha
+            (d) => d.tipo !== t.tipo && (
+              pairedById
+                ? d.tags?.includes(pairTag!)
+                : !pairTag && !d.tags?.some((tag) => tag.startsWith("traspaso:")) && d.monto === t.monto && d.fecha === t.fecha
+            )
           )
           if (!wasPaired) return t
-          return { ...t, tags: t.tags.filter((tag) => tag !== "traspaso") }
+          return { ...t, tags: t.tags.filter((tag) => tag !== "traspaso" && !tag.startsWith("traspaso:")) }
         })
       return {
         ...state,
@@ -326,6 +339,26 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
         accounts: state.accounts.map((a) =>
           a.id === newTransaction.cuenta_id ? { ...a, saldo: a.saldo + signedAmount(newTransaction) } : a
         ),
+      }
+    }
+    case "ADD_TRANSFER": {
+      // Traspasos son una sola acción para que el ledger y los saldos nunca
+      // queden temporalmente con solo una de sus dos patas.
+      const transfers = action.payload.map((transaction) => ({
+        ...transaction,
+        created_at: transaction.created_at ?? new Date().toISOString(),
+      }))
+      const deltas = new Map<string, number>()
+      for (const transaction of transfers) {
+        deltas.set(transaction.cuenta_id, (deltas.get(transaction.cuenta_id) ?? 0) + signedAmount(transaction))
+      }
+      return {
+        ...state,
+        transactions: [...state.transactions, ...transfers],
+        accounts: state.accounts.map((account) => {
+          const delta = deltas.get(account.id) ?? 0
+          return delta === 0 ? account : { ...account, saldo: account.saldo + delta }
+        }),
       }
     }
     case "ADD_TRANSACTIONS":
@@ -731,7 +764,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // de reducir. SET_STATE (carga remota) no marca dirty.
   const trackedDispatch = useCallback((action: Action) => {
     let prepared: Action = action
-    const today = new Date().toISOString().split("T")[0]
+    const today = localDateKey()
     if (action.type === "ADD_ACCOUNT" && action.payload.saldo !== 0) prepared = { ...action, initialBalanceDate: today, initialBalanceCreatedAt: new Date().toISOString() }
     if (action.type === "UPDATE_ACCOUNT") {
       const oldAccount = stateRef.current.accounts.find((account) => account.id === action.payload.id)
@@ -739,6 +772,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       if (delta !== 0) prepared = { ...action, adjustment: { id: `adj_${generateId()}`, cuenta_id: action.payload.id, monto: delta, fecha: today, tipo: "ingreso", categoria: "Ajuste de saldo", es_necesidad: false, descripcion: `Ajuste de saldo de ${action.payload.nombre}`, tags: [], created_at: new Date().toISOString() } }
     }
     if (action.type === "ADD_TRANSACTION" && !action.payload.created_at) prepared = { ...action, payload: { ...action.payload, created_at: new Date().toISOString() } }
+    if (action.type === "ADD_TRANSFER") {
+      const [outgoing, incoming] = action.payload
+      prepared = {
+        ...action,
+        payload: [
+          { ...outgoing, created_at: outgoing.created_at ?? new Date().toISOString() },
+          { ...incoming, created_at: incoming.created_at ?? new Date().toISOString() },
+        ],
+      }
+    }
     if (action.type === "ADD_TRANSACTIONS") prepared = { ...action, payload: action.payload.map((tx) => ({ ...tx, created_at: tx.created_at ?? new Date().toISOString() })) }
     if (action.type === "ADD_CATEGORY" && !action.payload.id) prepared = { ...action, payload: { ...action.payload, id: generateId() } }
     if (action.type === "ADD_BUDGET" && !action.payload.id) prepared = { ...action, payload: { ...action.payload, id: generateId() } }
@@ -958,7 +1001,7 @@ function normalizeFinanceState(state: FinanceState): FinanceState {
     const residual = account.saldo - sumTx
     if (Math.abs(residual) < 0.005) continue
     const txDates = accountTxs.map((t) => t.fecha).sort()
-    const fecha = txDates.length > 0 ? txDates[0] : new Date().toISOString().split("T")[0]
+    const fecha = txDates.length > 0 ? txDates[0] : localDateKey()
     transactions.push({
       id: `init_${account.id}`,
       cuenta_id: account.id,

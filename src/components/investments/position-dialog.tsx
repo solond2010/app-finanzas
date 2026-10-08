@@ -10,6 +10,7 @@ import { useFinance } from "@/lib/store"
 import { useInvestments, defaultAssetClass, ASSET_CLASS_LABELS, type AssetClass, type AssetKind, type DcaFreq, type Position } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
+import { localDateKey } from "@/lib/date-utils"
 
 interface SearchResult { symbol: string; name: string; type: string }
 interface Selected { symbol: string; name: string; isin?: string; currency: string }
@@ -35,7 +36,7 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId }
   const [selected, setSelected] = useState<Selected | null>(null)
   const [customName, setCustomName] = useState("")
   const [currency, setCurrency] = useState("EUR")
-  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0])
+  const [date, setDate] = useState(() => localDateKey())
   const [units, setUnits] = useState("")
   const [buyPrice, setBuyPrice] = useState("")
   const [dca, setDca] = useState(false)
@@ -68,7 +69,7 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId }
         setAssetClass(editing.assetClass ?? defaultAssetClass(editing.kind))
       } else {
         setKind("stock"); setSelected(null); setCustomName("")
-        setCurrency("EUR"); setDate(new Date().toISOString().split("T")[0]); setUnits(""); setBuyPrice("")
+        setCurrency("EUR"); setDate(localDateKey()); setUnits(""); setBuyPrice("")
         setDca(false); setDcaAmount(""); setDcaFreq("monthly"); setAccountId(defaultAccountId ?? investAccounts[0]?.id ?? "")
         setAssetClass(defaultAssetClass("stock"))
       }

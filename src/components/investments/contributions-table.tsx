@@ -12,6 +12,7 @@ import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { cn } from "@/lib/utils"
 import { Sensitive } from "@/components/shared/sensitive"
 import { useToast } from "@/components/ui/toast"
+import { localDateKey } from "@/lib/date-utils"
 
 interface Quote { price: number; currency: string; changePct?: number | null }
 
@@ -158,7 +159,7 @@ export function ContributionsTable({ quotes }: { quotes: Record<string, Quote> }
   const [addOpen, setAddOpen] = useState(false)
   const [addPositionId, setAddPositionId] = useState("")
   const [addAmount, setAddAmount] = useState("")
-  const [addDate, setAddDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [addDate, setAddDate] = useState(() => localDateKey())
 
   const cur = (positions[0]?.currency ?? "EUR") as CurrencyCode
   const priceOf = (p: Position) => (p.kind === "custom" ? p.buyPrice : quotes[p.symbol]?.price ?? p.buyPrice)

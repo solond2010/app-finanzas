@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest"
 import type { Account, SinkingFund, Transaction } from "./store"
-import type { Position } from "./investments"
 import {
   isTransfer,
   hasTransferPair,
@@ -18,7 +17,6 @@ import {
   getFinancialScore,
   getEmergencyCushionStatus,
   suggestEmergencyTransfer,
-  getFinancialTips,
   extractMonthlyPatrimonioControl,
   buildMonthlyPatrimonioControl,
   getPatrimonioMensualKpis,
@@ -101,6 +99,16 @@ describe("getMonthTotalsByString", () => {
       tx({ tipo: "gasto", monto: 999, fecha: "2026-05-15" }), // otro mes, no cuenta
     ]
     expect(getMonthTotalsByString(txns, "2026-06")).toEqual({ ingresos: 1000, gastos: 300, neto: 700 })
+  })
+
+  it("empareja un traspaso con importes distintos mediante su identificador", () => {
+    const txns = [
+      tx({ id: "fx-out", tipo: "gasto", monto: 100, cuenta_id: "eur", tags: ["traspaso", "traspaso:fx-1"] }),
+      tx({ id: "fx-in", tipo: "ingreso", monto: 92, cuenta_id: "usd", tags: ["traspaso", "traspaso:fx-1"] }),
+    ]
+    expect(hasTransferPair(txns[0], txns)).toBe(true)
+    expect(hasTransferPair(txns[1], txns)).toBe(true)
+    expect(txns.every((item) => !countsTowardCashFlow(item, txns))).toBe(true)
   })
 
   it("cuenta como ingreso un traspaso huérfano (sin pata en otra cuenta)", () => {
@@ -351,83 +359,6 @@ describe("getFinancialScore", () => {
   })
 })
 
-describe("getFinancialTips", () => {
-  it("detecta flujo de caja negativo del mes", () => {
-    const txns = [
-      tx({ tipo: "ingreso", monto: 100, fecha: "2026-06-01" }),
-      tx({ tipo: "gasto", monto: 500, fecha: "2026-06-02" }),
-    ]
-    const tips = getFinancialTips(txns, [account()], [], "2026-06")
-    expect(tips.some((t) => t.id === "cashflow-negative")).toBe(true)
-  })
-
-  it("detecta tasa de ahorro por debajo del 20%", () => {
-    const txns = [
-      tx({ tipo: "ingreso", monto: 1000, fecha: "2026-06-01" }),
-      tx({ tipo: "gasto", monto: 950, fecha: "2026-06-02" }),
-    ]
-    const tips = getFinancialTips(txns, [account()], [], "2026-06")
-    expect(tips.some((t) => t.id === "low-savings-rate")).toBe(true)
-  })
-
-  it("detecta patrimonio estancado 3 meses seguidos", () => {
-    // Sin transacciones, el patrimonio (solo el saldo de la cuenta) no cambia
-    // en ningún mes de la ventana.
-    const tips = getFinancialTips([], [account({ saldo: 1000 })], [], "2026-06")
-    expect(tips.some((t) => t.id === "net-worth-stagnant")).toBe(true)
-  })
-
-  it("detecta un pago recurrente que vence pronto sin fondos suficientes en la cuenta", () => {
-    const today = new Date()
-    const lastDue = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate() - 2)
-    const fecha = lastDue.toISOString().slice(0, 10)
-    const txns = [tx({ tags: ["recurrente"], categoria: "Alquiler", descripcion: "Piso", monto: 700, fecha })]
-    const tips = getFinancialTips(txns, [account({ saldo: 100 })], [])
-    expect(tips.some((t) => t.id.startsWith("recurring-risk-"))).toBe(true)
-  })
-
-  it("no avisa de un recurrente si la cuenta sí llega para cubrirlo", () => {
-    const today = new Date()
-    const lastDue = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate() - 2)
-    const fecha = lastDue.toISOString().slice(0, 10)
-    const txns = [tx({ tags: ["recurrente"], categoria: "Alquiler", descripcion: "Piso", monto: 700, fecha })]
-    const tips = getFinancialTips(txns, [account({ saldo: 5000 })], [])
-    expect(tips.some((t) => t.id.startsWith("recurring-risk-"))).toBe(false)
-  })
-
-  it("detecta una meta de ahorro con fecha límite próxima sin completar", () => {
-    const soon = new Date()
-    soon.setDate(soon.getDate() + 10)
-    const funds = [fund({ cantidad_objetivo: 1000, fecha_limite: soon.toISOString().slice(0, 10) })]
-    // El saldo real de la cuenta vinculada (200) es lo que cuenta, no un
-    // ahorrado_actual manual desactualizado.
-    const tips = getFinancialTips([], [account({ saldo: 200 })], funds)
-    expect(tips.some((t) => t.id === "goal-deadline-fund_1")).toBe(true)
-  })
-
-  it("no genera ningún consejo cuando todo está en orden", () => {
-    const txns = [
-      tx({ tipo: "ingreso", monto: 2000, fecha: "2026-06-01" }),
-      tx({ tipo: "gasto", monto: 500, fecha: "2026-06-02" }),
-    ]
-    const tips = getFinancialTips(txns, [account({ saldo: 5000 })], [], "2026-06")
-    expect(tips).toHaveLength(0)
-  })
-
-  it("prioriza por severidad y respeta maxTips", () => {
-    const txns = [
-      tx({ tipo: "ingreso", monto: 100, fecha: "2026-06-01" }),
-      tx({ tipo: "gasto", monto: 500, fecha: "2026-06-02" }), // flujo negativo -> critical
-    ]
-    const soon = new Date()
-    soon.setDate(soon.getDate() + 10)
-    const funds = [fund({ cantidad_objetivo: 1000, cuenta_id: "acc_1", fecha_limite: soon.toISOString().slice(0, 10) })] // warning
-    const tips = getFinancialTips(txns, [account({ saldo: 200 })], funds, "2026-06", 1)
-    expect(tips).toHaveLength(1)
-    expect(tips[0].severity).toBe("critical")
-  })
-})
-
 describe("extractMonthlyPatrimonioControl / buildMonthlyPatrimonioControl", () => {
   it("calcula variación y crecimiento como en el sheet (3200 → 4300 = +1100 / 34.38%)", () => {
     const daily = [
@@ -492,7 +423,7 @@ describe("extractMonthlyPatrimonioControl / buildMonthlyPatrimonioControl", () =
     ]
     // Saldo actual 4300 = init 3200 + 1100. El día 5/09 solo había llegado el init
     // (si init es 01/09). Tras rebobinar txs posteriores al 05/09, patrimonio = 3200.
-    const rows = buildMonthlyPatrimonioControl(accounts, txns, [], {}, {
+    const rows = buildMonthlyPatrimonioControl(accounts, txns, {
       dayOfMonth: 5,
       asOf: new Date(2026, 9, 5),
     })
@@ -510,7 +441,7 @@ describe("extractMonthlyPatrimonioControl / buildMonthlyPatrimonioControl", () =
       tx({ id: "init_1", tipo: "ingreso", monto: 1000, fecha: "2026-09-01", cuenta_id: "acc_1" }),
       tx({ id: "same_day", tipo: "ingreso", monto: 100, fecha: "2026-09-05", cuenta_id: "acc_1" }),
     ]
-    const rows = buildMonthlyPatrimonioControl(accounts, txns, [], {}, {
+    const rows = buildMonthlyPatrimonioControl(accounts, txns, {
       dayOfMonth: 5,
       asOf: new Date(2026, 8, 5),
     })
@@ -549,23 +480,15 @@ describe("suggestEmergencyTransfer", () => {
 })
 
 describe("buildPreciseNetWorthHistory", () => {
-  it("usa el cierre de cada día y refleja una bajada entre ayer y hoy", () => {
+  it("reconstruye el saldo manual y refleja una bajada entre ayer y hoy", () => {
     const investmentAccount = account({ id: "inv_1", tipo: "inversion", saldo: 1000 })
-    const position: Position = {
-      id: "pos_1", kind: "stock", symbol: "TEST", name: "Test", date: "2026-10-01",
-      units: 1, buyPrice: 100, currency: "EUR", accountId: "inv_1",
-    }
-    const prices = {
-      TEST: [
-        { t: new Date(2026, 9, 5, 12).getTime() / 1000, c: 120 },
-        { t: new Date(2026, 9, 6, 12).getTime() / 1000, c: 100 },
-      ],
-    }
-
-    const rows = buildPreciseNetWorthHistory([investmentAccount], [], [position], prices, 2, new Date(2026, 9, 6))
+    const transactions = [
+      tx({ id: "deposit", tipo: "ingreso", monto: 20, fecha: "2026-10-06", cuenta_id: "inv_1" }),
+    ]
+    const rows = buildPreciseNetWorthHistory([investmentAccount], transactions, 2, new Date(2026, 9, 6))
     expect(rows[0].date).toBe("2026-10-05")
     expect(rows[1].date).toBe("2026-10-06")
-    expect(rows[0].patrimonio).toBe(1020)
+    expect(rows[0].patrimonio).toBe(980)
     expect(rows[1].patrimonio).toBe(1000)
   })
 })

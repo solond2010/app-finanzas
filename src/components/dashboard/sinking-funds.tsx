@@ -20,7 +20,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useFinance, type SinkingFund, generateId } from "@/lib/store"
-import { useDisplayAccounts } from "@/lib/investments"
 import { calculateMonthlySaving, fundCurrentAmount } from "@/lib/calculations"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { PiggyBank, Plus, Pencil, Trash2, Target, AlertCircle } from "lucide-react"
@@ -117,10 +116,7 @@ function SinkingFundForm({
 
 export function SinkingFundsGrid() {
   const { state, loading, dispatch } = useFinance()
-  // Con saldo real (valor de mercado en cuentas de inversión): el progreso de
-  // una meta vinculada a la cuenta de inversión debe coincidir con la cifra
-  // que Cuentas/Inversiones enseñan para esa misma cuenta.
-  const displayAccounts = useDisplayAccounts()
+  const displayAccounts = state.accounts
   const { toast } = useToast()
   const [editingFund, setEditingFund] = useState<SinkingFund | null>(null)
   const [showNew, setShowNew] = useState(false)

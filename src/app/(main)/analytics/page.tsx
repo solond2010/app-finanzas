@@ -15,9 +15,8 @@ import { MetricCard } from "@/components/dashboard/metric-card"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
-import { accountGoal, buildMonthlyCashFlow, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getFinancialTips, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, countsTowardCashFlow, buildPreciseNetWorthHistory, getCurrencyByAccount, reportingAmount } from "@/lib/calculations"
+import { accountGoal, buildMonthlyCashFlow, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, countsTowardCashFlow, buildPreciseNetWorthHistory, getCurrencyByAccount, reportingAmount } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
-import { usePortfolioValue, accountDisplayValue, useDisplayAccounts } from "@/lib/investments"
 import { formatMoney } from "@/lib/currency"
 import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
@@ -147,9 +146,6 @@ const DayHeatmap = memo(function DayHeatmap({ dailyTotals, firstWeekday }: { dai
 export default function AnalyticsPage() {
   const { state, loading, dispatch } = useFinance()
   const currencyByAccount = useMemo(() => getCurrencyByAccount(state.accounts), [state.accounts])
-  // Para los consejos: cuentas con el valor real (mercado) en inversión, la
-  // misma cifra que el resto de widgets de la app.
-  const displayAccounts = useDisplayAccounts()
   const [monthOffset, setMonthOffset] = useState(0)
   const TREND_MONTHS = 6
   const shownBudgetIds = useRef(new Set<string>())
@@ -168,14 +164,6 @@ export default function AnalyticsPage() {
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   const previousMonthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, previousMonth, currencyByAccount), [analysisTransactions, previousMonth, currencyByAccount])
   const netVsPrevious = monthTotals.neto - previousMonthTotals.neto
-  // Misma fuente de reglas que Cuentas/Inversiones (getFinancialTips): la
-  // recomendación del diagnóstico rápido deja de ser un único if/else propio
-  // de esta página y pasa a ser el consejo de mayor severidad del motor.
-  const tips = useMemo(
-    () => getFinancialTips(analysisTransactions, displayAccounts, state.sinkingFunds, selectedMonth, 4, currencyByAccount),
-    [analysisTransactions, displayAccounts, state.sinkingFunds, selectedMonth, currencyByAccount]
-  )
-  const topTip = tips[0]
   const dailyTotals = useMemo(() => {
     const [year, month] = selectedMonth.split("-").map(Number)
     const daysInMonth = new Date(year, month, 0).getDate()
@@ -248,41 +236,17 @@ export default function AnalyticsPage() {
     }
     return map
   }, [analysisTransactions, selectedMonth, currencyByAccount])
-  const { valueByAccount, investedByAccount } = usePortfolioValue()
   // Para el historial completo: necesitamos posiciones y precio histórico
-  const { positions: investPositions } = usePortfolioValue()
-  // Precio histórico mensual (2 años) para el cálculo preciso
-  const historySymbolsKey = useMemo(
-    () => [...new Set(investPositions.filter((p) => p.kind !== "custom").map((p) => p.symbol))].sort().join(","),
-    [investPositions]
-  )
-  const [priceHistory, setPriceHistory] = useState<Record<string, { t: number; c: number }[]>>({})
-  useEffect(() => {
-    const syms = historySymbolsKey ? historySymbolsKey.split(",") : []
-    if (syms.length === 0) {
-      let cancelled = false
-      queueMicrotask(() => { if (!cancelled) setPriceHistory({}) })
-      return () => { cancelled = true }
-    }
-    let cancelled = false
-    // Fetch 5 años (máximo de la API)
-    fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}&interval=1mo&range=5y`)
-      .then((r) => r.json())
-      .then((d: { history?: Record<string, { t: number; c: number }[]> }) => { if (!cancelled) setPriceHistory(d.history ?? {}) })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [historySymbolsKey])
   // Objetivo consolidado por cuenta: propio (accountGoal ya combina objetivo
   // directo + metas de ahorro vinculadas) frente al valor actual de la cuenta,
-  // reutilizando accountDisplayValue para que las cuentas de inversión usen
-  // su valor de mercado real igual que en el resto de la página.
+  // El progreso usa el saldo manual vigente de cada cuenta.
   const goalProgress = useMemo(() => {
     return state.accounts
-      .map((a) => ({ account: a, goal: accountGoal(a, state.sinkingFunds), current: accountDisplayValue(a, valueByAccount, investedByAccount) }))
+      .map((a) => ({ account: a, goal: accountGoal(a, state.sinkingFunds), current: a.saldo }))
       .filter((g) => g.goal > 0)
       .map((g) => ({ ...g, pct: Math.min((g.current / g.goal) * 100, 100), restante: Math.max(g.goal - g.current, 0) }))
       .sort((a, b) => b.pct - a.pct)
-  }, [state.accounts, state.sinkingFunds, valueByAccount, investedByAccount])
+  }, [state.accounts, state.sinkingFunds])
 
    // Toast alerts for budget overruns
    useEffect(() => {
@@ -310,23 +274,8 @@ export default function AnalyticsPage() {
       .filter((item) => item.tipo === "gasto" && item.nextDate.startsWith(monthKey))
       .reduce((s, item) => s + item.monto, 0)
   }, [upcomingRecurring])
-  // Las cuentas de inversión no bajan su saldo al comprar una posición (no
-  // genera un gasto), así que el patrimonio en crudo mezcla efectivo sin
-  // invertir con dinero ya invertido. Se sustituye la parte invertida por su
-  // valor de mercado real (ver accountDisplayValue), igual que en
-  // Dashboard/Cuentas/Inversiones — si no, esta página mostraba una cifra de
-  // patrimonio distinta a la del resto de la app.
-  const investmentAccounts = useMemo(() => state.accounts.filter((a) => a.tipo === "inversion"), [state.accounts])
-  const investmentSaldo = useMemo(() => investmentAccounts.reduce((s, a) => s + a.saldo, 0), [investmentAccounts])
-  const investmentDisplayTotal = useMemo(
-    () => investmentAccounts.reduce((s, a) => s + accountDisplayValue(a, valueByAccount, investedByAccount), 0),
-    [investmentAccounts, valueByAccount, investedByAccount]
-  )
   const rawNetWorthHistory = useMemo(() => buildNetWorthHistory(state.transactions, state.accounts, selectedMonth, TREND_MONTHS), [state.transactions, state.accounts, selectedMonth])
-  const netWorthHistory = useMemo(
-    () => rawNetWorthHistory.map((point) => ({ ...point, patrimonio: point.patrimonio - investmentSaldo + investmentDisplayTotal })),
-    [rawNetWorthHistory, investmentSaldo, investmentDisplayTotal]
-  )
+  const netWorthHistory = rawNetWorthHistory
 
   const currentNetWorth = netWorthHistory.at(-1)?.patrimonio ?? 0
   const previousNetWorth = netWorthHistory.at(-2)?.patrimonio ?? currentNetWorth
@@ -361,8 +310,6 @@ export default function AnalyticsPage() {
     const precise = buildPreciseNetWorthHistory(
       state.accounts,
       state.transactions,
-      investPositions,
-      priceHistory,
       Math.min(totalDays, 1000),
       today
     )
@@ -372,7 +319,7 @@ export default function AnalyticsPage() {
       breakdown: p.breakdown,
       date: p.date
     }))
-  }, [hasData, state.accounts, state.transactions, investPositions, priceHistory, today])
+  }, [hasData, state.accounts, state.transactions, today])
 
   // Pico histórico absoluto
   const fullHistoryPeak = useMemo(() => 
@@ -691,20 +638,8 @@ export default function AnalyticsPage() {
             </div>
           </CollapsibleBlock>
 
-          <CollapsibleBlock title="Alertas" hint="Diagnóstico e insights del mes">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Card className="stagger-fade">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><PiggyBank className="h-4 w-4 text-blue-500" />Diagnóstico rápido</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-2xl bg-muted/35 p-4 ring-1 ring-border/20">
-                    <p className="text-xs text-muted-foreground">Recomendación</p>
-                    <p className="mt-1 text-sm font-medium leading-6">{topTip?.message ?? (monthTotals.neto >= 0 ? "Buen mes. Mantén el ahorro automático y revisa si puedes subir aportaciones." : "Mes negativo. Revisa categorías grandes y congela gastos variables unos días.")}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
+          <CollapsibleBlock title="Cambios del mes" hint="Categorías que se han movido frente a tu media reciente">
+            <div className="grid grid-cols-1 gap-6">
               {categoryInsights.length > 0 && (
                 <Card className="stagger-fade">
                   <CardHeader className="pb-2">

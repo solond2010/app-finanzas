@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Account, type Category, generateId } from "@/lib/store"
 import { parseAmount } from "@/lib/validation"
+import { localDateKey } from "@/lib/date-utils"
 import { formatMoney, currencySymbol, type CurrencyCode } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { AccountLogo } from "@/components/dashboard/account-logo"
@@ -104,11 +105,11 @@ function UnifiedMovementForm({
   accounts: Account[]
   categories: Category[]
   onSaveTransaction: (t: Transaction) => void
-  onSaveTransfer: (sourceId: string, destId: string, monto: number, descripcion: string, fecha: string) => void
+  onSaveTransfer: (sourceId: string, destId: string, sourceAmount: number, destinationAmount: number, descripcion: string, fecha: string) => void
   onCancel: () => void
   initial?: MovementPrefill
 }) {
-  const today = new Date().toISOString().split("T")[0]
+  const today = localDateKey()
   const initialTipo: MovementType = initial?.tipo ?? "gasto"
 
   const [tipo, setTipo] = useState<MovementType>(initialTipo)
@@ -119,6 +120,7 @@ function UnifiedMovementForm({
   const [esNecesidad, setEsNecesidad] = useState(initialTipo !== "ingreso")
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "")
   const [origenId, setOrigenId] = useState(initial?.origenId || accounts[0]?.id || "")
+  const [montoDestino, setMontoDestino] = useState("")
   const [destinoId, setDestinoId] = useState(() => {
     if (initial?.destinoId) return initial.destinoId
     const fallback = accounts.find((a) => a.id !== (initial?.origenId || accounts[0]?.id))
@@ -151,7 +153,12 @@ function UnifiedMovementForm({
     if (tipo === "traspaso") {
       if (!origenId || !destinoId) { setError("Selecciona cuenta de origen y destino."); return }
       if (origenId === destinoId) { setError("El origen y el destino no pueden ser la misma cuenta."); return }
-      onSaveTransfer(origenId, destinoId, amount, descripcion || "Traspaso", fecha)
+      const source = accounts.find((account) => account.id === origenId)
+      const destination = accounts.find((account) => account.id === destinoId)
+      if (!source || !destination) { setError("No se encontraron las cuentas seleccionadas."); return }
+      const receivedAmount = source.currency === destination.currency ? amount : parseAmount(montoDestino)
+      if (receivedAmount == null) { setError(`Indica el importe que llegó a la cuenta destino (${currencySymbol(destination.currency)}).`); return }
+      onSaveTransfer(origenId, destinoId, amount, receivedAmount, descripcion || "Traspaso", fecha)
       return
     }
     if (!cuentaId) { setError("Selecciona una cuenta."); return }
@@ -208,7 +215,7 @@ function UnifiedMovementForm({
         <>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Desde (origen)</label>
-            <Select value={origenId} onValueChange={(v) => v && setOrigenId(v)} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
+            <Select value={origenId} onValueChange={(v) => { if (v) { setOrigenId(v); setMontoDestino("") } }} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
               <SelectTrigger className="h-12 w-full text-sm">
                 <SelectValue />
               </SelectTrigger>
@@ -230,7 +237,7 @@ function UnifiedMovementForm({
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Hacia (destino)</label>
-            <Select value={destinoId} onValueChange={(v) => v && setDestinoId(v)} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
+            <Select value={destinoId} onValueChange={(v) => { if (v) { setDestinoId(v); setMontoDestino("") } }} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
               <SelectTrigger className="h-12 w-full text-sm">
                 <SelectValue />
               </SelectTrigger>
@@ -244,11 +251,18 @@ function UnifiedMovementForm({
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">{montoLabel}</label>
               <Input type="number" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" required autoFocus className="h-12 text-base" />
             </div>
+            {(accounts.find((account) => account.id === origenId)?.currency ?? "EUR") !== (accounts.find((account) => account.id === destinoId)?.currency ?? "EUR") && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Importe recibido ({currencySymbol((accounts.find((account) => account.id === destinoId)?.currency ?? "EUR") as CurrencyCode)})</label>
+                <Input type="number" value={montoDestino} onChange={(e) => setMontoDestino(e.target.value)} placeholder="Importe exacto recibido" required className="h-12 text-base" />
+                <p className="text-xs text-muted-foreground">Introduce lo que realmente llegó, después del cambio y las comisiones.</p>
+              </div>
+            )}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Fecha</label>
               <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="h-12 text-base" />
@@ -380,38 +394,39 @@ export function QuickActionsFAB() {
     toast(t.tipo === "gasto" ? "Gasto registrado" : "Ingreso registrado", "success")
   }
 
-  const handleTransfer = (sourceId: string, destId: string, monto: number, descripcion: string, fecha: string) => {
+  const handleTransfer = (sourceId: string, destId: string, sourceAmount: number, destinationAmount: number, descripcion: string, fecha: string) => {
     const source = state.accounts.find((a) => a.id === sourceId)
     const dest = state.accounts.find((a) => a.id === destId)
     if (!source || !dest) return
+    const transferId = generateId()
+    const transferTags = ["traspaso", `traspaso:${transferId}`]
 
     dispatch({
-      type: "ADD_TRANSACTION",
-      payload: {
+      type: "ADD_TRANSFER",
+      payload: [
+        {
         id: generateId(),
         cuenta_id: sourceId,
-        monto,
+        monto: sourceAmount,
         fecha,
         tipo: "gasto",
         categoria: "Transferencia",
         es_necesidad: false,
         descripcion: `${descripcion} → ${dest.nombre}`,
-        tags: ["traspaso"],
-      },
-    })
-    dispatch({
-      type: "ADD_TRANSACTION",
-      payload: {
+        tags: transferTags,
+        },
+        {
         id: generateId(),
         cuenta_id: destId,
-        monto,
+        monto: destinationAmount,
         fecha,
         tipo: "ingreso",
         categoria: "Transferencia",
         es_necesidad: false,
         descripcion: `${descripcion} ← ${source.nombre}`,
-        tags: ["traspaso"],
-      },
+        tags: transferTags,
+        },
+      ],
     })
 
     setDialogOpen(false)

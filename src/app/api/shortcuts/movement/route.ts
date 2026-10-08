@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase-server"
 import { timingSafeEqualString } from "@/lib/auth"
 import { guessCategory } from "@/lib/guess-category"
+import { dateKeyInTimeZone, isDateKey } from "@/lib/date-utils"
 
 // Mismo USER_ID hardcodeado que usa el resto de la app (ver USER_ID en
 // src/lib/store.tsx) — duplicado como literal en vez de importado porque
@@ -37,9 +38,12 @@ export async function POST(request: Request) {
   }
 
   const descripcion = typeof body.descripcion === "string" && body.descripcion.trim() ? body.descripcion.trim() : "Movimiento rápido"
-  const fecha = typeof body.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.fecha)
-    ? body.fecha
-    : new Date().toISOString().slice(0, 10)
+  const fecha = body.fecha === undefined || body.fecha === null || body.fecha === ""
+    ? dateKeyInTimeZone(new Date(), "Europe/Madrid")
+    : typeof body.fecha === "string" && isDateKey(body.fecha)
+      ? body.fecha
+      : null
+  if (!fecha) return NextResponse.json({ error: "fecha debe ser una fecha válida con formato YYYY-MM-DD" }, { status: 400 })
   let shortcutId: string | null = null
   if (body.idempotency_key !== undefined) {
     if (typeof body.idempotency_key !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(body.idempotency_key)) {
@@ -94,6 +98,7 @@ export async function POST(request: Request) {
 
     const sourceTransactionId = shortcutId ? `${shortcutId}_out` : crypto.randomUUID()
     const destinationTransactionId = shortcutId ? `${shortcutId}_in` : crypto.randomUUID()
+    const pairTag = `traspaso:${shortcutId ?? crypto.randomUUID()}`
     if (shortcutId) {
       try {
         const [sourceExists, destinationExists] = await Promise.all([
@@ -121,7 +126,7 @@ export async function POST(request: Request) {
         categoria: "Transferencia",
         es_necesidad: false,
         descripcion: `${descripcion} → ${destino.nombre}`,
-        tags: ["traspaso", "atajo"],
+        tags: ["traspaso", "atajo", pairTag],
         user_id: USER_ID,
         created_at: new Date().toISOString(),
       },
@@ -134,7 +139,7 @@ export async function POST(request: Request) {
         categoria: "Transferencia",
         es_necesidad: false,
         descripcion: `${descripcion} ← ${origen.nombre}`,
-        tags: ["traspaso", "atajo"],
+        tags: ["traspaso", "atajo", pairTag],
         user_id: USER_ID,
         created_at: new Date().toISOString(),
       },

@@ -11,7 +11,6 @@ import { MountainChart } from "@/components/shared/mountain-chart"
 import { EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
-import { usePortfolioValue, accountDisplayValue } from "@/lib/investments"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
@@ -163,35 +162,9 @@ export default function DashboardContent() {
   const previousMonthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, previousMonth, currencyByAccount), [analysisTransactions, previousMonth, currencyByAccount])
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
-  const { positions: investPositions, value: portfolioValue, pnl: portfolioPnl, valueByAccount, investedByAccount } = usePortfolioValue()
-  // Las inversiones se controlan manualmente desde el saldo de cada cuenta.
   const investmentAccounts = useMemo(() => displayAccounts.filter((a) => a.tipo === "inversion"), [displayAccounts])
-  const investmentSaldo = useMemo(() => investmentAccounts.reduce((s, a) => s + convertToEur(a.saldo, a.currency), 0), [investmentAccounts])
-  const investmentDisplayTotal = useMemo(
-    () => investmentAccounts.reduce((s, a) => s + convertToEur(accountDisplayValue(a, valueByAccount, investedByAccount), a.currency), 0),
-    [investmentAccounts, valueByAccount, investedByAccount]
-  )
-  const netWorthDisplay = netWorth - investmentSaldo + investmentDisplayTotal
-
-  // Precio histórico mensual (2 años) de cada símbolo en cartera
-  const historySymbolsKey = useMemo(
-    () => [...new Set(investPositions.filter((p) => p.kind !== "custom").map((p) => p.symbol))].sort().join(","),
-    [investPositions]
-  )
-  const [priceHistory, setPriceHistory] = useState<Record<string, { t: number; c: number }[]>>({})
-  useEffect(() => {
-    const syms = historySymbolsKey ? historySymbolsKey.split(",") : []
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on empty deps before the async fetch
-    if (syms.length === 0) { setPriceHistory({}); return }
-    let cancelled = false
-    // El intervalo mensual repetía la misma cotización para el 5 y el 6 del
-    // mes; la serie diaria es necesaria para reflejar cada cierre de mercado.
-    fetch(`/api/history?symbols=${encodeURIComponent(syms.join(","))}&interval=1d&range=2y`)
-      .then((r) => r.json())
-      .then((d: { history?: Record<string, { t: number; c: number }[]> }) => { if (!cancelled) setPriceHistory(d.history ?? {}) })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [historySymbolsKey])
+  const investmentDisplayTotal = useMemo(() => investmentAccounts.reduce((sum, account) => sum + convertToEur(account.saldo, account.currency), 0), [investmentAccounts])
+  const netWorthDisplay = netWorth
 
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
 
@@ -243,8 +216,6 @@ export default function DashboardContent() {
       const precise = buildPreciseNetWorthHistory(
         state.accounts,
         state.transactions,
-        investPositions,
-        priceHistory,
         Math.min(totalDays, 1000), // límite razonable
         today
       )
@@ -262,8 +233,6 @@ export default function DashboardContent() {
       const precise = buildPreciseNetWorthHistory(
         state.accounts,
         state.transactions,
-        investPositions,
-        priceHistory,
         count,
         dailyEndDate
       )
@@ -278,8 +247,6 @@ export default function DashboardContent() {
     const preciseMonthly = buildPreciseNetWorthHistoryMonthly(
       state.accounts,
       state.transactions,
-      investPositions,
-      priceHistory,
       activeRange.count,
       selectedMonth
     )
@@ -313,8 +280,6 @@ export default function DashboardContent() {
       const daily = buildPreciseNetWorthHistory(
         state.accounts,
         state.transactions,
-        investPositions,
-        priceHistory,
         daysInMonth,
         monthEnd
       )
@@ -335,7 +300,7 @@ export default function DashboardContent() {
     }
     
     return enrichedTrend
-  }, [activeRange, selectedDate, monthOffset, today, selectedMonth, state.accounts, state.transactions, investPositions, priceHistory])
+  }, [activeRange, selectedDate, monthOffset, today, selectedMonth, state.accounts, state.transactions])
 
   // En los rangos por mes (6M/12M/24M) el mes en curso solo aporta UN punto a
   // netWorthTrend: el valor de HOY. Si dentro de ese mismo mes hubo un pico
@@ -349,13 +314,11 @@ export default function DashboardContent() {
     const daily = buildPreciseNetWorthHistory(
       state.accounts,
       state.transactions,
-      investPositions,
-      priceHistory,
       today.getDate(),
       today
     )
     return daily.length === 0 ? null : daily.reduce((best, d) => (d.patrimonio > best.patrimonio ? d : best), daily[0])
-  }, [monthOffset, today, state.accounts, state.transactions, investPositions, priceHistory])
+  }, [monthOffset, today, state.accounts, state.transactions])
 
   // Serie que se PINTA: en rangos por mes y "Todo", si el pico diario supera
   // el valor final, se inserta como punto extra antes del último.
@@ -488,10 +451,7 @@ export default function DashboardContent() {
   const needsPct = needsVsWantsTotal > 0 ? Math.round((needsVsWants.necesidades / needsVsWantsTotal) * 100) : 0
   const catColor = (name: string) => state.categories.find((c) => c.name === name)?.color ?? "var(--accent-blue)"
 
-  // Composición del patrimonio por tipo de cuenta. Las cuentas de inversión
-  // se colapsan en un único bloque con el valor de mercado de la cartera
-  // (no la suma de saldos manuales, que quedan obsoletos), igual que en el
-  // resto del Dashboard.
+  // Composición del patrimonio por tipo de cuenta usando los saldos guardados.
   const composicion = useMemo(() => {
     const groups: Record<string, number> = {}
     for (const a of displayAccounts) {
@@ -583,8 +543,8 @@ export default function DashboardContent() {
   const scoreBaselineDate = useMemo(() => new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1), [selectedDate])
   const scoreBaselineKey = `${scoreBaselineDate.getFullYear()}-${String(scoreBaselineDate.getMonth() + 1).padStart(2, "0")}`
   const scoreBaseline = useMemo(
-    () => getNetWorthAtMonth(state.accounts, state.transactions, scoreBaselineKey) - investmentSaldo + investmentDisplayTotal,
-    [state.accounts, state.transactions, scoreBaselineKey, investmentSaldo, investmentDisplayTotal]
+    () => getNetWorthAtMonth(state.accounts, state.transactions, scoreBaselineKey),
+    [state.accounts, state.transactions, scoreBaselineKey]
   )
 
   const { score, tier: scoreTier, factors: scoreFactors } = useMemo(
@@ -598,13 +558,7 @@ export default function DashboardContent() {
     [savingsRate, monthTotals.neto, netWorthDisplay, scoreBaseline, displayAccounts]
   )
 
-  // Colchón de emergencia: prioridad UX cuando va muy por debajo del objetivo.
-  // No altera el número de la puntuación; solo contextualiza su etiqueta.
-  const scoreDisplayLabel = emergency?.isLow
-    ? (score >= 60
-        ? `${scoreTier.label} en flujo · pendiente el colchón`
-        : `${scoreTier.label} · prioriza el colchón`)
-    : scoreTier.label
+  const scoreDisplayLabel = scoreTier.label
   const scoreColor = scoreTier.label === "Excelente" ? "var(--gold)" : scoreTier.color
 
   const sortedAccounts = useMemo(() => displayAccounts.slice().sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo)), [displayAccounts])
@@ -669,7 +623,7 @@ export default function DashboardContent() {
         investmentInvested,
         investmentPnl: investmentDisplayTotal - investmentInvested,
         accountComposition: composicion.map(({ label, value }) => ({ name: label, value })),
-        accounts: sortedAccounts.map((a) => ({ nombre: a.nombre, tipo: typeConfig[a.tipo]?.label ?? a.tipo, banco: a.banco, saldo: convertToEur(accountDisplayValue(a, valueByAccount, investedByAccount), a.currency) })),
+        accounts: sortedAccounts.map((a) => ({ nombre: a.nombre, tipo: typeConfig[a.tipo]?.label ?? a.tipo, banco: a.banco, saldo: convertToEur(a.saldo, a.currency) })),
         goals: state.sinkingFunds.map((fund) => {
           const account = displayAccounts.find((item) => item.id === fund.cuenta_id)
           const currency = account?.currency ?? "EUR"
@@ -799,12 +753,6 @@ export default function DashboardContent() {
                           · {formatMoney(vsPeakDelta, "EUR")}{Math.abs(vsPeakPct) > 0.05 ? ` (${formatCappedPct(vsPeakPct)})` : ""} desde el pico
                         </Sensitive>
                       )}
-                    </p>
-                  )}
-                  {portfolioValue > 0 && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Incluye <Sensitive>{formatMoney(portfolioValue, "EUR")}</Sensitive> en inversiones
-                      <Sensitive as="span" className={cn("ml-1 font-semibold", portfolioPnl >= 0 ? "text-emerald-500" : "text-red-500")}>({portfolioPnl >= 0 ? "+" : "−"}{formatMoney(Math.abs(portfolioPnl), "EUR")})</Sensitive>
                     </p>
                   )}
                 </div>

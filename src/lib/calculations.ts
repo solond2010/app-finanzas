@@ -1,6 +1,5 @@
 import type { Account, Transaction, MonthlySummary, NetWorthSnapshot, SinkingFund } from "./store"
 import { convertToEur, type CurrencyCode } from "./currency"
-import type { Position } from "./investments"
 import { parseLocalDate } from "./date-utils"
 
 export type CurrencyByAccount = ReadonlyMap<string, CurrencyCode>
@@ -158,22 +157,24 @@ export function isBalanceAdjustment(t: Transaction) {
 }
 
 /**
- * True solo si hay la otra pata del traspaso (mismo día, mismo monto, tipo
- * opuesto, otra cuenta). Si se borró la cuenta origen/destino, la pata
- * huérfana deja de ser un traspaso interno: el dinero sí entró/salió del
- * perímetro de cuentas y debe contar en ingresos/gastos.
+ * True solo si hay la otra pata del traspaso. Los nuevos traspasos comparten
+ * una etiqueta única, lo que permite importes distintos entre monedas; los
+ * antiguos se emparejan por fecha, importe y tipo opuesto. Si falta la otra
+ * pata, el movimiento cuenta como entrada/salida real del perímetro.
  */
 export function hasTransferPair(t: Transaction, all: Transaction[]): boolean {
   if (!isTransfer(t)) return false
   const opposite = t.tipo === "ingreso" ? "gasto" : "ingreso"
+  const pairTag = t.tags?.find((tag) => tag.startsWith("traspaso:"))
   return all.some(
     (o) =>
       o.id !== t.id &&
       isTransfer(o) &&
       o.tipo === opposite &&
-      o.monto === t.monto &&
-      o.fecha === t.fecha &&
-      o.cuenta_id !== t.cuenta_id
+      o.cuenta_id !== t.cuenta_id &&
+      (pairTag
+        ? o.tags?.includes(pairTag)
+        : o.monto === t.monto && o.fecha === t.fecha)
   )
 }
 
@@ -500,68 +501,6 @@ export function calculateMonthlySaving(amountTarget: number, current: number, de
   return Math.round((amountTarget - current) / monthsLeft)
 }
 
-export interface FinancialTip {
-  id: string
-  severity: "critical" | "warning" | "info"
-  message: string
-}
-
-const SEVERITY_RANK: Record<FinancialTip["severity"], number> = { critical: 0, warning: 1, info: 2 }
-const GOAL_DEADLINE_SOON_DAYS = 30
-const RECURRING_DUE_SOON_DAYS = 3
-
-/**
- * Motor de consejos basado en reglas deterministas sobre los propios datos
- * (sin IA ni servicio externo — nada que mantener ni que deje de ser gratis).
- * Cada regla es una comprobación pequeña y aislada; se devuelven las de mayor
- * severidad primero, como máximo `maxTips`.
- */
-export function getFinancialTips(
-  transactions: Transaction[],
-  accounts: Account[],
-  sinkingFunds: SinkingFund[],
-  selectedMonth?: string,
-  maxTips = 4,
-  currencies?: CurrencyByAccount
-): FinancialTip[] {
-  const tips: FinancialTip[] = []
-  const monthKey = selectedMonth ?? getMonthKey(new Date())
-  const monthTotals = getMonthTotalsByString(transactions, monthKey, currencies)
-  const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
-
-  if (monthTotals.neto < 0) {
-    tips.push({ id: "cashflow-negative", severity: "critical", message: `Este mes vas negativo: revisa tus gastos más grandes antes de que se acumule más.` })
-  }
-
-  if (monthTotals.ingresos > 0 && savingsRate < 20) {
-    tips.push({ id: "low-savings-rate", severity: "warning", message: `Tu tasa de ahorro este mes es del ${Math.round(savingsRate)}%, por debajo del 20% recomendado.` })
-  }
-
-  const netWorthWindow = buildNetWorthHistory(transactions, accounts, selectedMonth, 3)
-  if (netWorthWindow.length === 3 && netWorthWindow.every((m) => m.patrimonio !== 0) && netWorthWindow[2].patrimonio <= netWorthWindow[0].patrimonio) {
-    tips.push({ id: "net-worth-stagnant", severity: "info", message: "Tu patrimonio lleva 3 meses sin crecer. Revisa si puedes automatizar algún ahorro." })
-  }
-
-  const accountById = new Map(accounts.map((a) => [a.id, a]))
-  for (const item of getUpcomingRecurring(transactions)) {
-    if (item.tipo !== "gasto" || item.overdueDays < -RECURRING_DUE_SOON_DAYS) continue
-    const account = accountById.get(item.cuenta_id)
-    if (account && account.saldo < item.monto) {
-      tips.push({ id: `recurring-risk-${item.key}`, severity: "critical", message: `"${item.descripcion || item.categoria}" vence pronto y tu cuenta ${account.nombre} no llega para cubrirlo.` })
-    }
-  }
-
-  for (const fund of sinkingFunds) {
-    if (fundCurrentAmount(fund, accounts) >= fund.cantidad_objetivo) continue
-    const daysLeft = (parseLocalDate(fund.fecha_limite).getTime() - Date.now()) / 86400000
-    if (daysLeft > 0 && daysLeft <= GOAL_DEADLINE_SOON_DAYS) {
-      tips.push({ id: `goal-deadline-${fund.id}`, severity: "warning", message: `Tu meta "${fund.nombre}" vence en menos de un mes y todavía no está completa.` })
-    }
-  }
-
-  return tips.sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]).slice(0, maxTips)
-}
-
 // Etiqueta corta de mes para ejes de gráficos ("jul 26").
 function formatMonth(d: Date) {
   return d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" })
@@ -677,29 +616,24 @@ out.push({
 
 // ============================================================
 // CÁLCULO PRECISO DEL HISTORIAL DE PATRIMONIO
-// ============================================================
-// Reconstruye el patrimonio exacto en cada fecha usando:
-// 1. Saldo real de cuentas de inversión (traspasos "traspaso")
-// 2. Unidades reales de cada posición (fecha de compra) × precio histórico
-// ============================================================
+// Reconstruye el patrimonio diario desde saldos manuales y movimientos.
 
 export interface PreciseNetWorthPoint {
   date: string        // YYYY-MM-DD
   label: string       // Etiqueta para gráfico
   patrimonio: number  // €
   breakdown: {
-    cash: number              // Cuentas no-inversión
-    investedCash: number      // Efectivo en cuentas inversión (saldo - coste posiciones)
-    portfolioValue: number    // Valor de mercado de posiciones
+    cash: number              // Cuentas que no son de inversión
+    investedCash: number      // Saldos manuales de cuentas de inversión
+    portfolioValue: number    // Se mantiene en 0 por compatibilidad con gráficas antiguas
   }
 }
 
 /**
- * Calcula el patrimonio neto preciso para un rango de fechas.
+ * Calcula el patrimonio neto a partir del saldo manual de cada cuenta y su
+ * historial de movimientos, sin precios ni valoraciones externas.
  * @param accounts Cuentas actuales
  * @param transactions Todas las transacciones
- * @param positions Posiciones actuales (con fecha de compra)
- * @param priceHistory Histórico de precios { symbol: [{ t: timestamp, c: price }] }
  * @param days Número de días hacia atrás desde endDate
  * @param endDate Fecha final (por defecto hoy)
  * @returns Array de puntos diarios con patrimonio preciso
@@ -707,113 +641,30 @@ export interface PreciseNetWorthPoint {
 export function buildPreciseNetWorthHistory(
   accounts: Account[],
   transactions: Transaction[],
-  positions: Position[],
-  priceHistory: Record<string, { t: number; c: number }[]>,
   days: number,
   endDate = new Date()
 ): PreciseNetWorthPoint[] {
-  // 1. Agrupar transacciones por cuenta
   const txByAccount = groupByAccount(transactions)
-  
-  // 2. Identificar cuentas de inversión
-  const investAccountIds = new Set(accounts.filter((a) => a.tipo === "inversion").map((a) => a.id))
-  
-  // 3. Para cada posición, obtener su cuenta de inversión
-  const positionByAccount = new Map<string, Position[]>()
-  for (const p of positions) {
-    if (p.accountId && investAccountIds.has(p.accountId)) {
-      const arr = positionByAccount.get(p.accountId) ?? []
-      arr.push(p)
-      positionByAccount.set(p.accountId, arr)
-    }
-  }
-  
-  // 4. Para cada cuenta de inversión, obtener traspasos ordenados por fecha
-  const transfersByAccount = new Map<string, Transaction[]>()
-  for (const accountId of investAccountIds) {
-    const accountTxs = txByAccount.get(accountId) ?? []
-    const transfers = accountTxs
-      .filter((t) => isTransfer(t))
-      .sort((a, b) => a.fecha.localeCompare(b.fecha))
-    if (transfers.length > 0) transfersByAccount.set(accountId, transfers)
-  }
-  
-  // 6. Función helper: precio de un símbolo en una fecha
-  const getPriceAt = (symbol: string, atDate: Date, fallbackBuyPrice: number): number => {
-    const hist = priceHistory[symbol]
-    if (!hist || hist.length === 0) return fallbackBuyPrice
-    // Los puntos diarios de Yahoo llevan la hora de apertura de mercado, no
-    // la de cierre. Evaluar a medianoche asignaba el cierre del día anterior
-    // a la fecha actual; usar el final del día para obtener su cierre real.
-    const atMs = new Date(atDate.getFullYear(), atDate.getMonth(), atDate.getDate(), 23, 59, 59, 999).getTime()
-    let best: { t: number; c: number } | null = null
-    for (const point of hist) {
-      const pointMs = point.t * 1000
-      if (pointMs <= atMs && (!best || pointMs > best.t * 1000)) best = point
-    }
-    return best?.c ?? fallbackBuyPrice
-  }
-  
-  // 7. Generar puntos diarios
   const points: PreciseNetWorthPoint[] = []
-  
+
   for (let i = 0; i < days; i++) {
     const d = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() - (days - 1 - i))
     const dateKey = toDateKey(d)
     const label = d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
-    
-    // --- CASH: cuentas NO inversión ---
+
     let cash = 0
+    let investedCash = 0
     for (const account of accounts) {
-      if (investAccountIds.has(account.id)) continue
-      // Calcular saldo a fecha
       const accountTxs = txByAccount.get(account.id) ?? []
       let balance = account.saldo
       for (const t of accountTxs) {
         if (isAfterDate(t.fecha, dateKey)) balance -= transactionDelta(t)
       }
-      cash += convertToEur(balance, account.currency)
+      if (account.tipo === "inversion") investedCash += convertToEur(balance, account.currency)
+      else cash += convertToEur(balance, account.currency)
     }
-    
-    // --- CUENTAS DE INVERSIÓN ---
-    let investedCash = 0
-    let portfolioValue = 0
-    
-    for (const accountId of investAccountIds) {
-      const account = accounts.find((a) => a.id === accountId)
-      if (!account) continue
-      
-      // Saldo base de la cuenta (sin posiciones)
-      const accountTxs = txByAccount.get(accountId) ?? []
-      let balance = account.saldo
-      for (const t of accountTxs) {
-        if (isAfterDate(t.fecha, dateKey)) balance -= transactionDelta(t)
-      }
-      
-      // Restar coste de posiciones compradas hasta esta fecha
-      const accountPositions = positionByAccount.get(accountId) ?? []
-      let investedCost = 0
-      for (const p of accountPositions) {
-        if (!isAfterDate(p.date, dateKey)) {
-          investedCost += p.units * p.buyPrice
-        }
-      }
-      
-      // Efectivo en la cuenta = saldo - coste posiciones
-      const cashInAccount = balance - investedCost
-      investedCash += cashInAccount
-      
-      // Valor de cartera = sum(units * precio histórico) para posiciones compradas hasta esta fecha
-      for (const p of accountPositions) {
-        if (!isAfterDate(p.date, dateKey)) {
-          const price = getPriceAt(p.symbol, d, p.buyPrice)
-          portfolioValue += p.units * price
-        }
-      }
-    }
-    
+    const portfolioValue = 0
     const patrimonio = cash + investedCash + portfolioValue
-    
     points.push({
       date: dateKey,
       label,
@@ -821,78 +672,7 @@ export function buildPreciseNetWorthHistory(
       breakdown: { cash, investedCash, portfolioValue }
     })
   }
-  
   return points
-}
-
-/**
- * Diagnóstico del cálculo de patrimonio: identifica posibles problemas
- * (precios faltantes, posiciones sin fecha, traspasos sin etiquetar, etc.)
- */
-export function diagnoseNetWorthCalculation(
-  accounts: Account[],
-  transactions: Transaction[],
-  positions: Position[],
-  priceHistory: Record<string, { t: number; c: number }[]>
-): { warnings: string[]; info: string[] } {
-  const warnings: string[] = []
-  const info: string[] = []
-  
-  const investAccountIds = new Set(accounts.filter((a) => a.tipo === "inversion").map((a) => a.id))
-  
-  // 1. Cuentas de inversión sin traspasos etiquetados
-  const txByAccount = groupByAccount(transactions)
-  for (const accountId of investAccountIds) {
-    const accountTxs = txByAccount.get(accountId) ?? []
-    const transfers = accountTxs.filter((t) => isTransfer(t))
-    if (transfers.length === 0) {
-      const account = accounts.find((a) => a.id === accountId)
-      if (account) warnings.push(`Cuenta "${account.nombre}" (inversión) no tiene traspasos etiquetados "traspaso". El saldo histórico será incorrecto.`)
-    }
-  }
-  
-  // 2. Posiciones sin accountId
-  const positionsWithoutAccount = positions.filter((p) => !p.accountId)
-  if (positionsWithoutAccount.length > 0) {
-    warnings.push(`${positionsWithoutAccount.length} posición(es) sin accountId: no se asignarán a ninguna cuenta de inversión.`)
-  }
-  
-  // 3. Posiciones con fecha de compra futura o inválida
-  const now = new Date()
-  const invalidDatePositions = positions.filter((p) => {
-    const d = new Date(p.date)
-    return isNaN(d.getTime()) || d > now
-  })
-  if (invalidDatePositions.length > 0) {
-    warnings.push(`${invalidDatePositions.length} posición(es) con fecha de compra inválida/futura.`)
-  }
-  
-  // 4. Símbolos sin histórico de precios
-  const symbolsNeeded = new Set(positions.filter((p) => p.kind !== "custom").map((p) => p.symbol))
-  const symbolsMissing = [...symbolsNeeded].filter((s) => !priceHistory[s] || priceHistory[s].length === 0)
-  if (symbolsMissing.length > 0) {
-    warnings.push(`Símbolos sin histórico de precios (se usará buyPrice como fallback): ${symbolsMissing.join(", ")}`)
-  }
-  
-  // 5. Histórico de precios muy corto
-  for (const [symbol, hist] of Object.entries(priceHistory)) {
-    if (hist.length > 0) {
-      const oldest = new Date(hist[0].t * 1000)
-      const newest = new Date(hist[hist.length - 1].t * 1000)
-      const days = (newest.getTime() - oldest.getTime()) / 86400000
-      if (days < 365) {
-        info.push(`Histórico de ${symbol}: solo ${days.toFixed(0)} días (${oldest.toLocaleDateString()} - ${newest.toLocaleDateString()})`)
-      }
-    }
-  }
-  
-  // 6. Primera transacción
-  if (transactions.length > 0) {
-    const firstTx = transactions.reduce((oldest, t) => t.fecha < oldest.fecha ? t : oldest)
-    info.push(`Primera transacción: ${firstTx.fecha} (${firstTx.tipo} ${firstTx.monto}€ en ${firstTx.categoria})`)
-  }
-  
-  return { warnings, info }
 }
 
 /**
@@ -901,8 +681,6 @@ export function diagnoseNetWorthCalculation(
 export function buildPreciseNetWorthHistoryMonthly(
   accounts: Account[],
   transactions: Transaction[],
-  positions: Position[],
-  priceHistory: Record<string, { t: number; c: number }[]>,
   months: number,
   endMonthKey?: string
 ): PreciseNetWorthPoint[] {
@@ -915,7 +693,7 @@ export function buildPreciseNetWorthHistoryMonthly(
     const monthKey = getMonthKey(d)
     
     // Usar la versión diaria para el último día del mes
-    const daily = buildPreciseNetWorthHistory(accounts, transactions, positions, priceHistory, 1, monthEnd)
+    const daily = buildPreciseNetWorthHistory(accounts, transactions, 1, monthEnd)
     const point = daily[0]
     
     points.push({
@@ -1053,15 +831,13 @@ export function extractMonthlyPatrimonioControl(
 }
 
 /**
- * Construye el control patrimonio mensual desde cero (cuentas + posiciones +
- * histórico de precios). Fuente: reconstrucción diaria precisa muestreada el
+ * Construye el control patrimonio mensual desde cero usando saldos manuales y
+ * movimientos. Fuente: reconstrucción diaria precisa muestreada el
  * día 5 de cada mes.
  */
 export function buildMonthlyPatrimonioControl(
   accounts: Account[],
   transactions: Transaction[],
-  positions: Position[],
-  priceHistory: Record<string, { t: number; c: number }[]>,
   opts?: { dayOfMonth?: number; asOf?: Date; maxMonths?: number }
 ): PatrimonioMensualRow[] {
   if (accounts.length === 0) return []
@@ -1083,8 +859,6 @@ export function buildMonthlyPatrimonioControl(
   const daily = buildPreciseNetWorthHistory(
     accounts,
     transactions,
-    positions,
-    priceHistory,
     Math.min(totalDays, 2000),
     asOf
   )

@@ -81,6 +81,20 @@ describe("reducer / DELETE_ACCOUNT", () => {
     expect(next.transactions.map((t) => t.id)).toEqual(["t2"])
     expect(next.sinkingFunds).toHaveLength(0)
   })
+
+  it("desetiqueta la pata restante de un traspaso entre monedas al borrar una cuenta", () => {
+    const state: FinanceState = {
+      ...emptyState,
+      accounts: [baseAccount, { ...baseAccount, id: "acc2", currency: "USD" }],
+      transactions: [
+        tx({ id: "fx-out", cuenta_id: "acc1", tipo: "gasto", monto: 100, tags: ["traspaso", "traspaso:fx-1"] }),
+        tx({ id: "fx-in", cuenta_id: "acc2", tipo: "ingreso", monto: 92, tags: ["traspaso", "traspaso:fx-1"] }),
+      ],
+    }
+    const next = reducer(state, { type: "DELETE_ACCOUNT", payload: "acc1" })
+    expect(next.transactions).toHaveLength(1)
+    expect(next.transactions[0].tags).toEqual([])
+  })
 })
 
 describe("reducer / ADD_TRANSACTION actualiza el saldo de la cuenta", () => {
@@ -101,6 +115,23 @@ describe("reducer / ADD_TRANSACTION actualiza el saldo de la cuenta", () => {
     const next = reducer(state, { type: "ADD_TRANSACTIONS", payload: [tx({ id: "batch1", monto: 30, tipo: "gasto" }), tx({ id: "batch2", monto: 10, tipo: "ingreso" })] })
     expect(next.transactions.map((item) => item.id)).toEqual(["batch1", "batch2"])
     expect(next.accounts[0].saldo).toBe(180)
+  })
+
+  it("registra las dos patas de un traspaso en una sola acción y con importes por divisa", () => {
+    const state: FinanceState = {
+      ...emptyState,
+      accounts: [baseAccount, { ...baseAccount, id: "acc-usd", currency: "USD", saldo: 100 }],
+    }
+    const pairTag = "traspaso:fx-1"
+    const next = reducer(state, {
+      type: "ADD_TRANSFER",
+      payload: [
+        tx({ id: "fx-out", cuenta_id: "acc1", tipo: "gasto", monto: 100, tags: ["traspaso", pairTag] }),
+        tx({ id: "fx-in", cuenta_id: "acc-usd", tipo: "ingreso", monto: 92, tags: ["traspaso", pairTag] }),
+      ],
+    })
+    expect(next.accounts.map((account) => account.saldo)).toEqual([-100, 192])
+    expect(next.transactions.map((transaction) => transaction.id)).toEqual(["fx-out", "fx-in"])
   })
 })
 

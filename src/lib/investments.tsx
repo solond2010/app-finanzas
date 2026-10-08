@@ -1,9 +1,9 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
 import { addMonths, addWeeks, format, parseISO } from "date-fns"
 import { dbSelect, dbUpsert, dbDeleteEq } from "./db-client"
-import { USER_ID, useFinance, type Account } from "./store"
+import { USER_ID } from "./store"
 
 export type AssetKind = "stock" | "fund" | "crypto" | "custom"
 
@@ -524,32 +524,4 @@ export function useInvestments() {
 export function useInvestmentSyncStatus() {
   const { syncStatus, retrySync } = useInvestments()
   return { status: syncStatus, retrySync }
-}
-
-interface Quote { price: number; currency: string; changePct?: number | null; name?: string }
-
-export function usePortfolioValue() {
-  // Las cuentas de inversión son saldos manuales. La cartera antigua se
-  // conserva sincronizada para no borrar el historial, pero ya no modifica
-  // cifras, gráficos, informes ni consulta cotizaciones externas.
-  return { positions: EMPTY_POSITIONS, quotes: EMPTY_QUOTES, loading: false, value: 0, invested: 0, pnl: 0, pnlPct: 0, valueByAccount: EMPTY_ACCOUNT_VALUES, investedByAccount: EMPTY_ACCOUNT_VALUES }
-}
-
-const EMPTY_POSITIONS: Position[] = []
-const EMPTY_QUOTES: Record<string, Quote> = {}
-const EMPTY_ACCOUNT_VALUES: Record<string, number> = {}
-
-/** El saldo manual de la cuenta es la única cifra que se muestra y contabiliza. */
-export function accountDisplayValue(
-  account: { id: string; tipo: string; saldo: number },
-  valueByAccount: Record<string, number>,
-  investedByAccount: Record<string, number>
-): number {
-  return account.saldo
-}
-
-/** Compatibilidad: devuelve las cuentas guardadas sin valoración automática. */
-export function useDisplayAccounts(): Account[] {
-  const { state } = useFinance()
-  return state.accounts
 }

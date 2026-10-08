@@ -2,9 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useFinance, type Account, type SinkingFund } from "@/lib/store"
-import { usePortfolioValue, accountDisplayValue, useDisplayAccounts } from "@/lib/investments"
-import { accountGoal, fundCurrentAmount, getCurrencyByAccount, getFinancialTips } from "@/lib/calculations"
-import { TipsCard } from "@/components/shared/tips-card"
+import { accountGoal, fundCurrentAmount } from "@/lib/calculations"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Wallet as WalletIcon, Plus, Target, TrendingUp, Search, ChevronDown, ChevronsDownUp, ChevronsUpDown, Building2, ArrowUpRight } from "lucide-react"
 import { formatMoney, convertToEur } from "@/lib/currency"
@@ -26,23 +24,13 @@ export default function CuentasPage() {
   const { state, loading, dispatch } = useFinance()
   const router = useRouter()
   const { toast } = useToast()
-  const { valueByAccount, investedByAccount } = usePortfolioValue()
   const [showNewAccount, setShowNewAccount] = useState(false)
   const [accountSearch, setAccountSearch] = useState("")
   const [accountType, setAccountType] = useState("all")
   const [groupOpenState, setGroupOpenState] = useState<Record<string, boolean>>({})
-  // Los consejos comparan saldos con metas y pagos: deben ver el valor real
-  // de las cuentas de inversión (displayAccounts), igual que el resto de la página.
-  const displayAccounts = useDisplayAccounts()
-  const tips = useMemo(
-    () => getFinancialTips(state.transactions, displayAccounts, state.sinkingFunds, undefined, 4, getCurrencyByAccount(state.accounts)),
-    [state.transactions, displayAccounts, state.sinkingFunds, state.accounts]
-  )
-
-  // Para cuentas de inversión, el saldo bruto no baja al comprar una posición
-  // (no genera un gasto): se sustituye solo la parte ya invertida por su valor
-  // de mercado, dejando intacto el efectivo restante aún sin invertir.
-  const accountValue = (a: Account) => accountDisplayValue(a, valueByAccount, investedByAccount)
+  // El saldo manual de cada cuenta es la única fuente de verdad.
+  // No se estiman cambios de mercado dentro de la app.
+  const accountValue = (a: Account) => a.saldo
   // Para sumar o comparar entre cuentas hace falta pasar todo a la misma
   // divisa primero (ej. la cuenta de Suiza en CHF); accountValue por sí solo
   // da el valor en la divisa propia de la cuenta, válido solo para mostrar
@@ -74,14 +62,14 @@ export default function CuentasPage() {
 
   // Cuenta con mayor saldo y cuenta más cerca de completar su objetivo, para
   // el ticker superior (solo cuando hay cuentas registradas).
-  const topAccount = useMemo(() => (state.accounts.length === 0 ? null : state.accounts.slice().sort((a, b) => accountValueEur(b) - accountValueEur(a))[0]), [state.accounts, valueByAccount, investedByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
+  const topAccount = useMemo(() => (state.accounts.length === 0 ? null : state.accounts.slice().sort((a, b) => accountValueEur(b) - accountValueEur(a))[0]), [state.accounts]) // eslint-disable-line react-hooks/exhaustive-deps
   const nearestGoal = useMemo(() => {
     return state.accounts
       .map((a) => ({ account: a, goal: accountGoal(a, state.sinkingFunds) }))
       .filter((a) => a.goal > 0)
       .map((a) => ({ account: a.account, pct: Math.min((accountValue(a.account) / a.goal) * 100, 100) }))
       .sort((a, b) => b.pct - a.pct)[0] ?? null
-  }, [state.accounts, state.sinkingFunds, valueByAccount, investedByAccount]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.accounts, state.sinkingFunds])
   const liquidNetWorth = state.accounts.filter((a) => a.tipo !== "inversion").reduce((s, a) => s + accountValueEur(a), 0)
   const liquidPct = netWorth > 0 ? Math.round((liquidNetWorth / netWorth) * 100) : 0
 
@@ -216,8 +204,6 @@ export default function CuentasPage() {
           </div>
         </>
       )}
-
-      <TipsCard tips={tips} />
 
       <section className="space-y-6 border-t border-border pt-6 sm:space-y-7 sm:pt-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
