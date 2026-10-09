@@ -23,6 +23,7 @@ import { formatMonth, isInitialBalanceTransaction, chartFormatter, formatCappedP
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
@@ -45,17 +46,7 @@ const RANGES = [
   { id: "Todo", count: 0, unit: "all" as const },
 ]
 
-function comparisonDetail(current: number, reference: number, period: string, expense = false) {
-  if (reference === 0) return { text: `Sin referencia ${period}`, tone: "neutral" as const }
-  const change = ((current - reference) / Math.abs(reference)) * 100
-  const sign = change > 0 ? "+" : change < 0 ? "−" : ""
-  const worsened = expense ? change > 0 : change < 0
-  const magnitude = Math.round(Math.abs(change)) || (change === 0 ? "0" : "<1")
-  return {
-    text: `${sign}${magnitude}% ${period}`,
-    tone: change === 0 ? "neutral" as const : worsened ? "negative" as const : "positive" as const,
-  }
-}
+type DashboardMetric = "gastos" | "ingresos" | "neto" | "inversion" | "cash" | "patrimonio"
 
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
   const max = Math.max(...values.map((v) => Math.abs(v)), 1)
@@ -109,6 +100,7 @@ export default function DashboardContent() {
   const [showNewAccount, setShowNewAccount] = useState(false)
   const [showAnnual, setShowAnnual] = useState(false)
   const [showSpendBreakdown, setShowSpendBreakdown] = useState(false)
+  const [metricDetail, setMetricDetail] = useState<DashboardMetric | null>(null)
   const [storedNetWorthPeak, setStoredNetWorthPeak] = useState<StoredNetWorthPeak | null>(() => {
     if (typeof window === "undefined") return null
     try {
@@ -155,47 +147,24 @@ export default function DashboardContent() {
   )
 
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
-  const previousMonth = useMemo(() => {
-    const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1)
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
-  }, [selectedDate])
-  const previousMonthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, previousMonth, currencyByAccount), [analysisTransactions, previousMonth, currencyByAccount])
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const investmentAccounts = useMemo(() => displayAccounts.filter((a) => a.tipo === "inversion"), [displayAccounts])
   const investmentDisplayTotal = useMemo(() => investmentAccounts.reduce((sum, account) => sum + convertToEur(account.saldo, account.currency), 0), [investmentAccounts])
+  // Disponible para gasto diario: solo efectivo y cuentas de gasto. Ahorro,
+  // emergencia e inversión quedan fuera para no presentar reservas como dinero libre.
+  const spendableAccounts = useMemo(() => displayAccounts.filter((account) => account.tipo === "efectivo" || account.tipo === "gastos"), [displayAccounts])
+  const spendableTotal = useMemo(() => spendableAccounts.reduce((sum, account) => sum + convertToEur(account.saldo, account.currency), 0), [spendableAccounts])
+  const spendableAccountsWithBalance = useMemo(() => spendableAccounts.filter((account) => Math.abs(account.saldo) > 0.005), [spendableAccounts])
+  const monthTransactions = useMemo(
+    () => analysisTransactions.filter((transaction) => transaction.fecha.startsWith(selectedMonth) && countsTowardCashFlow(transaction, analysisTransactions)).sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.created_at ?? "").localeCompare(a.created_at ?? "")),
+    [analysisTransactions, selectedMonth]
+  )
+  const incomeTransactions = useMemo(() => monthTransactions.filter((transaction) => transaction.tipo === "ingreso"), [monthTransactions])
+  const expenseTransactions = useMemo(() => monthTransactions.filter((transaction) => transaction.tipo === "gasto"), [monthTransactions])
   const netWorthDisplay = netWorth
 
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
-
-  // Últimos 6 meses de ingresos/gastos/tasa de ahorro, para los mini-gráficos
-  // de tendencia del ticker superior (independiente del año natural).
-  const sparkTrend = useMemo(
-    () => Array.from({ length: 6 }, (_, i) => {
-      const offset = 5 - i
-      const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-      const t = getMonthTotalsByString(analysisTransactions, key, currencyByAccount)
-      return { ingresos: t.ingresos, gastos: t.gastos, tasa: getSavingsRate(t.ingresos, t.neto) }
-    }),
-    [selectedDate, analysisTransactions, currencyByAccount]
-  )
-
-  const previousSixMonthAverage = useMemo(() => {
-    const totals = Array.from({ length: 6 }, (_, index) => {
-      const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - index - 1, 1)
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
-      return getMonthTotalsByString(analysisTransactions, key, currencyByAccount)
-    })
-    return {
-      ingresos: totals.reduce((sum, item) => sum + item.ingresos, 0) / totals.length,
-      gastos: totals.reduce((sum, item) => sum + item.gastos, 0) / totals.length,
-    }
-  }, [selectedDate, analysisTransactions, currencyByAccount])
-  const incomeVsPrevious = comparisonDetail(monthTotals.ingresos, previousMonthTotals.ingresos, "vs. mes anterior")
-  const expensesVsPrevious = comparisonDetail(monthTotals.gastos, previousMonthTotals.gastos, "vs. mes anterior", true)
-  const incomeVsAverage = comparisonDetail(monthTotals.ingresos, previousSixMonthAverage.ingresos, "vs. media 6M")
-  const expensesVsAverage = comparisonDetail(monthTotals.gastos, previousSixMonthAverage.gastos, "vs. media 6M", true)
 
   const year = selectedDate.getFullYear()
   const monthlyYear = useMemo(
@@ -644,6 +613,20 @@ export default function DashboardContent() {
     }
   }
 
+  const metricTitles: Record<DashboardMetric, string> = {
+    gastos: "Gastos del mes", ingresos: "Ingresos del mes", neto: "Ahorro neto",
+    inversion: "Saldo en inversión", cash: "Cash disponible", patrimonio: "Patrimonio total",
+  }
+  const metricAmount = metricDetail === "gastos" ? monthTotals.gastos
+    : metricDetail === "ingresos" ? monthTotals.ingresos
+      : metricDetail === "neto" ? monthTotals.neto
+        : metricDetail === "inversion" ? investmentDisplayTotal
+          : metricDetail === "cash" ? spendableTotal
+            : netWorthDisplay
+  const metricTransactions = metricDetail === "gastos" ? expenseTransactions : metricDetail === "ingresos" ? incomeTransactions : []
+  const sortedDetailAccounts = [...(metricDetail === "inversion" ? investmentAccounts : metricDetail === "cash" ? spendableAccounts : displayAccounts)]
+    .sort((a, b) => convertToEur(b.saldo, b.currency) - convertToEur(a.saldo, a.currency))
+
   return (
     <div className="content-fade w-full max-w-full space-y-6 overflow-x-hidden sm:space-y-7">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -727,6 +710,16 @@ export default function DashboardContent() {
         </div>
       ) : (
         <div className="space-y-5 sm:space-y-5 lg:space-y-5">
+          {/* Seis cifras clave al inicio para tener el estado del mes de un vistazo. */}
+          <section className="stagger-fade grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6" aria-label={`Resumen financiero de ${formatMonth(selectedDate)}`}>
+            <TickerTile label="Gastos" value={<Sensitive>{formatMoney(monthTotals.gastos, "EUR")}</Sensitive>} detail={`${expenseTransactions.length} ${expenseTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-red)" onClick={() => setMetricDetail("gastos")} />
+            <TickerTile label="Ingresos" value={<Sensitive>{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} detail={`${incomeTransactions.length} ${incomeTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-green)" onClick={() => setMetricDetail("ingresos")} />
+            <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(monthTotals.neto, "EUR")}</Sensitive>} detail={monthTotals.ingresos > 0 ? `${savingsRate}% de los ingresos` : "Sin ingresos este mes"} detailTone={monthTotals.neto >= 0 ? "positive" : "negative"} valueColor={monthTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} onClick={() => setMetricDetail("neto")} />
+            <TickerTile label="Inversión" value={<Sensitive>{formatMoney(investmentDisplayTotal, "EUR")}</Sensitive>} detail={`${investmentAccounts.length} ${investmentAccounts.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--accent-violet)" onClick={() => setMetricDetail("inversion")} />
+            <TickerTile label="Cash disponible" value={<Sensitive>{formatMoney(spendableTotal, "EUR")}</Sensitive>} detail={`${spendableAccountsWithBalance.length} ${spendableAccountsWithBalance.length === 1 ? "cuenta con saldo" : "cuentas con saldo"}`} valueColor="var(--accent-blue)" onClick={() => setMetricDetail("cash")} />
+            <TickerTile label="Patrimonio total" value={<Sensitive>{formatMoney(netWorthDisplay, "EUR")}</Sensitive>} detail={`${displayAccounts.length} cuentas · ${formatMonth(selectedDate)}`} valueColor="var(--foreground)" onClick={() => setMetricDetail("patrimonio")} />
+          </section>
+
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
           <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:gap-5 2xl:grid-cols-12" style={{ animationDelay: "0ms" }}>
             {/* Patrimonio + rango */}
@@ -880,14 +873,8 @@ export default function DashboardContent() {
             </div>
           </section>
 
-          {/* Ticker: pulso del mes con mini-tendencia de 6 meses */}
-          <section className="stagger-fade grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 xl:gap-4" style={{ animationDelay: "40ms" }}>
-            {/* <Sensitive> en todos los valores monetarios: el modo privacidad
-                difuminaba el hero pero estas fichas seguían enseñando importes. */}
-            <TickerTile label="Ingresos" value={<Sensitive>+{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} detail={incomeVsPrevious.text} detailTone={incomeVsPrevious.tone} secondaryDetail={incomeVsAverage.text} valueColor="var(--accent-green)" trend={sparkTrend.map((t) => t.ingresos)} trendColor="emerald" onClick={() => router.push(`/transactions?tipo=ingreso&mes=${selectedMonth}`)} />
-            <TickerTile label="Gastos" value={<Sensitive>-{formatMoney(monthTotals.gastos, "EUR")}</Sensitive>} detail={expensesVsPrevious.text} detailTone={expensesVsPrevious.tone} secondaryDetail={expensesVsAverage.text} valueColor="var(--accent-red)" trend={sparkTrend.map((t) => t.gastos)} trendColor="red" onClick={() => router.push(`/transactions?tipo=gasto&mes=${selectedMonth}`)} />
-            <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(monthTotals.neto, "EUR")}</Sensitive>} detail={monthTotals.ingresos > 0 ? `${savingsRate}% de tus ingresos` : "Sin ingresos para calcular la tasa"} detailTone={savingsRate > 0 ? "positive" : savingsRate < 0 ? "negative" : "neutral"} valueColor={monthTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} trend={sparkTrend.map((t) => t.tasa)} trendColor="blue" onClick={() => router.push("/analytics")} />
-            <EmergencyRunwayCard balanceEur={emergencyBalanceEur} />
+          <section className="flex justify-end" aria-label="Colchón de emergencia">
+            <div className="w-full max-w-sm"><EmergencyRunwayCard balanceEur={emergencyBalanceEur} /></div>
           </section>
 
           {topSpending.length > 0 && (
@@ -1032,6 +1019,93 @@ export default function DashboardContent() {
           </section>
         </div>
       )}
+
+      <Dialog open={metricDetail !== null} onOpenChange={(open) => { if (!open) setMetricDetail(null) }}>
+        <DialogContent className="sm:max-w-xl">
+          {metricDetail && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="pr-8 text-lg">{metricTitles[metricDetail]}</DialogTitle>
+                <DialogDescription>
+                  {metricDetail === "gastos" || metricDetail === "ingresos" || metricDetail === "neto"
+                    ? formatMonth(selectedDate)
+                    : `Saldos a ${formatMonth(selectedDate)}`}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p className={cn("text-3xl font-bold tracking-tight tabular-nums", metricDetail === "gastos" ? "text-red-500" : metricDetail === "ingresos" || (metricDetail === "neto" && metricAmount >= 0) ? "text-emerald-500" : "text-foreground")}>
+                  <Sensitive>{formatMoney(metricAmount, "EUR")}</Sensitive>
+                </p>
+
+                {(metricDetail === "gastos" || metricDetail === "ingresos") && (
+                  <>
+                    <p className="text-sm text-muted-foreground">{metricTransactions.length} {metricDetail === "gastos" ? "gastos" : "ingresos"} · los traspasos emparejados no se cuentan.</p>
+                    {metricTransactions.length > 0 ? (
+                      <div className="max-h-[42dvh] divide-y divide-border overflow-y-auto rounded-xl border border-border/70 px-3">
+                        {metricTransactions.map((transaction) => {
+                          const account = state.accounts.find((item) => item.id === transaction.cuenta_id)
+                          const value = reportingAmount(transaction, currencyByAccount)
+                          return (
+                            <div key={transaction.id} className="flex min-w-0 items-center justify-between gap-3 py-3">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-foreground">{transaction.descripcion || transaction.categoria}</p>
+                                <p className="mt-0.5 truncate text-xs text-muted-foreground">{parseLocalDate(transaction.fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {transaction.categoria} · {account?.nombre ?? "Cuenta eliminada"}</p>
+                              </div>
+                              <Sensitive className={`shrink-0 text-sm font-semibold tabular-nums ${metricDetail === "ingresos" ? "text-emerald-500" : "text-foreground"}`}>
+                                {metricDetail === "ingresos" ? "+" : "−"}{formatMoney(value, "EUR")}
+                              </Sensitive>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : <p className="rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">Todavía no hay movimientos de este tipo en {formatMonth(selectedDate)}.</p>}
+                    <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => { const type = metricDetail === "gastos" ? "gasto" : "ingreso"; setMetricDetail(null); router.push(`/transactions?tipo=${type}&mes=${selectedMonth}`) }}>
+                      Ver todos los movimientos
+                    </Button>
+                  </>
+                )}
+
+                {metricDetail === "neto" && (
+                  <div className="space-y-3 rounded-xl border border-border/70 p-4">
+                    <div className="flex justify-between gap-3 text-sm"><span className="text-muted-foreground">Ingresos</span><Sensitive className="font-medium tabular-nums text-emerald-500">{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive></div>
+                    <div className="flex justify-between gap-3 text-sm"><span className="text-muted-foreground">Gastos</span><Sensitive className="font-medium tabular-nums text-red-500">−{formatMoney(monthTotals.gastos, "EUR")}</Sensitive></div>
+                    <div className="flex justify-between gap-3 border-t border-border pt-3 text-sm"><span className="font-semibold">Tasa de ahorro</span><span className="font-semibold tabular-nums">{savingsRate}%</span></div>
+                    <p className="text-xs leading-5 text-muted-foreground">Ahorro neto = ingresos del mes − gastos del mes. Los traspasos entre tus cuentas no alteran este cálculo.</p>
+                  </div>
+                )}
+
+                {metricDetail === "cash" && (
+                  <>
+                    <p className="text-sm text-muted-foreground">Solo efectivo y cuentas de gasto con saldo. Ahorro, emergencia e inversión quedan excluidos.</p>
+                    <div className="divide-y divide-border rounded-xl border border-border/70 px-3">
+                      {sortedDetailAccounts.length > 0 ? sortedDetailAccounts.map((account) => (
+                        <div key={account.id} className="flex items-center justify-between gap-3 py-3">
+                          <div className="min-w-0"><p className="truncate text-sm font-medium">{account.nombre}</p><p className="text-xs text-muted-foreground">{account.banco || typeConfig[account.tipo]?.label}</p></div>
+                          <Sensitive className="shrink-0 text-sm font-semibold tabular-nums">{formatMoney(account.saldo, account.currency)}</Sensitive>
+                        </div>
+                      )) : <p className="py-5 text-center text-sm text-muted-foreground">No tienes cuentas de efectivo o gastos.</p>}
+                    </div>
+                  </>
+                )}
+
+                {(metricDetail === "inversion" || metricDetail === "patrimonio") && (
+                  <>
+                    <p className="text-sm text-muted-foreground">{metricDetail === "inversion" ? "Saldos manuales de tus cuentas de inversión." : "Incluye todas tus cuentas: efectivo, gastos, ahorro, emergencia e inversión."}</p>
+                    <div className="max-h-[42dvh] divide-y divide-border overflow-y-auto rounded-xl border border-border/70 px-3">
+                      {sortedDetailAccounts.length > 0 ? sortedDetailAccounts.map((account) => (
+                        <div key={account.id} className="flex items-center justify-between gap-3 py-3">
+                          <div className="min-w-0"><p className="truncate text-sm font-medium">{account.nombre}</p><p className="text-xs text-muted-foreground">{typeConfig[account.tipo]?.label ?? account.tipo}{account.banco ? ` · ${account.banco}` : ""}</p></div>
+                          <Sensitive className="shrink-0 text-sm font-semibold tabular-nums">{formatMoney(account.saldo, account.currency)}</Sensitive>
+                        </div>
+                      )) : <p className="py-5 text-center text-sm text-muted-foreground">{metricDetail === "inversion" ? "No tienes cuentas de inversión." : "No hay cuentas registradas."}</p>}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={handleCreateAccount} />
     </div>

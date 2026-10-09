@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { SparkLineChart } from "@tremor/react"
+import { ArrowUpRight } from "lucide-react"
 
 // Tarjeta compacta estilo "ticker" con un mini-gráfico de tendencia opcional
 // (si no hay serie histórica disponible, como en la rentabilidad de cartera,
@@ -13,7 +14,10 @@ export function TickerTile({ label, value, detail, detailTone, secondaryDetail, 
   const data = trend?.map((v, i) => ({ i, v }))
   const content = (
     <>
-      <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="flex min-w-0 items-center gap-1 truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="truncate">{label}</span>
+        {onClick && <ArrowUpRight aria-hidden="true" className="size-3 shrink-0 text-primary" />}
+      </p>
       <div className="mt-1.5 flex items-end justify-between gap-2">
         <span className="min-w-0 truncate text-[clamp(0.8rem,4vw,1rem)] font-bold tracking-tight tabular-nums sm:text-lg" style={{ color: valueColor }}>{value}</span>
         {data && data.length > 1 && (
@@ -29,8 +33,8 @@ export function TickerTile({ label, value, detail, detailTone, secondaryDetail, 
     </>
   )
   if (onClick) {
-    return (
-      <button type="button" onClick={onClick} className="min-h-[92px] min-w-0 w-full rounded-2xl border border-border bg-card p-3 text-left transition-all card-glow hover:border-primary/40 active:scale-[0.98] sm:min-h-0 sm:p-3.5">
+      return (
+      <button type="button" onClick={onClick} aria-label={`Ver detalle de ${label}`} className="min-h-[92px] min-w-0 w-full rounded-2xl border border-border bg-card p-3 text-left transition-all card-glow hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.98] sm:min-h-0 sm:p-3.5">
         {content}
       </button>
     )
