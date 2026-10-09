@@ -50,7 +50,10 @@ export default function AgendaPage() {
     dispatch({
       type: "ADD_TRANSACTION",
       payload: {
-      id: generateId(), cuenta_id: item.cuenta_id, monto: item.monto, fecha: item.nextDate,
+        // La agenda es una previsión. Cuando el usuario confirma que ya pasó,
+        // registrar la fecha real de hoy evita alterar un saldo actual con una
+        // transacción futura o vencida.
+        id: generateId(), cuenta_id: item.cuenta_id, monto: item.monto, fecha: localDateKey(),
       tipo: item.tipo, categoria: item.categoria, es_necesidad: item.es_necesidad,
         descripcion: item.descripcion, tags: item.tags,
       },
@@ -91,7 +94,7 @@ export default function AgendaPage() {
           </Sensitive>
           <div className="flex shrink-0 items-center gap-1.5">
             <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5 rounded-xl px-3 text-xs" onClick={() => register(item)} disabled={!account} title={!account ? "La cuenta vinculada ya no existe" : undefined}>
-              <Check className="size-3.5" /> Registrar
+              <Check className="size-3.5" /> Ya se realizó
             </Button>
             <Button type="button" size="icon" variant="ghost" className="size-9 rounded-xl text-muted-foreground hover:text-red-500" onClick={() => stop(item)} aria-label={`Dejar de repetir ${item.descripcion || item.categoria}`} title="Dejar de repetir">
               <X className="size-4" />
@@ -108,7 +111,7 @@ export default function AgendaPage() {
         <div>
           <p className="page-section-label">Planificación</p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Agenda</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Pagos e ingresos previstos a partir de tus movimientos recurrentes.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Previsión de pagos e ingresos recurrentes; no crea movimientos ni cambia saldos hasta que confirmes que ya ocurrieron.</p>
         </div>
         <Link href="/transactions" className="inline-flex min-h-10 items-center gap-2 self-start rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:self-auto">
           <CalendarDays className="size-4 text-primary" /> Gestionar movimientos
@@ -144,7 +147,7 @@ export default function AgendaPage() {
         ) : <div className={`${CARD} text-sm text-muted-foreground`}>No hay nuevos vencimientos en los próximos 30 días.</div>}
       </section>
 
-      {!loading && recurring.length > 0 && <p className="text-center text-xs leading-5 text-muted-foreground">Las fechas e importes son estimaciones basadas en la última operación de cada recurrencia. Confirma el movimiento antes de registrarlo.</p>}
+      {!loading && recurring.length > 0 && <p className="text-center text-xs leading-5 text-muted-foreground">Las fechas e importes son estimaciones basadas en la última operación de cada recurrencia. «Ya se realizó» añade el movimiento con la fecha de hoy y actualiza el saldo.</p>}
     </div>
   )
 }

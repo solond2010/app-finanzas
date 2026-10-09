@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { AlertCircle } from "lucide-react"
-import { ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, Send } from "lucide-react"
+import { ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, Repeat2, Send } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,6 +24,7 @@ import { useFinance, type Transaction, type Account, type Category, generateId }
 import { parseAmount } from "@/lib/validation"
 import { localDateKey } from "@/lib/date-utils"
 import { formatMoney, currencySymbol, type CurrencyCode } from "@/lib/currency"
+import { recurringTag, type RecurringFrequency } from "@/lib/calculations"
 import { Sensitive } from "@/components/shared/sensitive"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { cn } from "@/lib/utils"
@@ -119,6 +120,8 @@ function UnifiedMovementForm({
   const [categoria, setCategoria] = useState("")
   const [esNecesidad, setEsNecesidad] = useState(initialTipo !== "ingreso")
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "")
+  const [recurrente, setRecurrente] = useState(false)
+  const [frecuencia, setFrecuencia] = useState<RecurringFrequency>("mensual")
   const [origenId, setOrigenId] = useState(initial?.origenId || accounts[0]?.id || "")
   const [montoDestino, setMontoDestino] = useState("")
   const [destinoId, setDestinoId] = useState(() => {
@@ -172,7 +175,9 @@ function UnifiedMovementForm({
       categoria,
       es_necesidad: esNecesidad,
       descripcion,
-      tags: [],
+      tags: recurrente
+        ? [recurringTag(frecuencia), ...(frecuencia === "mensual" ? [`recurrente-dia:${Number(fecha.slice(8, 10))}`] : [])]
+        : [],
     })
   }
 
@@ -271,6 +276,34 @@ function UnifiedMovementForm({
             <div className="sm:col-span-2 space-y-1.5">
               <label className="text-sm font-medium text-foreground">Descripción</label>
               <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: Traspaso a ahorro" className="h-12 text-base" />
+            </div>
+
+            <div className="sm:col-span-2 rounded-2xl border border-border/80 bg-background/45 p-3.5">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={recurrente}
+                  onChange={(event) => setRecurrente(event.target.checked)}
+                  className="mt-0.5 size-4 accent-[var(--gold)]"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-foreground"><Repeat2 className="size-4 text-primary" /> Repetir este movimiento</span>
+                  <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">Se añadirá a Agenda como previsión. No cambia el saldo hasta que confirmes que ya ocurrió.</span>
+                </span>
+              </label>
+              {recurrente && (
+                <div className="mt-3 flex items-center gap-3 pl-7">
+                  <label htmlFor="movement-frequency" className="text-xs font-medium text-muted-foreground">Frecuencia</label>
+                  <Select value={frecuencia} onValueChange={(value) => value && setFrecuencia(value as RecurringFrequency)}>
+                    <SelectTrigger id="movement-frequency" className="h-10 w-40 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="semanal">Cada semana</SelectItem>
+                      <SelectItem value="mensual">Cada mes</SelectItem>
+                      <SelectItem value="anual">Cada año</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
         </>

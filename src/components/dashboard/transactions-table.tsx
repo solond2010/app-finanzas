@@ -223,7 +223,7 @@ function TransactionForm({
             type="checkbox"
             checked={tags.some((t) => t === "recurrente" || t.startsWith("recurrente:"))}
             onChange={(e) => {
-              const withoutRecurring = tags.filter((t) => t !== "recurrente" && !t.startsWith("recurrente:"))
+              const withoutRecurring = tags.filter((t) => t !== "recurrente" && !t.startsWith("recurrente:") && !t.startsWith("recurrente-dia:"))
               setTags(e.target.checked ? [...withoutRecurring, recurringTag(recurFreq)] : withoutRecurring)
             }}
             className="rounded border-muted-foreground"
@@ -236,7 +236,7 @@ function TransactionForm({
             onValueChange={(v) => {
               const freq = v as RecurringFrequency
               setRecurFreq(freq)
-              setTags([...tags.filter((t) => t !== "recurrente" && !t.startsWith("recurrente:")), recurringTag(freq)])
+              setTags([...tags.filter((t) => t !== "recurrente" && !t.startsWith("recurrente:") && !t.startsWith("recurrente-dia:")), recurringTag(freq)])
             }}
           >
             <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
@@ -261,9 +261,9 @@ function TransactionForm({
           />
           <Button type="button" variant="outline" size="sm" onClick={addTag}>+</Button>
         </div>
-        {tags.length > 0 && (
+        {tags.some((tag) => tag !== "traspaso" && tag !== "recurrente" && !tag.startsWith("recurrente:") && !tag.startsWith("recurrente-dia:")) && (
           <div className="flex gap-1 flex-wrap mt-1">
-            {tags.map((tag) => (
+            {tags.filter((tag) => tag !== "traspaso" && tag !== "recurrente" && !tag.startsWith("recurrente:") && !tag.startsWith("recurrente-dia:")).map((tag) => (
               <span key={tag} className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs">
                 {tag}
                 <button type="button" onClick={() => setTags(tags.filter((t) => t !== tag))} className="hover:text-red-500">×</button>
@@ -423,7 +423,7 @@ export function TransactionsTable({
         id: generateId(),
         fecha: localDateKey(),
         created_at: new Date().toISOString(),
-        tags: transaction.tags.filter((tag) => tag !== "recurrente" && !tag.startsWith("recurrente:")),
+        tags: transaction.tags.filter((tag) => tag !== "recurrente" && !tag.startsWith("recurrente:") && !tag.startsWith("recurrente-dia:")),
       },
     })
     toast("Movimiento duplicado para hoy", "success")
@@ -879,7 +879,7 @@ export function TransactionsTable({
                       .map((c) => ({ value: c.name, label: c.name }))
                     const transfer = isTransfer(t)
                     const recurring = isRecurringTransaction(t)
-                    const isSystemTag = (tag: string) => tag === "traspaso" || tag === "recurrente" || tag.startsWith("recurrente:")
+                    const isSystemTag = (tag: string) => tag === "traspaso" || tag === "recurrente" || tag.startsWith("recurrente:") || tag.startsWith("recurrente-dia:")
                     const systemAdjustment = isInitialBalanceTransaction(t.id)
                     return (
                       <TableRow

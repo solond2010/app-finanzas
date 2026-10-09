@@ -117,7 +117,7 @@ export default function IngresosGastosPage() {
   const stopRecurring = (item: ReturnType<typeof getUpcomingRecurring>[number]) => {
     const source = state.transactions.find((t) => t.id === item.sourceTransactionId)
     if (!source) return
-    dispatch({ type: "UPDATE_TRANSACTION", payload: { ...source, tags: source.tags.filter((t) => t !== "recurrente" && !t.startsWith("recurrente:")) } })
+    dispatch({ type: "UPDATE_TRANSACTION", payload: { ...source, tags: source.tags.filter((t) => t !== "recurrente" && !t.startsWith("recurrente:") && !t.startsWith("recurrente-dia:")) } })
     toast("Ya no se repetirá", "success")
   }
   const recurringDateLabel = (item: ReturnType<typeof getUpcomingRecurring>[number]) => {
