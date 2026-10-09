@@ -98,8 +98,8 @@ svg.lucide {
   --border: oklch(0.89 0.018 245);
   --input: oklch(0.89 0.018 245);
   --ring: oklch(0.58 0.12 252);
-  --chart-1: oklch(0.57 0.12 252);
-  --chart-2: oklch(0.55 0.11 165);
+  --chart-1: oklch(0.65 0.15 205);
+  --chart-2: oklch(0.68 0.17 48);
   --chart-3: oklch(0.58 0.10 55);
   --chart-4: oklch(0.55 0.11 310);
   --chart-5: oklch(0.55 0.10 190);
@@ -118,8 +118,8 @@ svg.lucide {
   --tremor-content-emphasis: #1d2a3b;
   --tremor-border: #dbe4ef;
   --tremor-label: #9ca3af;
-  --tremor-brand: #496da8;
-  --tremor-brand-emphasis: #345887;
+  --tremor-brand: #0891b2;
+  --tremor-brand-emphasis: #0e7490;
   --tremor-ring: #cbd7e5;
   --brand-purple: oklch(0.55 0.16 295);
   --brand-teal: oklch(0.58 0.11 185);
@@ -161,9 +161,9 @@ svg.lucide {
   --border: oklch(1 0 0 / 8%);
   --input: oklch(1 0 0 / 11%);
   --ring: oklch(0.78 0.08 85);
-  --chart-1: oklch(0.85 0.02 85);
-  --chart-2: oklch(0.68 0.10 175);
-  --chart-3: oklch(0.68 0.10 55);
+  --chart-1: oklch(0.78 0.13 205);
+  --chart-2: oklch(0.76 0.15 48);
+  --chart-3: oklch(0.72 0.10 78);
   --chart-4: oklch(0.58 0.11 310);
   --chart-5: oklch(0.58 0.10 190);
   --sidebar: oklch(0.12 0.032 255);
@@ -179,8 +179,8 @@ svg.lucide {
   --tremor-content-emphasis: #f7f3ea;
   --tremor-border: #263749;
   --tremor-label: #6b7387;
-  --tremor-brand: #d4b56a;
-  --tremor-brand-emphasis: #e4c98a;
+  --tremor-brand: #22d3ee;
+  --tremor-brand-emphasis: #67e8f9;
   --tremor-ring: #243056;
   --brand-purple: oklch(0.62 0.15 295);
   --brand-teal: oklch(0.68 0.10 185);
@@ -434,6 +434,20 @@ svg.lucide {
   transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
 }
 
+/* Acabado transversal de superficies: resplandor frío, bordes limpios y
+   elevación contenida para que todas las secciones compartan el lenguaje
+   moderno del gráfico sin convertir cada tarjeta en un bloque brillante. */
+.dark .card-glow,
+.dark .border-border.bg-card {
+  border-color: color-mix(in oklch, var(--border), var(--accent-blue) 10%);
+  box-shadow:
+    0 1px 2px -1px oklch(0 0 0 / 0.42),
+    0 10px 28px -22px color-mix(in oklch, var(--accent-blue), transparent 50%);
+  background-image:
+    radial-gradient(ellipse at 0% 0%, color-mix(in oklch, var(--accent-blue), transparent 94%), transparent 54%),
+    linear-gradient(145deg, color-mix(in oklch, var(--foreground), transparent 98.5%), transparent 52%);
+}
+
 .card-glow-lg {
   border: 1px solid var(--border);
 }
@@ -470,9 +484,8 @@ svg.lucide {
 
 .dark .border-border.bg-card {
   box-shadow:
-    0 1px 2px -1px oklch(0 0 0 / 0.45),
-    0 0 0 1px color-mix(in oklch, var(--gold), transparent 92%);
-  background-image: linear-gradient(145deg, color-mix(in oklch, var(--accent-blue), transparent 97%), transparent 52%);
+    0 1px 2px -1px oklch(0 0 0 / 0.42),
+    0 10px 28px -22px color-mix(in oklch, var(--accent-blue), transparent 50%);
 }
 
 /* Acabado compartido: un radio coherente y una luz muy leve que ayuda a
@@ -496,8 +509,8 @@ svg.lucide {
   .dark .border-border.bg-card:hover {
     box-shadow:
       0 8px 24px -14px oklch(0 0 0 / 0.55),
-      0 0 0 1px color-mix(in oklch, var(--gold), transparent 85%);
-    border-color: color-mix(in oklch, var(--gold), transparent 78%);
+      0 0 0 1px color-mix(in oklch, var(--accent-blue), transparent 84%);
+    border-color: color-mix(in oklch, var(--accent-blue), transparent 72%);
     transform: translateY(-1px);
   }
 }
@@ -781,6 +794,8 @@ body {
 .fill-violet-500 { fill: var(--accent-violet); }
 .fill-amber-500 { fill: var(--accent-amber); }
 .fill-blue-500 { fill: var(--accent-blue); }
+.fill-cyan-500 { fill: #06b6d4; }
+.fill-orange-500 { fill: #f97316; }
 .fill-indigo-500 { fill: #6366f1; }
 .fill-gray-500 { fill: var(--accent-blue); }
 .fill-gray-400 { fill: #9ca3af; }
@@ -790,6 +805,8 @@ body {
 .stroke-violet-500 { stroke: var(--accent-violet); }
 .stroke-amber-500 { stroke: var(--accent-amber); }
 .stroke-blue-500 { stroke: var(--accent-blue); }
+.stroke-cyan-500 { stroke: #06b6d4; }
+.stroke-orange-500 { stroke: #f97316; }
 .stroke-indigo-500 { stroke: #6366f1; }
 .stroke-gray-500 { stroke: var(--accent-blue); }
 .stroke-tremor-background { stroke: var(--tremor-background); }
@@ -801,6 +818,8 @@ body {
 .text-violet-500 { color: var(--accent-violet); fill: var(--accent-violet); }
 .text-amber-500 { color: var(--accent-amber); fill: var(--accent-amber); }
 .text-blue-500 { color: var(--accent-blue); fill: var(--accent-blue); }
+.text-cyan-500 { color: #06b6d4; fill: #06b6d4; }
+.text-orange-500 { color: #f97316; fill: #f97316; }
 .text-indigo-500 { color: #6366f1; fill: #6366f1; }
 .text-gray-500 { color: var(--accent-blue); fill: var(--accent-blue); }
 
@@ -858,6 +877,42 @@ input[type="number"] {
    reglas de arriba (misma especificidad, gana la última). */
 .axis-ticks-centered .recharts-xAxis .recharts-cartesian-axis-tick text {
   text-anchor: middle;
+}
+
+/* Ejes discretos, rejilla fina y remates redondeados para gráficas de todas
+   las páginas: mantiene los datos al frente y evita el aspecto de bloques. */
+.recharts-cartesian-grid-horizontal line {
+  stroke: color-mix(in oklch, var(--border), transparent 18%);
+  stroke-dasharray: 3 5;
+}
+.recharts-cartesian-axis-line,
+.recharts-cartesian-axis-tick-line {
+  stroke: color-mix(in oklch, var(--border), transparent 12%);
+}
+.recharts-bar-rectangle rect {
+  rx: 5px;
+  ry: 5px;
+}
+
+[data-slot="table"] [data-slot="table-head"] {
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+}
+[data-slot="table"] [data-slot="table-row"]:hover {
+  background-color: color-mix(in oklch, var(--accent-blue), transparent 94%);
+}
+
+.dark [data-slot="input"],
+.dark [data-slot="select-trigger"],
+.dark textarea {
+  background-color: color-mix(in oklch, var(--card), var(--foreground) 2.5%);
+}
+.dark [data-slot="input"]:focus-visible,
+.dark [data-slot="select-trigger"]:focus-visible,
+.dark textarea:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring), transparent 78%);
 }
 
 /* En el gráfico de ingresos/gastos del dashboard, Tremor resalta la categoría
