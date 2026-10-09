@@ -860,6 +860,14 @@ input[type="number"] {
   text-anchor: middle;
 }
 
+/* En el gráfico de ingresos/gastos del dashboard, Tremor resalta la categoría
+   completa bajo el puntero. Si el rango solo contiene un mes, esa zona ocupa
+   todo el plot y tapa visualmente las barras; el tooltip sigue funcionando sin
+   el rectángulo de resaltado. */
+.dashboard-cashflow-chart .recharts-tooltip-cursor {
+  display: none;
+}
+
 /* ── Tremor chart tooltip ── */
 
 .tremor-ChartTooltip-wrapper {
