@@ -3,7 +3,7 @@
 import { useEffect, useState, type ElementType } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChartPie, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, Plus, ReceiptText, SlidersHorizontal, SunMedium, X } from "lucide-react"
+import { CalendarDays, ChartPie, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, Plus, ReceiptText, SlidersHorizontal, SunMedium, X } from "lucide-react"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { cn } from "@/lib/utils"
 import { usePrivacy } from "@/lib/privacy"
@@ -15,6 +15,7 @@ const primaryItems = [
 ]
 
 const moreItems = [
+  { href: "/agenda", label: "Agenda", description: "Pagos e ingresos recurrentes", icon: CalendarDays },
   { href: "/analytics", label: "Analíticas", description: "Tu evolución financiera", icon: ChartPie },
   { href: "/configuracion", label: "Configuración", description: "Preferencias y datos", icon: SlidersHorizontal },
 ]

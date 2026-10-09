@@ -682,7 +682,7 @@ export default function DashboardContent() {
 
       {!loading && overduePayments.length > 0 && (
         <button
-          onClick={() => router.push("/transactions")}
+          onClick={() => router.push("/agenda")}
           className="flex w-full items-center gap-3 rounded-[14px] border border-amber-500/20 bg-amber-500/[0.06] p-4 text-left transition-colors hover:bg-amber-500/[0.1]"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500"><AlertTriangle className="h-4 w-4" /></span>
@@ -700,7 +700,7 @@ export default function DashboardContent() {
       {!loading && dueSoonPayments.length > 0 && (
         <button
           type="button"
-          onClick={() => router.push("/transactions")}
+          onClick={() => router.push("/agenda")}
           className="flex w-full items-center gap-3 rounded-[14px] border border-primary/20 bg-primary/[0.05] p-4 text-left transition-colors hover:bg-primary/[0.09]"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarClock className="h-4 w-4" /></span>

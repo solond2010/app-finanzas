@@ -207,6 +207,19 @@ describe("getUpcomingRecurring", () => {
     const item = getUpcomingRecurring([tx({ tags: ["recurrente"], fecha: "2026-06-01" })])[0]
     expect(item.frequency).toBe("mensual")
   })
+
+  it("mantiene los vencimientos de fin de mes sin saltarse febrero", () => {
+    const febrero = getUpcomingRecurring([tx({ tags: ["recurrente"], fecha: "2026-01-31" })])[0]
+    expect(febrero.nextDate).toBe("2026-02-28")
+
+    const marzo = getUpcomingRecurring([tx({ tags: ["recurrente"], fecha: "2026-03-31" })])[0]
+    expect(marzo.nextDate).toBe("2026-04-30")
+  })
+
+  it("conserva el día original después de febrero al registrar un vencimiento de fin de mes", () => {
+    const febreroRegistrado = getUpcomingRecurring([tx({ tags: ["recurrente", "recurrente-dia:31"], fecha: "2026-02-28" })])[0]
+    expect(febreroRegistrado.nextDate).toBe("2026-03-31")
+  })
 })
 
 describe("calculateMonthlySaving", () => {

@@ -9,6 +9,7 @@ import { usePrivacy } from "@/lib/privacy"
 import {
   House,
   ReceiptText,
+  CalendarDays,
   SlidersHorizontal,
   ChartPie,
   Landmark,
@@ -30,6 +31,7 @@ import { openMovementDialog } from "@/components/layout/quick-actions"
 const navItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
   { href: "/transactions", label: "Movimientos", icon: ReceiptText },
+  { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/cuentas", label: "Cuentas", icon: Landmark },
   { href: "/analytics", label: "Analíticas", icon: ChartPie },
   { href: "/configuracion", label: "Configuración", icon: SlidersHorizontal },

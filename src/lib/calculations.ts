@@ -550,11 +550,19 @@ export function recurringTag(freq: RecurringFrequency): string {
   return freq === "mensual" ? "recurrente" : `recurrente:${freq}`
 }
 
-function addFrequency(date: Date, freq: RecurringFrequency): Date {
+function addFrequency(date: Date, freq: RecurringFrequency, monthlyDay = date.getDate()): Date {
   const next = new Date(date)
   if (freq === "semanal") next.setDate(next.getDate() + 7)
   else if (freq === "anual") next.setFullYear(next.getFullYear() + 1)
-  else next.setMonth(next.getMonth() + 1)
+  else {
+    // setMonth conserva el día y desborda al mes siguiente (31 ene + 1 mes
+    // acababa en marzo). Para vencimientos mensuales, limitar al último día
+    // disponible evita saltarse febrero y meses de 30 días.
+    next.setDate(1)
+    next.setMonth(next.getMonth() + 1)
+    const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()
+    next.setDate(Math.min(monthlyDay, lastDay))
+  }
   return next
 }
 
@@ -593,7 +601,9 @@ export function getUpcomingRecurring(transactions: Transaction[]): UpcomingRecur
   for (const [key, txns] of groups) {
     const last = txns.reduce((a, b) => (a.fecha > b.fecha ? a : b))
     const frequency = recurringFrequency(last)
-    const next = addFrequency(parseLocalDate(last.fecha), frequency)
+    const monthlyDayTag = last.tags?.find((tag) => /^recurrente-dia:\d{1,2}$/.test(tag))
+    const monthlyDay = monthlyDayTag ? Number(monthlyDayTag.split(":")[1]) : parseLocalDate(last.fecha).getDate()
+    const next = addFrequency(parseLocalDate(last.fecha), frequency, Math.min(Math.max(monthlyDay, 1), 31))
     const overdueDays = Math.round((today.getTime() - next.getTime()) / 86400000)
 out.push({
       key,
@@ -604,7 +614,11 @@ out.push({
       monto: last.monto,
       tipo: last.tipo,
       es_necesidad: last.es_necesidad,
-      tags: last.tags,
+      // Propagar el día contractual al siguiente registro para que una
+      // mensualidad el día 31 no se convierta permanentemente en día 28.
+      tags: frequency === "mensual" && !monthlyDayTag
+        ? [...last.tags, `recurrente-dia:${monthlyDay}`]
+        : last.tags,
       frequency,
       nextDate: toDateKey(next),
       overdueDays,
