@@ -49,8 +49,9 @@ const RANGES = [
 ]
 
 type DashboardMetric = "gastos" | "ingresos" | "neto" | "inversion" | "cash" | "patrimonio"
-type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYear"
+type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYear" | "custom"
 const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["cyan", "orange"])
+const MONTHS_SHORT = Array.from({ length: 12 }, (_, month) => new Date(2026, month, 1).toLocaleDateString("es-ES", { month: "short" }).replace(".", ""))
 
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
   const max = Math.max(...values.map((v) => Math.abs(v)), 1)
@@ -101,6 +102,17 @@ export default function DashboardContent() {
   const [monthOffset, setMonthOffset] = useState(0)
   const [dashboardPeriod, setDashboardPeriod] = useState<DashboardPeriod>("month")
   const [showPeriodPicker, setShowPeriodPicker] = useState(false)
+  const [customStartMonth, setCustomStartMonth] = useState(() => {
+    const d = new Date()
+    d.setMonth(d.getMonth() - 5)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+  })
+  const [customEndMonth, setCustomEndMonth] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+  })
+  const [customEndpoint, setCustomEndpoint] = useState<"start" | "end">("start")
+  const [customYear, setCustomYear] = useState(() => new Date().getFullYear())
   const [cashflowGranularity, setCashflowGranularity] = useState<"week" | "month">("month")
   const [rangeId, setRangeId] = useState<string>("6M")
   const activeRange = RANGES.find((r) => r.id === rangeId) ?? RANGES[3]
@@ -144,6 +156,20 @@ export default function DashboardContent() {
   const selectedDate = useMemo(() => new Date(today.getFullYear(), today.getMonth() - monthOffset, 1), [today, monthOffset])
   const selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`
 
+  const chooseCustomMonth = (endpoint: "start" | "end", month: string) => {
+    let start = endpoint === "start" ? month : customStartMonth
+    let end = endpoint === "end" ? month : customEndMonth
+    if (start > end) {
+      if (endpoint === "start") end = month
+      else start = month
+    }
+    setCustomStartMonth(start)
+    setCustomEndMonth(end)
+    setDashboardPeriod("custom")
+    const [year, monthNumber] = end.split("-").map(Number)
+    setMonthOffset((today.getFullYear() - year) * 12 + today.getMonth() + 1 - monthNumber)
+  }
+
   const chooseDashboardPeriod = (period: DashboardPeriod) => {
     setDashboardPeriod(period)
     if (period === "month") setMonthOffset(0)
@@ -166,7 +192,13 @@ export default function DashboardContent() {
   const periodBounds = useMemo(() => {
     let start: Date
     let end: Date
-    if (dashboardPeriod === "previousYear") {
+    if (dashboardPeriod === "custom") {
+      const [startYear, startMonth] = customStartMonth.split("-").map(Number)
+      const [endYear, endMonth] = customEndMonth.split("-").map(Number)
+      start = new Date(startYear, startMonth - 1, 1)
+      end = new Date(endYear, endMonth, 0)
+      if (endYear === today.getFullYear() && endMonth === today.getMonth() + 1) end = today
+    } else if (dashboardPeriod === "previousYear") {
       start = new Date(selectedDate.getFullYear(), 0, 1)
       end = new Date(selectedDate.getFullYear(), 11, 31)
     } else {
@@ -182,7 +214,7 @@ export default function DashboardContent() {
       ? monthName(start)
       : `${monthName(start)} – ${monthName(end)}`
     return { start, end, startKey: key(start), endKey: key(end), label }
-  }, [dashboardPeriod, selectedDate, monthOffset, today])
+  }, [dashboardPeriod, selectedDate, monthOffset, today, customStartMonth, customEndMonth])
   const periodTransactions = useMemo(
     () => analysisTransactions.filter((transaction) => transaction.fecha >= periodBounds.startKey && transaction.fecha <= periodBounds.endKey && countsTowardCashFlow(transaction, analysisTransactions)).sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.created_at ?? "").localeCompare(a.created_at ?? "")),
     [analysisTransactions, periodBounds.startKey, periodBounds.endKey]
@@ -737,7 +769,7 @@ export default function DashboardContent() {
             </button>
             <button onClick={() => { setMonthOffset((p) => Math.max(0, p - 1)); setDashboardPeriod("month") }} aria-label="Mes siguiente" disabled={monthOffset === 0} className="flex min-h-10 min-w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 active:scale-90"><ChevronRight className="h-4 w-4" /></button>
             {showPeriodPicker && (
-              <div className="absolute right-0 top-full z-[60] mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-border bg-popover p-3 shadow-xl">
+              <div className="absolute right-0 top-full z-[60] mt-2 w-[min(25rem,calc(100vw-2rem))] rounded-2xl border border-border bg-popover p-3 shadow-xl sm:p-4">
                 <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Periodo del dashboard</p>
                 <div className="grid grid-cols-2 gap-2">
                   {([
@@ -745,7 +777,32 @@ export default function DashboardContent() {
                   ] as [DashboardPeriod, string][]).map(([period, label]) => (
                     <button key={period} type="button" onClick={() => chooseDashboardPeriod(period)} aria-pressed={dashboardPeriod === period} className={cn("min-h-10 rounded-xl border px-3 text-left text-sm font-medium transition-colors", dashboardPeriod === period ? "border-primary/50 bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}>{label}</button>
                   ))}
+                  <button type="button" onClick={() => { setDashboardPeriod("custom"); setCustomEndpoint("start"); setCustomYear(Number(customStartMonth.slice(0, 4))) }} aria-pressed={dashboardPeriod === "custom"} className={cn("col-span-2 min-h-10 rounded-xl border px-3 text-left text-sm font-medium transition-colors", dashboardPeriod === "custom" ? "border-primary/50 bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}>Personalizado</button>
                 </div>
+                {(dashboardPeriod === "custom") && (
+                  <div className="mt-3 border-t border-border pt-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      {([ ["start", "Desde", customStartMonth], ["end", "Hasta", customEndMonth] ] as const).map(([endpoint, label, month]) => {
+                        const [year, monthNumber] = month.split("-").map(Number)
+                        const monthLabel = new Date(year, monthNumber - 1, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+                        return <button key={endpoint} type="button" onClick={() => { setCustomEndpoint(endpoint); setCustomYear(year) }} aria-pressed={customEndpoint === endpoint} className={cn("min-h-14 rounded-xl border px-3 py-2 text-left transition-colors", customEndpoint === endpoint ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}><span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</span><span className="block truncate text-sm font-semibold capitalize">{monthLabel}</span></button>
+                      })}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <button type="button" onClick={() => setCustomYear((year) => year - 1)} aria-label="Año anterior" className="flex size-9 items-center justify-center rounded-xl border border-border hover:bg-muted"><ChevronLeft className="size-4" /></button>
+                      <span className="text-sm font-semibold tabular-nums">{customYear}</span>
+                      <button type="button" onClick={() => setCustomYear((year) => Math.min(today.getFullYear(), year + 1))} disabled={customYear >= today.getFullYear()} aria-label="Año siguiente" className="flex size-9 items-center justify-center rounded-xl border border-border hover:bg-muted disabled:opacity-35"><ChevronRight className="size-4" /></button>
+                    </div>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {MONTHS_SHORT.map((label, index) => {
+                        const month = `${customYear}-${String(index + 1).padStart(2, "0")}`
+                        const selected = month === (customEndpoint === "start" ? customStartMonth : customEndMonth)
+                        const future = month > `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
+                        return <button key={month} type="button" disabled={future} onClick={() => chooseCustomMonth(customEndpoint, month)} aria-pressed={selected} className={cn("min-h-10 rounded-xl border text-sm font-medium capitalize transition-colors disabled:cursor-not-allowed disabled:opacity-35", selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background/50 text-foreground hover:bg-muted")}>{label}</button>
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
