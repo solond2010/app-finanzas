@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { BarChart } from "@tremor/react"
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
@@ -25,6 +26,7 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
+import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
 
@@ -47,6 +49,8 @@ const RANGES = [
 ]
 
 type DashboardMetric = "gastos" | "ingresos" | "neto" | "inversion" | "cash" | "patrimonio"
+type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYear"
+const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["blue", "red"])
 
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
   const max = Math.max(...values.map((v) => Math.abs(v)), 1)
@@ -95,6 +99,9 @@ export default function DashboardContent() {
   const { toast } = useToast()
   const today = useMemo(() => new Date(), [])
   const [monthOffset, setMonthOffset] = useState(0)
+  const [dashboardPeriod, setDashboardPeriod] = useState<DashboardPeriod>("month")
+  const [showPeriodPicker, setShowPeriodPicker] = useState(false)
+  const [cashflowGranularity, setCashflowGranularity] = useState<"week" | "month">("month")
   const [rangeId, setRangeId] = useState<string>("6M")
   const activeRange = RANGES.find((r) => r.id === rangeId) ?? RANGES[3]
   const [showNewAccount, setShowNewAccount] = useState(false)
@@ -137,6 +144,15 @@ export default function DashboardContent() {
   const selectedDate = useMemo(() => new Date(today.getFullYear(), today.getMonth() - monthOffset, 1), [today, monthOffset])
   const selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`
 
+  const chooseDashboardPeriod = (period: DashboardPeriod) => {
+    setDashboardPeriod(period)
+    if (period === "month") setMonthOffset(0)
+    else if (period === "previous") setMonthOffset(1)
+    else if (period === "previousYear") setMonthOffset(12 + today.getMonth() - 11)
+    else setMonthOffset(0)
+    setShowPeriodPicker(false)
+  }
+
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
   const hasAnyData = state.accounts.length > 0 || analysisTransactions.length > 0 || state.sinkingFunds.length > 0
   const recurringPayments = useMemo(() => getUpcomingRecurring(state.transactions), [state.transactions])
@@ -147,6 +163,78 @@ export default function DashboardContent() {
   )
 
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
+  const periodBounds = useMemo(() => {
+    let start: Date
+    let end: Date
+    if (dashboardPeriod === "previousYear") {
+      start = new Date(selectedDate.getFullYear(), 0, 1)
+      end = new Date(selectedDate.getFullYear(), 11, 31)
+    } else {
+      const months = dashboardPeriod === "3m" ? 3 : dashboardPeriod === "6m" ? 6 : dashboardPeriod === "year" ? selectedDate.getMonth() + 1 : 1
+      start = dashboardPeriod === "year"
+        ? new Date(selectedDate.getFullYear(), 0, 1)
+        : new Date(selectedDate.getFullYear(), selectedDate.getMonth() - months + 1, 1)
+      end = monthOffset === 0 ? today : new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0)
+    }
+    const key = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+    const monthName = (date: Date) => date.toLocaleDateString("es-ES", { month: "short", year: "numeric" })
+    const label = start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()
+      ? monthName(start)
+      : `${monthName(start)} – ${monthName(end)}`
+    return { start, end, startKey: key(start), endKey: key(end), label }
+  }, [dashboardPeriod, selectedDate, monthOffset, today])
+  const periodTransactions = useMemo(
+    () => analysisTransactions.filter((transaction) => transaction.fecha >= periodBounds.startKey && transaction.fecha <= periodBounds.endKey && countsTowardCashFlow(transaction, analysisTransactions)).sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.created_at ?? "").localeCompare(a.created_at ?? "")),
+    [analysisTransactions, periodBounds.startKey, periodBounds.endKey]
+  )
+  const periodTotals = useMemo(() => {
+    const totals = { ingresos: 0, gastos: 0, neto: 0 }
+    for (const transaction of periodTransactions) {
+      const amount = reportingAmount(transaction, currencyByAccount)
+      if (transaction.tipo === "ingreso") totals.ingresos += amount
+      if (transaction.tipo === "gasto") totals.gastos += amount
+    }
+    totals.neto = totals.ingresos - totals.gastos
+    return totals
+  }, [periodTransactions, currencyByAccount])
+  const periodCashflow = useMemo(() => {
+    const buckets: { key: string; label: string; Ingresos: number; Gastos: number }[] = []
+    if (cashflowGranularity === "month") {
+      const cursor = new Date(periodBounds.start.getFullYear(), periodBounds.start.getMonth(), 1)
+      const last = new Date(periodBounds.end.getFullYear(), periodBounds.end.getMonth(), 1)
+      while (cursor <= last) {
+        buckets.push({ key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`, label: cursor.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), Ingresos: 0, Gastos: 0 })
+        cursor.setMonth(cursor.getMonth() + 1)
+      }
+    } else {
+      const cursor = new Date(periodBounds.start)
+      cursor.setDate(cursor.getDate() - ((cursor.getDay() + 6) % 7))
+      while (cursor <= periodBounds.end) {
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`
+        const finish = new Date(cursor)
+        finish.setDate(finish.getDate() + 6)
+        const label = `${cursor.getDate()}–${finish.getDate()} ${finish.toLocaleDateString("es-ES", { month: "short" })}`
+        buckets.push({ key, label, Ingresos: 0, Gastos: 0 })
+        cursor.setDate(cursor.getDate() + 7)
+      }
+    }
+    for (const transaction of periodTransactions) {
+      const key = cashflowGranularity === "month" ? transaction.fecha.slice(0, 7) : (() => {
+        const date = parseLocalDate(transaction.fecha)
+        date.setDate(date.getDate() - ((date.getDay() + 6) % 7))
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+      })()
+      const bucket = buckets.find((item) => item.key === key)
+      if (!bucket) continue
+      const amount = reportingAmount(transaction, currencyByAccount)
+      if (transaction.tipo === "ingreso") bucket.Ingresos += amount
+      if (transaction.tipo === "gasto") bucket.Gastos += amount
+    }
+    return buckets
+  }, [cashflowGranularity, periodBounds, periodTransactions, currencyByAccount])
+  const periodIncomeTransactions = useMemo(() => periodTransactions.filter((transaction) => transaction.tipo === "ingreso"), [periodTransactions])
+  const periodExpenseTransactions = useMemo(() => periodTransactions.filter((transaction) => transaction.tipo === "gasto"), [periodTransactions])
+  const periodSavingsRate = getSavingsRate(periodTotals.ingresos, periodTotals.neto)
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
   const investmentAccounts = useMemo(() => displayAccounts.filter((a) => a.tipo === "inversion"), [displayAccounts])
@@ -156,12 +244,8 @@ export default function DashboardContent() {
   const spendableAccounts = useMemo(() => displayAccounts.filter((account) => account.tipo === "efectivo" || account.tipo === "gastos"), [displayAccounts])
   const spendableTotal = useMemo(() => spendableAccounts.reduce((sum, account) => sum + convertToEur(account.saldo, account.currency), 0), [spendableAccounts])
   const spendableAccountsWithBalance = useMemo(() => spendableAccounts.filter((account) => Math.abs(account.saldo) > 0.005), [spendableAccounts])
-  const monthTransactions = useMemo(
-    () => analysisTransactions.filter((transaction) => transaction.fecha.startsWith(selectedMonth) && countsTowardCashFlow(transaction, analysisTransactions)).sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.created_at ?? "").localeCompare(a.created_at ?? "")),
-    [analysisTransactions, selectedMonth]
-  )
-  const incomeTransactions = useMemo(() => monthTransactions.filter((transaction) => transaction.tipo === "ingreso"), [monthTransactions])
-  const expenseTransactions = useMemo(() => monthTransactions.filter((transaction) => transaction.tipo === "gasto"), [monthTransactions])
+  const incomeTransactions = periodIncomeTransactions
+  const expenseTransactions = periodExpenseTransactions
   const netWorthDisplay = netWorth
 
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
@@ -614,12 +698,12 @@ export default function DashboardContent() {
   }
 
   const metricTitles: Record<DashboardMetric, string> = {
-    gastos: "Gastos del mes", ingresos: "Ingresos del mes", neto: "Ahorro neto",
+    gastos: "Gastos del periodo", ingresos: "Ingresos del periodo", neto: "Ahorro neto",
     inversion: "Saldo en inversión", cash: "Cash disponible", patrimonio: "Patrimonio total",
   }
-  const metricAmount = metricDetail === "gastos" ? monthTotals.gastos
-    : metricDetail === "ingresos" ? monthTotals.ingresos
-      : metricDetail === "neto" ? monthTotals.neto
+  const metricAmount = metricDetail === "gastos" ? periodTotals.gastos
+    : metricDetail === "ingresos" ? periodTotals.ingresos
+      : metricDetail === "neto" ? periodTotals.neto
         : metricDetail === "inversion" ? investmentDisplayTotal
           : metricDetail === "cash" ? spendableTotal
             : netWorthDisplay
@@ -646,12 +730,26 @@ export default function DashboardContent() {
           </button>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 self-start sm:w-auto sm:self-auto">
-          <div className="flex w-full min-w-0 items-center justify-between gap-1 rounded-full border border-border bg-card p-1 sm:w-auto sm:flex-none">
-            <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="min-w-0 flex-1 whitespace-nowrap px-1 text-center text-sm font-medium text-foreground sm:w-32 sm:flex-none">{formatMonth(selectedDate)}</span>
-            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" disabled={monthOffset === 0} className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 active:scale-90"><ChevronRight className="h-4 w-4" /></button>
+          <div className="relative flex w-full min-w-0 items-center gap-1 rounded-full border border-border bg-card p-1 sm:w-auto sm:flex-none">
+            <button onClick={() => { setMonthOffset((p) => p + 1); setDashboardPeriod("month") }} aria-label="Mes anterior" className="flex min-h-10 min-w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
+            <button type="button" onClick={() => setShowPeriodPicker((open) => !open)} aria-expanded={showPeriodPicker} aria-label={`Periodo: ${periodBounds.label}`} className="flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap px-1 text-sm font-medium text-foreground sm:w-52 sm:flex-none">
+              <CalendarClock className="h-4 w-4 shrink-0 text-primary" /><span className="truncate">{periodBounds.label}</span>
+            </button>
+            <button onClick={() => { setMonthOffset((p) => Math.max(0, p - 1)); setDashboardPeriod("month") }} aria-label="Mes siguiente" disabled={monthOffset === 0} className="flex min-h-10 min-w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 active:scale-90"><ChevronRight className="h-4 w-4" /></button>
+            {showPeriodPicker && (
+              <div className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-border bg-popover p-3 shadow-xl">
+                <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Periodo del dashboard</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ["month", "Mes actual"], ["previous", "Mes anterior"], ["3m", "Últimos 3 meses"], ["6m", "Últimos 6 meses"], ["year", String(today.getFullYear())], ["previousYear", String(today.getFullYear() - 1)],
+                  ] as [DashboardPeriod, string][]).map(([period, label]) => (
+                    <button key={period} type="button" onClick={() => chooseDashboardPeriod(period)} aria-pressed={dashboardPeriod === period} className={cn("min-h-10 rounded-xl border px-3 text-left text-sm font-medium transition-colors", dashboardPeriod === period ? "border-primary/50 bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}>{label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-          {monthOffset > 0 && <Button type="button" variant="ghost" className="min-h-11 shrink-0 rounded-full px-3 text-xs font-semibold" onClick={() => setMonthOffset(0)}>Este mes</Button>}
+          {monthOffset > 0 && <Button type="button" variant="ghost" className="min-h-11 shrink-0 rounded-full px-3 text-xs font-semibold" onClick={() => chooseDashboardPeriod("month")}>Este mes</Button>}
           <Button onClick={() => openMovementDialog()} className="hidden gap-2 rounded-full px-4 shadow-sm sm:inline-flex">
             <Plus className="h-4 w-4" /> Nuevo movimiento
           </Button>
@@ -710,14 +808,31 @@ export default function DashboardContent() {
         </div>
       ) : (
         <div className="space-y-5 sm:space-y-5 lg:space-y-5">
-          {/* Seis cifras clave al inicio para tener el estado del mes de un vistazo. */}
-          <section className="stagger-fade grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6" aria-label={`Resumen financiero de ${formatMonth(selectedDate)}`}>
-            <TickerTile label="Gastos" value={<Sensitive>{formatMoney(monthTotals.gastos, "EUR")}</Sensitive>} detail={`${expenseTransactions.length} ${expenseTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-red)" onClick={() => setMetricDetail("gastos")} />
-            <TickerTile label="Ingresos" value={<Sensitive>{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive>} detail={`${incomeTransactions.length} ${incomeTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-green)" onClick={() => setMetricDetail("ingresos")} />
-            <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(monthTotals.neto, "EUR")}</Sensitive>} detail={monthTotals.ingresos > 0 ? `${savingsRate}% de los ingresos` : "Sin ingresos este mes"} detailTone={monthTotals.neto >= 0 ? "positive" : "negative"} valueColor={monthTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} onClick={() => setMetricDetail("neto")} />
-            <TickerTile label="Inversión" value={<Sensitive>{formatMoney(investmentDisplayTotal, "EUR")}</Sensitive>} detail={`${investmentAccounts.length} ${investmentAccounts.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--accent-violet)" onClick={() => setMetricDetail("inversion")} />
-            <TickerTile label="Cash disponible" value={<Sensitive>{formatMoney(spendableTotal, "EUR")}</Sensitive>} detail={`${spendableAccountsWithBalance.length} ${spendableAccountsWithBalance.length === 1 ? "cuenta con saldo" : "cuentas con saldo"}`} valueColor="var(--accent-blue)" onClick={() => setMetricDetail("cash")} />
+          {/* Seis cifras clave: flujo según el periodo elegido y saldos a su mes final. */}
+          <section className="stagger-fade grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6" aria-label={`Resumen financiero: ${periodBounds.label}`}>
+            <TickerTile label="Gastos" value={<Sensitive>{formatMoney(periodTotals.gastos, "EUR")}</Sensitive>} detail={`${expenseTransactions.length} ${expenseTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-red)" onClick={() => setMetricDetail("gastos")} />
+            <TickerTile label="Ingresos" value={<Sensitive>{formatMoney(periodTotals.ingresos, "EUR")}</Sensitive>} detail={`${incomeTransactions.length} ${incomeTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-green)" onClick={() => setMetricDetail("ingresos")} />
+            <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(periodTotals.neto, "EUR")}</Sensitive>} detail={periodTotals.ingresos > 0 ? `${periodSavingsRate}% de los ingresos` : "Sin ingresos en el periodo"} detailTone={periodTotals.neto >= 0 ? "positive" : "negative"} valueColor={periodTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} onClick={() => setMetricDetail("neto")} />
+            <TickerTile label="Inversión" value={<Sensitive>{formatMoney(investmentDisplayTotal, "EUR")}</Sensitive>} detail={`${investmentAccounts.length} ${investmentAccounts.length === 1 ? "cuenta" : "cuentas"} · a ${formatMonth(selectedDate)}`} valueColor="var(--accent-violet)" onClick={() => setMetricDetail("inversion")} />
+            <TickerTile label="Cash disponible" value={<Sensitive>{formatMoney(spendableTotal, "EUR")}</Sensitive>} detail={`${spendableAccountsWithBalance.length} ${spendableAccountsWithBalance.length === 1 ? "cuenta" : "cuentas"} · a ${formatMonth(selectedDate)}`} valueColor="var(--accent-blue)" onClick={() => setMetricDetail("cash")} />
             <TickerTile label="Patrimonio total" value={<Sensitive>{formatMoney(netWorthDisplay, "EUR")}</Sensitive>} detail={`${displayAccounts.length} cuentas · ${formatMonth(selectedDate)}`} valueColor="var(--foreground)" onClick={() => setMetricDetail("patrimonio")} />
+          </section>
+
+          <section className={`${CARD} min-w-0`} aria-label="Ingresos y gastos del periodo">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Ingresos vs gastos</h2>
+                <p className="mt-1 text-xs text-muted-foreground">{periodBounds.label} · {cashflowGranularity === "week" ? "agrupado por semana" : "agrupado por mes"}</p>
+              </div>
+              <div className="range-tabs" aria-label="Agrupar gráfica">
+                {([ ["week", "Semana"], ["month", "Mes"] ] as const).map(([granularity, label]) => (
+                  <button key={granularity} type="button" onClick={() => setCashflowGranularity(granularity)} data-active={cashflowGranularity === granularity} aria-pressed={cashflowGranularity === granularity} className="range-tab">{label}</button>
+                ))}
+              </div>
+            </div>
+            {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? (
+              <BarChart data={periodCashflow} index="label" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} yAxisWidth={64} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="h-56 sm:h-72" showAnimation />
+            ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
           </section>
 
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
@@ -1032,7 +1147,7 @@ export default function DashboardContent() {
                 <DialogTitle className="pr-8 text-lg">{metricTitles[metricDetail]}</DialogTitle>
                 <DialogDescription>
                   {metricDetail === "gastos" || metricDetail === "ingresos" || metricDetail === "neto"
-                    ? formatMonth(selectedDate)
+                    ? periodBounds.label
                     : `Saldos a ${formatMonth(selectedDate)}`}
                 </DialogDescription>
               </DialogHeader>
@@ -1043,7 +1158,7 @@ export default function DashboardContent() {
 
                 {(metricDetail === "gastos" || metricDetail === "ingresos") && (
                   <>
-                    <p className="text-sm text-muted-foreground">{metricTransactions.length} {metricDetail === "gastos" ? "gastos" : "ingresos"} · los traspasos emparejados no se cuentan.</p>
+                    <p className="text-sm text-muted-foreground">{metricTransactions.length} {metricDetail === "gastos" ? "gastos" : "ingresos"} en este periodo · los traspasos emparejados no se cuentan.</p>
                     {metricTransactions.length > 0 ? (
                       <div className="max-h-[42dvh] divide-y divide-border overflow-y-auto rounded-xl border border-border/70 px-3">
                         {metricTransactions.map((transaction) => {
@@ -1062,19 +1177,21 @@ export default function DashboardContent() {
                           )
                         })}
                       </div>
-                    ) : <p className="rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">Todavía no hay movimientos de este tipo en {formatMonth(selectedDate)}.</p>}
-                    <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => { const type = metricDetail === "gastos" ? "gasto" : "ingreso"; setMetricDetail(null); router.push(`/transactions?tipo=${type}&mes=${selectedMonth}`) }}>
-                      Ver todos los movimientos
-                    </Button>
+                    ) : <p className="rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">Todavía no hay movimientos de este tipo en {periodBounds.label}.</p>}
+                    {(dashboardPeriod === "month" || dashboardPeriod === "previous") && (
+                      <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => { const type = metricDetail === "gastos" ? "gasto" : "ingreso"; setMetricDetail(null); router.push(`/transactions?tipo=${type}&mes=${selectedMonth}`) }}>
+                        Ver todos los movimientos
+                      </Button>
+                    )}
                   </>
                 )}
 
                 {metricDetail === "neto" && (
                   <div className="space-y-3 rounded-xl border border-border/70 p-4">
-                    <div className="flex justify-between gap-3 text-sm"><span className="text-muted-foreground">Ingresos</span><Sensitive className="font-medium tabular-nums text-emerald-500">{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive></div>
-                    <div className="flex justify-between gap-3 text-sm"><span className="text-muted-foreground">Gastos</span><Sensitive className="font-medium tabular-nums text-red-500">−{formatMoney(monthTotals.gastos, "EUR")}</Sensitive></div>
-                    <div className="flex justify-between gap-3 border-t border-border pt-3 text-sm"><span className="font-semibold">Tasa de ahorro</span><span className="font-semibold tabular-nums">{savingsRate}%</span></div>
-                    <p className="text-xs leading-5 text-muted-foreground">Ahorro neto = ingresos del mes − gastos del mes. Los traspasos entre tus cuentas no alteran este cálculo.</p>
+                    <div className="flex justify-between gap-3 text-sm"><span className="text-muted-foreground">Ingresos</span><Sensitive className="font-medium tabular-nums text-emerald-500">{formatMoney(periodTotals.ingresos, "EUR")}</Sensitive></div>
+                    <div className="flex justify-between gap-3 text-sm"><span className="text-muted-foreground">Gastos</span><Sensitive className="font-medium tabular-nums text-red-500">−{formatMoney(periodTotals.gastos, "EUR")}</Sensitive></div>
+                    <div className="flex justify-between gap-3 border-t border-border pt-3 text-sm"><span className="font-semibold">Tasa de ahorro</span><span className="font-semibold tabular-nums">{periodSavingsRate}%</span></div>
+                    <p className="text-xs leading-5 text-muted-foreground">Ahorro neto = ingresos del periodo − gastos del periodo. Los traspasos entre tus cuentas no alteran este cálculo.</p>
                   </div>
                 )}
 
