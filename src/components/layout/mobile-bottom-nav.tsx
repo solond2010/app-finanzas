@@ -111,7 +111,7 @@ export function MobileBottomNav() {
       )}
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-background/95 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] backdrop-blur-2xl lg:hidden"
+        className="mobile-bottom-navigation fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-background/95 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] backdrop-blur-2xl lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Navegación principal"
       >
