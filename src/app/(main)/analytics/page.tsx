@@ -1,10 +1,9 @@
 "use client"
 
 import React from "react"
-import { useMemo, useState, memo, useRef, useEffect } from "react"
+import { useMemo, useState, memo, useEffect } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
 import { Activity, AlertTriangle, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Target, Wallet, Wallet2 } from "lucide-react"
-import { useToast } from "@/components/ui/toast"
 import { parseLocalDate } from "@/lib/date-utils"
 
 import { Button } from "@/components/ui/button"
@@ -148,8 +147,6 @@ export default function AnalyticsPage() {
   const currencyByAccount = useMemo(() => getCurrencyByAccount(state.accounts), [state.accounts])
   const [monthOffset, setMonthOffset] = useState(0)
   const TREND_MONTHS = 6
-  const shownBudgetIds = useRef(new Set<string>())
-  const { toast } = useToast()
 
   const today = useMemo(() => new Date(), [])
   const selectedDate = new Date(today.getFullYear(), today.getMonth() - monthOffset, 1)
@@ -247,21 +244,6 @@ export default function AnalyticsPage() {
       .map((g) => ({ ...g, pct: Math.min((g.current / g.goal) * 100, 100), restante: Math.max(g.goal - g.current, 0) }))
       .sort((a, b) => b.pct - a.pct)
   }, [state.accounts, state.sinkingFunds])
-
-   // Toast alerts for budget overruns
-   useEffect(() => {
-     if (!hasData) return;
-     budgetProgress.forEach((budget) => {
-       const { id, percentage, categoryName, amount, spent } = budget;
-       if (percentage >= 100 && !shownBudgetIds.current.has(id)) {
-         toast(`Has superado el presupuesto de "${categoryName}" (${formatMoney(spent, "EUR")} de ${formatMoney(amount, "EUR")})`, "error");
-         shownBudgetIds.current.add(id);
-       } else if (percentage >= BUDGET_WARNING_THRESHOLD && percentage < 100 && !shownBudgetIds.current.has(id)) {
-         toast(`Estás cerca de superar el presupuesto de "${categoryName}" (${formatMoney(spent, "EUR")} de ${formatMoney(amount, "EUR")})`, "info");
-         shownBudgetIds.current.add(id);
-       }
-     });
-   }, [budgetProgress, toast, hasData])
 
   // Previsión de recurrentes: siempre mira hacia el próximo vencimiento real
   // (no depende del mes que se esté navegando en el resto de la página), como
