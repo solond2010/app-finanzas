@@ -873,12 +873,12 @@ export default function DashboardContent() {
             </div>
           </section>
 
-          <section className="flex justify-end" aria-label="Colchón de emergencia">
-            <div className="w-full max-w-sm"><EmergencyRunwayCard balanceEur={emergencyBalanceEur} /></div>
-          </section>
-
-          {topSpending.length > 0 && (
-            <div className={`${CARD} stagger-fade min-w-0`} style={{ animationDelay: "200ms" }}>
+          <section
+            className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.85fr)] lg:gap-5"
+            aria-label="Gastos y colchón de emergencia"
+          >
+            {topSpending.length > 0 && (
+              <div className={`${CARD} stagger-fade min-w-0`} style={{ animationDelay: "200ms" }}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-foreground">Distribución de gastos</p>
                 <div className="flex items-center gap-3">
@@ -936,8 +936,12 @@ export default function DashboardContent() {
                   ))}
                 </div>
               )}
+              </div>
+            )}
+            <div className={topSpending.length === 0 ? "w-full max-w-sm lg:justify-self-end" : "w-full"}>
+              <EmergencyRunwayCard balanceEur={emergencyBalanceEur} />
             </div>
-          )}
+          </section>
 
           {/* Resumen, movimientos y metas comparten la última fila del panel. */}
           <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:items-start" style={{ animationDelay: "240ms" }}>
