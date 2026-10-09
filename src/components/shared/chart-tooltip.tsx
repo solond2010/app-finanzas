@@ -10,6 +10,7 @@ const TREMOR_HEX: Record<string, string> = {
   amber: "var(--accent-amber)",
   violet: "var(--accent-violet)",
   cyan: "#06b6d4",
+  orange: "#f97316",
   rose: "#f43f5e",
   gray: "var(--muted-foreground)",
   indigo: "#6366f1",

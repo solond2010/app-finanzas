@@ -868,6 +868,18 @@ input[type="number"] {
   display: none;
 }
 
+/* Ingresos y gastos: tonos luminosos y barras suavizadas, inspirados en la
+   lectura limpia del dashboard de referencia sin cambiar la paleta general. */
+.dashboard-cashflow-chart .fill-cyan-500 { fill: #06b6d4; }
+.dashboard-cashflow-chart .fill-orange-500 { fill: #f97316; }
+.dashboard-cashflow-chart .recharts-bar-rectangle rect {
+  rx: 5px;
+  ry: 5px;
+}
+.dashboard-cashflow-chart .recharts-cartesian-grid-horizontal line {
+  stroke: color-mix(in oklch, var(--border), transparent 25%);
+}
+
 /* ── Tremor chart tooltip ── */
 
 .tremor-ChartTooltip-wrapper {

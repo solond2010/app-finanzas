@@ -50,7 +50,7 @@ const RANGES = [
 
 type DashboardMetric = "gastos" | "ingresos" | "neto" | "inversion" | "cash" | "patrimonio"
 type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYear"
-const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["blue", "red"])
+const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["cyan", "orange"])
 
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
   const max = Math.max(...values.map((v) => Math.abs(v)), 1)
@@ -831,7 +831,7 @@ export default function DashboardContent() {
               </div>
             </div>
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? (
-              <BarChart data={periodCashflow} index="label" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} yAxisWidth={64} barCategoryGap={periodCashflow.length <= 1 ? "46%" : periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="dashboard-cashflow-chart h-56 sm:h-72" showAnimation />
+              <BarChart data={periodCashflow} index="label" categories={["Ingresos", "Gastos"]} colors={["cyan", "orange"]} valueFormatter={chartFormatter} yAxisWidth={64} barCategoryGap={periodCashflow.length <= 1 ? "46%" : periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} showLegend showGridLines customTooltip={CashflowTooltip} className="dashboard-cashflow-chart h-56 sm:h-72" showAnimation />
             ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
           </section>
 
