@@ -713,7 +713,7 @@ export default function DashboardContent() {
 
   return (
     <div className="content-fade w-full max-w-full space-y-6 overflow-x-hidden sm:space-y-7">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <header className="relative z-40 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="page-section-label hidden sm:block">Resumen general</p>
@@ -737,7 +737,7 @@ export default function DashboardContent() {
             </button>
             <button onClick={() => { setMonthOffset((p) => Math.max(0, p - 1)); setDashboardPeriod("month") }} aria-label="Mes siguiente" disabled={monthOffset === 0} className="flex min-h-10 min-w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 active:scale-90"><ChevronRight className="h-4 w-4" /></button>
             {showPeriodPicker && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-border bg-popover p-3 shadow-xl">
+              <div className="absolute right-0 top-full z-[60] mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-border bg-popover p-3 shadow-xl">
                 <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Periodo del dashboard</p>
                 <div className="grid grid-cols-2 gap-2">
                   {([
@@ -831,7 +831,7 @@ export default function DashboardContent() {
               </div>
             </div>
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? (
-              <BarChart data={periodCashflow} index="label" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} yAxisWidth={64} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="h-56 sm:h-72" showAnimation />
+              <BarChart data={periodCashflow} index="label" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} yAxisWidth={64} barCategoryGap={periodCashflow.length <= 1 ? "92%" : periodCashflow.length <= 3 ? "72%" : periodCashflow.length <= 6 ? "55%" : periodCashflow.length <= 14 ? "30%" : "16%"} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="h-56 sm:h-72" showAnimation />
             ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
           </section>
 
