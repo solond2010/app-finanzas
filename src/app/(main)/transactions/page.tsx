@@ -179,13 +179,13 @@ export default function IngresosGastosPage() {
       </header>
 
       {loading ? (
-        <div className="hidden grid-cols-2 gap-3 sm:gap-4 md:grid xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           <Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" />
         </div>
       ) : (
       <>
       {/* Ticker: pulso del mes */}
-      <section className="hidden grid-cols-2 gap-3 sm:gap-4 md:grid xl:grid-cols-4">
+      <section aria-label="Resumen del mes" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
         <TickerTile label="Pagos pendientes" value={upcomingRecurring.length > 0 ? String(upcomingRecurring.length) : "Al día"} valueColor="var(--accent-amber)" />
         <TickerTile label="Mayor gasto" value={biggestExpense > 0 ? <Sensitive>{formatMoney(biggestExpense, "EUR")}</Sensitive> : "—"} valueColor="var(--accent-red)" />

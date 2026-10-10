@@ -958,6 +958,18 @@ input[type="number"] {
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring), transparent 78%);
 }
 
+/* Las listas de cuentas ganan separación y feedback al pasar el cursor sin
+   cargar cada fila con un borde permanente. */
+.account-group-card {
+  box-shadow: 0 8px 24px -22px color-mix(in oklch, var(--foreground), transparent 48%);
+}
+@media (hover: hover) and (pointer: fine) {
+  .account-group-card:hover {
+    border-color: color-mix(in oklch, var(--gold), var(--border) 62%);
+    box-shadow: 0 14px 34px -26px color-mix(in oklch, var(--gold), transparent 46%);
+  }
+}
+
 /* En el gráfico de ingresos/gastos del dashboard, Tremor resalta la categoría
    completa bajo el puntero. Si el rango solo contiene un mes, esa zona ocupa
    todo el plot y tapa visualmente las barras; el tooltip sigue funcionando sin

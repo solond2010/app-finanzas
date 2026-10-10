@@ -105,7 +105,7 @@ export default function CuentasPage() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Cuentas</h1>
           <p className="mt-1 text-sm text-muted-foreground">Saldos, bancos y progreso de objetivos en un vistazo.</p>
         </div>
-        <div className="flex flex-col gap-1 rounded-[16px] hero-panel px-5 py-3.5 sm:items-end">
+        <div className="flex flex-row items-center justify-between gap-4 rounded-[18px] hero-panel px-4 py-3.5 sm:flex-col sm:items-end sm:px-5">
           <p className="page-section-label">Patrimonio neto total</p>
           <p className="hero-figure text-[26px] font-bold leading-none tracking-tight tabular-nums sm:text-[30px]">
             <Sensitive as="span"><AnimatedNumber value={netWorth} /></Sensitive>
@@ -155,8 +155,8 @@ export default function CuentasPage() {
               const groupValue = group.accounts.reduce((sum, account) => sum + accountValueEur(account), 0)
               const kinds = [...new Set(group.accounts.map((account) => typeConfig[account.tipo]?.label ?? "Cuenta"))]
               return (
-                <section key={group.key} className="stagger-fade min-w-0 overflow-hidden rounded-[18px] border border-border bg-card/90 shadow-sm transition-colors hover:border-border/90" style={{ animationDelay: `${index * 45}ms` }}>
-                  <button type="button" aria-expanded={isOpen} onClick={() => setGroupOpenState((current) => ({ ...current, [group.key]: !isOpen }))} className="flex min-h-[104px] w-full min-w-0 items-center gap-3 p-4 text-left transition-colors hover:bg-muted/25 sm:p-5">
+                <section key={group.key} className="account-group-card stagger-fade min-w-0 overflow-hidden rounded-[18px] border border-border bg-card/90 shadow-sm transition-colors" style={{ animationDelay: `${index * 45}ms` }}>
+                  <button type="button" aria-expanded={isOpen} onClick={() => setGroupOpenState((current) => ({ ...current, [group.key]: !isOpen }))} className="flex min-h-[96px] w-full min-w-0 items-center gap-3 p-4 text-left transition-colors hover:bg-muted/25 sm:min-h-[104px] sm:p-5">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border/60 bg-background/70 text-muted-foreground">{group.accounts[0].banco ? <AccountLogo account={group.accounts[0]} className="h-10 w-10 rounded-xl" /> : <Building2 className="h-5 w-5" />}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-foreground sm:text-base">{group.title}</span>
@@ -169,9 +169,9 @@ export default function CuentasPage() {
                     <ChevronDown className={`ml-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
                   </button>
                   {isOpen && <div className="border-t border-border/70 px-3 py-2 sm:px-4">
-                    {group.accounts.map((account) => {
+                    {group.accounts.map((account, accountIndex) => {
                       const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
-                      return <button key={account.id} type="button" onClick={() => router.push(`/cuentas/${account.id}`)} className="group/row flex min-h-[68px] w-full min-w-0 items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
+                      return <button key={account.id} type="button" onClick={() => router.push(`/cuentas/${account.id}`)} className={`group/row flex min-h-[68px] w-full min-w-0 items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${accountIndex > 0 ? "border-t border-border/40" : ""}`}>
                         <AccountLogo account={account} className="h-10 w-10 shrink-0 rounded-xl" />
                         <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-foreground">{account.nombre}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{account.banco || cfg.label} · {cfg.label}</span></span>
                         <span className="shrink-0 text-right"><span className="block text-sm font-semibold tabular-nums text-foreground"><Sensitive>{formatMoney(accountValue(account), account.currency)}</Sensitive></span><span className="mt-0.5 block text-[10px] text-muted-foreground">{account.currency}</span></span>
