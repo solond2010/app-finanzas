@@ -98,6 +98,7 @@ function defaultAccountFor(tipo: MovementType, accounts: Account[]) {
 function UnifiedMovementForm({
   accounts,
   categories,
+  transactions,
   onSaveTransaction,
   onSaveTransfer,
   onCancel,
@@ -105,12 +106,16 @@ function UnifiedMovementForm({
 }: {
   accounts: Account[]
   categories: Category[]
+  transactions: Transaction[]
   onSaveTransaction: (t: Transaction) => void
   onSaveTransfer: (sourceId: string, destId: string, sourceAmount: number, destinationAmount: number, descripcion: string, fecha: string) => void
   onCancel: () => void
   initial?: MovementPrefill
 }) {
   const today = localDateKey()
+  const yesterdayDate = new Date()
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+  const yesterday = localDateKey(yesterdayDate)
   const initialTipo: MovementType = initial?.tipo ?? "gasto"
 
   const [tipo, setTipo] = useState<MovementType>(initialTipo)
@@ -146,6 +151,12 @@ function UnifiedMovementForm({
   const visibleCategories = categories
     .filter((c) => !c.kind || c.kind === tipo || c.kind === "both")
     .sort((a, b) => a.name.localeCompare(b.name, "es"))
+  const frequentCategories = Object.entries(transactions
+    .filter((item) => item.tipo === tipo && item.categoria !== "Transferencia" && visibleCategories.some((category) => category.name === item.categoria))
+    .reduce<Record<string, number>>((counts, item) => { counts[item.categoria] = (counts[item.categoria] ?? 0) + 1; return counts }, {}))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([name]) => name)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -259,18 +270,21 @@ function UnifiedMovementForm({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">{montoLabel}</label>
-              <Input type="number" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" required autoFocus className="h-12 text-base" />
+              <Input type="text" inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0,00" required className="h-12 text-lg font-semibold tabular-nums" />
+              <div className="flex flex-wrap gap-1.5 pt-1" aria-label="Importes frecuentes">
+                {[10, 20, 50, 100].map((amount) => <button key={amount} type="button" onClick={() => setMonto(String(amount))} className="min-h-9 rounded-full border border-border bg-background/60 px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">{amount} €</button>)}
+              </div>
             </div>
             {(accounts.find((account) => account.id === origenId)?.currency ?? "EUR") !== (accounts.find((account) => account.id === destinoId)?.currency ?? "EUR") && (
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground">Importe recibido ({currencySymbol((accounts.find((account) => account.id === destinoId)?.currency ?? "EUR") as CurrencyCode)})</label>
-                <Input type="number" value={montoDestino} onChange={(e) => setMontoDestino(e.target.value)} placeholder="Importe exacto recibido" required className="h-12 text-base" />
+                <Input type="text" inputMode="decimal" value={montoDestino} onChange={(e) => setMontoDestino(e.target.value)} placeholder="0,00" required className="h-12 text-base tabular-nums" />
                 <p className="text-xs text-muted-foreground">Introduce lo que realmente llegó, después del cambio y las comisiones.</p>
               </div>
             )}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Fecha</label>
-              <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="h-12 text-base" />
+              <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="h-12 text-base" />
             </div>
 
             <div className="sm:col-span-2 space-y-1.5">
@@ -328,11 +342,17 @@ function UnifiedMovementForm({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">{montoLabel}</label>
-              <Input type="number" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" required autoFocus className="h-12 text-base" />
+              <Input type="text" inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0,00" required className="h-12 text-lg font-semibold tabular-nums" />
+              <div className="flex flex-wrap gap-1.5 pt-1" aria-label="Importes frecuentes">
+                {[10, 20, 50, 100].map((amount) => <button key={amount} type="button" onClick={() => setMonto(String(amount))} className="min-h-9 rounded-full border border-border bg-background/60 px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">{amount} €</button>)}
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Fecha</label>
-              <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="h-12 text-base" />
+              <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="h-12 text-base" />
+              <div className="flex gap-1.5 pt-1">
+                {[{ label: "Hoy", value: today }, { label: "Ayer", value: yesterday }].map((option) => <button key={option.label} type="button" onClick={() => setFecha(option.value)} aria-pressed={fecha === option.value} className={cn("min-h-9 rounded-full border px-3 text-xs font-medium transition-colors", fecha === option.value ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>{option.label}</button>)}
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -347,6 +367,11 @@ function UnifiedMovementForm({
                   ))}
                 </SelectContent>
               </Select>
+              {frequentCategories.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1" aria-label="Categorías frecuentes">
+                  {frequentCategories.map((name) => <button key={name} type="button" onClick={() => setCategoria(name)} aria-pressed={categoria === name} className={cn("min-h-9 rounded-full border px-3 text-xs font-medium transition-colors", categoria === name ? "border-primary/45 bg-primary/10 text-primary" : "border-border bg-background/50 text-muted-foreground hover:text-foreground")}>{name}</button>)}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -479,6 +504,7 @@ export function QuickActionsFAB() {
               key={prefill ? `prefill-${prefill.tipo}-${prefill.origenId}-${prefill.destinoId}-${prefill.monto}` : "blank"}
               accounts={state.accounts}
               categories={state.categories}
+              transactions={state.transactions}
               initial={prefill}
               onSaveTransaction={handleAddTransaction}
               onSaveTransfer={handleTransfer}
