@@ -970,6 +970,39 @@ input[type="number"] {
   }
 }
 
+/* Tarjetas de métricas: un acento de color y luz ambiental muy discreta
+   distinguen cada cifra sin sumar iconos ni ruido a las páginas. */
+.metric-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-image: radial-gradient(ellipse at 100% 0%, color-mix(in oklch, var(--metric-accent), transparent 94%), transparent 48%);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), border-color 180ms ease, box-shadow 180ms ease;
+}
+.metric-card::before {
+  position: absolute;
+  top: 0;
+  left: 1.25rem;
+  width: 2.25rem;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--metric-accent);
+  content: "";
+  opacity: 0.72;
+}
+.metric-card[data-tone="emerald"] { --metric-accent: var(--accent-green); }
+.metric-card[data-tone="red"] { --metric-accent: var(--accent-red); }
+.metric-card[data-tone="blue"] { --metric-accent: var(--accent-blue); }
+.metric-card[data-tone="amber"] { --metric-accent: var(--accent-amber); }
+.metric-card[data-tone="violet"] { --metric-accent: var(--accent-violet); }
+@media (hover: hover) and (pointer: fine) {
+  .metric-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in oklch, var(--metric-accent), var(--border) 58%);
+    box-shadow: 0 12px 28px -22px color-mix(in oklch, var(--metric-accent), transparent 38%);
+  }
+}
+
 /* En el gráfico de ingresos/gastos del dashboard, Tremor resalta la categoría
    completa bajo el puntero. Si el rango solo contiene un mes, esa zona ocupa
    todo el plot y tapa visualmente las barras; el tooltip sigue funcionando sin

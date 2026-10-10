@@ -33,7 +33,8 @@ export const MetricCard = memo(function MetricCard({
 
   return (
     <div
-      className="stagger-fade min-w-0 rounded-[14px] border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] transition-colors hover:border-foreground/15 sm:p-5"
+      data-tone={tone}
+      className="metric-card stagger-fade min-w-0 rounded-[14px] border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] transition-colors hover:border-foreground/15 sm:p-5"
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center justify-between gap-2">
