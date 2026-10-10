@@ -124,7 +124,7 @@ export function Sidebar() {
 
       {/* Desktop icon-only bar (when collapsed) */}
       {!sidebarOpen && (
-        <aside className="fixed left-0 top-0 z-40 hidden h-full w-16 flex-col items-center border-r bg-sidebar py-5 shadow-xl shadow-sidebar-border/50 lg:flex">
+        <aside className="app-sidebar fixed left-0 top-0 z-40 hidden h-full w-16 flex-col items-center border-r bg-sidebar py-5 shadow-xl shadow-sidebar-border/50 lg:flex">
           <div className="mb-6">
             <div className="gold-badge flex size-9 items-center justify-center rounded-xl">
               <CircleDollarSign className="h-4 w-4" />
@@ -207,7 +207,7 @@ export function Sidebar() {
       <aside
         id="main-navigation-sidebar"
         className={cn(
-          "fixed left-0 top-0 z-40 hidden h-full w-52 flex-col border-r bg-sidebar py-6 shadow-xl shadow-sidebar-border/50 transition-all duration-300 ease-in-out lg:flex",
+          "app-sidebar fixed left-0 top-0 z-40 hidden h-full w-52 flex-col border-r bg-sidebar py-6 shadow-xl shadow-sidebar-border/50 transition-all duration-300 ease-in-out lg:flex",
           sidebarOpen ? "lg:translate-x-0 lg:opacity-100" : "lg:-translate-x-full lg:opacity-0 lg:pointer-events-none"
         )}
       >

@@ -59,7 +59,7 @@ export function MobileBottomNav() {
             id="mobile-more-menu"
             aria-labelledby="mobile-more-title"
             aria-label="Más secciones"
-            className="fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-[60] mx-auto max-w-lg rounded-t-[28px] border border-border bg-card p-4 pb-5 shadow-2xl lg:hidden animate-in slide-in-from-bottom-4 duration-200"
+            className="mobile-more-sheet fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-[60] mx-auto max-w-lg rounded-t-[28px] border border-border bg-card p-4 pb-5 shadow-2xl lg:hidden animate-in slide-in-from-bottom-4 duration-200"
           >
             <div className="mb-3 flex items-center justify-between px-1">
               <div>
