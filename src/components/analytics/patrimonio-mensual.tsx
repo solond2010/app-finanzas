@@ -21,7 +21,7 @@ import {
   persistMergedNetWorthSnapshots,
   type StoredNetWorthSnapshot,
 } from "@/lib/net-worth-snapshots"
-import { money, signedMoney, chartFormatter } from "@/lib/format"
+import { money, signedMoney, chartFormatter, moneyAxisWidth } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 const PatrimonioTooltip = createChartTooltip(["patrimonio"], ["amber"])
@@ -239,7 +239,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
                   categories={["patrimonio"]}
                   colors={["amber"]}
                   valueFormatter={chartFormatter}
-                  yAxisWidth={56}
+                  yAxisWidth={moneyAxisWidth(areaData.map((item) => item.patrimonio))}
                   customTooltip={PatrimonioTooltip}
                   className="h-[220px] sm:h-[280px]"
                   showAnimation
@@ -266,7 +266,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
                   categories={["Variación positiva", "Variación negativa"]}
                   colors={["emerald", "red"]}
                   valueFormatter={chartFormatter}
-                  yAxisWidth={56}
+                  yAxisWidth={moneyAxisWidth(barData.flatMap((item) => [item["Variación positiva"], item["Variación negativa"]]))}
                   customTooltip={VariacionTooltip}
                   className="h-[220px] sm:h-[280px]"
                   showAnimation

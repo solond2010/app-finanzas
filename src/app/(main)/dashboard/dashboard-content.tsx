@@ -20,7 +20,7 @@ import { convertToEur, formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { usePrivacy } from "@/lib/privacy"
 import { typeConfig } from "@/lib/account-types"
-import { formatMonth, isInitialBalanceTransaction, chartFormatter, formatCappedPct, PCT_CHANGE_CAP } from "@/lib/format"
+import { formatMonth, isInitialBalanceTransaction, chartFormatter, moneyAxisWidth, formatCappedPct, PCT_CHANGE_CAP } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
@@ -888,7 +888,7 @@ export default function DashboardContent() {
               </div>
             </div>
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? (
-              <BarChart data={periodCashflow} index="label" categories={["Ingresos", "Gastos"]} colors={["cyan", "orange"]} valueFormatter={chartFormatter} yAxisWidth={64} barCategoryGap={periodCashflow.length <= 1 ? "46%" : periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} showLegend showGridLines customTooltip={CashflowTooltip} className="dashboard-cashflow-chart h-56 sm:h-72" showAnimation />
+              <BarChart data={periodCashflow} index="label" categories={["Ingresos", "Gastos"]} colors={["cyan", "orange"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos]))} barCategoryGap={periodCashflow.length <= 1 ? "46%" : periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} showLegend showGridLines customTooltip={CashflowTooltip} className="dashboard-cashflow-chart h-56 sm:h-72" showAnimation />
             ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
           </section>
 

@@ -31,6 +31,14 @@ const CategoryTooltip = createChartTooltip(["monto"], ["violet"])
 const AccountTooltip = createChartTooltip(["monto"], ["blue"])
 const NeedsWantsTooltip = createChartTooltip(["Necesidades", "Deseos"], ["emerald", "amber"])
 
+// En gráficos de barras horizontales, el eje Y contiene los nombres. Reservar
+// un ancho según la etiqueta más larga evita que cuentas/categorías se partan
+// en demasiadas líneas o queden debajo de la primera barra.
+function categoryAxisWidth(labels: string[], maxWidth: number) {
+  const longestLabel = labels.reduce((longest, label) => Math.max(longest, label.length), 0)
+  return Math.min(maxWidth, Math.max(112, Math.ceil(longestLabel * 6.5 + 24)))
+}
+
 const CollapsibleBlock = memo(function CollapsibleBlock({
   title,
   hint,
@@ -448,30 +456,30 @@ export default function AnalyticsPage() {
           <PatrimonioMensualSection dailyHistory={fullHistory} cashByMonth={cashByMonthKey} />
 
           <CollapsibleBlock title="Mes" hint="Categorías, presupuesto, pagos y calendario de gasto" defaultOpen>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Card className="stagger-fade">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><Layers3 className="h-4 w-4 text-violet-500" />Gastos por categoría</CardTitle>
-                  {topCategory && <span className="text-xs text-muted-foreground">Top: <strong className="text-foreground">{topCategory.categoria}</strong></span>}
+            <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">
+              <Card className="stagger-fade min-w-0">
+                <CardHeader className="flex flex-col items-start gap-1 pb-2 sm:flex-row sm:items-start sm:justify-between">
+                  <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold"><Layers3 className="h-4 w-4 shrink-0 text-violet-500" />Gastos por categoría</CardTitle>
+                  {topCategory && <span className="max-w-full break-words text-xs text-muted-foreground sm:max-w-[55%] sm:text-right">Top: <strong className="text-foreground">{topCategory.categoria}</strong></span>}
                 </CardHeader>
                 <CardContent>
                   {categoryBreakdown.length === 0 ? <EmptyState icon={Layers3} title="Sin gasto categorizado" description="Cuando registres gastos, aquí verás las categorías que más pesan." bordered className="h-full" /> : (
-                    <div role="img" aria-label={`Gráfico de barras: gasto por categoría${topCategory ? `, encabezado por ${topCategory.categoria}` : ""}`} style={{ height: categoryBreakdown.slice(0, 8).length * 52 + 48 }}>
-                      <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={80} customTooltip={CategoryTooltip} className="h-full" showAnimation layout="vertical" />
+                    <div role="img" aria-label={`Gráfico de barras: gasto por categoría${topCategory ? `, encabezado por ${topCategory.categoria}` : ""}`} className="min-w-0" style={{ height: categoryBreakdown.slice(0, 8).length * 52 + 48 }}>
+                      <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["violet"]} valueFormatter={chartFormatter} yAxisWidth={categoryAxisWidth(categoryBreakdown.slice(0, 8).map((item) => item.categoria), 184)} customTooltip={CategoryTooltip} className="h-full min-w-0" showAnimation layout="vertical" />
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {spendByAccount.length > 0 && (
-                <Card className="stagger-fade">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="flex items-center gap-2 text-base font-semibold"><Wallet className="h-4 w-4 text-blue-500" />Gasto por cuenta</CardTitle>
-                    <span className="text-xs text-muted-foreground">Top: <strong className="text-foreground">{spendByAccount[0].cuenta}</strong></span>
+                <Card className="stagger-fade min-w-0">
+                  <CardHeader className="flex flex-col items-start gap-1 pb-2 sm:flex-row sm:items-start sm:justify-between">
+                    <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold"><Wallet className="h-4 w-4 shrink-0 text-blue-500" />Gasto por cuenta</CardTitle>
+                    <span className="max-w-full break-words text-xs text-muted-foreground sm:max-w-[55%] sm:text-right">Top: <strong className="text-foreground">{spendByAccount[0].cuenta}</strong></span>
                   </CardHeader>
                   <CardContent>
-                    <div role="img" aria-label={`Gráfico de barras: gasto por cuenta, encabezado por ${spendByAccount[0].cuenta}`} style={{ height: spendByAccount.slice(0, 8).length * 52 + 48 }}>
-                      <BarChart data={spendByAccount.slice(0, 8)} index="cuenta" categories={["monto"]} colors={["blue"]} valueFormatter={chartFormatter} yAxisWidth={80} customTooltip={AccountTooltip} className="h-full" showAnimation layout="vertical" />
+                    <div role="img" aria-label={`Gráfico de barras: gasto por cuenta, encabezado por ${spendByAccount[0].cuenta}`} className="min-w-0" style={{ height: spendByAccount.slice(0, 8).length * 52 + 48 }}>
+                      <BarChart data={spendByAccount.slice(0, 8)} index="cuenta" categories={["monto"]} colors={["blue"]} valueFormatter={chartFormatter} yAxisWidth={categoryAxisWidth(spendByAccount.slice(0, 8).map((item) => item.cuenta), 208)} customTooltip={AccountTooltip} className="h-full min-w-0" showAnimation layout="vertical" />
                     </div>
                   </CardContent>
                 </Card>
