@@ -3,8 +3,8 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
 import { type CurrencyCode, refreshExchangeRates } from "./currency"
-import { hasTransferPair, isTransfer } from "./calculations"
-import { localDateKey } from "./date-utils"
+import { buildPreciseNetWorthHistory, hasTransferPair, isTransfer } from "./calculations"
+import { localDateKey, parseLocalDate } from "./date-utils"
 
 export interface Account {
   id: string
@@ -797,6 +797,33 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error("[Finance] No se pudo guardar la copia local inmediata:", error)
         setLocalBackupStatus("error")
+      }
+    }
+    // La edición del saldo es una conciliación, no un ingreso/gasto. El `adj_`
+    // que se añade arriba mantiene sin cambios los días anteriores; el máximo
+    // global se reconstruye desde esa serie para no conservar un pico antiguo
+    // que se hubiese calculado con saldos desincronizados.
+    if (prepared.type === "UPDATE_ACCOUNT" && prepared.adjustment) {
+      const now = new Date()
+      const firstTransactionDate = next.transactions.reduce(
+        (oldest, transaction) => transaction.fecha < oldest ? transaction.fecha : oldest,
+        next.transactions[0]?.fecha ?? localDateKey()
+      )
+      const firstDate = parseLocalDate(firstTransactionDate)
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const totalDays = Math.max(1, Math.ceil((todayStart.getTime() - firstDate.getTime()) / 86400000) + 1)
+      const history = buildPreciseNetWorthHistory(next.accounts, next.transactions, Math.min(totalDays, 1000), now)
+      const peakPoint = history.length > 0
+        ? history.reduce((best, point) => point.patrimonio > best.patrimonio ? point : best, history[0])
+        : null
+      const recalculatedFrom = history[0]?.date
+      if (peakPoint && recalculatedFrom && peakPoint.patrimonio > 0) {
+        import("./net-worth-snapshots").then(({ reconcileNetWorthPeakAfterBalanceCorrection }) =>
+          reconcileNetWorthPeakAfterBalanceCorrection(
+            { value: peakPoint.patrimonio, date: peakPoint.date, label: peakPoint.label },
+            recalculatedFrom
+          )
+        ).catch((error) => console.error("[Finance] No se pudo recalcular el máximo tras corregir un saldo:", error))
       }
     }
     dispatch(prepared)

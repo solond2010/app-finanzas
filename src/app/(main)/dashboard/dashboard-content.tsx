@@ -131,22 +131,19 @@ export default function DashboardContent() {
     return null
   })
 
-  // Conserva la referencia histórica que ya guardó Analíticas. Si una posición
-  // se elimina o cambia, la reconstrucción con la cartera actual no debe borrar
-  // el máximo que la app ya había observado.
+  // Conserva la observación histórica confirmada del 5 oct 2026. El resto del
+  // máximo se hidrata desde la nube y las correcciones manuales lo recalculan.
   useEffect(() => {
     let cancelled = false
     import("@/lib/net-worth-snapshots").then(({ loadNetWorthPeak, persistNetWorthPeakIfHigher }) =>
       loadNetWorthPeak().then(async (cloudPeak) => {
         if (cancelled) return
-        // Recuperación puntual: el dashboard mostró 5.301,27 € el 5 oct 2026,
-        // pero esa observación no llegó a guardarse como pico global.
         const observedPeak = { value: 5301.27, date: "2026-10-05", label: "05 oct" }
         const peak = cloudPeak && cloudPeak.value >= observedPeak.value
           ? cloudPeak
           : await persistNetWorthPeakIfHigher(observedPeak)
         if (cancelled) return
-        setStoredNetWorthPeak((previous) => previous && previous.value >= peak.value ? previous : peak)
+        setStoredNetWorthPeak(peak)
         try { localStorage.setItem("netWorthPeak", JSON.stringify(peak)) } catch {}
       })
     ).catch(() => {})

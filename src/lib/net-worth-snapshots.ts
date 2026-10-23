@@ -126,6 +126,41 @@ export async function persistNetWorthPeakIfHigher(peak: StoredNetWorthPeak): Pro
 }
 
 /**
+ * Una corrección manual de saldo no es un máximo histórico nuevo. Recalcula el
+ * pico con la serie resultante y sustituye el valor guardado si su fecha está
+ * dentro del tramo que acabamos de recalcular. Si el pico guardado es anterior
+ * a ese tramo, se conserva porque no tenemos datos suficientes para validarlo.
+ */
+export async function reconcileNetWorthPeakAfterBalanceCorrection(
+  computedPeak: StoredNetWorthPeak,
+  recalculatedFrom: string
+): Promise<StoredNetWorthPeak> {
+  let previous: StoredNetWorthPeak | null = null
+  try {
+    previous = await loadNetWorthPeak()
+  } catch {
+    // La copia local permite mantener la corrección aunque la nube esté caída.
+  }
+  if (!previous && typeof window !== "undefined") {
+    try {
+      previous = parsePeak(window.localStorage.getItem("netWorthPeak"))
+    } catch {}
+  }
+
+  const previousDate = previous?.date
+    ? (/^\d{4}-\d{2}$/.test(previous.date) ? `${previous.date}-99` : previous.date)
+    : ""
+  const peak = previous && previousDate < recalculatedFrom ? previous : computedPeak
+
+  if (typeof window !== "undefined") {
+    try { window.localStorage.setItem("netWorthPeak", JSON.stringify(peak)) } catch {}
+  }
+  const saved = await setSetting(PEAK_KEY, JSON.stringify(peak))
+  if (!saved) console.error("[Finance] No se pudo sincronizar el máximo recalculado tras corregir un saldo.")
+  return peak
+}
+
+/**
  * Aplica snapshots persistidos sobre filas mensuales derivadas: si hay un valor
  * guardado mayor para esa fecha, lo usa (protege el histórico ante pérdida de
  * saldos/cuentas). No inventa fechas que no existan en `rows`.
