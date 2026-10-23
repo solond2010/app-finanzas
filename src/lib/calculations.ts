@@ -142,6 +142,14 @@ function transactionDelta(t: Transaction) {
   return t.tipo === "ingreso" ? t.monto : -t.monto
 }
 
+// Una edición manual del saldo crea un `adj_` para dejar constancia y mantener
+// coherente la cuenta con su libro. No representa dinero que entró o salió en
+// esa fecha: al reconstruir el pasado desde el saldo actual, aplicar ese ajuste
+// como movimiento crea saltos y máximos históricos ficticios.
+function isBalanceReconciliation(t: Transaction) {
+  return t.id.startsWith("adj_")
+}
+
 // Un traspaso entre cuentas propias se registra como gasto en la cuenta origen
 // e ingreso en la destino (para que cuadren los saldos), pero NO es un ingreso
 // ni un gasto real, así que se excluye de los totales de reporte. En patrimonio
@@ -248,7 +256,9 @@ function accountsWithDelta(accounts: Account[], txByAccount: Map<string, Transac
     const accountTxs = txByAccount.get(account.id)
     let balanceDelta = 0
     if (accountTxs) {
-      for (const t of accountTxs) if (isFuture(t)) balanceDelta += transactionDelta(t)
+      for (const t of accountTxs) {
+        if (!isBalanceReconciliation(t) && isFuture(t)) balanceDelta += transactionDelta(t)
+      }
     }
     return { ...account, saldo: account.saldo - balanceDelta }
   })
@@ -328,7 +338,7 @@ export function buildNetWorthHistoryDaily(accounts: Account[], transactions: Tra
     const dateKey = toDateKey(d)
     const dayLabel = d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
     const dayEnd = getNetWorthAtDate(accounts, txByAccount, dateKey)
-    const todaysTransactions = txByDateKey.get(dateKey) ?? []
+    const todaysTransactions = (txByDateKey.get(dateKey) ?? []).filter((t) => !isBalanceReconciliation(t))
     const outflow = todaysTransactions
       .filter((t) => t.tipo === "gasto")
       .reduce((sum, t) => sum + convertToEur(t.monto, currencyByAccount.get(t.cuenta_id) ?? "EUR"), 0)
@@ -363,7 +373,7 @@ export function buildNetWorthHistoryToday(accounts: Account[], transactions: Tra
   const todayKey = toDateKey(today)
   const yesterdayKey = toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1))
   const todaysTransactions = transactions
-    .filter((t) => t.fecha.slice(0, 10) === todayKey)
+    .filter((t) => t.fecha.slice(0, 10) === todayKey && !isBalanceReconciliation(t))
     .slice()
     .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""))
 
@@ -672,7 +682,7 @@ export function buildPreciseNetWorthHistory(
       const accountTxs = txByAccount.get(account.id) ?? []
       let balance = account.saldo
       for (const t of accountTxs) {
-        if (isAfterDate(t.fecha, dateKey)) balance -= transactionDelta(t)
+        if (!isBalanceReconciliation(t) && isAfterDate(t.fecha, dateKey)) balance -= transactionDelta(t)
       }
       if (account.tipo === "inversion") investedCash += convertToEur(balance, account.currency)
       else cash += convertToEur(balance, account.currency)

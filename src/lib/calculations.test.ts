@@ -21,6 +21,7 @@ import {
   buildMonthlyPatrimonioControl,
   getPatrimonioMensualKpis,
   buildPreciseNetWorthHistory,
+  buildNetWorthHistoryDaily,
 } from "./calculations"
 import { getNetWorthChartDomain } from "./chart-scale"
 
@@ -149,11 +150,11 @@ describe("getAccountsAtMonth / getNetWorthAtMonth (reconstrucción de saldo)", (
     expect(atMay[0].saldo).toBe(140)
   })
 
-  it("un ajuste de saldo a la baja (monto negativo, tipo ingreso) resta patrimonio, no suma", () => {
-    // Reproduce el caso de UPDATE_ACCOUNT: delta negativo guardado como tipo "ingreso".
+  it("una corrección de saldo a la baja no crea una variación histórica", () => {
+    // Reproduce UPDATE_ACCOUNT: delta negativo guardado como tipo "ingreso".
     const accounts = [account({ saldo: 460 })]
     const txns = [tx({ id: "adj_1", tipo: "ingreso", monto: -40, fecha: "2026-06-10" })]
-    expect(getNetWorthAtMonth(accounts, txns, "2026-05")).toBe(500)
+    expect(getNetWorthAtMonth(accounts, txns, "2026-05")).toBe(460)
   })
 })
 
@@ -503,6 +504,25 @@ describe("buildPreciseNetWorthHistory", () => {
     expect(rows[1].date).toBe("2026-10-06")
     expect(rows[0].patrimonio).toBe(980)
     expect(rows[1].patrimonio).toBe(1000)
+  })
+
+  it("no convierte una corrección manual de saldo en un pico o caída histórica", () => {
+    const currentAccount = account({ saldo: 1000 })
+    const correction = tx({ id: "adj_balance", tipo: "ingreso", monto: -500, fecha: "2026-10-05" })
+    const rows = buildPreciseNetWorthHistory([currentAccount], [correction], 3, new Date(2026, 9, 6))
+    expect(rows.map((row) => row.patrimonio)).toEqual([1000, 1000, 1000])
+  })
+})
+
+describe("buildNetWorthHistoryDaily", () => {
+  it("no usa una corrección de saldo como ingreso para inventar un máximo intradía", () => {
+    const currentAccount = account({ saldo: 90 })
+    const transactions = [
+      tx({ id: "expense", tipo: "gasto", monto: 10, fecha: "2026-10-06" }),
+      tx({ id: "adj_balance", tipo: "ingreso", monto: -10, fecha: "2026-10-06" }),
+    ]
+    const rows = buildNetWorthHistoryDaily([currentAccount], transactions, 1, new Date(2026, 9, 6))
+    expect(rows.map((row) => row.patrimonio)).toEqual([90])
   })
 })
 
