@@ -513,6 +513,50 @@ describe("buildPreciseNetWorthHistory", () => {
     expect(rows.map((row) => row.patrimonio)).toEqual([1000, 1000, 1000])
   })
 
+  it("no trata el residual sintético init_ como una variación histórica", () => {
+    const currentAccount = account({ saldo: 1000 })
+    const residual = tx({
+      id: "init_acc_1",
+      tipo: "gasto",
+      monto: 2001,
+      fecha: "2026-09-29",
+      categoria: "Saldo inicial",
+      descripcion: "Saldo inicial de Cuenta",
+      // Un residual antiguo puede haberse sincronizado y recibir created_at.
+      created_at: "2026-10-01T12:00:00.000Z",
+    })
+    const rows = buildPreciseNetWorthHistory([currentAccount], [residual], 4, new Date(2026, 9, 1))
+    expect(rows.map((row) => row.patrimonio)).toEqual([1000, 1000, 1000, 1000])
+  })
+
+  it("reconoce los nuevos residuales sintéticos incluso después de sincronizarlos", () => {
+    const currentAccount = account({ saldo: 1000 })
+    const residual = tx({
+      id: "adj_init_acc_1",
+      tipo: "gasto",
+      monto: 2001,
+      fecha: "2026-09-29",
+      categoria: "Saldo inicial",
+      created_at: "2026-10-01T12:00:00.000Z",
+    })
+    const rows = buildPreciseNetWorthHistory([currentAccount], [residual], 4, new Date(2026, 9, 1))
+    expect(rows.map((row) => row.patrimonio)).toEqual([1000, 1000, 1000, 1000])
+  })
+
+  it("mantiene el saldo inicial real de una cuenta creada", () => {
+    const currentAccount = account({ saldo: 1000 })
+    const openingBalance = tx({
+      id: "init_acc_1",
+      tipo: "ingreso",
+      monto: 500,
+      fecha: "2026-10-05",
+      categoria: "Saldo inicial",
+      created_at: "2026-10-05T12:00:00.000Z",
+    })
+    const rows = buildPreciseNetWorthHistory([currentAccount], [openingBalance], 3, new Date(2026, 9, 6))
+    expect(rows.map((row) => row.patrimonio)).toEqual([500, 1000, 1000])
+  })
+
   it("conserva el saldo de ayer al conciliar una cuenta hoy", () => {
     const today = new Date()
     const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
@@ -533,6 +577,16 @@ describe("buildNetWorthHistoryDaily", () => {
     const transactions = [
       tx({ id: "expense", tipo: "gasto", monto: 10, fecha: "2026-10-06" }),
       tx({ id: "adj_balance", tipo: "ingreso", monto: -10, fecha: "2026-10-06" }),
+    ]
+    const rows = buildNetWorthHistoryDaily([currentAccount], transactions, 1, new Date(2026, 9, 6))
+    expect(rows.map((row) => row.patrimonio)).toEqual([90])
+  })
+
+  it("no usa el residual sintético init_ para inventar un máximo intradía", () => {
+    const currentAccount = account({ saldo: 90 })
+    const transactions = [
+      tx({ id: "expense", tipo: "gasto", monto: 10, fecha: "2026-10-06" }),
+      tx({ id: "init_acc_1", tipo: "ingreso", monto: 10, fecha: "2026-10-06", categoria: "Saldo inicial" }),
     ]
     const rows = buildNetWorthHistoryDaily([currentAccount], transactions, 1, new Date(2026, 9, 6))
     expect(rows.map((row) => row.patrimonio)).toEqual([90])

@@ -51,6 +51,23 @@ describe("reducer / ADD_ACCOUNT", () => {
   })
 })
 
+describe("reducer / SET_STATE", () => {
+  it("marca el residual de saldo con un ID que no se confunde con una apertura real", () => {
+    const state: FinanceState = {
+      ...emptyState,
+      accounts: [{ ...baseAccount, saldo: 100 }],
+      transactions: [tx({ id: "income", tipo: "ingreso", monto: 200, categoria: "Salario" })],
+    }
+    const next = reducer(state, { type: "SET_STATE", payload: state })
+    expect(next.transactions.find((transaction) => transaction.id.startsWith("adj_init_"))).toMatchObject({
+      cuenta_id: "acc1",
+      monto: 100,
+      tipo: "gasto",
+      categoria: "Saldo inicial",
+    })
+  })
+})
+
 describe("reducer / UPDATE_ACCOUNT", () => {
   it("genera una transacción de ajuste 'adj_' por la diferencia de saldo", () => {
     const state: FinanceState = { ...emptyState, accounts: [{ ...baseAccount, saldo: 100 }] }
