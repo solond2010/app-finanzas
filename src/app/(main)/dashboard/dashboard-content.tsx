@@ -438,37 +438,11 @@ export default function DashboardContent() {
       }
     }
 
-    // Reinsertar en el gráfico el máximo ya guardado si cae dentro del periodo.
-    // La serie reconstruida usa posiciones actuales y por sí sola puede perder
-    // un pico pasado cuando una posición se elimina o se corrige.
-    if (storedNetWorthPeak?.date && points.length > 0) {
-      const peakMonth = storedNetWorthPeak.date.slice(0, 7)
-      const firstMonth = activeRange.unit === "all"
-        ? (points[0].date ?? "").slice(0, 7)
-        : activeRange.unit === "months"
-          ? `${new Date(selectedDate.getFullYear(), selectedDate.getMonth() - activeRange.count + 1, 1).getFullYear()}-${String(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - activeRange.count + 1, 1).getMonth() + 1).padStart(2, "0")}`
-          : (() => {
-              const end = monthOffset === 0 ? today : new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0)
-              const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - (activeRange.unit === "today" ? 1 : activeRange.count - 1))
-              return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`
-            })()
-      const lastMonth = monthOffset === 0 ? `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}` : selectedMonth
-      const inRange = peakMonth >= firstMonth && peakMonth <= lastMonth
-      const sameDay = points.findIndex((point) => point.date === storedNetWorthPeak.date)
-      if (inRange && (sameDay < 0 || points[sameDay].patrimonio < storedNetWorthPeak.value)) {
-        const date = new Date(`${storedNetWorthPeak.date}T12:00:00`)
-        const peakPoint = {
-          mes: storedNetWorthPeak.label || date.toLocaleDateString("es-ES", { day: "2-digit", month: "short" }),
-          date: storedNetWorthPeak.date,
-          patrimonio: storedNetWorthPeak.value,
-          breakdown: points[0].breakdown,
-        }
-        if (sameDay >= 0) points = points.map((point, index) => index === sameDay ? peakPoint : point)
-        else points = [...points, peakPoint].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""))
-      }
-    }
+    // El máximo guardado es una referencia histórica, no un dato de la serie.
+    // No se debe inyectar en el gráfico: puede proceder de un saldo antiguo
+    // desajustado y falsear el máximo del periodo aunque ya se haya recalculado.
     return points
-  }, [netWorthTrend, activeRange, currentMonthDailyPeak, storedNetWorthPeak, monthOffset, netWorthDisplay, today, selectedDate, selectedMonth])
+  }, [netWorthTrend, activeRange, currentMonthDailyPeak, monthOffset, netWorthDisplay, today])
 
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
@@ -492,6 +466,47 @@ export default function DashboardContent() {
   const rangeMaxPoint = netWorthHasData
     ? maxCandidates.reduce((best, t) => (t.patrimonio > best.patrimonio ? t : best), maxCandidates[0])
     : null
+
+  // Si el máximo persistido cae dentro del tramo que acabamos de reconstruir,
+  // sustituirlo por el máximo real de esa serie. Así se corrigen también los
+  // picos obsoletos ya guardados, sin tocar movimientos ni saldos de cuentas.
+  useEffect(() => {
+    if (loading || !storedNetWorthPeak?.date || !rangeMaxPoint?.date || !netWorthHasData) return
+
+    const keyForDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+    let from: Date
+    let through: Date
+    if (activeRange.unit === "months") {
+      from = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - activeRange.count + 1, 1)
+      through = monthOffset === 0 ? today : new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0)
+    } else if (activeRange.unit === "all") {
+      from = netWorthTrend[0]?.date ? parseLocalDate(netWorthTrend[0].date) : today
+      through = today
+    } else {
+      through = monthOffset === 0 ? today : new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0)
+      from = new Date(through.getFullYear(), through.getMonth(), through.getDate() - (activeRange.unit === "today" ? 0 : activeRange.count - 1))
+    }
+
+    const savedDate = /^\d{4}-\d{2}$/.test(storedNetWorthPeak.date)
+      ? `${storedNetWorthPeak.date}-01`
+      : storedNetWorthPeak.date
+    const fromKey = keyForDate(from)
+    const throughKey = keyForDate(through)
+    if (savedDate < fromKey || savedDate > throughKey) return
+    if (storedNetWorthPeak.date === rangeMaxPoint.date && Math.abs(storedNetWorthPeak.value - rangeMaxPoint.patrimonio) < 0.005) return
+
+    let cancelled = false
+    import("@/lib/net-worth-snapshots").then(({ reconcileNetWorthPeakAfterBalanceCorrection }) =>
+      reconcileNetWorthPeakAfterBalanceCorrection(
+        { value: rangeMaxPoint.patrimonio, date: rangeMaxPoint.date, label: rangeMaxPoint.mes.replace(" · pico", "") },
+        fromKey
+      ).then((peak) => {
+        if (!cancelled) setStoredNetWorthPeak(peak)
+      })
+    ).catch((error) => console.error("[Finance] No se pudo sincronizar el máximo recalculado del patrimonio:", error))
+    return () => { cancelled = true }
+  }, [loading, storedNetWorthPeak, rangeMaxPoint, netWorthHasData, activeRange, monthOffset, selectedDate, today, netWorthTrend])
+
   const showRangeMax = !!rangeMaxPoint
   // La variación de arriba compara INICIO DEL RANGO vs hoy: en 30D/6M/12M/24M
   // el inicio del rango suele ser un momento en que el patrimonio era mucho
