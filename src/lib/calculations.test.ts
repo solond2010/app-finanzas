@@ -586,7 +586,7 @@ describe("buildNetWorthHistoryDaily", () => {
     const currentAccount = account({ saldo: 90 })
     const transactions = [
       tx({ id: "expense", tipo: "gasto", monto: 10, fecha: "2026-10-06" }),
-      tx({ id: "init_acc_1", tipo: "ingreso", monto: 10, fecha: "2026-10-06", categoria: "Saldo inicial" }),
+      tx({ id: "adj_init_acc_1", tipo: "ingreso", monto: 10, fecha: "2026-10-06", categoria: "Saldo inicial" }),
     ]
     const rows = buildNetWorthHistoryDaily([currentAccount], transactions, 1, new Date(2026, 9, 6))
     expect(rows.map((row) => row.patrimonio)).toEqual([90])
