@@ -512,6 +512,19 @@ describe("buildPreciseNetWorthHistory", () => {
     const rows = buildPreciseNetWorthHistory([currentAccount], [correction], 3, new Date(2026, 9, 6))
     expect(rows.map((row) => row.patrimonio)).toEqual([1000, 1000, 1000])
   })
+
+  it("conserva el saldo de ayer al conciliar una cuenta hoy", () => {
+    const today = new Date()
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const currentAccount = account({ saldo: 97 })
+    const transactions = [
+      tx({ id: "expense_today", tipo: "gasto", monto: 20, fecha: todayKey }),
+      tx({ id: "adj_today", tipo: "ingreso", monto: -3, fecha: todayKey }),
+    ]
+    const rows = buildPreciseNetWorthHistory([currentAccount], transactions, 2, today)
+    expect(rows[0].patrimonio).toBe(120)
+    expect(rows[1].patrimonio).toBe(97)
+  })
 })
 
 describe("buildNetWorthHistoryDaily", () => {
