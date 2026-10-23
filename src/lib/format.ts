@@ -19,6 +19,15 @@ export function chartFormatter(value: number) {
   return money(value)
 }
 
+// Reserva espacio suficiente para las etiquetas monetarias de los ejes Y.
+// El valor máximo de un gráfico puede crecer con el historial del usuario;
+// dejar un ancho fijo acaba cortando cifras en vez de reflejar el importe.
+export function moneyAxisWidth(values: number[], minWidth = 64, maxWidth = 128) {
+  const longestLabel = values.reduce((longest, value) => Math.max(longest, chartFormatter(value).length), 0)
+  // +1 carácter de margen por si Recharts redondea el tick superior.
+  return Math.min(maxWidth, Math.max(minWidth, Math.ceil((longestLabel + 1) * 7 + 16)))
+}
+
 // Un % calculado contra una base pequeña (p.ej. patrimonio de 50€ hace 6 meses)
 // puede dispararse a miles de %. Por encima de este umbral se muestra ">CAP%"
 // en vez de la cifra exacta (falsa precisión) para no parecer un dato roto.
