@@ -764,6 +764,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // de reducir. SET_STATE (carga remota) no marca dirty.
   const trackedDispatch = useCallback((action: Action) => {
     let prepared: Action = action
+    let nextState: FinanceState | null = null
     const today = localDateKey()
     if (action.type === "ADD_ACCOUNT" && action.payload.saldo !== 0) prepared = { ...action, initialBalanceDate: today, initialBalanceCreatedAt: new Date().toISOString() }
     if (action.type === "UPDATE_ACCOUNT") {
@@ -790,6 +791,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       dirtyGenerationRef.current += 1
       collectDeletesFromAction(stateRef.current, prepared, pendingDeletesRef.current)
       const next = reducer(stateRef.current, prepared)
+      nextState = next
       stateRef.current = next
       try {
         writeLocalJournal(next, pendingDeletesRef.current, true)
@@ -803,16 +805,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     // que se añade arriba mantiene sin cambios los días anteriores; el máximo
     // global se reconstruye desde esa serie para no conservar un pico antiguo
     // que se hubiese calculado con saldos desincronizados.
-    if (prepared.type === "UPDATE_ACCOUNT" && prepared.adjustment) {
+    if (prepared.type === "UPDATE_ACCOUNT" && prepared.adjustment && nextState) {
       const now = new Date()
-      const firstTransactionDate = next.transactions.reduce(
+      const firstTransactionDate = nextState.transactions.reduce(
         (oldest, transaction) => transaction.fecha < oldest ? transaction.fecha : oldest,
-        next.transactions[0]?.fecha ?? localDateKey()
+        nextState.transactions[0]?.fecha ?? localDateKey()
       )
       const firstDate = parseLocalDate(firstTransactionDate)
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       const totalDays = Math.max(1, Math.ceil((todayStart.getTime() - firstDate.getTime()) / 86400000) + 1)
-      const history = buildPreciseNetWorthHistory(next.accounts, next.transactions, Math.min(totalDays, 1000), now)
+      const history = buildPreciseNetWorthHistory(nextState.accounts, nextState.transactions, Math.min(totalDays, 1000), now)
       const peakPoint = history.length > 0
         ? history.reduce((best, point) => point.patrimonio > best.patrimonio ? point : best, history[0])
         : null
