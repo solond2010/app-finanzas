@@ -410,7 +410,7 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
 }
 
 function isInitialTx(t: Transaction) {
-  return t.categoria === "Saldo inicial" && t.id.startsWith("init_")
+  return t.categoria === "Saldo inicial" && (t.id.startsWith("init_") || t.id.startsWith("adj_init_"))
 }
 
 function signedAmount(t: Transaction): number {
@@ -1032,7 +1032,9 @@ function normalizeFinanceState(state: FinanceState): FinanceState {
     const txDates = accountTxs.map((t) => t.fecha).sort()
     const fecha = txDates.length > 0 ? txDates[0] : localDateKey()
     transactions.push({
-      id: `init_${account.id}`,
+      // Prefijo propio para distinguir el residual sintético de un saldo
+      // inicial real en los cálculos históricos incluso tras sincronizarlo.
+      id: `adj_init_${account.id}`,
       cuenta_id: account.id,
       monto: Math.abs(residual),
       fecha,

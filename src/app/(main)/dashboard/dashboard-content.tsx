@@ -349,12 +349,13 @@ export default function DashboardContent() {
       if (monthOffset === 0 && i === baseTrend.length - 1) continue
       
       // Calcular pico diario de este mes
-      const monthLabel = monthPoint.mes // ej. "sep 24"
-      const [monthStr, yearStr] = monthLabel.split(" ")
-      const monthNames = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
-      const monthIdx = monthNames.indexOf(monthStr.toLowerCase())
-      const year = parseInt("20" + yearStr, 10)
-      if (monthIdx === -1) continue
+      // El punto mensual guarda una fecha ISO `YYYY-MM`. Usarla evita depender
+      // de etiquetas localizadas como "sept." o "sept", que pueden variar por
+      // navegador y dejar fuera el pico diario de septiembre.
+      const [yearText, monthText] = monthPoint.date.slice(0, 7).split("-")
+      const year = Number(yearText)
+      const monthIdx = Number(monthText) - 1
+      if (!Number.isInteger(year) || !Number.isInteger(monthIdx) || monthIdx < 0 || monthIdx > 11) continue
       
       const monthEnd = new Date(year, monthIdx + 1, 0)
       const daysInMonth = monthEnd.getDate()

@@ -143,15 +143,26 @@ function transactionDelta(t: Transaction) {
 }
 
 // Una edición manual del saldo crea un `adj_` para dejar constancia y mantener
-// coherente la cuenta con su libro. No representa dinero que entró o salió en
-// esa fecha: al reconstruir el pasado desde el saldo actual, aplicar ese ajuste
-// como movimiento crea saltos y máximos históricos ficticios.
+// coherente la cuenta con su libro. `normalizeFinanceState` también crea un
+// `adj_init_` identifica los residuales que normalizeFinanceState genera para
+// cuadrar saldos. Los `init_` de versiones anteriores no tenían un ID distinto;
+// un saldo inicial real siempre se crea como ingreso, así que un `init_` de tipo
+// gasto es un residual legado incluso si Supabase ya le asignó created_at.
+function isSyntheticOpeningBalanceResidual(t: Transaction) {
+  return t.id.startsWith("adj_init_") || (t.id.startsWith("init_") && t.categoria === "Saldo inicial" && t.tipo === "gasto")
+}
+
 function isBalanceReconciliation(t: Transaction) {
-  return t.id.startsWith("adj_")
+  return t.id.startsWith("adj_") || isSyntheticOpeningBalanceResidual(t)
 }
 
 function shouldReverseBalanceReconciliation(t: Transaction, anchorDateKey: string) {
-  return !isBalanceReconciliation(t) || t.fecha.slice(0, 10) === anchorDateKey
+  // El residual sintético representa una diferencia constante de saldo; nunca
+  // se invierte como si hubiera entrado o salido dinero en una fecha concreta.
+  if (isSyntheticOpeningBalanceResidual(t)) return false
+  // Un ajuste manual real se aplica al saldo actual, pero conserva el histórico
+  // anterior. En su propio día ya forma parte del saldo de cierre.
+  return !t.id.startsWith("adj_") || t.fecha.slice(0, 10) === anchorDateKey
 }
 
 // Un traspaso entre cuentas propias se registra como gasto en la cuenta origen
