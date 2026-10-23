@@ -150,6 +150,10 @@ function isBalanceReconciliation(t: Transaction) {
   return t.id.startsWith("adj_")
 }
 
+function shouldReverseBalanceReconciliation(t: Transaction, anchorDateKey: string) {
+  return !isBalanceReconciliation(t) || t.fecha.slice(0, 10) === anchorDateKey
+}
+
 // Un traspaso entre cuentas propias se registra como gasto en la cuenta origen
 // e ingreso en la destino (para que cuadren los saldos), pero NO es un ingreso
 // ni un gasto real, así que se excluye de los totales de reporte. En patrimonio
@@ -252,12 +256,13 @@ function groupByAccount(transactions: Transaction[]): Map<string, Transaction[]>
 }
 
 function accountsWithDelta(accounts: Account[], txByAccount: Map<string, Transaction[]>, isFuture: (t: Transaction) => boolean) {
+  const todayKey = toDateKey(new Date())
   return accounts.map((account) => {
     const accountTxs = txByAccount.get(account.id)
     let balanceDelta = 0
     if (accountTxs) {
       for (const t of accountTxs) {
-        if (!isBalanceReconciliation(t) && isFuture(t)) balanceDelta += transactionDelta(t)
+        if (shouldReverseBalanceReconciliation(t, todayKey) && isFuture(t)) balanceDelta += transactionDelta(t)
       }
     }
     return { ...account, saldo: account.saldo - balanceDelta }
@@ -670,6 +675,7 @@ export function buildPreciseNetWorthHistory(
 ): PreciseNetWorthPoint[] {
   const txByAccount = groupByAccount(transactions)
   const points: PreciseNetWorthPoint[] = []
+  const anchorDateKey = toDateKey(endDate)
 
   for (let i = 0; i < days; i++) {
     const d = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() - (days - 1 - i))
@@ -682,7 +688,7 @@ export function buildPreciseNetWorthHistory(
       const accountTxs = txByAccount.get(account.id) ?? []
       let balance = account.saldo
       for (const t of accountTxs) {
-        if (!isBalanceReconciliation(t) && isAfterDate(t.fecha, dateKey)) balance -= transactionDelta(t)
+        if (shouldReverseBalanceReconciliation(t, anchorDateKey) && isAfterDate(t.fecha, dateKey)) balance -= transactionDelta(t)
       }
       if (account.tipo === "inversion") investedCash += convertToEur(balance, account.currency)
       else cash += convertToEur(balance, account.currency)
