@@ -156,13 +156,14 @@ function isBalanceReconciliation(t: Transaction) {
   return t.id.startsWith("adj_") || isSyntheticOpeningBalanceResidual(t)
 }
 
-function shouldReverseBalanceReconciliation(t: Transaction, anchorDateKey: string) {
+function shouldReverseBalanceReconciliation(t: Transaction) {
   // El residual sintético representa una diferencia constante de saldo; nunca
   // se invierte como si hubiera entrado o salido dinero en una fecha concreta.
   if (isSyntheticOpeningBalanceResidual(t)) return false
-  // Un ajuste manual real se aplica al saldo actual, pero conserva el histórico
-  // anterior. En su propio día ya forma parte del saldo de cierre.
-  return !t.id.startsWith("adj_") || t.fecha.slice(0, 10) === anchorDateKey
+  // Un ajuste manual real modifica el saldo desde su fecha. Los cálculos ya
+  // filtran por si el movimiento es posterior al día consultado; debe revertirse
+  // también al consultar cierres mensuales anteriores, aunque no sea hoy.
+  return true
 }
 
 // Un traspaso entre cuentas propias se registra como gasto en la cuenta origen
@@ -267,13 +268,12 @@ function groupByAccount(transactions: Transaction[]): Map<string, Transaction[]>
 }
 
 function accountsWithDelta(accounts: Account[], txByAccount: Map<string, Transaction[]>, isFuture: (t: Transaction) => boolean) {
-  const todayKey = toDateKey(new Date())
   return accounts.map((account) => {
     const accountTxs = txByAccount.get(account.id)
     let balanceDelta = 0
     if (accountTxs) {
       for (const t of accountTxs) {
-        if (shouldReverseBalanceReconciliation(t, todayKey) && isFuture(t)) balanceDelta += transactionDelta(t)
+        if (shouldReverseBalanceReconciliation(t) && isFuture(t)) balanceDelta += transactionDelta(t)
       }
     }
     return { ...account, saldo: account.saldo - balanceDelta }
@@ -686,7 +686,6 @@ export function buildPreciseNetWorthHistory(
 ): PreciseNetWorthPoint[] {
   const txByAccount = groupByAccount(transactions)
   const points: PreciseNetWorthPoint[] = []
-  const anchorDateKey = toDateKey(endDate)
 
   for (let i = 0; i < days; i++) {
     const d = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() - (days - 1 - i))
@@ -699,7 +698,7 @@ export function buildPreciseNetWorthHistory(
       const accountTxs = txByAccount.get(account.id) ?? []
       let balance = account.saldo
       for (const t of accountTxs) {
-        if (shouldReverseBalanceReconciliation(t, anchorDateKey) && isAfterDate(t.fecha, dateKey)) balance -= transactionDelta(t)
+        if (shouldReverseBalanceReconciliation(t) && isAfterDate(t.fecha, dateKey)) balance -= transactionDelta(t)
       }
       if (account.tipo === "inversion") investedCash += convertToEur(balance, account.currency)
       else cash += convertToEur(balance, account.currency)

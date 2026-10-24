@@ -21,6 +21,7 @@ import {
   buildMonthlyPatrimonioControl,
   getPatrimonioMensualKpis,
   buildPreciseNetWorthHistory,
+  buildPreciseNetWorthHistoryMonthly,
   buildNetWorthHistoryDaily,
 } from "./calculations"
 import { getNetWorthChartDomain } from "./chart-scale"
@@ -150,11 +151,11 @@ describe("getAccountsAtMonth / getNetWorthAtMonth (reconstrucción de saldo)", (
     expect(atMay[0].saldo).toBe(140)
   })
 
-  it("una corrección de saldo a la baja no crea una variación histórica", () => {
+  it("reconstruye el saldo anterior a una corrección manual", () => {
     // Reproduce UPDATE_ACCOUNT: delta negativo guardado como tipo "ingreso".
     const accounts = [account({ saldo: 460 })]
     const txns = [tx({ id: "adj_1", tipo: "ingreso", monto: -40, fecha: "2026-06-10" })]
-    expect(getNetWorthAtMonth(accounts, txns, "2026-05")).toBe(460)
+    expect(getNetWorthAtMonth(accounts, txns, "2026-05")).toBe(500)
   })
 })
 
@@ -506,11 +507,19 @@ describe("buildPreciseNetWorthHistory", () => {
     expect(rows[1].patrimonio).toBe(1000)
   })
 
-  it("no convierte una corrección manual de saldo en un pico o caída histórica", () => {
-    const currentAccount = account({ saldo: 1000 })
+  it("conserva el saldo anterior a la corrección y la aplica desde su fecha", () => {
+    // El saldo actual ya incluye la corrección de -500 registrada el día 5.
+    const currentAccount = account({ saldo: 500 })
     const correction = tx({ id: "adj_balance", tipo: "ingreso", monto: -500, fecha: "2026-10-05" })
     const rows = buildPreciseNetWorthHistory([currentAccount], [correction], 3, new Date(2026, 9, 6))
-    expect(rows.map((row) => row.patrimonio)).toEqual([1000, 1000, 1000])
+    expect(rows.map((row) => row.patrimonio)).toEqual([1000, 500, 500])
+  })
+
+  it("revierte una corrección posterior al consultar un cierre mensual anterior", () => {
+    const currentAccount = account({ saldo: 500 })
+    const correction = tx({ id: "adj_balance", tipo: "ingreso", monto: -500, fecha: "2026-10-05" })
+    const rows = buildPreciseNetWorthHistoryMonthly([currentAccount], [correction], 1, "2026-09")
+    expect(rows[0].patrimonio).toBe(1000)
   })
 
   it("no trata el residual sintético init_ como una variación histórica", () => {

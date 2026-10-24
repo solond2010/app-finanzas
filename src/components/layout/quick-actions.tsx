@@ -292,33 +292,6 @@ function UnifiedMovementForm({
               <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: Traspaso a ahorro" className="h-12 text-base" />
             </div>
 
-            <div className="sm:col-span-2 rounded-2xl border border-border/80 bg-background/45 p-3.5">
-              <label className="flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={recurrente}
-                  onChange={(event) => setRecurrente(event.target.checked)}
-                  className="mt-0.5 size-4 accent-[var(--gold)]"
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2 text-sm font-semibold text-foreground"><Repeat2 className="size-4 text-primary" /> Repetir este movimiento</span>
-                  <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">Se añadirá a Agenda como previsión. No cambia el saldo hasta que confirmes que ya ocurrió.</span>
-                </span>
-              </label>
-              {recurrente && (
-                <div className="mt-3 flex items-center gap-3 pl-7">
-                  <label htmlFor="movement-frequency" className="text-xs font-medium text-muted-foreground">Frecuencia</label>
-                  <Select value={frecuencia} onValueChange={(value) => value && setFrecuencia(value as RecurringFrequency)}>
-                    <SelectTrigger id="movement-frequency" className="h-10 w-40 text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="semanal">Cada semana</SelectItem>
-                      <SelectItem value="mensual">Cada mes</SelectItem>
-                      <SelectItem value="anual">Cada año</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
           </div>
         </>
       ) : (
@@ -408,6 +381,34 @@ function UnifiedMovementForm({
                 Deseo
               </button>
             </div>
+          </div>
+
+          <div className="rounded-2xl border border-border/80 bg-background/45 p-3.5">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={recurrente}
+                onChange={(event) => setRecurrente(event.target.checked)}
+                className="mt-0.5 size-4 accent-[var(--gold)]"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-2 text-sm font-semibold text-foreground"><Repeat2 className="size-4 text-primary" /> Repetir este movimiento</span>
+                <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">Se añadirá a Agenda como previsión. No cambia el saldo hasta que confirmes que ya ocurrió.</span>
+              </span>
+            </label>
+            {recurrente && (
+              <div className="mt-3 flex items-center gap-3 pl-7">
+                <label htmlFor="movement-frequency" className="text-xs font-medium text-muted-foreground">Frecuencia</label>
+                <Select value={frecuencia} onValueChange={(value) => value && setFrecuencia(value as RecurringFrequency)}>
+                  <SelectTrigger id="movement-frequency" className="h-10 w-40 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="semanal">Cada semana</SelectItem>
+                    <SelectItem value="mensual">Cada mes</SelectItem>
+                    <SelectItem value="anual">Cada año</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </>
       )}
