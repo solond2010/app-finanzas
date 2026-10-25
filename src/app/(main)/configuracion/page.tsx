@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X, Cloud, CloudOff, Loader2, HardDrive, ShieldCheck, ShieldAlert } from "lucide-react"
 import { Skeleton } from "@/components/shared/skeleton"
 import { auditFinanceState } from "@/lib/finance-integrity"
+import Link from "next/link"
 
 export default function ConfiguracionPage() {
   const { state, loading, dispatch } = useFinance()
@@ -33,6 +34,13 @@ export default function ConfiguracionPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState("")
   const integrityFindings = useMemo(() => auditFinanceState(state, positions, contributions), [state, positions, contributions])
+  const integrityReviewLink = (code: string) => {
+    if (["duplicate-accounts", "orphan-funds", "invalid-balances", "balance-mismatch"].includes(code)) return { href: "/cuentas", label: "Revisar cuentas" }
+    if (["duplicate-transactions", "orphan-transactions", "invalid-amounts", "invalid-types", "invalid-dates"].includes(code)) return { href: "/transactions", label: "Revisar movimientos" }
+    if (["duplicate-categories", "duplicate-category-names", "orphan-budgets"].includes(code)) return { href: "#categorias", label: "Revisar categorías" }
+    if (["orphan-positions", "duplicate-positions", "invalid-positions", "orphan-contributions", "invalid-contributions"].includes(code)) return { href: "/inversiones", label: "Revisar inversiones" }
+    return null
+  }
 
   const addCategory = () => {
     const name = newCat.trim()
@@ -147,7 +155,7 @@ export default function ConfiguracionPage() {
       // items-start: sin él, la tarjeta "Exportar datos" se estira hasta igualar
       // la altura de "Categorías" (42 etiquetas) y queda con ~400px vacíos.
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-        <Card className="border border-border">
+        <Card id="categorias" className="border border-border scroll-mt-6">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <Layers className="h-4 w-4 text-amber-500" />
@@ -252,7 +260,14 @@ export default function ConfiguracionPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium">{!investmentsLoaded ? "Revisión de datos: comprobando…" : integrityFindings.length ? "Revisión de datos: requiere atención" : "Revisión de datos: sin incidencias detectadas"}</p>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">Se comprueban movimientos, saldos, referencias e inversiones. La revisión es de solo lectura: nunca corrige, elimina ni reescribe tus datos.</p>
-                  {investmentsLoaded && integrityFindings.length > 0 && <ul className="mt-2 space-y-2 text-xs text-amber-700 dark:text-amber-300">{integrityFindings.map((finding) => <li key={finding.code}><span className="font-medium">{finding.count} · {finding.label}</span>{finding.details?.length ? <ul className="mt-1 space-y-0.5 pl-3 text-amber-800/80 dark:text-amber-200/80">{finding.details.map((detail, index) => <li key={`${finding.code}-${index}`} className="break-words">{detail}</li>)}</ul> : null}</li>)}</ul>}
+                  {investmentsLoaded && integrityFindings.length > 0 && <ul className="mt-2 space-y-3 text-xs text-amber-700 dark:text-amber-300">{integrityFindings.map((finding) => {
+                    const reviewLink = integrityReviewLink(finding.code)
+                    return <li key={finding.code}>
+                      <span className="font-medium">{finding.count} · {finding.label}</span>
+                      {finding.details?.length ? <ul className="mt-1 space-y-0.5 pl-3 text-amber-800/80 dark:text-amber-200/80">{finding.details.map((detail, index) => <li key={`${finding.code}-${index}`} className="break-words">{detail}</li>)}</ul> : null}
+                      {reviewLink && <Link href={reviewLink.href} className="mt-1 inline-flex min-h-8 items-center rounded-lg px-2 font-semibold text-amber-800 underline decoration-amber-500/40 underline-offset-2 transition-colors hover:bg-amber-500/10 dark:text-amber-200">{reviewLink.label}</Link>}
+                    </li>
+                  })}</ul>}
                 </div>
               </div>
             </div>

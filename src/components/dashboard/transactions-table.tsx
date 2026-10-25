@@ -381,7 +381,9 @@ export function TransactionsTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [showAdjustments, setShowAdjustments] = useState(false)
-  const [mobileView, setMobileView] = useState<"list" | "calendar">("calendar")
+  // La lista es la vista inicial más útil para consultar movimientos; el
+  // calendario sigue disponible como alternativa explícita.
+  const [mobileView, setMobileView] = useState<"list" | "calendar">("list")
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => ({ month: "", day: localDateKey() }))
   const mobileMode = selectedMonth && !cuentaId ? mobileView : "list"
