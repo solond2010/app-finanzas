@@ -185,7 +185,9 @@ function UnifiedMovementForm({
       fecha,
       tipo,
       categoria,
-      es_necesidad: esNecesidad,
+      // Esta clasificación solo aplica a gastos; mantiene los ingresos siempre
+      // fuera de las métricas de necesidades y deseos aunque cambie el tipo.
+      es_necesidad: tipo === "gasto" ? esNecesidad : false,
       descripcion,
       tags: recurrente
         ? [recurringTag(frecuencia), ...(frecuencia === "mensual" ? [`recurrente-dia:${Number(fecha.slice(8, 10))}`] : [])]
@@ -354,35 +356,37 @@ function UnifiedMovementForm({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Clasificación</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setEsNecesidad(true)}
-                className={cn(
-                  "rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all active:scale-[0.98]",
-                  esNecesidad
-                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    : "border-border bg-card text-muted-foreground hover:bg-muted/60"
-                )}
-              >
-                Necesidad
-              </button>
-              <button
-                type="button"
-                onClick={() => setEsNecesidad(false)}
-                className={cn(
-                  "rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all active:scale-[0.98]",
-                  !esNecesidad
-                    ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                    : "border-border bg-card text-muted-foreground hover:bg-muted/60"
-                )}
-              >
-                Deseo
-              </button>
+          {tipo === "gasto" && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Clasificación</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEsNecesidad(true)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all active:scale-[0.98]",
+                    esNecesidad
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "border-border bg-card text-muted-foreground hover:bg-muted/60"
+                  )}
+                >
+                  Necesidad
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEsNecesidad(false)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all active:scale-[0.98]",
+                    !esNecesidad
+                      ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                      : "border-border bg-card text-muted-foreground hover:bg-muted/60"
+                  )}
+                >
+                  Deseo
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="rounded-2xl border border-border/80 bg-background/45 p-3.5">
             <label className="flex cursor-pointer items-start gap-3">
