@@ -57,7 +57,7 @@ function MilestoneTrail({ value }: { value: number }) {
                   {achieved ? <Check className="h-3 w-3" /> : String(index + 1).padStart(2, "0")}
                 </span>
                 <span className={cn(
-                  "max-w-full whitespace-normal break-words text-sm font-semibold tabular-nums",
+                  "max-w-full whitespace-nowrap text-[clamp(0.68rem,1.25vw,0.875rem)] font-semibold tabular-nums",
                   achieved && "text-emerald-500",
                   active && "text-[var(--gold)]",
                   !achieved && !active && "text-foreground"
@@ -130,7 +130,7 @@ export function PatrimonioHitos({ value }: { value: number }) {
               <div key={milestone} className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
                 <div className="min-w-0 flex-1 rounded-xl bg-muted/40 px-1.5 py-3 text-center ring-1 ring-border/30 sm:px-2">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{index === 0 ? "Ahora" : `Hito ${index + 1}`}</p>
-                  <p className="mt-1 break-words text-[clamp(0.65rem,2.8vw,0.875rem)] font-semibold tabular-nums text-foreground"><Sensitive>{EUR(milestone)}</Sensitive></p>
+                  <p className="mt-1 whitespace-nowrap text-[clamp(0.62rem,1vw,0.8rem)] font-semibold tabular-nums text-foreground"><Sensitive>{EUR(milestone)}</Sensitive></p>
                 </div>
                 {index < 2 && <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />}
               </div>

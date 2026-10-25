@@ -28,8 +28,8 @@ export function TickerTile({ label, value, detail, detailTone, secondaryDetail, 
           </span>
         )}
       </div>
-      {detail && <p className={`mt-0.5 truncate text-xs ${detailTone === "positive" ? "text-emerald-500" : detailTone === "negative" ? "text-red-500" : "text-muted-foreground"}`}>{detail}</p>}
-      {secondaryDetail && <p className="truncate text-[10px] text-muted-foreground">{secondaryDetail}</p>}
+      {detail && <p className={`mt-0.5 line-clamp-2 min-h-8 break-words text-xs leading-4 ${detailTone === "positive" ? "text-emerald-500" : detailTone === "negative" ? "text-red-500" : "text-muted-foreground"}`}>{detail}</p>}
+      {secondaryDetail && <p className="line-clamp-2 break-words text-[10px] leading-4 text-muted-foreground">{secondaryDetail}</p>}
     </>
   )
   if (onClick) {

@@ -36,7 +36,7 @@ const NeedsWantsTooltip = createChartTooltip(["Necesidades", "Deseos"], ["emeral
 // en demasiadas líneas o queden debajo de la primera barra.
 function categoryAxisWidth(labels: string[], maxWidth: number) {
   const longestLabel = labels.reduce((longest, label) => Math.max(longest, label.length), 0)
-  return Math.min(maxWidth, Math.max(112, Math.ceil(longestLabel * 6.5 + 24)))
+  return Math.min(maxWidth, Math.max(112, Math.ceil(longestLabel * 7.2 + 24)))
 }
 
 const CollapsibleBlock = memo(function CollapsibleBlock({
@@ -458,7 +458,7 @@ export default function AnalyticsPage() {
           <PatrimonioMensualSection dailyHistory={fullHistory} cashByMonth={cashByMonthKey} />
 
           <CollapsibleBlock title="Mes" hint="Categorías, presupuesto, pagos y calendario de gasto" defaultOpen>
-            <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-2">
               <Card className="stagger-fade min-w-0">
                 <CardHeader className="flex flex-col items-start gap-1 pb-2 sm:flex-row sm:items-start sm:justify-between">
                   <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold"><Layers3 className="h-4 w-4 shrink-0 text-violet-500" />Gastos por categoría</CardTitle>
@@ -566,7 +566,7 @@ export default function AnalyticsPage() {
           </CollapsibleBlock>
 
           <CollapsibleBlock title="Hábitos" hint="Necesidades vs deseos, regla 50/30/20 y objetivos">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <Card className="stagger-fade">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold"><Gauge className="h-4 w-4 text-amber-500" />Necesidades vs deseos</CardTitle>
