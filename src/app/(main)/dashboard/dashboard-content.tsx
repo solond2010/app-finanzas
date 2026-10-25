@@ -51,6 +51,7 @@ const RANGES = [
 type DashboardMetric = "gastos" | "ingresos" | "neto" | "inversion" | "cash" | "patrimonio"
 type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYear" | "custom"
 const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["cyan", "orange"])
+const MonthlyCashflowTooltip = createChartTooltip(["Ingresos", "Gastos", "Ahorro neto"], ["cyan", "orange", "emerald"])
 const MONTHS_SHORT = Array.from({ length: 12 }, (_, month) => new Date(2026, month, 1).toLocaleDateString("es-ES", { month: "short" }).replace(".", ""))
 
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
@@ -227,12 +228,12 @@ export default function DashboardContent() {
     return totals
   }, [periodTransactions, currencyByAccount])
   const periodCashflow = useMemo(() => {
-    const buckets: { key: string; label: string; Ingresos: number; Gastos: number }[] = []
+    const buckets: { key: string; label: string; Ingresos: number; Gastos: number; "Ahorro neto": number }[] = []
     if (cashflowGranularity === "month") {
       const cursor = new Date(periodBounds.start.getFullYear(), periodBounds.start.getMonth(), 1)
       const last = new Date(periodBounds.end.getFullYear(), periodBounds.end.getMonth(), 1)
       while (cursor <= last) {
-        buckets.push({ key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`, label: cursor.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), Ingresos: 0, Gastos: 0 })
+        buckets.push({ key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`, label: cursor.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), Ingresos: 0, Gastos: 0, "Ahorro neto": 0 })
         cursor.setMonth(cursor.getMonth() + 1)
       }
     } else {
@@ -243,7 +244,7 @@ export default function DashboardContent() {
         const finish = new Date(cursor)
         finish.setDate(finish.getDate() + 6)
         const label = `${cursor.getDate()}–${finish.getDate()} ${finish.toLocaleDateString("es-ES", { month: "short" })}`
-        buckets.push({ key, label, Ingresos: 0, Gastos: 0 })
+        buckets.push({ key, label, Ingresos: 0, Gastos: 0, "Ahorro neto": 0 })
         cursor.setDate(cursor.getDate() + 7)
       }
     }
@@ -259,6 +260,7 @@ export default function DashboardContent() {
       if (transaction.tipo === "ingreso") bucket.Ingresos += amount
       if (transaction.tipo === "gasto") bucket.Gastos += amount
     }
+    for (const bucket of buckets) bucket["Ahorro neto"] = bucket.Ingresos - bucket.Gastos
     return buckets
   }, [cashflowGranularity, periodBounds, periodTransactions, currencyByAccount])
   const periodIncomeTransactions = useMemo(() => periodTransactions.filter((transaction) => transaction.tipo === "ingreso"), [periodTransactions])
@@ -901,7 +903,7 @@ export default function DashboardContent() {
               </div>
             </div>
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? (
-              <BarChart data={periodCashflow} index="label" categories={["Ingresos", "Gastos"]} colors={["cyan", "orange"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos]))} barCategoryGap={periodCashflow.length <= 1 ? "46%" : periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} showLegend showGridLines customTooltip={CashflowTooltip} className="dashboard-cashflow-chart h-56 sm:h-72" showAnimation />
+              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["cyan", "orange", "emerald"] : ["cyan", "orange"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 1 ? "46%" : periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} showLegend showGridLines customTooltip={cashflowGranularity === "month" ? MonthlyCashflowTooltip : CashflowTooltip} className="dashboard-cashflow-chart h-56 sm:h-72" showAnimation />
             ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
           </section>
 
