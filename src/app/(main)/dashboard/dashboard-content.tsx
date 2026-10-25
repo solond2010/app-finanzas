@@ -75,6 +75,7 @@ function SingleBucketCashflowChart({ bucket, includeSavings }: {
     const ratio = index / 4
     return { y: ratio * 100, value: domainMax - domain * ratio }
   })
+  const axisWidth = moneyAxisWidth(ticks.map((tick) => tick.value), 48, 120)
 
   return (
     <div className="mt-3" role="img" aria-label={`${bucket.label}: ${series.map(({ key, label }) => `${label} ${formatMoney(bucket[key], "EUR")}`).join(", ")}`}>
@@ -85,7 +86,7 @@ function SingleBucketCashflowChart({ bucket, includeSavings }: {
           </span>
         ))}
       </div>
-      <div className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3">
+      <div className="grid gap-x-3" style={{ gridTemplateColumns: `${axisWidth}px minmax(0, 1fr)` }}>
         <div className="relative h-40 text-right text-[10px] tabular-nums text-muted-foreground sm:h-48 sm:text-xs" aria-hidden="true">
           {ticks.map((tick, index) => (
             <span key={index} className="absolute right-0 -translate-y-1/2 whitespace-nowrap" style={{ top: `${tick.y}%` }}>{chartFormatter(tick.value)}</span>
