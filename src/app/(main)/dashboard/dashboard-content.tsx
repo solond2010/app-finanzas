@@ -53,6 +53,83 @@ type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYe
 const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["cyan", "orange"])
 const MonthlyCashflowTooltip = createChartTooltip(["Ingresos", "Gastos", "Ahorro neto"], ["cyan", "orange", "emerald"])
 const MONTHS_SHORT = Array.from({ length: 12 }, (_, month) => new Date(2026, month, 1).toLocaleDateString("es-ES", { month: "short" }).replace(".", ""))
+const MONTHLY_CASHFLOW_SERIES = [
+  { key: "Ingresos", label: "Ingresos", color: "#06b6d4" },
+  { key: "Gastos", label: "Gastos", color: "#f97316" },
+  { key: "Ahorro neto", label: "Ahorro neto", color: "#10b981" },
+] as const
+
+function SingleBucketCashflowChart({ bucket, includeSavings }: {
+  bucket: { label: string; Ingresos: number; Gastos: number; "Ahorro neto": number }
+  includeSavings: boolean
+}) {
+  const series = MONTHLY_CASHFLOW_SERIES.slice(0, includeSavings ? 3 : 2)
+  const values = series.map(({ key }) => bucket[key])
+  const maxValue = Math.max(...values, 0)
+  const minValue = Math.min(...values, 0)
+  const domainMax = maxValue > 0 ? maxValue * 1.12 : 1
+  const domainMin = minValue < 0 ? minValue * 1.12 : 0
+  const domain = domainMax - domainMin || 1
+  const zeroY = (domainMax / domain) * 100
+  const ticks = Array.from({ length: 5 }, (_, index) => {
+    const ratio = index / 4
+    return { y: ratio * 100, value: domainMax - domain * ratio }
+  })
+
+  return (
+    <div className="mt-3" role="img" aria-label={`${bucket.label}: ${series.map(({ key, label }) => `${label} ${formatMoney(bucket[key], "EUR")}`).join(", ")}`}>
+      <div className="mb-3 flex flex-wrap justify-end gap-x-4 gap-y-1" aria-hidden="true">
+        {series.map(({ key, label, color }) => (
+          <span key={key} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="size-2 rounded-full" style={{ backgroundColor: color }} />{label}
+          </span>
+        ))}
+      </div>
+      <div className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3">
+        <div className="relative h-40 text-right text-[10px] tabular-nums text-muted-foreground sm:h-48 sm:text-xs" aria-hidden="true">
+          {ticks.map((tick, index) => (
+            <span key={index} className="absolute right-0 -translate-y-1/2 whitespace-nowrap" style={{ top: `${tick.y}%` }}>{chartFormatter(tick.value)}</span>
+          ))}
+        </div>
+        <div className="min-w-0">
+          <div className="relative h-40 sm:h-48">
+            {ticks.map((tick, index) => (
+              <span key={index} aria-hidden="true" className={cn("absolute inset-x-0 border-t", index === 4 ? "border-foreground/20" : "border-border/60")} style={{ top: `${tick.y}%` }} />
+            ))}
+            <span aria-hidden="true" className="absolute inset-x-0 border-t border-foreground/25" style={{ top: `${zeroY}%` }} />
+            <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${series.length}, minmax(0, 1fr))` }}>
+              {series.map(({ key, label, color }) => {
+                const value = bucket[key]
+                const height = Math.abs(value) / domain * 100
+                const top = value >= 0 ? zeroY - height : zeroY
+                return (
+                  <div key={key} className="relative min-w-0" title={`${bucket.label} · ${label}: ${formatMoney(value, "EUR")}`}>
+                    {value !== 0 && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute left-1/2 min-h-1 -translate-x-1/2 rounded-t-md shadow-sm transition-[height,top] duration-500"
+                        style={{ top: `${top}%`, height: `${height}%`, width: "clamp(1.75rem, 8vw, 3.25rem)", backgroundColor: color }}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+          <div className="mt-2 grid gap-2 text-center" style={{ gridTemplateColumns: `repeat(${series.length}, minmax(0, 1fr))` }}>
+            {series.map(({ key, label }) => (
+              <div key={key} className="min-w-0">
+                <p className="truncate text-[10px] font-medium text-muted-foreground sm:text-xs">{label}</p>
+                <p className="break-words text-[10px] font-semibold tabular-nums text-foreground sm:text-xs">{formatMoney(bucket[key], "EUR")}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <p className="mt-2 text-center text-xs text-muted-foreground">{bucket.label}</p>
+    </div>
+  )
+}
 
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
   const max = Math.max(...values.map((v) => Math.abs(v)), 1)
@@ -783,43 +860,6 @@ export default function DashboardContent() {
               <CalendarClock className="h-4 w-4 shrink-0 text-primary" /><span className="truncate">{periodBounds.label}</span>
             </button>
             <button onClick={() => { setMonthOffset((p) => Math.max(0, p - 1)); setDashboardPeriod("month") }} aria-label="Mes siguiente" disabled={monthOffset === 0} className="flex min-h-10 min-w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 active:scale-90"><ChevronRight className="h-4 w-4" /></button>
-            {showPeriodPicker && (
-              <div className="absolute right-0 top-full z-[60] mt-2 w-[min(25rem,calc(100vw-2rem))] rounded-2xl border border-border bg-popover p-3 shadow-xl sm:p-4">
-                <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Periodo del dashboard</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {([
-                    ["month", "Mes actual"], ["previous", "Mes anterior"], ["3m", "Últimos 3 meses"], ["6m", "Últimos 6 meses"], ["year", String(today.getFullYear())], ["previousYear", String(today.getFullYear() - 1)],
-                  ] as [DashboardPeriod, string][]).map(([period, label]) => (
-                    <button key={period} type="button" onClick={() => chooseDashboardPeriod(period)} aria-pressed={dashboardPeriod === period} className={cn("min-h-10 rounded-xl border px-3 text-left text-sm font-medium transition-colors", dashboardPeriod === period ? "border-primary/50 bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}>{label}</button>
-                  ))}
-                  <button type="button" onClick={() => { setDashboardPeriod("custom"); setCustomEndpoint("start"); setCustomYear(Number(customStartMonth.slice(0, 4))) }} aria-pressed={dashboardPeriod === "custom"} className={cn("col-span-2 min-h-10 rounded-xl border px-3 text-left text-sm font-medium transition-colors", dashboardPeriod === "custom" ? "border-primary/50 bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}>Personalizado</button>
-                </div>
-                {(dashboardPeriod === "custom") && (
-                  <div className="mt-3 border-t border-border pt-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      {([ ["start", "Desde", customStartMonth], ["end", "Hasta", customEndMonth] ] as const).map(([endpoint, label, month]) => {
-                        const [year, monthNumber] = month.split("-").map(Number)
-                        const monthLabel = new Date(year, monthNumber - 1, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" })
-                        return <button key={endpoint} type="button" onClick={() => { setCustomEndpoint(endpoint); setCustomYear(year) }} aria-pressed={customEndpoint === endpoint} className={cn("min-h-14 rounded-xl border px-3 py-2 text-left transition-colors", customEndpoint === endpoint ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}><span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</span><span className="block truncate text-sm font-semibold capitalize">{monthLabel}</span></button>
-                      })}
-                    </div>
-                    <div className="mt-3 flex items-center justify-between">
-                      <button type="button" onClick={() => setCustomYear((year) => year - 1)} aria-label="Año anterior" className="flex size-9 items-center justify-center rounded-xl border border-border hover:bg-muted"><ChevronLeft className="size-4" /></button>
-                      <span className="text-sm font-semibold tabular-nums">{customYear}</span>
-                      <button type="button" onClick={() => setCustomYear((year) => Math.min(today.getFullYear(), year + 1))} disabled={customYear >= today.getFullYear()} aria-label="Año siguiente" className="flex size-9 items-center justify-center rounded-xl border border-border hover:bg-muted disabled:opacity-35"><ChevronRight className="size-4" /></button>
-                    </div>
-                    <div className="mt-2 grid grid-cols-3 gap-2">
-                      {MONTHS_SHORT.map((label, index) => {
-                        const month = `${customYear}-${String(index + 1).padStart(2, "0")}`
-                        const selected = month === (customEndpoint === "start" ? customStartMonth : customEndMonth)
-                        const future = month > `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
-                        return <button key={month} type="button" disabled={future} onClick={() => chooseCustomMonth(customEndpoint, month)} aria-pressed={selected} className={cn("min-h-10 rounded-xl border text-sm font-medium capitalize transition-colors disabled:cursor-not-allowed disabled:opacity-35", selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background/50 text-foreground hover:bg-muted")}>{label}</button>
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
           {monthOffset > 0 && <Button type="button" variant="ghost" className="min-h-11 shrink-0 rounded-full px-3 text-xs font-semibold" onClick={() => chooseDashboardPeriod("month")}>Este mes</Button>}
           <Button onClick={() => openMovementDialog()} className="hidden gap-2 rounded-full px-4 shadow-sm sm:inline-flex">
@@ -832,6 +872,46 @@ export default function DashboardContent() {
           )}
         </div>
       </header>
+
+      {showPeriodPicker && (
+        <div className="flex justify-end">
+          <div className="w-full max-w-[25rem] rounded-2xl border border-border bg-popover p-3 shadow-xl sm:p-4">
+            <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Periodo del dashboard</p>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                ["month", "Mes actual"], ["previous", "Mes anterior"], ["3m", "Últimos 3 meses"], ["6m", "Últimos 6 meses"], ["year", String(today.getFullYear())], ["previousYear", String(today.getFullYear() - 1)],
+              ] as [DashboardPeriod, string][]).map(([period, label]) => (
+                <button key={period} type="button" onClick={() => chooseDashboardPeriod(period)} aria-pressed={dashboardPeriod === period} className={cn("min-h-10 rounded-xl border px-3 text-left text-sm font-medium transition-colors", dashboardPeriod === period ? "border-primary/50 bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}>{label}</button>
+              ))}
+              <button type="button" onClick={() => { setDashboardPeriod("custom"); setCustomEndpoint("start"); setCustomYear(Number(customStartMonth.slice(0, 4))) }} aria-pressed={dashboardPeriod === "custom"} className={cn("col-span-2 min-h-10 rounded-xl border px-3 text-left text-sm font-medium transition-colors", dashboardPeriod === "custom" ? "border-primary/50 bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}>Personalizado</button>
+            </div>
+            {dashboardPeriod === "custom" && (
+              <div className="mt-3 border-t border-border pt-3">
+                <div className="grid grid-cols-2 gap-2">
+                  {([ ["start", "Desde", customStartMonth], ["end", "Hasta", customEndMonth] ] as const).map(([endpoint, label, month]) => {
+                    const [year, monthNumber] = month.split("-").map(Number)
+                    const monthLabel = new Date(year, monthNumber - 1, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+                    return <button key={endpoint} type="button" onClick={() => { setCustomEndpoint(endpoint); setCustomYear(year) }} aria-pressed={customEndpoint === endpoint} className={cn("min-h-14 rounded-xl border px-3 py-2 text-left transition-colors", customEndpoint === endpoint ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}><span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</span><span className="block truncate text-sm font-semibold capitalize">{monthLabel}</span></button>
+                  })}
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <button type="button" onClick={() => setCustomYear((year) => year - 1)} aria-label="Año anterior" className="flex size-9 items-center justify-center rounded-xl border border-border hover:bg-muted"><ChevronLeft className="size-4" /></button>
+                  <span className="text-sm font-semibold tabular-nums">{customYear}</span>
+                  <button type="button" onClick={() => setCustomYear((year) => Math.min(today.getFullYear(), year + 1))} disabled={customYear >= today.getFullYear()} aria-label="Año siguiente" className="flex size-9 items-center justify-center rounded-xl border border-border hover:bg-muted disabled:opacity-35"><ChevronRight className="size-4" /></button>
+                </div>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {MONTHS_SHORT.map((label, index) => {
+                    const month = `${customYear}-${String(index + 1).padStart(2, "0")}`
+                    const selected = month === (customEndpoint === "start" ? customStartMonth : customEndMonth)
+                    const future = month > `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
+                    return <button key={month} type="button" disabled={future} onClick={() => chooseCustomMonth(customEndpoint, month)} aria-pressed={selected} className={cn("min-h-10 rounded-xl border text-sm font-medium capitalize transition-colors disabled:cursor-not-allowed disabled:opacity-35", selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background/50 text-foreground hover:bg-muted")}>{label}</button>
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {!loading && overduePayments.length > 0 && (
         <button
@@ -902,8 +982,10 @@ export default function DashboardContent() {
                 ))}
               </div>
             </div>
-            {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? (
-              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["cyan", "orange", "emerald"] : ["cyan", "orange"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 1 ? "46%" : periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={cashflowGranularity === "month" ? MonthlyCashflowTooltip : CashflowTooltip} className="dashboard-cashflow-chart h-56 sm:h-72" showAnimation />
+            {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? periodCashflow.length === 1 ? (
+              <SingleBucketCashflowChart bucket={periodCashflow[0]} includeSavings={cashflowGranularity === "month"} />
+            ) : (
+              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["cyan", "orange", "emerald"] : ["cyan", "orange"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={cashflowGranularity === "month" ? MonthlyCashflowTooltip : CashflowTooltip} className="dashboard-cashflow-chart h-56 sm:h-72" showAnimation />
             ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
           </section>
 
@@ -1153,12 +1235,17 @@ export default function DashboardContent() {
                 </button>
               </div>
               {!showAnnual && (
-                <p className="text-sm text-muted-foreground">
-                  Neto anual:{" "}
-                  <Sensitive as="span" className={cn("font-semibold tabular-nums", annualNeto >= 0 ? "text-emerald-500" : "text-red-500")}>
-                    {formatMoney(annualNeto, "EUR")}
-                  </Sensitive>
-                </p>
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <p className="min-w-0 text-sm text-muted-foreground">
+                    Neto anual:{" "}
+                    <Sensitive as="span" className={cn("font-semibold tabular-nums", annualNeto >= 0 ? "text-emerald-500" : "text-red-500")}>
+                      {formatMoney(annualNeto, "EUR")}
+                    </Sensitive>
+                  </p>
+                  <div className="w-24 shrink-0" role="img" aria-label={`Tendencia mensual del ahorro neto de ${year}`}>
+                    <MiniBars values={monthlyYear.map((month) => month.neto)} color="var(--accent-blue)" signed />
+                  </div>
+                </div>
               )}
               {showAnnual && (
                 <div className="grid grid-cols-1 gap-3">
@@ -1184,7 +1271,7 @@ export default function DashboardContent() {
               ) : (
                 <div className="divide-y divide-border/70">
                   {recentTransactions.map((t) => (
-                    <div key={t.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                    <div key={t.id} className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
                       <div className="flex min-w-0 items-center gap-3">
                         <span
                           className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold", t.tipo === "ingreso" ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500")}
@@ -1192,8 +1279,8 @@ export default function DashboardContent() {
                           {accountName(t.cuenta_id).slice(0, 2).toUpperCase()}
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">{t.descripcion || t.categoria}</p>
-                          <p className="truncate text-xs text-muted-foreground">{accountName(t.cuenta_id)}</p>
+                          <p title={t.descripcion || t.categoria} className="line-clamp-2 break-words text-sm font-medium text-foreground">{t.descripcion || t.categoria}</p>
+                          <p title={accountName(t.cuenta_id)} className="mt-0.5 line-clamp-2 break-words text-xs text-muted-foreground">{accountName(t.cuenta_id)}</p>
                         </div>
                       </div>
                       <span className={cn("shrink-0 text-sm font-semibold tabular-nums", (t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "text-emerald-500" : "text-red-500")}>

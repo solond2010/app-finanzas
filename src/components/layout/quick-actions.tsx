@@ -38,6 +38,7 @@ export type MovementPrefill = {
   destinoId?: string
   monto?: number
   descripcion?: string
+  recurrente?: boolean
 }
 
 export const OPEN_MOVEMENT_EVENT = "finanzas:open-movement"
@@ -125,7 +126,7 @@ function UnifiedMovementForm({
   const [categoria, setCategoria] = useState("")
   const [esNecesidad, setEsNecesidad] = useState(initialTipo !== "ingreso")
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "")
-  const [recurrente, setRecurrente] = useState(false)
+  const [recurrente, setRecurrente] = useState(Boolean(initial?.recurrente))
   const [frecuencia, setFrecuencia] = useState<RecurringFrequency>("mensual")
   const [origenId, setOrigenId] = useState(initial?.origenId || accounts[0]?.id || "")
   const [montoDestino, setMontoDestino] = useState("")
@@ -495,14 +496,14 @@ export function QuickActionsFAB() {
   return (
     <>
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setPrefill(undefined) }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="z-[70] sm:max-w-md max-sm:bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] max-sm:max-h-[calc(100dvh-var(--bottom-nav-h)-env(safe-area-inset-top)-env(safe-area-inset-bottom))]">
           <DialogHeader>
             <DialogTitle className="text-lg">Nuevo movimiento</DialogTitle>
             <DialogDescription>Añade un gasto, ingreso o traspaso.</DialogDescription>
           </DialogHeader>
           {dialogOpen && (
             <UnifiedMovementForm
-              key={prefill ? `prefill-${prefill.tipo}-${prefill.origenId}-${prefill.destinoId}-${prefill.monto}` : "blank"}
+              key={prefill ? `prefill-${prefill.tipo}-${prefill.origenId}-${prefill.destinoId}-${prefill.monto}-${prefill.recurrente ? "recurrente" : ""}` : "blank"}
               accounts={state.accounts}
               categories={state.categories}
               transactions={state.transactions}

@@ -422,7 +422,7 @@ export default function AnalyticsPage() {
         </div>
       ) : (
         <>
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <section className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
             <MetricCard
               label="Patrimonio"
               value={<AnimatedNumber value={Math.round(currentNetWorth)} />}
@@ -441,14 +441,16 @@ export default function AnalyticsPage() {
               tone={monthTotals.neto >= 0 ? "blue" : "amber"}
               delay={70}
             />
-            <MetricCard
-              label="Cash flow medio"
-              value={<Sensitive>{signedMoney(averageMonthlyNet)}</Sensitive>}
-              subtitle={activeCashFlow.length > 0 ? `Media ${TREND_MONTHS} meses · ${positiveMonths}/${activeCashFlow.length} positivos` : "Sin histórico todavía"}
-              icon={PiggyBank}
-              tone={averageMonthlyNet >= 0 ? "emerald" : "red"}
-              delay={140}
-            />
+            <div className="col-span-2 min-w-0 sm:col-span-1">
+              <MetricCard
+                label="Cash flow medio"
+                value={<Sensitive>{signedMoney(averageMonthlyNet)}</Sensitive>}
+                subtitle={activeCashFlow.length > 0 ? `Media ${TREND_MONTHS} meses · ${positiveMonths}/${activeCashFlow.length} positivos` : "Sin histórico todavía"}
+                icon={PiggyBank}
+                tone={averageMonthlyNet >= 0 ? "emerald" : "red"}
+                delay={140}
+              />
+            </div>
           </section>
 
           <PatrimonioHitos value={currentNetWorth} />

@@ -50,7 +50,7 @@ export const MetricCard = memo(function MetricCard({
       </div>
       <p className="mt-4 truncate text-[clamp(1.15rem,6vw,1.625rem)] font-bold leading-none tracking-tight tabular-nums text-foreground sm:text-[26px]">{value}</p>
       <p className="mt-2 truncate text-sm font-medium text-foreground/80">{label}</p>
-      <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>
+      <p className="mt-0.5 line-clamp-2 min-h-8 text-xs leading-4 text-muted-foreground">{subtitle}</p>
     </div>
   )
 })

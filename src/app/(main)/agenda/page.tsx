@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Sensitive } from "@/components/shared/sensitive"
 import { useToast } from "@/components/ui/toast"
+import { openMovementDialog } from "@/components/layout/quick-actions"
 
 const CARD = "rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"
 
@@ -141,8 +142,11 @@ export default function AgendaPage() {
           <div className="space-y-2">{upcoming.map((item) => recurringCard(item))}</div>
         ) : overdue.length === 0 ? (
           <div className={CARD}>
-            <EmptyState icon={Repeat2} title="No hay movimientos programados" description="Marca un movimiento como recurrente al crearlo o editarlo y aparecerá aquí." />
-            <div className="mt-4 flex justify-center"><Link href="/transactions" className="inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted">Ir a movimientos</Link></div>
+            <EmptyState icon={Repeat2} title="No hay movimientos programados" description="Crea un gasto o ingreso y activa la repetición. La agenda te avisará antes de cada vencimiento." />
+            <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
+              <Button type="button" className="min-h-10 rounded-xl" onClick={() => openMovementDialog({ recurrente: true })}>Crear movimiento recurrente</Button>
+              <Link href="/transactions" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted">Ver movimientos</Link>
+            </div>
           </div>
         ) : <div className={`${CARD} text-sm text-muted-foreground`}>No hay nuevos vencimientos en los próximos 30 días.</div>}
       </section>
