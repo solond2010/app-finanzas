@@ -15,7 +15,7 @@ import { TickerTile } from "@/components/shared/ticker-tile"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getSavingsRate, getUpcomingRecurring, getCurrencyByAccount, reportingAmount, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow } from "@/lib/calculations"
+import { filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getSavingsRate, getUpcomingRecurring, getCurrencyByAccount, reportingAmount, buildNetWorthHistoryToday, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow } from "@/lib/calculations"
 import { convertToEur, formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { usePrivacy } from "@/lib/privacy"
@@ -368,7 +368,12 @@ export default function DashboardContent() {
   const annualGastos = monthlyYear.reduce((s, m) => s + m.gastos, 0)
   const annualNeto = annualIngresos - annualGastos
 
-  const netWorthTrend = useMemo(() => {
+  const netWorthTrend = useMemo<Array<{
+    mes: string
+    patrimonio: number
+    date: string
+    breakdown?: { cash: number; investedCash: number; portfolioValue: number }
+  }>>(() => {
     // Rango "Todo": historial completo diario desde la primera transacción
     if (activeRange.unit === "all") {
       const firstTxDate = state.transactions.length > 0 
@@ -388,7 +393,15 @@ export default function DashboardContent() {
         breakdown: p.breakdown
       }))
     }
-    // Rangos diarios (hoy, 7D, 30D): usar cálculo preciso diario
+    // Hoy: reconstruir el día en puntos intradía para mostrar ingresos, gastos
+    // y conciliaciones de saldo recientes. Los ajustes no entran en ingresos /
+    // gastos del informe, pero sí cambian el patrimonio desde su hora.
+    if (activeRange.unit === "today" && monthOffset === 0) {
+      const intraday = buildNetWorthHistoryToday(state.accounts, state.transactions, today)
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+      return intraday.map((p) => ({ mes: p.mes, patrimonio: p.patrimonio, date: p.date ?? todayKey }))
+    }
+    // Rangos diarios (Hoy histórico, 7D, 30D): usar cálculo preciso diario
     if (activeRange.unit === "today" || activeRange.unit === "days") {
       const count = activeRange.unit === "today" ? 1 : activeRange.count
       const dailyEndDate = monthOffset === 0 ? today : new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0)

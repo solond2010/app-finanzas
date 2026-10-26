@@ -22,6 +22,7 @@ import {
   getPatrimonioMensualKpis,
   buildPreciseNetWorthHistory,
   buildPreciseNetWorthHistoryMonthly,
+  buildNetWorthHistoryToday,
   buildNetWorthHistoryDaily,
 } from "./calculations"
 import { getNetWorthChartDomain } from "./chart-scale"
@@ -599,6 +600,23 @@ describe("buildNetWorthHistoryDaily", () => {
     ]
     const rows = buildNetWorthHistoryDaily([currentAccount], transactions, 1, new Date(2026, 9, 6))
     expect(rows.map((row) => row.patrimonio)).toEqual([90])
+  })
+})
+
+describe("buildNetWorthHistoryToday", () => {
+  it("muestra movimientos y ajustes intradía sin contar los ajustes como cashflow", () => {
+    const currentAccount = account({ saldo: 910 })
+    const transactions = [
+      tx({ id: "expense", tipo: "gasto", monto: 100, fecha: "2026-10-26", created_at: "2026-10-26T09:00:00.000Z" }),
+      tx({ id: "income", tipo: "ingreso", monto: 25, fecha: "2026-10-26", created_at: "2026-10-26T10:00:00.000Z" }),
+      tx({ id: "adj_balance", tipo: "ingreso", monto: -15, fecha: "2026-10-26", categoria: "Ajuste de saldo", created_at: "2026-10-26T11:00:00.000Z" }),
+    ]
+
+    const rows = buildNetWorthHistoryToday([currentAccount], transactions, new Date(2026, 9, 26))
+
+    expect(rows.map((row) => row.patrimonio)).toEqual([1000, 900, 925, 910])
+    expect(countsTowardCashFlow(transactions[2], transactions)).toBe(false)
+    expect(getMonthTotalsByString(transactions, "2026-10")).toEqual({ ingresos: 25, gastos: 100, neto: -75 })
   })
 })
 

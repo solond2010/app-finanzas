@@ -77,6 +77,14 @@ describe("reducer / UPDATE_ACCOUNT", () => {
     expect(adj).toMatchObject({ monto: 50, categoria: "Ajuste de saldo" })
   })
 
+  it("registra una corrección a la baja como ajuste y deja el saldo exacto", () => {
+    const state: FinanceState = { ...emptyState, accounts: [{ ...baseAccount, saldo: 100 }] }
+    const next = reducer(state, { type: "UPDATE_ACCOUNT", payload: { ...baseAccount, saldo: 80 } })
+    const adj = next.transactions.find((t) => t.id.startsWith("adj_"))
+    expect(next.accounts[0].saldo).toBe(80)
+    expect(adj).toMatchObject({ monto: -20, tipo: "ingreso", categoria: "Ajuste de saldo" })
+  })
+
   it("no genera transacción de ajuste si el saldo no cambia", () => {
     const state: FinanceState = { ...emptyState, accounts: [{ ...baseAccount, saldo: 100 }] }
     const next = reducer(state, { type: "UPDATE_ACCOUNT", payload: { ...baseAccount, saldo: 100, nombre: "Renombrada" } })

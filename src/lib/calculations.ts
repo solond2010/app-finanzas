@@ -389,7 +389,11 @@ export function buildNetWorthHistoryToday(accounts: Account[], transactions: Tra
   const todayKey = toDateKey(today)
   const yesterdayKey = toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1))
   const todaysTransactions = transactions
-    .filter((t) => t.fecha.slice(0, 10) === todayKey && !isBalanceReconciliation(t))
+    // Un ajuste manual no es un ingreso/gasto contable, pero sí cambia el
+    // patrimonio desde que se guardó. Mostrarlo como punto del gráfico diario
+    // permite ver la conciliación sin contaminar los totales de cashflow.
+    // Se omiten solo los residuos sintéticos que normalizan estados antiguos.
+    .filter((t) => t.fecha.slice(0, 10) === todayKey && !isSyntheticOpeningBalanceResidual(t))
     .slice()
     .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""))
 
