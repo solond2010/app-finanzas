@@ -78,7 +78,7 @@ function SingleBucketCashflowChart({ bucket, includeSavings }: {
   const axisWidth = moneyAxisWidth(ticks.map((tick) => tick.value), 48, 120)
 
   return (
-    <div className="mx-auto mt-3 w-full max-w-3xl" role="img" aria-label={`${bucket.label}: ${series.map(({ key, label }) => `${label} ${formatMoney(bucket[key], "EUR")}`).join(", ")}`}>
+    <div className="mt-3 w-full" role="img" aria-label={`${bucket.label}: ${series.map(({ key, label }) => `${label} ${formatMoney(bucket[key], "EUR")}`).join(", ")}`}>
       <div className="mb-3 flex flex-wrap justify-end gap-x-4 gap-y-1" aria-hidden="true">
         {series.map(({ key, label, color }) => (
           <span key={key} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -109,7 +109,7 @@ function SingleBucketCashflowChart({ bucket, includeSavings }: {
                       <span
                         aria-hidden="true"
                         className="absolute left-1/2 min-h-1 -translate-x-1/2 rounded-t-md shadow-sm transition-[height,top] duration-500"
-                        style={{ top: `${top}%`, height: `${height}%`, width: "clamp(1.75rem, 7vw, 3rem)", backgroundColor: color }}
+                        style={{ top: `${top}%`, height: `${height}%`, width: "clamp(2rem, 3vw, 3.5rem)", backgroundColor: color }}
                       />
                     )}
                   </div>
