@@ -1264,7 +1264,7 @@ export default function DashboardContent() {
                     </Sensitive>
                   </p>
                   <div className="w-24 shrink-0" role="img" aria-label={`Tendencia mensual del ahorro neto de ${year}`}>
-                    <MiniBars values={monthlyYear.map((month) => month.neto)} color="var(--accent-blue)" signed />
+                    <MiniBars values={monthlyYear.map((month) => month.neto)} color={annualNeto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} signed />
                   </div>
                 </div>
               )}
@@ -1277,7 +1277,7 @@ export default function DashboardContent() {
                     <MiniBars values={monthlyYear.map((m) => m.gastos)} color="var(--accent-red)" />
                   </AnnualStat>
                   <AnnualStat label="Ahorro neto anual" year={year} value={annualNeto} accent={annualNeto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} icon={PiggyBank}>
-                    <MiniBars values={monthlyYear.map((m) => m.neto)} color="var(--accent-blue)" signed />
+                    <MiniBars values={monthlyYear.map((m) => m.neto)} color={annualNeto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} signed />
                   </AnnualStat>
                 </div>
               )}
