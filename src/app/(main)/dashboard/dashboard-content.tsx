@@ -133,21 +133,28 @@ function SingleBucketCashflowChart({ bucket, includeSavings }: {
 }
 
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
-  const max = Math.max(...values.map((v) => Math.abs(v)), 1)
+  const min = Math.min(...values, 0)
+  const rawMax = Math.max(...values, 0)
+  const max = rawMax === min ? min + 1 : rawMax
+  const domain = max - min || 1
+  const points = values.map((value, index) => ({
+    x: values.length < 2 ? 60 : (index / (values.length - 1)) * 120,
+    y: 4 + ((max - value) / domain) * 32,
+    value,
+  }))
+  const line = points.map(({ x, y }, index) => `${index === 0 ? "M" : "L"}${x},${y}`).join(" ")
+  const baseline = 4 + (max / domain) * 32
+  const lastPoint = points[points.length - 1]
+  const lastValue = values[values.length - 1] ?? 0
+  const area = lastPoint ? `${line} L${lastPoint.x},${baseline} L${points[0].x},${baseline} Z` : ""
+
   return (
-    <div className="flex h-14 items-end gap-1 border-b border-border/70 pb-px">
-      {values.map((v, i) => (
-        <div
-          key={i}
-          className="flex-1 rounded-t-[3px] transition-all duration-500"
-          style={{
-            height: `${Math.max((Math.abs(v) / max) * 100, 8)}%`,
-            backgroundColor: signed ? (v < 0 ? "var(--accent-red)" : "var(--accent-green)") : color,
-            opacity: v === 0 ? 0.16 : 1,
-          }}
-        />
-      ))}
-    </div>
+    <svg className="h-12 w-full overflow-visible" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true">
+      <path d={`M0,${baseline} H120`} fill="none" stroke="var(--border)" strokeWidth="1" />
+      {area && <path d={area} fill={signed && lastValue < 0 ? "var(--accent-red)" : color} opacity="0.12" />}
+      {line && <path d={line} fill="none" stroke={signed && lastValue < 0 ? "var(--accent-red)" : color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+      {lastPoint && <circle cx={lastPoint.x} cy={lastPoint.y} r="2.5" fill={signed && lastValue < 0 ? "var(--accent-red)" : color} />}
+    </svg>
   )
 }
 
@@ -196,7 +203,7 @@ export default function DashboardContent() {
   const [rangeId, setRangeId] = useState<string>("6M")
   const activeRange = RANGES.find((r) => r.id === rangeId) ?? RANGES[3]
   const [showNewAccount, setShowNewAccount] = useState(false)
-  const [showAnnual, setShowAnnual] = useState(false)
+  const [showAnnual, setShowAnnual] = useState(true)
   const [showSpendBreakdown, setShowSpendBreakdown] = useState(false)
   const [metricDetail, setMetricDetail] = useState<DashboardMetric | null>(null)
   const [storedNetWorthPeak, setStoredNetWorthPeak] = useState<StoredNetWorthPeak | null>(() => {
@@ -1228,7 +1235,7 @@ export default function DashboardContent() {
 
           {/* Resumen, movimientos y metas comparten la última fila del panel. */}
           <section className="stagger-fade grid grid-cols-1 items-start gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-4" style={{ animationDelay: "240ms" }}>
-            <div className={`${CARD} space-y-4`}>
+            <div className={cn(CARD, "space-y-4", showAnnual && "md:col-span-2 xl:col-span-4")}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
                   type="button"
@@ -1262,7 +1269,7 @@ export default function DashboardContent() {
                 </div>
               )}
               {showAnnual && (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="var(--accent-green)" icon={ArrowUpRight}>
                     <MiniBars values={monthlyYear.map((m) => m.ingresos)} color="var(--accent-green)" />
                   </AnnualStat>
@@ -1275,7 +1282,7 @@ export default function DashboardContent() {
                 </div>
               )}
             </div>
-            <div className={`${CARD} min-w-0`}>
+            <div className={cn(CARD, "min-w-0", showAnnual && "md:col-span-2 xl:col-span-2")}>
               <div className="mb-4 flex items-center justify-between">
                 <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Receipt className="h-4 w-4 text-primary" /> Últimos movimientos</p>
                 <button onClick={() => router.push("/transactions")} className="text-xs font-medium text-primary transition-colors hover:opacity-70">Ver todos</button>
