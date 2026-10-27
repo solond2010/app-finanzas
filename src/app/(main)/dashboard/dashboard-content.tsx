@@ -30,10 +30,10 @@ import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
 
-const CARD = "rounded-[14px] border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
+const CARD = "rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
 // para las dos cifras más importantes de la página (patrimonio y puntuación).
-const CARD_HERO = "rounded-[14px] hero-panel p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
+const CARD_HERO = "rounded-2xl hero-panel p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // "Hoy" usa un punto por transacción (orden real de alta vía created_at) en
 // vez de por día, para cuentas tan nuevas que varios movimientos del mismo
 // día esconderían un pico intermedio con resolución diaria. 7D/30D siguen a
@@ -78,7 +78,7 @@ function SingleBucketCashflowChart({ bucket, includeSavings }: {
   const axisWidth = moneyAxisWidth(ticks.map((tick) => tick.value), 48, 120)
 
   return (
-    <div className="mt-3" role="img" aria-label={`${bucket.label}: ${series.map(({ key, label }) => `${label} ${formatMoney(bucket[key], "EUR")}`).join(", ")}`}>
+    <div className="mx-auto mt-3 w-full max-w-3xl" role="img" aria-label={`${bucket.label}: ${series.map(({ key, label }) => `${label} ${formatMoney(bucket[key], "EUR")}`).join(", ")}`}>
       <div className="mb-3 flex flex-wrap justify-end gap-x-4 gap-y-1" aria-hidden="true">
         {series.map(({ key, label, color }) => (
           <span key={key} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -87,13 +87,13 @@ function SingleBucketCashflowChart({ bucket, includeSavings }: {
         ))}
       </div>
       <div className="grid gap-x-3" style={{ gridTemplateColumns: `${axisWidth}px minmax(0, 1fr)` }}>
-        <div className="relative h-40 text-right text-[10px] tabular-nums text-muted-foreground sm:h-48 sm:text-xs" aria-hidden="true">
+        <div className="relative h-32 text-right text-[10px] tabular-nums text-muted-foreground sm:h-40 sm:text-xs" aria-hidden="true">
           {ticks.map((tick, index) => (
             <span key={index} className="absolute right-0 -translate-y-1/2 whitespace-nowrap" style={{ top: `${tick.y}%` }}>{chartFormatter(tick.value)}</span>
           ))}
         </div>
         <div className="min-w-0">
-          <div className="relative h-40 sm:h-48">
+          <div className="relative h-32 sm:h-40">
             {ticks.map((tick, index) => (
               <span key={index} aria-hidden="true" className={cn("absolute inset-x-0 border-t", index === 4 ? "border-foreground/20" : "border-border/60")} style={{ top: `${tick.y}%` }} />
             ))}
@@ -109,7 +109,7 @@ function SingleBucketCashflowChart({ bucket, includeSavings }: {
                       <span
                         aria-hidden="true"
                         className="absolute left-1/2 min-h-1 -translate-x-1/2 rounded-t-md shadow-sm transition-[height,top] duration-500"
-                        style={{ top: `${top}%`, height: `${height}%`, width: "clamp(1.75rem, 8vw, 3.25rem)", backgroundColor: color }}
+                        style={{ top: `${top}%`, height: `${height}%`, width: "clamp(1.75rem, 7vw, 3rem)", backgroundColor: color }}
                       />
                     )}
                   </div>
@@ -973,7 +973,7 @@ export default function DashboardContent() {
           <Button onClick={() => setShowNewAccount(true)} className="mt-6 rounded-full px-6">Crear cuenta</Button>
         </div>
       ) : (
-        <div className="space-y-5 sm:space-y-5 lg:space-y-5">
+        <div className="space-y-4 sm:space-y-5">
           {/* Seis cifras clave: flujo según el periodo elegido y saldos a su mes final. */}
           <section className="stagger-fade grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6" aria-label={`Resumen financiero: ${periodBounds.label}`}>
             <TickerTile label="Gastos" value={<Sensitive>{formatMoney(periodTotals.gastos, "EUR")}</Sensitive>} detail={`${expenseTransactions.length} ${expenseTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-red)" onClick={() => setMetricDetail("gastos")} />
@@ -1227,7 +1227,7 @@ export default function DashboardContent() {
           </section>
 
           {/* Resumen, movimientos y metas comparten la última fila del panel. */}
-          <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:items-start" style={{ animationDelay: "240ms" }}>
+          <section className="stagger-fade grid grid-cols-1 items-start gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-4" style={{ animationDelay: "240ms" }}>
             <div className={`${CARD} space-y-4`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
