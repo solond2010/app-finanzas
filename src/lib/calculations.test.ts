@@ -24,6 +24,7 @@ import {
   buildPreciseNetWorthHistoryMonthly,
   buildNetWorthHistoryToday,
   buildNetWorthHistoryDaily,
+  hasSyntheticOpeningBalanceResidual,
 } from "./calculations"
 import { getNetWorthChartDomain } from "./chart-scale"
 
@@ -496,6 +497,13 @@ describe("suggestEmergencyTransfer", () => {
 })
 
 describe("buildPreciseNetWorthHistory", () => {
+  it("identifica residuales de apertura como línea base histórica no verificable", () => {
+    expect(hasSyntheticOpeningBalanceResidual([tx({ id: "adj_init_acc_1" })])).toBe(true)
+    expect(hasSyntheticOpeningBalanceResidual([tx({ id: "init_acc_1", tipo: "gasto", categoria: "Saldo inicial" })])).toBe(true)
+    expect(hasSyntheticOpeningBalanceResidual([tx({ id: "init_acc_1", tipo: "ingreso", categoria: "Saldo inicial" })])).toBe(false)
+    expect(hasSyntheticOpeningBalanceResidual([tx({ id: "adj_real", categoria: "Ajuste de saldo" })])).toBe(false)
+  })
+
   it("reconstruye el saldo manual y refleja una bajada entre ayer y hoy", () => {
     const investmentAccount = account({ id: "inv_1", tipo: "inversion", saldo: 1000 })
     const transactions = [

@@ -15,7 +15,7 @@ import { TickerTile } from "@/components/shared/ticker-tile"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getSavingsRate, getUpcomingRecurring, getCurrencyByAccount, reportingAmount, buildNetWorthHistoryToday, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow } from "@/lib/calculations"
+import { filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getSavingsRate, getUpcomingRecurring, getCurrencyByAccount, reportingAmount, buildNetWorthHistoryToday, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow, hasSyntheticOpeningBalanceResidual, isSyntheticOpeningBalanceResidual } from "@/lib/calculations"
 import { convertToEur, formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { usePrivacy } from "@/lib/privacy"
@@ -352,7 +352,8 @@ export default function DashboardContent() {
   const periodExpenseTransactions = useMemo(() => periodTransactions.filter((transaction) => transaction.tipo === "gasto"), [periodTransactions])
   const periodSavingsRate = getSavingsRate(periodTotals.ingresos, periodTotals.neto)
   const displayAccounts = useMemo(() => getAccountsAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
-  const netWorth = useMemo(() => getNetWorthAtMonth(state.accounts, state.transactions, selectedMonth), [state.accounts, state.transactions, selectedMonth])
+  // El total y el desglose usan la misma reconstrucción para que no diverjan.
+  const netWorth = useMemo(() => displayAccounts.reduce((sum, account) => sum + convertToEur(account.saldo, account.currency), 0), [displayAccounts])
   const investmentAccounts = useMemo(() => displayAccounts.filter((a) => a.tipo === "inversion"), [displayAccounts])
   const investmentDisplayTotal = useMemo(() => investmentAccounts.reduce((sum, account) => sum + convertToEur(account.saldo, account.currency), 0), [investmentAccounts])
   // Disponible para gasto diario: solo efectivo y cuentas de gasto. Ahorro,
@@ -551,7 +552,11 @@ export default function DashboardContent() {
   // Una reconstrucción histórica sin saldo de apertura completo puede dar un
   // patrimonio inicial negativo. No presentar entonces la diferencia como
   // una subida real del periodo (p. ej. 5.471 € desde -84 €).
-  const hasUsableRangeBaseline = netWorthTrend.length > 1 && Number.isFinite(rangeStart) && rangeStart > 0.005
+  const openingHistoryIsEstimated = useMemo(() => {
+    const accountIds = new Set(state.accounts.map((account) => account.id))
+    return hasSyntheticOpeningBalanceResidual(state.transactions.filter((transaction) => accountIds.has(transaction.cuenta_id)))
+  }, [state.accounts, state.transactions])
+  const hasUsableRangeBaseline = netWorthTrend.length > 1 && Number.isFinite(rangeStart) && rangeStart > 0.005 && !openingHistoryIsEstimated
   // El % solo se muestra si la base es significativa Y el resultado es un dato
   // legible: contra una base pequeña sale un ">500%" que parece un error, y en
   // ese caso la cifra absoluta ya cuenta la historia completa.
@@ -622,6 +627,30 @@ export default function DashboardContent() {
   const vsPeakDelta = rangeMaxPoint ? netWorthDisplay - rangeMaxPoint.patrimonio : 0
   const showVsPeakDelta = !!rangeMaxPoint && vsPeakDelta < -0.005
   const vsPeakPct = rangeMaxPoint && Math.abs(rangeMaxPoint.patrimonio) >= 100 ? (vsPeakDelta / Math.abs(rangeMaxPoint.patrimonio)) * 100 : 0
+
+  const balanceAdjustmentsInRange = useMemo(() => {
+    if (netWorthTrend.length === 0) return { count: 0, net: 0 }
+    const key = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+    const monthly = activeRange.unit === "months"
+    const startDate = monthly
+      ? new Date(selectedDate.getFullYear(), selectedDate.getMonth() - activeRange.count + 1, 1)
+      : parseLocalDate(netWorthTrend[0].date)
+    const endDate = monthOffset === 0
+      ? today
+      : new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0)
+    const startKey = key(startDate)
+    const endKey = key(endDate)
+    const currencies = getCurrencyByAccount(state.accounts)
+    const accountIds = new Set(state.accounts.map((account) => account.id))
+    return state.transactions
+      .filter((transaction) => transaction.id.startsWith("adj_") && !isSyntheticOpeningBalanceResidual(transaction) && accountIds.has(transaction.cuenta_id) && transaction.fecha >= startKey && transaction.fecha <= endKey)
+      .reduce((summary, transaction) => {
+        const signedAmount = transaction.tipo === "ingreso" ? transaction.monto : -transaction.monto
+        summary.count += 1
+        summary.net += reportingAmount({ ...transaction, monto: signedAmount }, currencies)
+        return summary
+    }, { count: 0, net: 0 })
+  }, [netWorthTrend, activeRange.unit, activeRange.count, monthOffset, selectedDate, today, state.accounts, state.transactions])
 
   const spending = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   const spendTotal = spending.reduce((s, c) => s + c.monto, 0)
@@ -1033,12 +1062,17 @@ export default function DashboardContent() {
                     <p className={cn("mt-1 inline-flex flex-wrap items-center gap-x-1.5 text-sm font-medium", rangeDelta >= 0 ? "text-emerald-500" : "text-red-500")}>
                       {rangeDelta >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                       <Sensitive>{rangeDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(rangeDelta), "EUR")}</Sensitive>
-                      <span className="text-muted-foreground">{showPct ? `· ${formatCappedPct(rangePct)} ` : ""}{activeRange.id === "Hoy" ? "hoy" : `en ${activeRange.id}`}</span>
+                      <span className="text-muted-foreground">{showPct ? `· ${formatCappedPct(rangePct)} ` : ""}vs. inicio del periodo</span>
+                    </p>
+                  )}
+                  {netWorthTrend.length > 1 && !hasUsableRangeBaseline && (
+                    <p className="mt-1 text-xs text-muted-foreground" role="note">
+                      Variación no disponible: el saldo inicial del periodo no se puede validar con el historial guardado.
                     </p>
                   )}
                   {showRangeMax && rangeMaxPoint && (
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Máximo del periodo: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive> ({rangeMaxPoint.mes.replace(" · pico", "")})
+                      Pico observado: <span title="Mayor saldo reconstruido observado dentro del periodo"><Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive></span> ({rangeMaxPoint.mes.replace(" · pico", "")})
                       {showVsPeakDelta && (
                         <Sensitive as="span" className="ml-1 font-semibold text-red-500">
                           · {formatMoney(vsPeakDelta, "EUR")}{Math.abs(vsPeakPct) > 0.05 ? ` (${formatCappedPct(vsPeakPct)})` : ""} desde el pico
@@ -1060,9 +1094,20 @@ export default function DashboardContent() {
               ) : netWorthHasData ? (
                 <div className="mt-4">
                   <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-36 sm:h-52 2xl:h-60" />
-                  <p className="mx-auto mt-4 max-w-[58ch] border-t border-border/60 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
-                    Los valores históricos son estimaciones basadas en posiciones actuales y precios históricos; pueden no reflejar el patrimonio exacto en fechas pasadas.
+                  <p className="mx-auto mt-4 max-w-[62ch] border-t border-border/60 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
+                    El histórico se reconstruye desde los saldos actuales y los movimientos guardados; no equivale a una captura bancaria de cada fecha.
                   </p>
+                  {balanceAdjustmentsInRange.count > 0 && (
+                    <p className="mx-auto mt-2 max-w-[62ch] text-center text-[11px] leading-relaxed text-muted-foreground" role="note">
+                      {balanceAdjustmentsInRange.count} {balanceAdjustmentsInRange.count === 1 ? "ajuste de saldo" : "ajustes de saldo"} incluidos en la curva
+                      {Math.abs(balanceAdjustmentsInRange.net) > 0.005 && <> · impacto neto <Sensitive className={balanceAdjustmentsInRange.net >= 0 ? "text-emerald-500" : "text-red-500"}>{balanceAdjustmentsInRange.net > 0 ? "+" : "−"}{formatMoney(Math.abs(balanceAdjustmentsInRange.net), "EUR")}</Sensitive></>}. No cuentan como ingresos ni gastos.
+                    </p>
+                  )}
+                  {openingHistoryIsEstimated && (
+                    <p className="mx-auto mt-2 max-w-[62ch] text-center text-[11px] leading-relaxed text-amber-500/90" role="note">
+                      Hay saldos de apertura sin historial completo; las variaciones desde fechas anteriores pueden ser estimadas.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <EmptyPlaceholder text="Sin datos de patrimonio todavía" className="mt-4 h-52 sm:h-64" />

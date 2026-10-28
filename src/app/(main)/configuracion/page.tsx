@@ -36,6 +36,7 @@ export default function ConfiguracionPage() {
   const integrityFindings = useMemo(() => auditFinanceState(state, positions, contributions), [state, positions, contributions])
   const integrityReviewLink = (code: string) => {
     if (["duplicate-accounts", "orphan-funds", "invalid-balances", "balance-mismatch"].includes(code)) return { href: "/cuentas", label: "Revisar cuentas" }
+    if (code === "estimated-net-worth-history") return { href: "/dashboard", label: "Ver histórico de patrimonio" }
     if (["duplicate-transactions", "orphan-transactions", "invalid-amounts", "invalid-types", "invalid-dates"].includes(code)) return { href: "/transactions", label: "Revisar movimientos" }
     if (["duplicate-categories", "duplicate-category-names", "orphan-budgets"].includes(code)) return { href: "#categorias", label: "Revisar categorías" }
     if (["orphan-positions", "duplicate-positions", "invalid-positions", "orphan-contributions", "invalid-contributions"].includes(code)) return { href: "/inversiones", label: "Revisar inversiones" }

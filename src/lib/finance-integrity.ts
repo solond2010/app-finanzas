@@ -1,5 +1,6 @@
 import type { FinanceState } from "./store"
 import type { Contribution, Position } from "./investments"
+import { isSyntheticOpeningBalanceResidual } from "./calculations"
 
 export type IntegrityFinding = { code: string; label: string; count: number; details?: string[] }
 
@@ -41,6 +42,15 @@ export function auditFinanceState(state: FinanceState, positions: Position[] = [
     const date = new Date(`${row.fecha}T00:00:00Z`)
     return !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== row.fecha
   }).length)
+
+  const syntheticOpeningResiduals = state.transactions.filter(isSyntheticOpeningBalanceResidual)
+  const residualAccountIds = new Set(syntheticOpeningResiduals.map((row) => row.cuenta_id))
+  add(
+    "estimated-net-worth-history",
+    "Cuentas con saldo inicial histórico estimado",
+    residualAccountIds.size,
+    [...residualAccountIds].map((id) => state.accounts.find((account) => account.id === id)?.nombre ?? id)
+  )
 
   const ledgerByAccount = new Map<string, number>()
   for (const transaction of state.transactions) {

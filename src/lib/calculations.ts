@@ -148,8 +148,18 @@ function transactionDelta(t: Transaction) {
 // cuadrar saldos. Los `init_` de versiones anteriores no tenían un ID distinto;
 // un saldo inicial real siempre se crea como ingreso, así que un `init_` de tipo
 // gasto es un residual legado incluso si Supabase ya le asignó created_at.
-function isSyntheticOpeningBalanceResidual(t: Transaction) {
+export function isSyntheticOpeningBalanceResidual(t: Transaction) {
   return t.id.startsWith("adj_init_") || (t.id.startsWith("init_") && t.categoria === "Saldo inicial" && t.tipo === "gasto")
+}
+
+/**
+ * True when the ledger contains a synthetic residual used to reconcile a
+ * current account balance. It keeps totals consistent, but its original date
+ * is unknown, so historical change from the beginning of a range is only an
+ * estimate and must not be presented as a verified gain/loss.
+ */
+export function hasSyntheticOpeningBalanceResidual(transactions: Transaction[]): boolean {
+  return transactions.some(isSyntheticOpeningBalanceResidual)
 }
 
 function isBalanceReconciliation(t: Transaction) {
