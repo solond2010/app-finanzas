@@ -548,6 +548,10 @@ export default function DashboardContent() {
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
   const rangeDelta = netWorthDisplay - rangeStart
+  // Una reconstrucción histórica sin saldo de apertura completo puede dar un
+  // patrimonio inicial negativo. No presentar entonces la diferencia como
+  // una subida real del periodo (p. ej. 5.471 € desde -84 €).
+  const hasUsableRangeBaseline = netWorthTrend.length > 1 && Number.isFinite(rangeStart) && rangeStart > 0.005
   // El % solo se muestra si la base es significativa Y el resultado es un dato
   // legible: contra una base pequeña sale un ">500%" que parece un error, y en
   // ese caso la cifra absoluta ya cuenta la historia completa.
@@ -1025,11 +1029,13 @@ export default function DashboardContent() {
                   <p className="hero-figure mt-2 text-[clamp(1.8rem,7vw,2.5rem)] font-bold tracking-tight tabular-nums">
                     <AnimatedNumber value={netWorthDisplay} />
                   </p>
-                  <p className={cn("mt-1 inline-flex flex-wrap items-center gap-x-1.5 text-sm font-medium", rangeDelta >= 0 ? "text-emerald-500" : "text-red-500")}>
-                    {rangeDelta >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                    <Sensitive>{rangeDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(rangeDelta), "EUR")}</Sensitive>
-                    <span className="text-muted-foreground">{showPct ? `· ${formatCappedPct(rangePct)} ` : ""}{activeRange.id === "Hoy" ? "hoy" : `en ${activeRange.id}`}</span>
-                  </p>
+                  {hasUsableRangeBaseline && (
+                    <p className={cn("mt-1 inline-flex flex-wrap items-center gap-x-1.5 text-sm font-medium", rangeDelta >= 0 ? "text-emerald-500" : "text-red-500")}>
+                      {rangeDelta >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                      <Sensitive>{rangeDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(rangeDelta), "EUR")}</Sensitive>
+                      <span className="text-muted-foreground">{showPct ? `· ${formatCappedPct(rangePct)} ` : ""}{activeRange.id === "Hoy" ? "hoy" : `en ${activeRange.id}`}</span>
+                    </p>
+                  )}
                   {showRangeMax && rangeMaxPoint && (
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       Máximo del periodo: <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive> ({rangeMaxPoint.mes.replace(" · pico", "")})
