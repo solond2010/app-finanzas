@@ -16,7 +16,6 @@ interface XrayPosition {
 }
 
 export interface XrayData {
-  owner: string
   currency: CurrencyCode
   /** Mes del snapshot, p. ej. "julio de 2026". */
   month: string
@@ -59,7 +58,7 @@ export function generateXrayPdf(data: XrayData) {
   doc.setFont("helvetica", "normal")
   doc.setFontSize(10)
   const today = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" })
-  doc.text(pdfText(`${data.owner} · ${data.month} · Generado el ${today}`), M, 62)
+  doc.text(pdfText(`${data.month} · Generado el ${today}`), M, 62)
 
   let y = 120
 

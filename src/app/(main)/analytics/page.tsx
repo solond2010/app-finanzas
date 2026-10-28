@@ -365,7 +365,6 @@ export default function AnalyticsPage() {
     try {
       const { generateAnalyticsPdf } = await import("@/lib/analytics-pdf")
       generateAnalyticsPdf({
-        owner: "Mohamed",
         month: formatMonth(selectedDate),
         netWorth: currentNetWorth,
         netWorthChange,

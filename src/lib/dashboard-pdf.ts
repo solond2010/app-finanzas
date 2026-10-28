@@ -10,7 +10,6 @@ interface DashboardPdfGoal { nombre: string; actual: number; objetivo: number; f
 interface DashboardPdfTransactionRow { fecha: string; descripcion: string; categoria: string; tipo: "ingreso" | "gasto"; monto: number }
 
 export interface DashboardPdfData {
-  owner: string
   month: string
   netWorth: number
   netWorthTarget: number
@@ -91,7 +90,7 @@ export function generateDashboardPdf(data: DashboardPdfData) {
   const m = (v: number) => pdfText(formatMoney(v, "EUR"))
   const signed = (v: number) => `${v >= 0 ? "+" : "-"}${m(Math.abs(v))}`
   // Página 1: resumen de un vistazo con la misma jerarquía del Dashboard.
-  addHeader(doc, data.month, `Informe mensual · ${data.owner}`)
+  addHeader(doc, data.month, "Informe mensual")
   const heroY = 74
   const heroW = W - M * 2
   panel(doc, M, heroY, heroW, 91)

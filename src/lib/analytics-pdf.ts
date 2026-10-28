@@ -23,7 +23,6 @@ interface AnalyticsPdfInsight {
 }
 
 export interface AnalyticsPdfData {
-  owner: string
   month: string
   netWorth: number
   netWorthChange: number
@@ -59,7 +58,7 @@ export function generateAnalyticsPdf(data: AnalyticsPdfData) {
   doc.setFont("helvetica", "normal")
   doc.setFontSize(10)
   const today = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" })
-  doc.text(pdfText(`${data.owner} · ${data.month} · Generado el ${today}`), M, 62)
+  doc.text(pdfText(`${data.month} · Generado el ${today}`), M, 62)
 
   let y = 120
 

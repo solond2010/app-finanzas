@@ -801,7 +801,6 @@ export default function DashboardContent() {
       // a partir de posiciones o cotizaciones externas.
       const investmentInvested = investmentDisplayTotal
       generateDashboardPdf({
-        owner: "Mohamed",
         month: formatMonth(selectedDate),
         netWorth: netWorthDisplay,
         netWorthTarget,
@@ -975,7 +974,7 @@ export default function DashboardContent() {
         </div>
       ) : !hasAnyData ? (
         <div className="flex flex-col items-center justify-center pt-20 text-center">
-          <h2 className="text-2xl font-bold text-foreground">Bienvenido, Mohamed</h2>
+          <h2 className="text-2xl font-bold text-foreground">Tu panel financiero</h2>
           <p className="mt-2 text-muted-foreground">Comienza configurando tu primera cuenta.</p>
           <Button onClick={() => setShowNewAccount(true)} className="mt-6 rounded-full px-6">Crear cuenta</Button>
         </div>
