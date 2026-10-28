@@ -804,7 +804,10 @@ export default function DashboardContent() {
         month: formatMonth(selectedDate),
         netWorth: netWorthDisplay,
         netWorthTarget,
-        netWorthTrend: netWorthTrend.map((d) => ({ label: d.mes, value: Math.round(d.patrimonio) })),
+        netWorthTrend: (activeRange.unit === "months"
+          ? netWorthTrend.filter((point) => /^\d{4}-\d{2}$/.test(point.date)).slice(-activeRange.count)
+          : netWorthTrend
+        ).map((d) => ({ label: d.mes, value: Math.round(d.patrimonio) })),
         rangeLabel: activeRange.id,
         score,
         scoreLabel: scoreTier.label,

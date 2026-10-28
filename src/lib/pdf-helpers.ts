@@ -78,6 +78,103 @@ export function renderBarChart(data: { label: string; value: number }[], w: numb
   return canvas.toDataURL("image/png")
 }
 
+/** Gráfico de evolución para informes: línea suave, área tenue y etiquetas espaciadas. */
+export function renderTrendChart(data: { label: string; value: number }[], w: number, h: number, valueFormatter: (v: number) => string): string {
+  const scale = 2
+  const canvas = document.createElement("canvas")
+  canvas.width = w * scale
+  canvas.height = h * scale
+  const ctx = canvas.getContext("2d")!
+  ctx.scale(scale, scale)
+  ctx.fillStyle = `rgb(${BRAND.join(",")})`
+  ctx.fillRect(0, 0, w, h)
+
+  const padX = 14
+  const padTop = 22
+  const padBottom = 25
+  const plotW = w - padX * 2
+  const plotH = h - padTop - padBottom
+  const rawMin = Math.min(0, ...data.map((point) => point.value))
+  const rawMax = Math.max(0, ...data.map((point) => point.value))
+  const spread = Math.max(1, rawMax - rawMin)
+  const min = rawMin - spread * 0.05
+  const max = rawMax + spread * 0.12
+  const xAt = (index: number) => padX + (data.length === 1 ? plotW / 2 : (index / (data.length - 1)) * plotW)
+  const yAt = (value: number) => padTop + ((max - value) / (max - min)) * plotH
+  const baseline = yAt(0)
+
+  ctx.lineWidth = 0.7
+  for (const ratio of [0, 0.5, 1]) {
+    const y = padTop + plotH * ratio
+    ctx.strokeStyle = ratio === 1 ? "rgba(151,164,182,0.22)" : "rgba(151,164,182,0.12)"
+    ctx.beginPath()
+    ctx.moveTo(padX, y)
+    ctx.lineTo(w - padX, y)
+    ctx.stroke()
+  }
+  if (baseline > padTop && baseline < padTop + plotH) {
+    ctx.strokeStyle = "rgba(239,199,128,0.24)"
+    ctx.beginPath()
+    ctx.moveTo(padX, baseline)
+    ctx.lineTo(w - padX, baseline)
+    ctx.stroke()
+  }
+
+  const points = data.map((point, index) => ({ x: xAt(index), y: yAt(point.value), ...point }))
+  if (points.length) {
+    const area = ctx.createLinearGradient(0, padTop, 0, padTop + plotH)
+    area.addColorStop(0, "rgba(239,199,128,0.22)")
+    area.addColorStop(1, "rgba(239,199,128,0.015)")
+    ctx.beginPath()
+    ctx.moveTo(points[0].x, baseline)
+    points.forEach((point) => ctx.lineTo(point.x, point.y))
+    ctx.lineTo(points[points.length - 1].x, baseline)
+    ctx.closePath()
+    ctx.fillStyle = area
+    ctx.fill()
+
+    ctx.beginPath()
+    points.forEach((point, index) => index === 0 ? ctx.moveTo(point.x, point.y) : ctx.lineTo(point.x, point.y))
+    ctx.strokeStyle = `rgb(${GOLD.join(",")})`
+    ctx.lineWidth = 2.4
+    ctx.lineJoin = "round"
+    ctx.lineCap = "round"
+    ctx.shadowColor = "rgba(239,199,128,0.22)"
+    ctx.shadowBlur = 5
+    ctx.stroke()
+    ctx.shadowBlur = 0
+
+    const labelStride = Math.max(1, Math.ceil(data.length / 7))
+    points.forEach((point, index) => {
+      const isLast = index === points.length - 1
+      ctx.beginPath()
+      ctx.arc(point.x, point.y, isLast ? 3.5 : 2.4, 0, Math.PI * 2)
+      ctx.fillStyle = `rgb(${GOLD.join(",")})`
+      ctx.fill()
+      ctx.lineWidth = 1.2
+      ctx.strokeStyle = `rgb(${BRAND.join(",")})`
+      ctx.stroke()
+
+      if (data.length <= 7) {
+        ctx.fillStyle = `rgb(${INK.join(",")})`
+        ctx.font = "bold 7px Helvetica, Arial, sans-serif"
+        ctx.textAlign = "center"
+        ctx.textBaseline = "bottom"
+        ctx.fillText(valueFormatter(point.value), point.x, Math.max(10, point.y - 6), plotW / data.length)
+      }
+      if (index % labelStride === 0 || isLast) {
+        ctx.fillStyle = `rgb(${MUTED.join(",")})`
+        ctx.font = "8px Helvetica, Arial, sans-serif"
+        ctx.textAlign = index === 0 ? "left" : isLast ? "right" : "center"
+        ctx.textBaseline = "alphabetic"
+        ctx.fillText(point.label, point.x, h - 7, plotW / Math.min(data.length, 7))
+      }
+    })
+  }
+
+  return canvas.toDataURL("image/png")
+}
+
 /** Gráfico de composición con tarta amplia y leyenda legible en columna. */
 export function renderPieChart(data: { name: string; value: number }[], w: number, h: number): string {
   const scale = 2

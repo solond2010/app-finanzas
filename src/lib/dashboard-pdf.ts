@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { formatMoney } from "@/lib/currency"
-import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, CARD, drawPageBackground, renderBarChart, renderPieChart, drawProgressBar, drawFooter, pdfText } from "@/lib/pdf-helpers"
+import { BRAND, GOLD, INK, MUTED, GREEN, RED, TRACK, CARD, drawPageBackground, renderTrendChart, renderPieChart, drawProgressBar, drawFooter, pdfText } from "@/lib/pdf-helpers"
 
 interface DashboardPdfAccount { nombre: string; tipo: string; banco: string; saldo: number }
 interface DashboardPdfBudgetRow { categoria: string; gastado: number; limite: number }
@@ -149,7 +149,7 @@ export function generateDashboardPdf(data: DashboardPdfData) {
   sectionTitle(doc, "Composición del patrimonio", M + chartW + chartGap + 14, chartY + 20)
   const trend = data.netWorthTrend.slice(-18)
   if (trend.length > 1) {
-    const chart = renderBarChart(trend.map((p) => ({ label: p.label, value: p.value })), chartW - 28, chartH - 44, m)
+    const chart = renderTrendChart(trend.map((p) => ({ label: p.label, value: p.value })), chartW - 28, chartH - 44, m)
     doc.addImage(chart, "PNG", M + 14, chartY + 31, chartW - 28, chartH - 44)
   } else {
     doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(...MUTED)
