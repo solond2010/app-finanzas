@@ -204,7 +204,9 @@ export default function AnalyticsPage() {
     const categoryById = new Map(state.categories.map((c) => [c.id, c]))
     const spentByCategory = new Map<string, number>()
     for (const t of analysisTransactions) {
-      if (t.tipo !== "gasto" || !t.fecha.startsWith(selectedMonth)) continue
+      // Keep budgets aligned with cash-flow reporting: paired transfers and
+      // balance adjustments move account balances, but are not spending.
+      if (t.tipo !== "gasto" || !countsTowardCashFlow(t, analysisTransactions) || !t.fecha.startsWith(selectedMonth)) continue
       spentByCategory.set(t.categoria, (spentByCategory.get(t.categoria) ?? 0) + reportingAmount(t, currencyByAccount))
     }
     return state.budgets
@@ -408,7 +410,7 @@ export default function AnalyticsPage() {
               <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Descargar PDF"}
             </Button>
           )}
-          {hasData && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmReset(true)}>Limpiar</Button>}
+          {hasData && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmReset(true)}>Borrar todos los datos</Button>}
         </div>
       </header>
 
@@ -444,7 +446,7 @@ export default function AnalyticsPage() {
               <MetricCard
                 label="Cash flow medio"
                 value={<Sensitive>{signedMoney(averageMonthlyNet)}</Sensitive>}
-                subtitle={activeCashFlow.length > 0 ? `Media ${TREND_MONTHS} meses · ${positiveMonths}/${activeCashFlow.length} positivos` : "Sin histórico todavía"}
+                subtitle={activeCashFlow.length > 0 ? `Media ${activeCashFlow.length} meses con actividad · ${positiveMonths}/${activeCashFlow.length} positivos` : "Sin histórico todavía"}
                 icon={PiggyBank}
                 tone={averageMonthlyNet >= 0 ? "emerald" : "red"}
                 delay={140}

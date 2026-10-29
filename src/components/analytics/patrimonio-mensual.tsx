@@ -157,11 +157,11 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
   return (
     <section className="col-span-full grid grid-cols-12 gap-4 sm:gap-6">
       <div className="col-span-full flex flex-col gap-1 pt-2">
-        <p className="page-section-label">Detalle mensual</p>
+        <p className="page-section-label">Histórico global</p>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <h2 className="text-xl font-bold tracking-tight">Patrimonio + cashflow</h2>
           <p className="max-w-xl text-sm text-muted-foreground">
-            Snapshot el día {dayOfMonth} · patrimonio (cuentas + mercado) e ingresos/gastos/neto del mes.
+            Snapshot del día {dayOfMonth} · saldos registrados de cuentas (sin valoración de mercado) e ingresos/gastos/neto por mes. Es un histórico global y conserva el mayor valor guardado por fecha; no cambia al navegar entre meses.
             {kpis.ultimo?.provisional ? " · Mes en curso provisional (aún no llegó el día 5)." : null}
           </p>
         </div>
@@ -183,7 +183,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
         <>
           <div className="col-span-full grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
-              label="Patrimonio actual"
+              label="Último snapshot"
               value={<Sensitive>{money(kpis.actual)}</Sensitive>}
               subtitle={
                 kpis.ultimo
@@ -195,7 +195,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
               delay={0}
             />
             <MetricCard
-              label="Variación € vs mes anterior"
+              label="Cambio vs snapshot previo (€)"
               value={<Sensitive>{signedMoney(kpis.deltaEur)}</Sensitive>}
               subtitle={rows.length > 1 ? "Respecto a la mensualidad previa" : "Primer snapshot"}
               icon={deltaPositive ? TrendingUp : TrendingDown}
@@ -203,7 +203,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
               delay={60}
             />
             <MetricCard
-              label="Variación % vs mes anterior"
+              label="Cambio vs snapshot previo (%)"
               value={formatGrowth(kpis.deltaPct)}
               subtitle="Crecimiento mes a mes"
               icon={Percent}
@@ -255,11 +255,11 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
                 <TrendingUp className="h-4 w-4 text-emerald-500" />
-                Variación neta (€)
+                Cambio de patrimonio (€)
               </CardTitle>
             </CardHeader>
             <CardContent className="min-w-0 overflow-x-auto">
-              <div role="img" aria-label="Gráfico de barras: variación neta en euros por mensualidad" className="min-w-0">
+              <div role="img" aria-label="Gráfico de barras: cambio de patrimonio en euros entre snapshots mensuales" className="min-w-0">
                 <BarChart
                   data={barData}
                   index="mensualidad"
@@ -280,7 +280,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
           <Card className="stagger-fade col-span-full min-w-0 overflow-hidden" style={{ animationDelay: "180ms" }}>
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold">Detalle mensual</CardTitle>
-              <p className="text-xs text-muted-foreground">Patrimonio del día {dayOfMonth} + ingresos, gastos y neto del mes.</p>
+              <p className="text-xs text-muted-foreground">Patrimonio del día {dayOfMonth} + ingresos, gastos y neto del mes. El cambio compara snapshots consecutivos.</p>
             </CardHeader>
             <CardContent className="p-0">
               {/* Móvil: cards apilables */}
@@ -296,8 +296,8 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
                     <TableRow>
                       <TableHead>Mensualidad</TableHead>
                       <TableHead className="text-right">Patrimonio</TableHead>
-                      <TableHead className="text-right">Variación €</TableHead>
-                      <TableHead className="text-right">Variación %</TableHead>
+                      <TableHead className="text-right">Cambio patrimonio €</TableHead>
+                      <TableHead className="text-right">Cambio patrimonio %</TableHead>
                       <TableHead className="text-right">Ingresos</TableHead>
                       <TableHead className="text-right">Gastos</TableHead>
                       <TableHead className="text-right">Neto</TableHead>
@@ -411,7 +411,7 @@ const MobileDetalleCard = memo(function MobileDetalleCard({ row }: { row: Detall
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
         <div>
-          <p className="text-[11px] text-muted-foreground">Variación €</p>
+          <p className="text-[11px] text-muted-foreground">Cambio patrimonio €</p>
           <p
             className={cn(
               "text-sm font-semibold tabular-nums",
@@ -422,7 +422,7 @@ const MobileDetalleCard = memo(function MobileDetalleCard({ row }: { row: Detall
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[11px] text-muted-foreground">Variación %</p>
+          <p className="text-[11px] text-muted-foreground">Cambio patrimonio %</p>
           <p
             className={cn(
               "text-sm font-semibold tabular-nums",
