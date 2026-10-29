@@ -243,7 +243,6 @@ export default function AnalyticsPage() {
     }
     return map
   }, [analysisTransactions, selectedMonth, currencyByAccount])
-  // Para el historial completo: necesitamos posiciones y precio histórico
   // Objetivo consolidado por cuenta: propio (accountGoal ya combina objetivo
   // directo + metas de ahorro vinculadas) frente al valor actual de la cuenta,
   // El progreso usa el saldo manual vigente de cada cuenta.

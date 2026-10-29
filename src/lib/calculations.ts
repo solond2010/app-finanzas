@@ -765,8 +765,8 @@ export function buildPreciseNetWorthHistoryMonthly(
 // ============================================================
 // Réplica del Google Sheet "Control Patrimonio Mensual": un snapshot el día 5
 // de cada mes, con variación neta (€) y crecimiento (%) respecto al mes
-// anterior. Se deriva del historial diario preciso (cuentas + valor de
-// mercado de posiciones) — no hace falta registrar snapshots a mano.
+// anterior. Se deriva del historial diario de saldos registrados de cuentas;
+// no incluye valor de mercado de posiciones ni requiere capturas manuales.
 
 export interface PatrimonioMensualRow {
   /** YYYY-MM-DD del snapshot (normalmente el día 5; "hoy" si es provisional). */

@@ -21,7 +21,7 @@ import {
   persistMergedNetWorthSnapshots,
   type StoredNetWorthSnapshot,
 } from "@/lib/net-worth-snapshots"
-import { money, signedMoney, chartFormatter, moneyAxisWidth } from "@/lib/format"
+import { money, signedMoney, chartFormatter, moneyAxisWidth, formatMonth } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 const PatrimonioTooltip = createChartTooltip(["patrimonio"], ["amber"])
@@ -52,7 +52,9 @@ interface PatrimonioMensualSectionProps {
   dayOfMonth?: number
 }
 
-type DetalleRow = PatrimonioMensualRow & {
+type MonthlyCashFlowRow = {
+  monthKey: string
+  monthLabel: string
   ingresos: number
   gastos: number
   neto: number
@@ -115,18 +117,19 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
 
   const kpis = useMemo(() => getPatrimonioMensualKpis(rows), [rows])
 
-  const detalleRows: DetalleRow[] = useMemo(
-    () =>
-      rows.map((row) => {
-        const monthKey = row.date.slice(0, 7)
-        const cash = cashByMonth[monthKey]
-        return {
-          ...row,
-          ingresos: cash?.ingresos ?? 0,
-          gastos: cash?.gastos ?? 0,
-          neto: cash?.neto ?? 0,
-        }
-      }),
+  const cashflowRows: MonthlyCashFlowRow[] = useMemo(
+    () => rows.map((row) => {
+      const monthKey = row.date.slice(0, 7)
+      const [year, month] = monthKey.split("-").map(Number)
+      const cash = cashByMonth[monthKey]
+      return {
+        monthKey,
+        monthLabel: formatMonth(new Date(year, month - 1, 1)),
+        ingresos: cash?.ingresos ?? 0,
+        gastos: cash?.gastos ?? 0,
+        neto: cash?.neto ?? 0,
+      }
+    }),
     [rows, cashByMonth]
   )
 
@@ -279,103 +282,91 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
 
           <Card className="stagger-fade col-span-full min-w-0 overflow-hidden" style={{ animationDelay: "180ms" }}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">Detalle mensual</CardTitle>
-              <p className="text-xs text-muted-foreground">Patrimonio del día {dayOfMonth} + ingresos, gastos y neto del mes. El cambio compara snapshots consecutivos.</p>
+              <CardTitle className="text-base font-semibold">Detalle de patrimonio y cash flow</CardTitle>
+              <p className="text-xs text-muted-foreground">Separamos el saldo del día {dayOfMonth} del flujo del mes calendario: son periodos distintos y sus variaciones no tienen por qué coincidir.</p>
             </CardHeader>
-            <CardContent className="p-0">
-              {/* Móvil: cards apilables */}
-              <div className="space-y-2 p-3 sm:hidden">
-                {[...detalleRows].reverse().map((row) => (
-                  <MobileDetalleCard key={row.date} row={row} />
-                ))}
-              </div>
-              {/* Desktop: tabla unificada */}
-              <div className="hidden overflow-x-auto sm:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Mensualidad</TableHead>
-                      <TableHead className="text-right">Patrimonio</TableHead>
-                      <TableHead className="text-right">Cambio patrimonio €</TableHead>
-                      <TableHead className="text-right">Cambio patrimonio %</TableHead>
-                      <TableHead className="text-right">Ingresos</TableHead>
-                      <TableHead className="text-right">Gastos</TableHead>
-                      <TableHead className="text-right">Neto</TableHead>
-                      <TableHead className="text-right">Estado</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {[...detalleRows].reverse().map((row, idx) => {
-                      const isFirst = idx === detalleRows.length - 1
-                      const hasCash = row.ingresos > 0 || row.gastos > 0
-                      return (
-                        <TableRow key={row.date}>
-                          <TableCell className="font-medium tabular-nums">
-                            <span className="inline-flex items-center gap-2">
-                              {row.mensualidad}
-                              {row.provisional && (
-                                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-500">
-                                  Provisional
-                                </span>
-                              )}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right font-semibold tabular-nums">
-                            <Sensitive>{money(row.patrimonio)}</Sensitive>
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              "text-right font-semibold tabular-nums",
-                              isFirst
-                                ? "text-muted-foreground"
-                                : row.variacion >= 0
-                                  ? "text-emerald-500"
-                                  : "text-red-500"
-                            )}
-                          >
-                            {isFirst ? "—" : <Sensitive>{signedMoney(row.variacion)}</Sensitive>}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              "text-right font-semibold tabular-nums",
-                              row.crecimiento === null
-                                ? "text-muted-foreground"
-                                : row.crecimiento >= 0
-                                  ? "text-emerald-500"
-                                  : "text-red-500"
-                            )}
-                          >
-                            {formatGrowth(row.crecimiento)}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold tabular-nums text-emerald-500">
-                            {hasCash ? <Sensitive>+{money(row.ingresos)}</Sensitive> : <span className="text-muted-foreground">—</span>}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold tabular-nums text-red-500">
-                            {hasCash ? <Sensitive>{row.gastos > 0 ? "-" : ""}{money(row.gastos)}</Sensitive> : <span className="text-muted-foreground">—</span>}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              "text-right font-bold tabular-nums",
-                              !hasCash ? "text-muted-foreground" : row.neto >= 0 ? "text-emerald-500" : "text-red-500"
-                            )}
-                          >
-                            {hasCash ? <Sensitive>{signedMoney(row.neto)}</Sensitive> : "—"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {hasCash ? (
-                              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${row.neto >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
-                                {row.neto >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                                {row.neto >= 0 ? "Sano" : "Déficit"}
+            <CardContent className="space-y-6 px-4 pb-4 pt-0 sm:px-6">
+              <div className="space-y-2">
+                <div>
+                  <h3 className="text-sm font-semibold">Patrimonio por snapshot</h3>
+                  <p className="text-xs text-muted-foreground">Comparación entre saldos registrados en snapshots consecutivos.</p>
+                </div>
+                <div className="space-y-2 sm:hidden">
+                  {[...rows].reverse().map((row, idx) => (
+                    <MobileSnapshotCard key={row.date} row={row} isFirst={idx === rows.length - 1} />
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto sm:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha snapshot</TableHead>
+                        <TableHead className="text-right">Patrimonio</TableHead>
+                        <TableHead className="text-right">Cambio €</TableHead>
+                        <TableHead className="text-right">Cambio %</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[...rows].reverse().map((row, idx) => {
+                        const isFirst = idx === rows.length - 1
+                        return (
+                          <TableRow key={row.date}>
+                            <TableCell className="font-medium tabular-nums">
+                              <span className="inline-flex items-center gap-2">
+                                {row.mensualidad}
+                                {row.provisional && <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-500">Provisional</span>}
                               </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold tabular-nums"><Sensitive>{money(row.patrimonio)}</Sensitive></TableCell>
+                            <TableCell className={cn("text-right font-semibold tabular-nums", isFirst ? "text-muted-foreground" : row.variacion >= 0 ? "text-emerald-500" : "text-red-500")}>
+                              {isFirst ? "—" : <Sensitive>{signedMoney(row.variacion)}</Sensitive>}
+                            </TableCell>
+                            <TableCell className={cn("text-right font-semibold tabular-nums", row.crecimiento === null ? "text-muted-foreground" : row.crecimiento >= 0 ? "text-emerald-500" : "text-red-500")}>{formatGrowth(row.crecimiento)}</TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              <div className="space-y-2 border-t border-border/60 pt-5">
+                <div>
+                  <h3 className="text-sm font-semibold">Cash flow por mes calendario</h3>
+                  <p className="text-xs text-muted-foreground">Ingresos, gastos y neto del mes completo; no se comparan con el cambio del snapshot.</p>
+                </div>
+                <div className="space-y-2 sm:hidden">
+                  {[...cashflowRows].reverse().map((row) => <MobileCashFlowCard key={row.monthKey} row={row} />)}
+                </div>
+                <div className="hidden overflow-x-auto sm:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Mes</TableHead>
+                        <TableHead className="text-right">Ingresos</TableHead>
+                        <TableHead className="text-right">Gastos</TableHead>
+                        <TableHead className="text-right">Neto</TableHead>
+                        <TableHead className="text-right">Balance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[...cashflowRows].reverse().map((row) => {
+                        const hasCash = row.ingresos > 0 || row.gastos > 0
+                        return (
+                          <TableRow key={row.monthKey}>
+                            <TableCell className="font-medium">{row.monthLabel}</TableCell>
+                            <TableCell className="text-right font-semibold tabular-nums text-emerald-500">{hasCash ? <Sensitive>+{money(row.ingresos)}</Sensitive> : "—"}</TableCell>
+                            <TableCell className="text-right font-semibold tabular-nums text-red-500">{hasCash ? <Sensitive>{row.gastos > 0 ? "-" : ""}{money(row.gastos)}</Sensitive> : "—"}</TableCell>
+                            <TableCell className={cn("text-right font-bold tabular-nums", !hasCash ? "text-muted-foreground" : row.neto >= 0 ? "text-emerald-500" : "text-red-500")}>{hasCash ? <Sensitive>{signedMoney(row.neto)}</Sensitive> : "—"}</TableCell>
+                            <TableCell className="text-right">
+                              {hasCash ? <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${row.neto >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>{row.neto >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}{row.neto >= 0 ? "Positivo" : "Negativo"}</span> : <span className="text-xs text-muted-foreground">—</span>}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -385,77 +376,43 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
   )
 })
 
-const MobileDetalleCard = memo(function MobileDetalleCard({ row }: { row: DetalleRow }) {
-  const hasPrev = row.crecimiento !== null
-  const hasCash = row.ingresos > 0 || row.gastos > 0
+const MobileSnapshotCard = memo(function MobileSnapshotCard({ row, isFirst }: { row: PatrimonioMensualRow; isFirst: boolean }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-3.5 ring-1 ring-border/20">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">Mensualidad</p>
-          <p className="font-semibold tabular-nums text-foreground">
-            {row.mensualidad}
-            {row.provisional && (
-              <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-500">
-                Provisional
-              </span>
-            )}
-          </p>
+          <p className="text-xs text-muted-foreground">Snapshot de patrimonio</p>
+          <p className="font-semibold tabular-nums text-foreground">{row.mensualidad}{row.provisional && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-500">Provisional</span>}</p>
         </div>
         <div className="text-right">
           <p className="text-xs text-muted-foreground">Patrimonio</p>
-          <p className="text-base font-bold tabular-nums">
-            <Sensitive>{money(row.patrimonio)}</Sensitive>
-          </p>
+          <p className="text-base font-bold tabular-nums"><Sensitive>{money(row.patrimonio)}</Sensitive></p>
         </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
         <div>
-          <p className="text-[11px] text-muted-foreground">Cambio patrimonio €</p>
-          <p
-            className={cn(
-              "text-sm font-semibold tabular-nums",
-              !hasPrev ? "text-muted-foreground" : row.variacion >= 0 ? "text-emerald-500" : "text-red-500"
-            )}
-          >
-            {hasPrev ? <Sensitive>{signedMoney(row.variacion)}</Sensitive> : "—"}
-          </p>
+          <p className="text-[11px] text-muted-foreground">Cambio entre snapshots €</p>
+          <p className={cn("text-sm font-semibold tabular-nums", isFirst ? "text-muted-foreground" : row.variacion >= 0 ? "text-emerald-500" : "text-red-500")}>{isFirst ? "—" : <Sensitive>{signedMoney(row.variacion)}</Sensitive>}</p>
         </div>
         <div className="text-right">
-          <p className="text-[11px] text-muted-foreground">Cambio patrimonio %</p>
-          <p
-            className={cn(
-              "text-sm font-semibold tabular-nums",
-              row.crecimiento === null
-                ? "text-muted-foreground"
-                : row.crecimiento >= 0
-                  ? "text-emerald-500"
-                  : "text-red-500"
-            )}
-          >
-            {formatGrowth(row.crecimiento)}
-          </p>
+          <p className="text-[11px] text-muted-foreground">Cambio %</p>
+          <p className={cn("text-sm font-semibold tabular-nums", row.crecimiento === null ? "text-muted-foreground" : row.crecimiento >= 0 ? "text-emerald-500" : "text-red-500")}>{formatGrowth(row.crecimiento)}</p>
         </div>
       </div>
+    </div>
+  )
+})
+
+const MobileCashFlowCard = memo(function MobileCashFlowCard({ row }: { row: MonthlyCashFlowRow }) {
+  const hasCash = row.ingresos > 0 || row.gastos > 0
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3.5 ring-1 ring-border/20">
+      <p className="text-xs text-muted-foreground">Mes calendario</p>
+      <p className="font-semibold text-foreground">{row.monthLabel}</p>
       <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/60 pt-3">
-        <div>
-          <p className="text-[11px] text-muted-foreground">Ingresos</p>
-          <p className={cn("text-sm font-semibold tabular-nums", hasCash ? "text-emerald-500" : "text-muted-foreground")}>
-            {hasCash ? <Sensitive>+{money(row.ingresos)}</Sensitive> : "—"}
-          </p>
-        </div>
-        <div className="text-center">
-          <p className="text-[11px] text-muted-foreground">Gastos</p>
-          <p className={cn("text-sm font-semibold tabular-nums", hasCash ? "text-red-500" : "text-muted-foreground")}>
-            {hasCash ? <Sensitive>{row.gastos > 0 ? "-" : ""}{money(row.gastos)}</Sensitive> : "—"}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-[11px] text-muted-foreground">Neto</p>
-          <p className={cn("text-sm font-semibold tabular-nums", !hasCash ? "text-muted-foreground" : row.neto >= 0 ? "text-emerald-500" : "text-red-500")}>
-            {hasCash ? <Sensitive>{signedMoney(row.neto)}</Sensitive> : "—"}
-          </p>
-        </div>
+        <div><p className="text-[11px] text-muted-foreground">Ingresos</p><p className={cn("text-sm font-semibold tabular-nums", hasCash ? "text-emerald-500" : "text-muted-foreground")}>{hasCash ? <Sensitive>+{money(row.ingresos)}</Sensitive> : "—"}</p></div>
+        <div className="text-center"><p className="text-[11px] text-muted-foreground">Gastos</p><p className={cn("text-sm font-semibold tabular-nums", hasCash ? "text-red-500" : "text-muted-foreground")}>{hasCash ? <Sensitive>{row.gastos > 0 ? "-" : ""}{money(row.gastos)}</Sensitive> : "—"}</p></div>
+        <div className="text-right"><p className="text-[11px] text-muted-foreground">Neto</p><p className={cn("text-sm font-semibold tabular-nums", !hasCash ? "text-muted-foreground" : row.neto >= 0 ? "text-emerald-500" : "text-red-500")}>{hasCash ? <Sensitive>{signedMoney(row.neto)}</Sensitive> : "—"}</p></div>
       </div>
     </div>
   )
