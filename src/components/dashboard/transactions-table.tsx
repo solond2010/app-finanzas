@@ -29,7 +29,7 @@ import {
 import { useFinance, type Transaction, type Category, generateId } from "@/lib/store"
 import { dbDeleteEq } from "@/lib/db-client"
 import { openMovementDialog } from "@/components/layout/quick-actions"
-import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X, ArrowLeftRight, Repeat, ChevronLeft, ChevronRight, CalendarDays, List, TrendingDown, TrendingUp, SlidersHorizontal, Copy } from "@/components/icons"
+import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X, ArrowLeftRight, Repeat, ChevronLeft, ChevronRight, ChevronDown, CalendarDays, List, TrendingDown, TrendingUp, SlidersHorizontal, Copy } from "@/components/icons"
 import { parseAmount } from "@/lib/validation"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
@@ -42,6 +42,7 @@ import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurrin
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { AccountDot } from "@/components/dashboard/account-dot"
+import { MonthGrid, PeriodDivider, PeriodOption, PeriodPopover } from "@/components/ui/period-popover"
 import { CategoryIcon } from "@/components/icons/category-icon"
 
 // Estilo del chip de categoría a partir del color REAL de la categoría (el
@@ -394,6 +395,8 @@ export function TransactionsTable({
   // calendario sigue disponible como alternativa explícita.
   const [mobileView, setMobileView] = useState<"list" | "calendar">("list")
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [monthSheetOpen, setMonthSheetOpen] = useState(false)
+  const [monthSheetYear, setMonthSheetYear] = useState(() => new Date().getFullYear())
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => ({ month: "", day: localDateKey() }))
   const mobileMode = selectedMonth && !cuentaId ? mobileView : "list"
   const PAGE_SIZE = 25
@@ -612,7 +615,35 @@ export function TransactionsTable({
           {selectedMonth && (
             <div className="flex w-full items-center justify-between gap-2 rounded-full border border-border bg-background/70 p-1 md:hidden">
               <button type="button" onClick={() => onMonthChange?.(1)} disabled={!onMonthChange} aria-label="Mes anterior" className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"><ChevronLeft className="size-4" /></button>
-              <span className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-foreground">{calendarMonthLabel}</span>
+              <PeriodPopover
+                open={monthSheetOpen}
+                onOpenChange={setMonthSheetOpen}
+                title="Elegir mes"
+                className="min-w-0 flex-1"
+                trigger={<button type="button" data-period-trigger disabled={!onMonthChange} onClick={() => { setMonthSheetYear(Number(selectedMonth.slice(0, 4))); setMonthSheetOpen((v) => !v) }} aria-expanded={monthSheetOpen} aria-haspopup="dialog" aria-label={`Mes: ${calendarMonthLabel}. Cambiar`} className="flex min-h-11 w-full min-w-0 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted"><span className="truncate">{calendarMonthLabel}</span><ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /></button>}
+              >
+                {(() => {
+                  const current = localDateKey().slice(0, 7)
+                  const go = (month: string) => {
+                    const [sy, sm] = selectedMonth.split("-").map(Number)
+                    const [cy, cm] = month.split("-").map(Number)
+                    const delta = (sy - cy) * 12 + (sm - cm)
+                    if (delta !== 0) onMonthChange?.(delta)
+                    setMonthSheetOpen(false)
+                  }
+                  const prev = (() => { const [y, m] = current.split("-").map(Number); const d = new Date(y, m - 2, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` })()
+                  return (
+                    <>
+                      <div className="space-y-0.5">
+                        <PeriodOption selected={selectedMonth === current} onSelect={() => go(current)}>Este mes</PeriodOption>
+                        <PeriodOption selected={selectedMonth === prev} onSelect={() => go(prev)}>Mes anterior</PeriodOption>
+                      </div>
+                      <PeriodDivider />
+                      <MonthGrid year={monthSheetYear} onYearChange={setMonthSheetYear} selected={selectedMonth} onSelect={go} max={current} />
+                    </>
+                  )
+                })()}
+              </PeriodPopover>
               {onToday && <button type="button" onClick={() => { onToday(); const today = localDateKey(); setSelectedCalendarDate({ month: today.slice(0, 7), day: today }) }} className="min-h-11 shrink-0 rounded-full px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10">Hoy</button>}
               <button type="button" onClick={() => onMonthChange?.(-1)} disabled={!onMonthChange || selectedMonth >= localDateKey().slice(0, 7)} aria-label="Mes siguiente" className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"><ChevronRight className="size-4" /></button>
             </div>

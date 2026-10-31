@@ -1,5 +1,6 @@
 "use client"
 
+import { MonthPeriodPicker } from "@/components/ui/month-period-picker"
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { AreaChart } from "@tremor/react"
@@ -171,11 +172,7 @@ export default function IngresosGastosPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           <ImportCsvButton />
-          <div className="hidden items-center gap-1 rounded-full border border-border bg-card p-1 md:flex">
-            <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="min-w-[9.5rem] whitespace-nowrap px-1 text-center text-sm font-medium text-foreground">{formatMonth(selectedDate)}</span>
-            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
-          </div>
+          <MonthPeriodPicker className="hidden md:flex" buttonClassName="size-9" monthOffset={monthOffset} onMonthOffsetChange={setMonthOffset} label={formatMonth(selectedDate)} />
         </div>
       </header>
 

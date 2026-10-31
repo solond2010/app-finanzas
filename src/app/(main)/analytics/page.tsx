@@ -1,10 +1,12 @@
 "use client"
 
+import { TrendPill } from "@/components/shared/trend-pill"
+import { MonthPeriodPicker } from "@/components/ui/month-period-picker"
 import { AccountDot } from "@/components/dashboard/account-dot"
 import React from "react"
 import { useMemo, useState, memo, useEffect } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, AlertTriangle, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Target, Wallet, Wallet2 } from "@/components/icons"
+import { Activity, AlertTriangle, Calendar, CalendarClock, ChevronDown, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Target, Wallet, Wallet2 } from "@/components/icons"
 import { parseLocalDate } from "@/lib/date-utils"
 
 import { Button } from "@/components/ui/button"
@@ -395,15 +397,7 @@ export default function AnalyticsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Analíticas</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
-            <button onClick={() => setMonthOffset((p) => p + 1)} className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes anterior">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="min-w-[9.5rem] whitespace-nowrap px-1 text-center text-sm font-medium text-foreground">{formatMonth(selectedDate)}</span>
-            <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} disabled={monthOffset === 0} className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 active:scale-90" aria-label="Mes siguiente">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          <MonthPeriodPicker monthOffset={monthOffset} onMonthOffsetChange={setMonthOffset} label={formatMonth(selectedDate)} />
           {monthOffset > 0 && <Button type="button" variant="ghost" className="min-h-11 rounded-full px-3 text-xs font-semibold" onClick={() => setMonthOffset(0)}>Este mes</Button>}
           {hasData && (
             <Button variant="outline" className="h-11 gap-1.5 rounded-full px-4" onClick={handleExportPdf} disabled={exportingPdf}>
@@ -426,7 +420,7 @@ export default function AnalyticsPage() {
             <MetricCard
               label="Patrimonio"
               value={<AnimatedNumber value={Math.round(currentNetWorth)} />}
-              subtitle={<>{netWorthTrendPositive ? "Sube" : "Baja"} <Sensitive>{signedMoney(netWorthChange)}</Sensitive> vs mes previo</>}
+              subtitle={<span className="inline-flex flex-wrap items-center gap-1.5"><TrendPill up={netWorthTrendPositive} good={netWorthTrendPositive} label={netWorthTrendPositive ? "Sube" : "Baja"} value={<Sensitive>{signedMoney(netWorthChange)}</Sensitive>} /> <span>vs mes previo</span></span>}
               icon={Wallet}
               tone={netWorthTrendPositive ? "emerald" : "red"}
               delay={0}
@@ -435,7 +429,7 @@ export default function AnalyticsPage() {
               label="Neto del mes"
               value={<AnimatedNumber value={monthTotals.neto} />}
               subtitle={previousMonthTotals.ingresos > 0 || previousMonthTotals.gastos > 0
-                ? <><span className={netVsPrevious >= 0 ? "text-emerald-500" : "text-red-500"}>{netVsPrevious >= 0 ? "Mejora" : "Baja"} <Sensitive>{signedMoney(netVsPrevious)}</Sensitive></span> vs mes anterior</>
+                ? <span className="inline-flex flex-wrap items-center gap-1.5"><TrendPill up={netVsPrevious >= 0} good={netVsPrevious >= 0} label={netVsPrevious >= 0 ? "Mejora" : "Baja"} value={<Sensitive>{signedMoney(netVsPrevious)}</Sensitive>} /> <span>vs mes anterior</span></span>
                 : "Sin actividad el mes anterior"}
               icon={Activity}
               tone={monthTotals.neto >= 0 ? "blue" : "amber"}

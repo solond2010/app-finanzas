@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { MonthGrid, PeriodDivider, PeriodOption, PeriodPopover } from "@/components/ui/period-popover"
 import { accountColor, distinctAccountColors } from "@/lib/account-colors"
 import { AccountDot } from "@/components/dashboard/account-dot"
 import Link from "next/link"
@@ -57,7 +58,6 @@ const RANGES = [
 
 type DashboardMetric = "gastos" | "ingresos" | "neto" | "inversion" | "cash" | "patrimonio"
 type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYear" | "custom"
-const MONTHS_SHORT = Array.from({ length: 12 }, (_, month) => new Date(2026, month, 1).toLocaleDateString("es-ES", { month: "short" }).replace(".", ""))
 const MONTHLY_CASHFLOW_SERIES = [
   { key: "Ingresos", label: "Ingresos", color: "var(--accent-green)" },
   { key: "Gastos", label: "Gastos", color: "var(--accent-red)" },
@@ -278,7 +278,21 @@ export default function DashboardContent() {
     setShowPeriodPicker(false)
   }
 
+  const chooseYear = (year: number) => {
+    setDashboardPeriod("previousYear")
+    setMonthOffset((today.getFullYear() - year) * 12 + today.getMonth() - 11)
+    setShowPeriodPicker(false)
+  }
+
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
+  // Años anteriores con movimientos (como mínimo el pasado), del más reciente al más antiguo.
+  const previousYears = useMemo(() => {
+    const current = today.getFullYear()
+    const first = analysisTransactions.reduce((min, t) => Math.min(min, Number(t.fecha.slice(0, 4)) || current), current - 1)
+    const years: number[] = []
+    for (let y = current - 1; y >= Math.max(first, current - 6); y--) years.push(y)
+    return years
+  }, [analysisTransactions, today])
   const hasAnyData = state.accounts.length > 0 || analysisTransactions.length > 0 || state.sinkingFunds.length > 0
   const recurringPayments = useMemo(() => getUpcomingRecurring(state.transactions), [state.transactions])
   const overduePayments = useMemo(() => recurringPayments.filter((p) => p.overdueDays > 0), [recurringPayments])
@@ -1006,13 +1020,52 @@ export default function DashboardContent() {
           </button>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 self-start sm:w-auto sm:self-auto">
-          <div className="relative flex w-full min-w-0 items-center gap-1 rounded-full border border-border bg-card p-1 sm:w-auto sm:flex-none">
-            <button onClick={() => { setMonthOffset((p) => p + 1); setDashboardPeriod("month") }} aria-label="Mes anterior" className="flex min-h-10 min-w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-            <button type="button" onClick={() => setShowPeriodPicker((open) => !open)} aria-expanded={showPeriodPicker} aria-label={`Periodo: ${periodBounds.label}`} className="flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap px-1 text-sm font-medium text-foreground sm:w-52 sm:flex-none">
-              <CalendarClock className="h-4 w-4 shrink-0 text-primary" /><span className="truncate">{periodBounds.label}</span>
-            </button>
-            <button onClick={() => { setMonthOffset((p) => Math.max(0, p - 1)); setDashboardPeriod("month") }} aria-label="Mes siguiente" disabled={monthOffset === 0} className="flex min-h-10 min-w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 active:scale-90"><ChevronRight className="h-4 w-4" /></button>
-          </div>
+          <PeriodPopover
+            open={showPeriodPicker}
+            onOpenChange={setShowPeriodPicker}
+            title="Periodo del dashboard"
+            className="flex w-full min-w-0 items-center gap-1 rounded-full border border-border bg-card p-1 sm:w-auto sm:flex-none"
+            trigger={<>
+              <button onClick={() => { setMonthOffset((p) => p + 1); setDashboardPeriod("month") }} aria-label="Mes anterior" className="flex min-h-10 min-w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
+              <button type="button" data-period-trigger onClick={() => setShowPeriodPicker((open) => !open)} aria-expanded={showPeriodPicker} aria-haspopup="dialog" aria-label={`Periodo: ${periodBounds.label}. Cambiar`} className="flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full px-1 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:w-52 sm:flex-none">
+                <CalendarClock className="h-4 w-4 shrink-0 text-primary" /><span className="truncate">{periodBounds.label}</span>
+              </button>
+              <button onClick={() => { setMonthOffset((p) => Math.max(0, p - 1)); setDashboardPeriod("month") }} aria-label="Mes siguiente" disabled={monthOffset === 0} className="flex min-h-10 min-w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 active:scale-90"><ChevronRight className="h-4 w-4" /></button>
+            </>}
+          >
+            <div className="space-y-0.5">
+              <PeriodOption selected={dashboardPeriod === "month" && monthOffset === 0} onSelect={() => chooseDashboardPeriod("month")}>Este mes</PeriodOption>
+              <PeriodOption selected={dashboardPeriod === "previous" || (dashboardPeriod === "month" && monthOffset === 1)} onSelect={() => chooseDashboardPeriod("previous")}>Mes anterior</PeriodOption>
+              <PeriodOption selected={dashboardPeriod === "3m"} onSelect={() => chooseDashboardPeriod("3m")}>Últimos 3 meses</PeriodOption>
+              <PeriodOption selected={dashboardPeriod === "6m"} onSelect={() => chooseDashboardPeriod("6m")}>Últimos 6 meses</PeriodOption>
+              <PeriodOption selected={dashboardPeriod === "year"} onSelect={() => chooseDashboardPeriod("year")} hint={today.getFullYear()}>Este año</PeriodOption>
+              {previousYears.map((year) => (
+                <PeriodOption key={year} selected={dashboardPeriod === "previousYear" && selectedDate.getFullYear() === year} onSelect={() => chooseYear(year)}>{year}</PeriodOption>
+              ))}
+            </div>
+            <PeriodDivider />
+            <PeriodOption selected={dashboardPeriod === "custom"} onSelect={() => { setDashboardPeriod("custom"); setCustomEndpoint("start"); setCustomYear(Number(customStartMonth.slice(0, 4))) }}>Personalizado</PeriodOption>
+            {dashboardPeriod === "custom" && (
+              <div className="mt-2 space-y-2 px-1 pb-1">
+                <div className="grid grid-cols-2 gap-2">
+                  {([ ["start", "Desde", customStartMonth], ["end", "Hasta", customEndMonth] ] as const).map(([endpoint, label, month]) => {
+                    const [year, monthNumber] = month.split("-").map(Number)
+                    const monthName = new Date(year, monthNumber - 1, 1).toLocaleDateString("es-ES", { month: "long" })
+                    const monthLabel = `${monthName.charAt(0).toUpperCase()}${monthName.slice(1)} ${year}`
+                    return <button key={endpoint} type="button" onClick={() => { setCustomEndpoint(endpoint); setCustomYear(year) }} aria-pressed={customEndpoint === endpoint} className={cn("min-h-12 rounded-xl border px-3 py-1.5 text-left transition-colors", customEndpoint === endpoint ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}><span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</span><span className="block truncate text-sm font-semibold">{monthLabel}</span></button>
+                  })}
+                </div>
+                <MonthGrid
+                  year={customYear}
+                  onYearChange={setCustomYear}
+                  selected={customEndpoint === "start" ? customStartMonth : customEndMonth}
+                  onSelect={(month) => { chooseCustomMonth(customEndpoint, month); if (customEndpoint === "start") setCustomEndpoint("end") }}
+                  max={`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`}
+                />
+                <button type="button" onClick={() => setShowPeriodPicker(false)} className="min-h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">Aplicar</button>
+              </div>
+            )}
+          </PeriodPopover>
           {monthOffset > 0 && <Button type="button" variant="ghost" className="min-h-11 shrink-0 rounded-full px-3 text-xs font-semibold" onClick={() => chooseDashboardPeriod("month")}>Este mes</Button>}
           <Button onClick={() => openMovementDialog()} className="hidden gap-2 rounded-full px-4 shadow-sm sm:inline-flex">
             <Plus className="h-4 w-4" /> Nuevo movimiento
@@ -1024,46 +1077,6 @@ export default function DashboardContent() {
           )}
         </div>
       </header>
-
-      {showPeriodPicker && (
-        <div className="flex justify-end">
-          <div className="w-full max-w-[25rem] rounded-2xl border border-border bg-popover p-3 shadow-xl sm:p-4">
-            <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Periodo del dashboard</p>
-            <div className="grid grid-cols-2 gap-2">
-              {([
-                ["month", "Mes actual"], ["previous", "Mes anterior"], ["3m", "Últimos 3 meses"], ["6m", "Últimos 6 meses"], ["year", String(today.getFullYear())], ["previousYear", String(today.getFullYear() - 1)],
-              ] as [DashboardPeriod, string][]).map(([period, label]) => (
-                <button key={period} type="button" onClick={() => chooseDashboardPeriod(period)} aria-pressed={dashboardPeriod === period} className={cn("min-h-10 rounded-xl border px-3 text-left text-sm font-medium transition-colors", dashboardPeriod === period ? "border-primary/50 bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}>{label}</button>
-              ))}
-              <button type="button" onClick={() => { setDashboardPeriod("custom"); setCustomEndpoint("start"); setCustomYear(Number(customStartMonth.slice(0, 4))) }} aria-pressed={dashboardPeriod === "custom"} className={cn("col-span-2 min-h-10 rounded-xl border px-3 text-left text-sm font-medium transition-colors", dashboardPeriod === "custom" ? "border-primary/50 bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}>Personalizado</button>
-            </div>
-            {dashboardPeriod === "custom" && (
-              <div className="mt-3 border-t border-border pt-3">
-                <div className="grid grid-cols-2 gap-2">
-                  {([ ["start", "Desde", customStartMonth], ["end", "Hasta", customEndMonth] ] as const).map(([endpoint, label, month]) => {
-                    const [year, monthNumber] = month.split("-").map(Number)
-                    const monthLabel = new Date(year, monthNumber - 1, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" })
-                    return <button key={endpoint} type="button" onClick={() => { setCustomEndpoint(endpoint); setCustomYear(year) }} aria-pressed={customEndpoint === endpoint} className={cn("min-h-14 rounded-xl border px-3 py-2 text-left transition-colors", customEndpoint === endpoint ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/50 text-foreground hover:bg-muted")}><span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</span><span className="block truncate text-sm font-semibold capitalize">{monthLabel}</span></button>
-                  })}
-                </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <button type="button" onClick={() => setCustomYear((year) => year - 1)} aria-label="Año anterior" className="flex size-9 items-center justify-center rounded-xl border border-border hover:bg-muted"><ChevronLeft className="size-4" /></button>
-                  <span className="text-sm font-semibold tabular-nums">{customYear}</span>
-                  <button type="button" onClick={() => setCustomYear((year) => Math.min(today.getFullYear(), year + 1))} disabled={customYear >= today.getFullYear()} aria-label="Año siguiente" className="flex size-9 items-center justify-center rounded-xl border border-border hover:bg-muted disabled:opacity-35"><ChevronRight className="size-4" /></button>
-                </div>
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  {MONTHS_SHORT.map((label, index) => {
-                    const month = `${customYear}-${String(index + 1).padStart(2, "0")}`
-                    const selected = month === (customEndpoint === "start" ? customStartMonth : customEndMonth)
-                    const future = month > `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
-                    return <button key={month} type="button" disabled={future} onClick={() => chooseCustomMonth(customEndpoint, month)} aria-pressed={selected} className={cn("min-h-10 rounded-xl border text-sm font-medium capitalize transition-colors disabled:cursor-not-allowed disabled:opacity-35", selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background/50 text-foreground hover:bg-muted")}>{label}</button>
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {!loading && overduePayments.length > 0 && (
         <button
@@ -1137,7 +1150,7 @@ export default function DashboardContent() {
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? periodCashflow.length === 1 ? (
               <SingleBucketCashflowChart bucket={periodCashflow[0]} includeSavings={cashflowGranularity === "month"} onOpen={() => setCashflowDrillKey(periodCashflow[0].key)} />
             ) : (
-              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["emerald", "red", "orange"] : ["emerald", "red"]} valueFormatter={chartAxisFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={CashflowHoverTooltip} key={cashflowChartKey} onValueChange={(value) => { const key = value && typeof value.key === "string" ? value.key : null; if (key) setCashflowDrillKey(key) }} className="dashboard-cashflow-chart h-56 cursor-pointer sm:h-72" showAnimation={cashflowChartKey === 0} />
+              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["emerald", "red", "orange"] : ["emerald", "red"]} valueFormatter={chartAxisFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={(props) => <CashflowHoverTooltip {...props} granularity={cashflowGranularity} />} key={cashflowChartKey} onValueChange={(value) => { const key = value && typeof value.key === "string" ? value.key : null; if (key) setCashflowDrillKey(key) }} className="dashboard-cashflow-chart h-56 cursor-pointer sm:h-72" showAnimation={cashflowChartKey === 0} />
             ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">

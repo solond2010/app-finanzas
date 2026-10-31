@@ -5,7 +5,8 @@ import { useMemo } from "react"
 import type { CustomTooltipProps } from "@tremor/react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { CategoryIcon } from "@/components/icons/category-icon"
-import { ChevronRight, TrendingDown, TrendingUp } from "@/components/icons"
+import { ChevronRight } from "@/components/icons"
+import { ChangePill, trendPct } from "@/components/shared/trend-pill"
 import { Sensitive } from "@/components/shared/sensitive"
 import { SHEET_CONTENT, SheetHandle } from "@/components/dashboard/sheet-handle"
 import { formatMoney } from "@/lib/currency"
@@ -28,33 +29,45 @@ export type CashflowBucket = {
 // el ahorro neto en el dorado de marca para no confundirse con los ingresos.
 export const CASHFLOW_COLORS = { ingresos: "var(--accent-green)", gastos: "var(--accent-red)", ahorro: "var(--gold)" }
 
-function pctChange(current: number, previous: number) {
-  if (Math.abs(previous) < 0.005) return null
-  return ((current - previous) / Math.abs(previous)) * 100
+const MONTH_NAMES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+
+/** «Octubre 2026» para un tramo mensual; la etiqueta tal cual para semanas. */
+export function bucketTitle(bucket: CashflowBucket, granularity: "week" | "month") {
+  if (granularity !== "month" || !/^\d{4}-\d{2}$/.test(bucket.key)) return `Semana ${bucket.label}`
+  const [year, month] = bucket.key.split("-").map(Number)
+  const name = MONTH_NAMES[month - 1]
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${year}`
 }
 
-function ChangeChip({ label, current, previous, lowerIsBetter = false }: { label: string; current: number; previous: number; lowerIsBetter?: boolean }) {
-  const pct = pctChange(current, previous)
-  if (pct === null) return null
-  const up = pct >= 0
-  const good = lowerIsBetter ? !up : up
+/** «septiembre» (con año si cambia) o «semana anterior». */
+export function previousLabel(bucket: CashflowBucket, granularity: "week" | "month") {
+  if (granularity !== "month" || !/^\d{4}-\d{2}$/.test(bucket.key)) return "semana anterior"
+  const [year, month] = bucket.key.split("-").map(Number)
+  const prevMonth = month === 1 ? 12 : month - 1
+  const prevYear = month === 1 ? year - 1 : year
+  return prevYear === year ? MONTH_NAMES[prevMonth - 1] : `${MONTH_NAMES[prevMonth - 1]} ${prevYear}`
+}
+
+function Comparison({ bucket, size }: { bucket: CashflowBucket; size?: "xs" | "sm" }) {
+  if (!bucket.prev) return null
   return (
-    <span className={cn("inline-flex items-center gap-1 tabular-nums", good ? "text-emerald-500" : "text-red-500")}>
-      {up ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
-      {label} {up ? "+" : "−"}{Math.abs(pct) >= 999 ? ">999" : Math.round(Math.abs(pct))}%
-    </span>
+    <>
+      <ChangePill label="Gastos" current={bucket.Gastos} previous={bucket.prev.gastos} lowerIsBetter size={size} />
+      <ChangePill label="Ingresos" current={bucket.Ingresos} previous={bucket.prev.ingresos} size={size} />
+      <ChangePill label="Ahorro" current={bucket.Ingresos - bucket.Gastos} previous={bucket.prev.ingresos - bucket.prev.gastos} size={size} />
+    </>
   )
 }
 
 /** Tooltip de escritorio de «Ingresos vs gastos»: resumen completo del tramo. */
-export function CashflowHoverTooltip({ active, payload }: CustomTooltipProps) {
+export function CashflowHoverTooltip({ active, payload, granularity = "month" }: CustomTooltipProps & { granularity?: "week" | "month" }) {
   if (!active || !payload || payload.length === 0) return null
   const bucket = payload[0]?.payload as CashflowBucket | undefined
   if (!bucket) return null
   const neto = bucket.Ingresos - bucket.Gastos
   return (
     <div className="min-w-[190px] rounded-xl border border-border bg-popover p-3 shadow-lg">
-      <p className="mb-2 text-[11px] font-semibold capitalize text-foreground">{bucket.label}</p>
+      <p className="mb-2 text-[11px] font-semibold text-foreground">{bucketTitle(bucket, granularity)}</p>
       <div className="space-y-1.5 text-xs">
         {([
           ["Ingresos", bucket.Ingresos, CASHFLOW_COLORS.ingresos],
@@ -68,11 +81,10 @@ export function CashflowHoverTooltip({ active, payload }: CustomTooltipProps) {
           </div>
         ))}
       </div>
-      {bucket.prev && (pctChange(bucket.Gastos, bucket.prev.gastos) !== null || pctChange(bucket.Ingresos, bucket.prev.ingresos) !== null) && (
-        <div className="mt-2 flex flex-col gap-0.5 border-t border-border pt-2 text-[11px]">
-          <span className="text-muted-foreground">vs. {bucket.prev.label}</span>
-          <ChangeChip label="Gastos" current={bucket.Gastos} previous={bucket.prev.gastos} lowerIsBetter />
-          <ChangeChip label="Ingresos" current={bucket.Ingresos} previous={bucket.prev.ingresos} />
+      {bucket.prev && (trendPct(bucket.Gastos, bucket.prev.gastos) !== null || trendPct(bucket.Ingresos, bucket.prev.ingresos) !== null) && (
+        <div className="mt-2 flex flex-col items-start gap-1 border-t border-border pt-2 text-[11px]">
+          <span className="text-muted-foreground">vs. {previousLabel(bucket, granularity)}</span>
+          <Comparison bucket={bucket} size="xs" />
         </div>
       )}
       <p className="mt-2 text-[10px] font-medium text-primary">Haz clic para ver el desglose ›</p>
@@ -161,7 +173,7 @@ export function CashflowDrilldown({ bucket, granularity, transactions, currencyB
           <>
             <SheetHandle />
             <DialogHeader>
-              <DialogTitle className="pr-8 text-lg capitalize">{bucket.label}</DialogTitle>
+              <DialogTitle className="pr-8 text-lg">{bucketTitle(bucket, granularity)}</DialogTitle>
               <DialogDescription>
                 {granularity === "month" ? "Desglose del mes" : "Desglose de la semana"} · {detail.count} {detail.count === 1 ? "movimiento" : "movimientos"}
               </DialogDescription>
@@ -180,11 +192,10 @@ export function CashflowDrilldown({ bucket, granularity, transactions, currencyB
               ))}
             </div>
             {bucket.prev && (
-              <p className="-mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                <span className="text-muted-foreground">vs. {bucket.prev.label}:</span>
-                <ChangeChip label="Gastos" current={bucket.Gastos} previous={bucket.prev.gastos} lowerIsBetter />
-                <ChangeChip label="Ingresos" current={bucket.Ingresos} previous={bucket.prev.ingresos} />
-              </p>
+              <div className="-mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+                <span className="mr-0.5 text-muted-foreground">vs. {previousLabel(bucket, granularity)}</span>
+                <Comparison bucket={bucket} />
+              </div>
             )}
 
             <div>

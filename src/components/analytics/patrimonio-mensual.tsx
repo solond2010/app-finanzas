@@ -1,5 +1,6 @@
 "use client"
 
+import { TrendPill } from "@/components/shared/trend-pill"
 import { memo, useEffect, useMemo, useState } from "react"
 import { AreaChart } from "@tremor/react"
 import { CalendarDays, Percent, TrendingDown, TrendingUp, Wallet } from "@/components/icons"
@@ -344,7 +345,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
                             <TableCell className="text-right font-semibold tabular-nums text-red-500">{hasCash ? <Sensitive>{row.gastos > 0 ? "-" : ""}{money(row.gastos)}</Sensitive> : "—"}</TableCell>
                             <TableCell className={cn("text-right font-bold tabular-nums", !hasCash ? "text-muted-foreground" : row.neto >= 0 ? "text-emerald-500" : "text-red-500")}>{hasCash ? <Sensitive>{signedMoney(row.neto)}</Sensitive> : "—"}</TableCell>
                             <TableCell className="text-right">
-                              {hasCash ? <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${row.neto >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>{row.neto >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}{row.neto >= 0 ? "Positivo" : "Negativo"}</span> : <span className="text-xs text-muted-foreground">—</span>}
+                              {hasCash ? <TrendPill up={row.neto >= 0} good={row.neto >= 0} value={row.neto >= 0 ? "Positivo" : "Negativo"} /> : <span className="text-xs text-muted-foreground">—</span>}
                             </TableCell>
                           </TableRow>
                         )
