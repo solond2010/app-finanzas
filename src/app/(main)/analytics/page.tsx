@@ -26,8 +26,8 @@ import { PatrimonioHitos } from "@/components/analytics/patrimonio-hitos"
 // Mismo umbral que MonthlyBudget (src/components/dashboard/monthly-budget.tsx).
 const BUDGET_WARNING_THRESHOLD = 80
 
-const CategoryTooltip = createChartTooltip(["monto"], ["violet"])
-const AccountTooltip = createChartTooltip(["monto"], ["blue"])
+const CategoryTooltip = createChartTooltip(["monto"], ["amber"])
+const AccountTooltip = createChartTooltip(["monto"], ["amber"])
 const NeedsWantsTooltip = createChartTooltip(["Necesidades", "Deseos"], ["emerald", "amber"])
 
 // En gráficos de barras horizontales, el eje Y contiene los nombres. Reservar

@@ -27,7 +27,7 @@ const CARD = "rounded-[14px] border border-border bg-card p-5 shadow-[0_1px_2px_
 // de la página, con el mismo tinte azul-marino que las demás "hero cards".
 const CARD_HERO = "rounded-[14px] hero-panel p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 const RANGES = [{ label: "1M", m: 1 }, { label: "3M", m: 3 }, { label: "6M", m: 6 }, { label: "1 año", m: 12 }]
-const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["blue", "red"])
+const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["emerald", "red"])
 
 function Gauge({ value, max, color = "var(--accent-blue)" }: { value: number; max: number; color?: string }) {
   const pct = max > 0 ? Math.max(0, Math.min(value / max, 1)) : 0

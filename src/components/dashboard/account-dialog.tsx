@@ -14,7 +14,7 @@ import { useToast } from "@/components/ui/toast"
 import { Upload, X, AlertCircle } from "lucide-react"
 import { parseAmount } from "@/lib/validation"
 
-const COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#14b8a6", "#f97316"]
+const COLORS = ["#F5A524", "#2BD9A0", "#FF6B5B", "#FFD08A", "#8B95A5", "#4F5B6B", "#C98A1E", "#F3F1EA"]
 
 export function AccountDialog({
   account,

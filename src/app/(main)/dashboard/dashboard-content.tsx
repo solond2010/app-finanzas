@@ -51,13 +51,13 @@ const RANGES = [
 
 type DashboardMetric = "gastos" | "ingresos" | "neto" | "inversion" | "cash" | "patrimonio"
 type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYear" | "custom"
-const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["cyan", "orange"])
-const MonthlyCashflowTooltip = createChartTooltip(["Ingresos", "Gastos", "Ahorro neto"], ["cyan", "orange", "emerald"])
+const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["emerald", "red"])
+const MonthlyCashflowTooltip = createChartTooltip(["Ingresos", "Gastos", "Ahorro neto"], ["emerald", "red", "amber"])
 const MONTHS_SHORT = Array.from({ length: 12 }, (_, month) => new Date(2026, month, 1).toLocaleDateString("es-ES", { month: "short" }).replace(".", ""))
 const MONTHLY_CASHFLOW_SERIES = [
-  { key: "Ingresos", label: "Ingresos", color: "#06b6d4" },
-  { key: "Gastos", label: "Gastos", color: "#f97316" },
-  { key: "Ahorro neto", label: "Ahorro neto", color: "#10b981" },
+  { key: "Ingresos", label: "Ingresos", color: "var(--accent-green)" },
+  { key: "Gastos", label: "Gastos", color: "var(--accent-red)" },
+  { key: "Ahorro neto", label: "Ahorro neto", color: "var(--gold)" },
 ] as const
 
 function SingleBucketCashflowChart({ bucket, includeSavings }: {
