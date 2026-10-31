@@ -1042,8 +1042,8 @@ input[type="number"] {
    En claro se usa un naranja más oscuro para que no se pierda sobre blanco.
    En el elemento activo del menú el relleno sigue al color del icono para
    no apilar naranja sobre naranja. Las categorías usan su propio color. */
-:root { --icon-accent: #D08A16; --icon-accent-opacity: 0.45; }
-.dark { --icon-accent: #F5A524; --icon-accent-opacity: 0.6; }
+:root { --icon-accent: #D08A16; --icon-accent-opacity: 0.35; }
+.dark { --icon-accent: #F5A524; --icon-accent-opacity: 0.42; }
 .app-icon { flex-shrink: 0; }
 .app-icon-duo [opacity="0.2"] { fill: var(--icon-accent); opacity: var(--icon-accent-opacity); }
 .app-icon-cat [opacity="0.2"] { fill: var(--cat-color, var(--icon-accent)); opacity: 0.75; }
