@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Bricolage_Grotesque, Geist_Mono, Inter } from "next/font/google"
 import { cookies } from "next/headers"
 import "./globals.css"
+import { VersionWatcher } from "@/components/shared/version-watcher"
 
 const inter = Inter({
   variable: "--font-sans",
@@ -61,6 +62,7 @@ export default async function RootLayout({
     >
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
+        <VersionWatcher />
       </body>
     </html>
   )

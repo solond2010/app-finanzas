@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Id de la versión desplegada (commit en Vercel). El cliente lo compara con
+  // /api/version para recargarse solo tras cada despliegue (ver version-check).
+  env: { NEXT_PUBLIC_BUILD_ID: process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || "dev" },
   // Solo se empaquetan los iconos de Phosphor que se usan.
   experimental: { optimizePackageImports: ["@phosphor-icons/react"] },
   // Cabeceras de seguridad estándar para toda la app. Es una app financiera

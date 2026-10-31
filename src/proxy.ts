@@ -93,8 +93,10 @@ async function passwordProxy(request: NextRequest) {
 }
 
 export const config = {
+  // api/version queda fuera: es pública (solo el id del commit) y la consulta
+  // la app para saber si hay versión nueva, también en /login.
   // api/shortcuts y api/backup quedan fuera: los llama un Atajo de iOS o el
   // script de copias, no un navegador. Se protegen con su propia clave
   // (ver src/lib/server/shortcut-auth.ts), que además dice de quién son.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|icons/|manifest.webmanifest|api/shortcuts|api/backup).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|icons/|manifest.webmanifest|api/shortcuts|api/backup|api/version).*)"],
 }
