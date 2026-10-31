@@ -21,7 +21,7 @@ import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 import { PatrimonioMensualSection } from "@/components/analytics/patrimonio-mensual"
-import { PatrimonioHitos } from "@/components/analytics/patrimonio-hitos"
+import { PatrimonioObjetivos } from "@/components/analytics/patrimonio-objetivos"
 import { CategoryIcon } from "@/components/icons/category-icon"
 
 // Mismo umbral que MonthlyBudget (src/components/dashboard/monthly-budget.tsx).
@@ -452,7 +452,7 @@ export default function AnalyticsPage() {
             </div>
           </section>
 
-          <PatrimonioHitos value={currentNetWorth} />
+          <PatrimonioObjetivos value={currentNetWorth} />
 
           <PatrimonioMensualSection dailyHistory={fullHistory} cashByMonth={cashByMonthKey} />
 
@@ -594,7 +594,7 @@ export default function AnalyticsPage() {
               {goalProgress.length > 0 && (
                 <Card className="stagger-fade">
                   <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-base font-semibold"><Target className="h-4 w-4 text-emerald-500" />Objetivos</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold"><Target className="h-4 w-4 text-emerald-500" />Objetivos de tus cuentas</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {goalProgress.map((g) => {

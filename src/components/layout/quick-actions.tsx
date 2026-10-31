@@ -30,6 +30,8 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { cn } from "@/lib/utils"
 import { transferDescription } from "@/lib/transfer-description"
+import { CategoryIcon } from "@/components/icons/category-icon"
+import { CategoryIconPicker } from "@/components/categories/category-icon-picker"
 import { MAX_CATEGORY_NAME, cleanCategoryName, findCategoryByName } from "@/lib/category-names"
 
 type MovementType = "gasto" | "ingreso" | "traspaso"
@@ -118,7 +120,7 @@ function UnifiedMovementForm({
   transactions: Transaction[]
   onSaveTransaction: (t: Transaction) => void
   /** Crea la categoría (mismo camino que Configuración). */
-  onCreateCategory: (name: string, kind: "gasto" | "ingreso") => void
+  onCreateCategory: (name: string, kind: "gasto" | "ingreso", icon: string | null) => void
   onSaveTransfer: (sourceId: string, destId: string, sourceAmount: number, destinationAmount: number, descripcion: string, fecha: string) => void
   onCancel: () => void
   initial?: MovementPrefill
@@ -141,6 +143,8 @@ function UnifiedMovementForm({
   // «+ Nueva»: crear una categoría sin salir del diálogo.
   const [newCatOpen, setNewCatOpen] = useState(false)
   const [newCatName, setNewCatName] = useState("")
+  const [newCatIcon, setNewCatIcon] = useState<string | null>(null)
+  const [newCatPicker, setNewCatPicker] = useState(false)
   const [newCatMsg, setNewCatMsg] = useState<{ tone: "info" | "error"; text: string } | null>(null)
   const [esNecesidad, setEsNecesidad] = useState(initialTipo !== "ingreso")
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "")
@@ -182,9 +186,9 @@ function UnifiedMovementForm({
       }
       return
     }
-    onCreateCategory(name, tipo)
+    onCreateCategory(name, tipo, newCatIcon)
     setCategoria(name)
-    setNewCatOpen(false); setNewCatName("")
+    setNewCatOpen(false); setNewCatName(""); setNewCatIcon(null); setNewCatPicker(false)
     setNewCatMsg({ tone: "info", text: `Categoría «${name}» creada.` })
   }
 
@@ -377,7 +381,7 @@ function UnifiedMovementForm({
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className={cn("space-y-1.5", newCatOpen && "sm:col-span-2")}>
               <label className="text-sm font-medium text-foreground">Categoría</label>
               <Select value={categoria} onValueChange={(v) => v && setCategoria(v)}>
                 <SelectTrigger className="h-12 w-full text-sm">
@@ -399,6 +403,16 @@ function UnifiedMovementForm({
               </div>
               {newCatOpen && (
                 <div className="flex items-center gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setNewCatPicker((v) => !v)}
+                    aria-expanded={newCatPicker}
+                    aria-label="Elegir icono de la nueva categoría"
+                    title="Elegir icono"
+                    className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors", newCatPicker ? "border-primary/60 bg-primary/10" : "border-border bg-background/40 hover:bg-muted/70")}
+                  >
+                    <CategoryIcon name={newCatName} icon={newCatIcon} className="size-4" />
+                  </button>
                   <Input
                     autoFocus
                     value={newCatName}
@@ -412,9 +426,10 @@ function UnifiedMovementForm({
                     className="h-10 min-w-0 flex-1 text-base sm:text-sm"
                   />
                   <Button type="button" size="icon" onClick={createCategory} aria-label="Crear categoría" className="h-10 w-10 shrink-0"><Check className="h-4 w-4" /></Button>
-                  <Button type="button" size="icon" variant="ghost" onClick={() => { setNewCatOpen(false); setNewCatName(""); setNewCatMsg(null) }} aria-label="Cancelar nueva categoría" className="h-10 w-10 shrink-0 text-muted-foreground"><X className="h-4 w-4" /></Button>
+                  <Button type="button" size="icon" variant="ghost" onClick={() => { setNewCatOpen(false); setNewCatName(""); setNewCatIcon(null); setNewCatPicker(false); setNewCatMsg(null) }} aria-label="Cancelar nueva categoría" className="h-10 w-10 shrink-0 text-muted-foreground"><X className="h-4 w-4" /></Button>
                 </div>
               )}
+              {newCatOpen && newCatPicker && <CategoryIconPicker value={newCatIcon} onChange={setNewCatIcon} name={newCatName} />}
               {newCatMsg && <p role={newCatMsg.tone === "error" ? "alert" : "status"} className={cn("text-xs", newCatMsg.tone === "error" ? "text-red-500" : "text-muted-foreground")}>{newCatMsg.text}</p>}
             </div>
 
@@ -591,7 +606,7 @@ export function QuickActionsFAB() {
               transactions={state.transactions}
               initial={prefill}
               onSaveTransaction={handleAddTransaction}
-              onCreateCategory={(name, kind) => dispatch({ type: "ADD_CATEGORY", payload: { name, color: "#64748b", kind } })}
+              onCreateCategory={(name, kind, icon) => dispatch({ type: "ADD_CATEGORY", payload: { name, color: "#64748b", kind, icon } })}
               onSaveTransfer={handleTransfer}
               onCancel={() => setDialogOpen(false)}
             />

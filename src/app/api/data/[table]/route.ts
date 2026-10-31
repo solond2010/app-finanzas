@@ -16,6 +16,7 @@ const ALLOWED_TABLES = new Set([
   "watchlist",
   "investments",
   "investment_contributions",
+  "wealth_goals",
 ])
 
 function checkTable(table: string) {

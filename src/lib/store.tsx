@@ -1,5 +1,6 @@
 "use client"
 
+import { registerCategoryIcons } from "@/components/icons/category-icon"
 import { findCategoryByName } from "./category-names"
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
@@ -69,6 +70,8 @@ export interface Category {
   name: string
   color: string
   kind?: CategoryKind
+  /** Icono elegido (clave de CATEGORY_ICON_CHOICES); null/ausente = automático. */
+  icon?: string | null
 }
 
 export interface Budget {
@@ -539,6 +542,9 @@ function restorePendingDeletes(): PendingDeletes {
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, defaultState)
+  // Iconos elegidos por categoría: se registran antes de pintar los hijos para
+  // que cualquier <CategoryIcon name=…> los muestre.
+  useMemo(() => registerCategoryIcons(state.categories), [state.categories])
   const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle")
   const [localBackupStatus, setLocalBackupStatus] = useState<"idle" | "saved" | "error">("idle")

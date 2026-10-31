@@ -26,7 +26,9 @@ import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
+import { goalLabel, goalProgress } from "@/lib/wealth-goals"
+import { openGoalsEditor, useWealthGoals } from "@/lib/use-wealth-goals"
+import { GoalsEmpty } from "@/components/goals/goals-empty"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
 import { CategoryIcon } from "@/components/icons/category-icon"
@@ -791,12 +793,9 @@ export default function DashboardContent() {
       .filter((account) => account.tipo === "emergencia")
       .reduce((total, account) => total + convertToEur(account.saldo, account.currency), 0)
 
-  const wealthMilestones = useMemo(() => upcomingMilestones(netWorthDisplay, 3), [netWorthDisplay])
-  const currentMilestoneStep = milestoneStepFor(Math.max(netWorthDisplay, 0))
-  const previousMilestone = Math.max(wealthMilestones[0] - currentMilestoneStep, 0)
-  const milestoneProgress = currentMilestoneStep > 0
-    ? Math.max(0, Math.min(((netWorthDisplay - previousMilestone) / currentMilestoneStep) * 100, 100))
-    : 0
+  const { goals: wealthGoals, loaded: wealthGoalsLoaded } = useWealthGoals()
+  const goalsView = useMemo(() => goalProgress(wealthGoals, netWorthDisplay), [wealthGoals, netWorthDisplay])
+  const nextWealthGoal = goalsView.next
   const goalGuidance = emergency && !emergency.isComplete
     ? { title: "Completa tu colchón", detail: `${Math.round(emergency.progress * 100)} % de la meta de emergencia` }
     : monthTotals.neto < 0
@@ -805,7 +804,9 @@ export default function DashboardContent() {
         ? { title: `Avanza en ${nextGoal.nombre}`, detail: `Meta de ahorro al ${Math.round(nextGoal.pct)}%` }
         : savingsRate >= 20
           ? { title: "Mantén este ritmo", detail: `Tasa de ahorro actual: ${savingsRate}%` }
-          : { title: "Construye el siguiente hito", detail: "Un paso cada vez, según tu patrimonio" }
+          : (nextWealthGoal
+            ? { title: nextWealthGoal.name ? `Camino a ${nextWealthGoal.name}` : "Alcanza tu siguiente objetivo", detail: "Un paso cada vez, según tu patrimonio" }
+            : { title: "Ponte un objetivo", detail: "Elige la cifra de patrimonio que quieres alcanzar" })
 
   const recentTransactions = useMemo(
     () => analysisTransactions.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5),
@@ -1335,7 +1336,11 @@ export default function DashboardContent() {
                     <p className="text-sm font-semibold text-foreground">Tu camino financiero</p>
                   </div>
                 </div>
-                <span className="shrink-0 whitespace-nowrap rounded-full border border-border/70 px-2 py-1 text-[10px] font-medium text-muted-foreground">3 hitos</span>
+                {wealthGoalsLoaded && wealthGoals.length > 0 && (
+                  <button type="button" onClick={openGoalsEditor} className="shrink-0 whitespace-nowrap rounded-full border border-border/70 px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                    Editar objetivos
+                  </button>
+                )}
               </div>
 
               <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.06] p-3">
@@ -1347,22 +1352,31 @@ export default function DashboardContent() {
                     <p className="mt-1 text-sm font-semibold text-foreground @[20rem]:truncate">{goalGuidance.title}</p>
                     <p className="mt-0.5 text-[11px] text-muted-foreground @[20rem]:truncate">{goalGuidance.detail}</p>
                   </div>
-                  <p className="shrink-0 text-sm font-bold tabular-nums text-foreground @[20rem]:text-right"><Sensitive>{money(wealthMilestones[0])}</Sensitive></p>
+                  {nextWealthGoal && <p className="shrink-0 text-sm font-bold tabular-nums text-foreground @[20rem]:text-right"><Sensitive>{money(nextWealthGoal.amount)}</Sensitive></p>}
                 </div>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted/80">
-                  <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${milestoneProgress}%` }} />
-                </div>
-                <p className="mt-1.5 text-right text-[10px] tabular-nums text-muted-foreground"><Sensitive>{formatMoney(Math.max(wealthMilestones[0] - netWorthDisplay, 0), "EUR")}</Sensitive> restantes</p>
+                {nextWealthGoal && (
+                  <>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted/80">
+                      <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${goalsView.progress}%` }} />
+                    </div>
+                    <p className="mt-1.5 text-right text-[10px] tabular-nums text-muted-foreground"><Sensitive>{formatMoney(goalsView.remaining, "EUR")}</Sensitive> restantes</p>
+                  </>
+                )}
+                {goalsView.allDone && <p className="mt-2 text-[11px] font-medium text-emerald-500">Todos tus objetivos conseguidos. Ponte uno nuevo cuando quieras.</p>}
               </div>
 
-              <div className="mt-3 grid grid-cols-3 gap-2" aria-label="Próximos hitos de patrimonio">
-                {wealthMilestones.map((milestone, index) => (
-                  <div key={milestone} className={cn("min-w-0 rounded-xl border px-1.5 py-2.5 sm:px-2", index === 0 ? "border-primary/30 bg-primary/[0.07]" : "border-border/70 bg-background/35")}>
-                    <p className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">{index === 0 ? "Siguiente" : `Hito ${index + 1}`}</p>
-                    <p className={cn("mt-1 truncate text-[11px] font-semibold tabular-nums sm:text-xs", index === 0 ? "text-primary" : "text-foreground")}><Sensitive>{money(milestone)}</Sensitive></p>
-                  </div>
-                ))}
-              </div>
+              {wealthGoalsLoaded && wealthGoals.length === 0 ? (
+                <div className="mt-3"><GoalsEmpty netWorth={netWorthDisplay} compact /></div>
+              ) : goalsView.upcoming.length > 0 && (
+                <div className={cn("mt-3 grid gap-2", goalsView.upcoming.length === 1 ? "grid-cols-1" : goalsView.upcoming.length === 2 ? "grid-cols-2" : "grid-cols-3")} aria-label="Próximos objetivos de patrimonio">
+                  {goalsView.upcoming.map((goal, index) => (
+                    <div key={goal.id} className={cn("min-w-0 rounded-xl border px-1.5 py-2.5 sm:px-2", index === 0 ? "border-primary/30 bg-primary/[0.07]" : "border-border/70 bg-background/35")}>
+                      <p className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">{goalLabel(goal, index)}</p>
+                      <p className={cn("mt-1 truncate text-[11px] font-semibold tabular-nums sm:text-xs", index === 0 ? "text-primary" : "text-foreground")}><Sensitive>{money(goal.amount)}</Sensitive></p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             </div>
           </section>

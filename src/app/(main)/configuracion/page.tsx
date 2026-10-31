@@ -1,6 +1,6 @@
 "use client"
 
-import { cleanCategoryName, findCategoryByName } from "@/lib/category-names"
+import { categoryKey, cleanCategoryName, findCategoryByName } from "@/lib/category-names"
 import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,13 +10,14 @@ import { useFinance, useSyncStatus, type CategoryKind } from "@/lib/store"
 import { useInvestments } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
-import { Plus, Trash2, Download, Tags, FileDown, Layers, Search, Pencil, Check, X, Cloud, CloudOff, Loader2, HardDrive, ShieldCheck, ShieldAlert, AlertTriangle } from "@/components/icons"
+import { Plus, Trash2, Download, Tags, FileDown, Layers, Search, Pencil, Cloud, CloudOff, Loader2, HardDrive, ShieldCheck, ShieldAlert, AlertTriangle } from "@/components/icons"
 import { Skeleton } from "@/components/shared/skeleton"
 import { auditFinanceState } from "@/lib/finance-integrity"
 import Link from "next/link"
 import { LEGACY_USER_ID, USER_ID_COOKIE } from "@/lib/auth-mode"
 import { AccountSettings } from "@/components/settings/account-settings"
 import { CategoryIcon } from "@/components/icons/category-icon"
+import { CategoryIconPicker } from "@/components/categories/category-icon-picker"
 
 export default function ConfiguracionPage() {
   // La nota de la copia automática del Mac solo tiene sentido para Moha
@@ -41,6 +42,9 @@ export default function ConfiguracionPage() {
   const [categorySearch, setCategorySearch] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState("")
+  const [editingIcon, setEditingIcon] = useState<string | null>(null)
+  const [newCatIcon, setNewCatIcon] = useState<string | null>(null)
+  const [newCatPicker, setNewCatPicker] = useState(false)
   const integrityFindings = useMemo(() => auditFinanceState(state, positions, contributions), [state, positions, contributions])
   const integrityReviewLink = (code: string) => {
     if (["duplicate-accounts", "orphan-funds", "invalid-balances", "balance-mismatch"].includes(code)) return { href: "/cuentas", label: "Revisar cuentas" }
@@ -75,8 +79,10 @@ export default function ConfiguracionPage() {
       toast("Esa categoría ya existe", "error")
       return
     }
-    dispatch({ type: "ADD_CATEGORY", payload: { name, color: "#64748b", kind: newCatKind } })
+    dispatch({ type: "ADD_CATEGORY", payload: { name, color: "#64748b", kind: newCatKind, icon: newCatIcon } })
     setNewCat("")
+    setNewCatIcon(null)
+    setNewCatPicker(false)
     toast(`Categoría "${name}" creada`, "success")
   }
 
@@ -104,14 +110,17 @@ export default function ConfiguracionPage() {
 
   const saveCategoryName = (id: string) => {
     const category = state.categories.find((c) => c.id === id)
-    const name = editingName.trim()
+    const name = cleanCategoryName(editingName)
     if (!category || !name) return
-    if (state.categories.some((c) => c.id !== id && c.name.trim().toLowerCase() === name.toLowerCase())) { toast("Ya existe una categoría con ese nombre", "error"); return }
+    // Solo si cambia el nombre: si solo cambia el icono no hace falta (y así
+    // también se puede poner icono a una categoría que tenga duplicados).
+    if (categoryKey(name) !== categoryKey(category.name) && state.categories.some((c) => c.id !== id && findCategoryByName([c], name))) { toast("Ya existe una categoría con ese nombre", "error"); return }
     if (state.categories.filter((c) => c.name === category.name).length > 1 && name !== category.name) { toast("Hay categorías duplicadas con este nombre; renombra primero las otras para evitar mover movimientos incorrectos", "error"); return }
-    dispatch({ type: "UPDATE_CATEGORY", payload: { ...category, name } })
+    dispatch({ type: "UPDATE_CATEGORY", payload: { ...category, name, icon: editingIcon } })
     setEditingId(null)
-    toast("Categoría actualizada; sus movimientos conservaron la categoría", "success")
+    toast(name !== category.name ? "Categoría actualizada; sus movimientos conservaron la categoría" : "Categoría actualizada", "success")
   }
+  const editingCategory = editingId ? state.categories.find((c) => c.id === editingId) ?? null : null
 
   const exportBackup = async () => {
     try {
@@ -190,6 +199,16 @@ export default function ConfiguracionPage() {
                 <button onClick={() => setNewCatKind("ingreso")} className={cn("rounded-full px-3 py-1 transition-colors", newCatKind === "ingreso" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Ingreso</button>
               </div>
               <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewCatPicker((v) => !v)}
+                  aria-expanded={newCatPicker}
+                  aria-label="Elegir icono de la nueva categoría"
+                  title="Elegir icono"
+                  className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors", newCatPicker ? "border-primary/60 bg-primary/10" : "border-border bg-background/40 hover:bg-muted/70")}
+                >
+                  <CategoryIcon name={newCat} icon={newCatIcon} className="size-4" />
+                </button>
                 <div className="relative flex-1">
                   <Tags className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                   <Input
@@ -204,6 +223,7 @@ export default function ConfiguracionPage() {
                   <Plus className="h-3.5 w-3.5" /> Añadir
                 </Button>
               </div>
+              {newCatPicker && <CategoryIconPicker value={newCatIcon} onChange={setNewCatIcon} name={newCat} />}
             </div>
             <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} placeholder="Buscar categoría…" className="pl-9" /></div>
             <div className="space-y-4">
@@ -216,8 +236,9 @@ export default function ConfiguracionPage() {
                     <div className="flex flex-wrap gap-2">
                       {cats.map((cat) => (
                         <div key={cat.id} className="stagger-fade group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 bg-muted/60 text-foreground ring-border/40">
-                          <CategoryIcon name={cat.name} color={cat.color} className="size-3.5" />
-                          {editingId === cat.id ? <><Input autoFocus value={editingName} onChange={(e) => setEditingName(e.target.value)} className="h-7 w-32 bg-background px-2 text-xs" onKeyDown={(e) => { if (e.key === "Enter") saveCategoryName(cat.id); if (e.key === "Escape") setEditingId(null) }} /><button onClick={() => saveCategoryName(cat.id)} aria-label="Guardar categoría"><Check className="h-3 w-3 text-emerald-500" /></button><button onClick={() => setEditingId(null)} aria-label="Cancelar"><X className="h-3 w-3" /></button></> : <><span>{cat.name}</span><button onClick={() => { setEditingId(cat.id); setEditingName(cat.name) }} aria-label={`Renombrar categoría ${cat.name}`} className="opacity-50 hover:opacity-100"><Pencil className="h-3 w-3" /></button></>}
+                          <CategoryIcon name={cat.name} icon={cat.icon} color={cat.color} className="size-3.5" />
+                          <span>{cat.name}</span>
+                          <button onClick={() => { setEditingId(cat.id); setEditingName(cat.name); setEditingIcon(cat.icon ?? null) }} aria-label={`Editar categoría ${cat.name}`} className="opacity-50 hover:opacity-100"><Pencil className="h-3 w-3" /></button>
                           <button onClick={() => deleteCategory(cat.id, cat.name)} className="opacity-40 group-hover:opacity-100 transition-opacity hover:opacity-100 cursor-pointer" aria-label={`Eliminar categoría ${cat.name}`}>
                             <Trash2 className="h-3 w-3" />
                           </button>
@@ -231,6 +252,27 @@ export default function ConfiguracionPage() {
             </div>
           </CardContent>
         </Card>
+        <Dialog open={editingCategory !== null} onOpenChange={(open) => { if (!open) setEditingId(null) }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Editar categoría</DialogTitle>
+              <DialogDescription>Cambia el nombre o el icono. Sus movimientos se quedan como están.</DialogDescription>
+            </DialogHeader>
+            {editingCategory && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-background/40"><CategoryIcon name={editingName} icon={editingIcon} color={editingCategory.color} className="size-5" /></span>
+                  <Input autoFocus value={editingName} onChange={(e) => setEditingName(e.target.value)} aria-label="Nombre de la categoría" className="h-10 text-base sm:text-sm" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveCategoryName(editingCategory.id) } }} />
+                </div>
+                <CategoryIconPicker value={editingIcon} onChange={setEditingIcon} name={editingName} />
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingId(null)}>Cancelar</Button>
+              <Button onClick={() => editingCategory && saveCategoryName(editingCategory.id)}>Guardar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
           <AccountSettings part="atajos" />
         </div>
