@@ -24,8 +24,9 @@ const nextConfig: NextConfig = {
       },
       // Atajo de iPhone compartido (firmado, sin claves dentro): se descarga
       // con su nombre bonito para que al importarlo se llame «Apuntar en Garra».
+      // Cada versión nueva lleva otro nombre de archivo (-v2…) para saltar cachés.
       {
-        source: "/atajos/apuntar-en-garra.shortcut",
+        source: "/atajos/:file*",
         headers: [
           { key: "Content-Type", value: "application/octet-stream" },
           { key: "Content-Disposition", value: "attachment; filename=\"Apuntar en Garra.shortcut\"" },

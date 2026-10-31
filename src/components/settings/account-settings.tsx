@@ -9,12 +9,12 @@ import { Copy, Download, KeyRound, LogOut, Smartphone, Trash2, UserRound } from 
 import { PasswordInput } from "@/components/ui/password-input"
 
 type Me = { mode: "accounts" | "password"; userId: string; email: string | null }
-// Atajo compartido (firmado, sin claves): pide la clave personal al instalarse.
-const SHORTCUT_URL = "/atajos/apuntar-en-garra.shortcut"
+// Atajo compartido (firmado, sin claves): pide la clave la primera vez que se abre y la guarda en el iPhone (sin preguntas de importación: en iOS 27 «Añadir atajo» no responde si las hay).
+const SHORTCUT_URL = "/atajos/apuntar-en-garra-v2.shortcut"
 const SHORTCUT_STEPS = [
   <>Crea tu clave aquí abajo y cópiala.</>,
   <>Toca <strong>Instalar el Atajo</strong> y luego <strong>Añadir atajo</strong>.</>,
-  <>Pega tu clave cuando te la pida. ¡Listo!</>,
+  <>Ábrelo y pega tu clave cuando te la pida (solo la primera vez). ¡Listo!</>,
 ]
 
 type TokenItem = { id: string; name: string; prefix: string; created_at: string; last_used_at: string | null }
