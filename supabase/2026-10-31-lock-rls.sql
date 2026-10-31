@@ -35,3 +35,26 @@ select policyname, cmd from pg_policies where schemaname = 'storage' and tablena
 -- create policy "Anon upload bank logos" on storage.objects for insert with check (bucket_id = 'bank-logos');
 -- create policy "Anon update bank logos" on storage.objects for update using (bucket_id = 'bank-logos');
 -- create policy "Anon delete bank logos" on storage.objects for delete using (bucket_id = 'bank-logos');
+
+-- ---------------------------------------------------------------------------
+-- APLICADO el 2026-10-31 (~18:30 Europe/Madrid). Además del bloque anterior,
+-- se borraron TODAS las políticas del esquema public (10), que eran permisivas
+-- y anulaban el efecto de RLS. Comprobado: la clave anon devuelve 0 filas en
+-- las 9 tablas y la app sigue funcionando (usa la clave secreta en el servidor).
+--
+-- MARCHA ATRÁS de esas políticas (solo en emergencia; vuelve a abrir la BD a
+-- cualquiera con la clave pública). Nombres, comando y rol son los originales;
+-- la expresión exacta no se guardó y se asume using (true) / with check (true).
+-- Ojo: "Solo mi usuario puede acceder a presupuestos" podría haber usado una
+-- condición por usuario (p. ej. auth.uid() = user_id); revisa antes de recrearla.
+--
+-- create policy "Acceso temporal" on public.accounts      for all to public using (true) with check (true);
+-- create policy "Acceso temporal" on public.sinking_funds for all to public using (true) with check (true);
+-- create policy "Acceso temporal" on public.transactions  for all to public using (true) with check (true);
+-- create policy "Solo mi usuario puede acceder a presupuestos" on public.budgets for all to public using (true) with check (true);
+-- create policy "Modificar categorias"        on public.categories for all    to public using (true) with check (true);
+-- create policy "Publicar lectura categorias" on public.categories for select to public using (true);
+-- create policy "Acceso temporal"             on public.categories for all    to public using (true) with check (true);
+-- create policy "investments anon all" on public.investments for all to anon using (true) with check (true);
+-- create policy "settings anon all"    on public.settings    for all to anon using (true) with check (true);
+-- create policy "watchlist anon all"   on public.watchlist   for all to anon using (true) with check (true);
