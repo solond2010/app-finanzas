@@ -1,0 +1,5 @@
+// Asa visual de las hojas inferiores: en móvil los Dialog se anclan abajo
+// (ver ui/dialog.tsx) y esta barrita indica que es una hoja, no una página.
+export function SheetHandle() {
+  return <div aria-hidden="true" className="mx-auto -mt-1 h-1.5 w-10 rounded-full bg-muted-foreground/30 sm:hidden" />
+}

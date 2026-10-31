@@ -27,10 +27,10 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
-import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
 import { CategoryIcon } from "@/components/icons/category-icon"
+import { CashflowDrilldown, CashflowHoverTooltip, type CashflowBucket } from "@/components/dashboard/cashflow-drilldown"
 
 const CARD = "rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
@@ -52,8 +52,6 @@ const RANGES = [
 
 type DashboardMetric = "gastos" | "ingresos" | "neto" | "inversion" | "cash" | "patrimonio"
 type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYear" | "custom"
-const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["emerald", "red"])
-const MonthlyCashflowTooltip = createChartTooltip(["Ingresos", "Gastos", "Ahorro neto"], ["emerald", "red", "amber"])
 const MONTHS_SHORT = Array.from({ length: 12 }, (_, month) => new Date(2026, month, 1).toLocaleDateString("es-ES", { month: "short" }).replace(".", ""))
 const MONTHLY_CASHFLOW_SERIES = [
   { key: "Ingresos", label: "Ingresos", color: "var(--accent-green)" },
@@ -61,9 +59,10 @@ const MONTHLY_CASHFLOW_SERIES = [
   { key: "Ahorro neto", label: "Ahorro neto", color: "var(--gold)" },
 ] as const
 
-function SingleBucketCashflowChart({ bucket, includeSavings }: {
+function SingleBucketCashflowChart({ bucket, includeSavings, onOpen }: {
   bucket: { label: string; Ingresos: number; Gastos: number; "Ahorro neto": number }
   includeSavings: boolean
+  onOpen: () => void
 }) {
   const series = MONTHLY_CASHFLOW_SERIES.slice(0, includeSavings ? 3 : 2)
   const values = series.map(({ key }) => bucket[key])
@@ -80,7 +79,7 @@ function SingleBucketCashflowChart({ bucket, includeSavings }: {
   const axisWidth = moneyAxisWidth(ticks.map((tick) => tick.value), 48, 120)
 
   return (
-    <div className="mt-3 w-full" role="img" aria-label={`${bucket.label}: ${series.map(({ key, label }) => `${label} ${formatMoney(bucket[key], "EUR")}`).join(", ")}`}>
+    <button type="button" onClick={onOpen} className="mt-3 block w-full rounded-xl text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label={`${bucket.label}: ${series.map(({ key, label }) => `${label} ${formatMoney(bucket[key], "EUR")}`).join(", ")}. Ver desglose`}>
       <div className="mb-3 flex flex-wrap justify-end gap-x-4 gap-y-1" aria-hidden="true">
         {series.map(({ key, label, color }) => (
           <span key={key} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -130,7 +129,7 @@ function SingleBucketCashflowChart({ bucket, includeSavings }: {
         </div>
       </div>
       <p className="mt-2 text-center text-xs text-muted-foreground">{bucket.label}</p>
-    </div>
+    </button>
   )
 }
 
@@ -202,6 +201,10 @@ export default function DashboardContent() {
   const [customEndpoint, setCustomEndpoint] = useState<"start" | "end">("start")
   const [customYear, setCustomYear] = useState(() => new Date().getFullYear())
   const [cashflowGranularity, setCashflowGranularity] = useState<"week" | "month">("month")
+  // Tramo abierto en el desglose de «Ingresos vs gastos» y clave para
+  // remontar la gráfica al cerrar (Tremor deja la barra pulsada resaltada).
+  const [cashflowDrillKey, setCashflowDrillKey] = useState<string | null>(null)
+  const [cashflowChartKey, setCashflowChartKey] = useState(0)
   const [rangeId, setRangeId] = useState<string>("6M")
   const activeRange = RANGES.find((r) => r.id === rangeId) ?? RANGES[3]
   const [showNewAccount, setShowNewAccount] = useState(false)
@@ -315,12 +318,12 @@ export default function DashboardContent() {
     return totals
   }, [periodTransactions, currencyByAccount])
   const periodCashflow = useMemo(() => {
-    const buckets: { key: string; label: string; Ingresos: number; Gastos: number; "Ahorro neto": number }[] = []
+    const buckets: CashflowBucket[] = []
     if (cashflowGranularity === "month") {
       const cursor = new Date(periodBounds.start.getFullYear(), periodBounds.start.getMonth(), 1)
       const last = new Date(periodBounds.end.getFullYear(), periodBounds.end.getMonth(), 1)
       while (cursor <= last) {
-        buckets.push({ key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`, label: cursor.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), Ingresos: 0, Gastos: 0, "Ahorro neto": 0 })
+        buckets.push({ key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`, label: cursor.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), Ingresos: 0, Gastos: 0, "Ahorro neto": 0, prev: null })
         cursor.setMonth(cursor.getMonth() + 1)
       }
     } else {
@@ -331,7 +334,7 @@ export default function DashboardContent() {
         const finish = new Date(cursor)
         finish.setDate(finish.getDate() + 6)
         const label = `${cursor.getDate()}–${finish.getDate()} ${finish.toLocaleDateString("es-ES", { month: "short" })}`
-        buckets.push({ key, label, Ingresos: 0, Gastos: 0, "Ahorro neto": 0 })
+        buckets.push({ key, label, Ingresos: 0, Gastos: 0, "Ahorro neto": 0, prev: null })
         cursor.setDate(cursor.getDate() + 7)
       }
     }
@@ -348,8 +351,26 @@ export default function DashboardContent() {
       if (transaction.tipo === "gasto") bucket.Gastos += amount
     }
     for (const bucket of buckets) bucket["Ahorro neto"] = bucket.Ingresos - bucket.Gastos
+    // Comparativa con el tramo anterior: el previo de la serie o, para el
+    // primer mes, el mes natural anterior (la primera semana no compara).
+    buckets.forEach((bucket, index) => {
+      const previous = buckets[index - 1]
+      if (previous) bucket.prev = { label: previous.label, ingresos: previous.Ingresos, gastos: previous.Gastos }
+      else if (cashflowGranularity === "month") {
+        const date = parseLocalDate(`${bucket.key}-01`)
+        date.setMonth(date.getMonth() - 1)
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+        const totals = getMonthTotalsByString(analysisTransactions, key, currencyByAccount)
+        if (totals.ingresos > 0 || totals.gastos > 0) bucket.prev = { label: date.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), ingresos: totals.ingresos, gastos: totals.gastos }
+      }
+    })
     return buckets
-  }, [cashflowGranularity, periodBounds, periodTransactions, currencyByAccount])
+  }, [cashflowGranularity, periodBounds, periodTransactions, currencyByAccount, analysisTransactions])
+  const cashflowDrillBucket = periodCashflow.find((bucket) => bucket.key === cashflowDrillKey) ?? null
+  const closeCashflowDrill = () => {
+    setCashflowDrillKey(null)
+    setCashflowChartKey((key) => key + 1)
+  }
   const periodIncomeTransactions = useMemo(() => periodTransactions.filter((transaction) => transaction.tipo === "ingreso"), [periodTransactions])
   const periodExpenseTransactions = useMemo(() => periodTransactions.filter((transaction) => transaction.tipo === "gasto"), [periodTransactions])
   const periodSavingsRate = getSavingsRate(periodTotals.ingresos, periodTotals.neto)
@@ -1041,10 +1062,20 @@ export default function DashboardContent() {
               </div>
             </div>
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? periodCashflow.length === 1 ? (
-              <SingleBucketCashflowChart bucket={periodCashflow[0]} includeSavings={cashflowGranularity === "month"} />
+              <SingleBucketCashflowChart bucket={periodCashflow[0]} includeSavings={cashflowGranularity === "month"} onOpen={() => setCashflowDrillKey(periodCashflow[0].key)} />
             ) : (
-              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["cyan", "orange", "emerald"] : ["cyan", "orange"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={cashflowGranularity === "month" ? MonthlyCashflowTooltip : CashflowTooltip} className="dashboard-cashflow-chart h-56 sm:h-72" showAnimation />
+              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["cyan", "orange", "emerald"] : ["cyan", "orange"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={CashflowHoverTooltip} key={cashflowChartKey} onValueChange={(value) => { const key = value && typeof value.key === "string" ? value.key : null; if (key) setCashflowDrillKey(key) }} className="dashboard-cashflow-chart h-56 cursor-pointer sm:h-72" showAnimation={cashflowChartKey === 0} />
             ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
+            {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] text-muted-foreground"><span className="sm:hidden">Toca una barra</span><span className="hidden sm:inline">Haz clic en una barra</span> para ver el desglose por semana y categoría.</p>
+                {periodCashflow.length > 1 && (
+                  <button type="button" onClick={() => setCashflowDrillKey(periodCashflow[periodCashflow.length - 1].key)} className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 sm:min-h-9">
+                    Desglose de {periodCashflow[periodCashflow.length - 1].label} <ChevronRight className="size-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
           </section>
 
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
@@ -1463,6 +1494,8 @@ export default function DashboardContent() {
           )}
         </DialogContent>
       </Dialog>
+
+      <CashflowDrilldown bucket={cashflowDrillBucket} granularity={cashflowGranularity} transactions={periodTransactions} currencyByAccount={currencyByAccount} catColor={catColor} onClose={closeCashflowDrill} />
 
       <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={handleCreateAccount} />
     </div>
