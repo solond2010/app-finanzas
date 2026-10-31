@@ -222,13 +222,9 @@ type SinkingFundRow = {
 type TransactionPayload = Omit<TransactionRow, "monto" | "tags" | "descripcion"> & { monto: number; tags: string[]; descripcion: string }
 
 export const defaultState: FinanceState = {
-  accounts: [
-    { id: "acc_emergency", nombre: "Emergencias", tipo: "emergencia", banco: "", saldo: 0, currency: "EUR", objetivo: null, limite_mensual: null, color: "#10b981" },
-    { id: "acc_ahorro", nombre: "Ahorro", tipo: "ahorro", banco: "", saldo: 0, currency: "EUR", objetivo: null, limite_mensual: null, color: "#3b82f6" },
-    { id: "acc_inversion", nombre: "Inversión", tipo: "inversion", banco: "", saldo: 0, currency: "EUR", objetivo: null, limite_mensual: null, color: "#8b5cf6" },
-    { id: "acc_principal", nombre: "Principal", tipo: "efectivo", banco: "", saldo: 0, currency: "EUR", objetivo: null, limite_mensual: null, color: "#f59e0b" },
-    { id: "acc_gastos", nombre: "Gastos Mes", tipo: "gastos", banco: "", saldo: 0, currency: "EUR", objetivo: null, limite_mensual: null, color: "#ef4444" },
-  ],
+  // Una cuenta nueva empieza vacía: el usuario crea sus propias cuentas
+  // (Cuentas muestra «Sin cuentas aún» + «Crear primera cuenta»).
+  accounts: [],
   transactions: [],
   sinkingFunds: [],
   categories: DEFAULT_CATEGORIES,
