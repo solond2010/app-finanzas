@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react"
 import { useSearchParams } from "next/navigation"
-import { Loader2, Sparkles } from "lucide-react"
+import { Loader2 } from "lucide-react"
+import { GarraLogo } from "@/components/brand/garra-logo"
 
 type Mode = "login" | "signup" | "magic"
 
@@ -71,13 +72,7 @@ export function AccountLoginForm() {
   return (
     <div className="flex w-full max-w-sm flex-col gap-6">
       <div className="flex items-center justify-center gap-2.5">
-        <div className="gold-badge flex size-9 items-center justify-center rounded-xl">
-          <Sparkles className="h-4 w-4" />
-        </div>
-        <div className="text-left">
-          <p className="text-base font-bold leading-tight tracking-tight">Finanzas</p>
-          <p className="page-section-label leading-tight">Panel de control</p>
-        </div>
+        <GarraLogo tagline />
       </div>
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>

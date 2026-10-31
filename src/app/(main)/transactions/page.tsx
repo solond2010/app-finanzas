@@ -335,7 +335,7 @@ export default function IngresosGastosPage() {
               </div>
               {cashflowHasData ? (
                 <div role="img" aria-label="Gráfico de área: evolución de ingresos y gastos por mes">
-                  <AreaChart data={cashflow} index="mes" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(cashflow.flatMap((month) => [month.Ingresos, month.Gastos]))} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="mt-2 h-64 sm:h-72" curveType="monotone" showAnimation />
+                  <AreaChart data={cashflow} index="mes" categories={["Ingresos", "Gastos"]} colors={["emerald", "red"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(cashflow.flatMap((month) => [month.Ingresos, month.Gastos]))} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="mt-2 h-64 sm:h-72" curveType="monotone" showAnimation />
                 </div>
               ) : (
                 <EmptyPlaceholder text="Sin movimientos en este periodo" className="mt-2 h-64 sm:h-72" />

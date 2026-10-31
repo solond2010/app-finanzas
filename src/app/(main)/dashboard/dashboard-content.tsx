@@ -898,7 +898,7 @@ export default function DashboardContent() {
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="page-section-label hidden sm:block">Resumen general</p>
-            <h1 className="truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Finanzas</h1>
+            <h1 className="truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Resumen</h1>
           </div>
           <button
             type="button"

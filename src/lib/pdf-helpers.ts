@@ -274,7 +274,7 @@ export function drawFooter(doc: jsPDF, margin: number) {
     doc.setTextColor(...MUTED)
     doc.setFont("helvetica", "normal")
     doc.setFontSize(8)
-    doc.text("Finanzas · Informe generado automáticamente. No constituye asesoramiento financiero.", margin, doc.internal.pageSize.getHeight() - 24)
+    doc.text("Garra · Informe generado automáticamente. No constituye asesoramiento financiero.", margin, doc.internal.pageSize.getHeight() - 24)
     doc.text(`${i} / ${pages}`, W - margin, doc.internal.pageSize.getHeight() - 24, { align: "right" })
   }
 }
