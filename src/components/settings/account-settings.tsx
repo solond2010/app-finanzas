@@ -5,10 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
-import { Copy, KeyRound, LogOut, Smartphone, Trash2, UserRound } from "@/components/icons"
+import { Copy, Download, KeyRound, LogOut, Smartphone, Trash2, UserRound } from "@/components/icons"
 import { PasswordInput } from "@/components/ui/password-input"
 
 type Me = { mode: "accounts" | "password"; userId: string; email: string | null }
+// Atajo compartido (firmado, sin claves): pide la clave personal al instalarse.
+const SHORTCUT_URL = "/atajos/apuntar-en-garra.shortcut"
+const SHORTCUT_STEPS = [
+  <>Crea tu clave aquí abajo y cópiala.</>,
+  <>Toca <strong>Instalar el Atajo</strong> y luego <strong>Añadir atajo</strong>.</>,
+  <>Pega tu clave cuando te la pida. ¡Listo!</>,
+]
+
 type TokenItem = { id: string; name: string; prefix: string; created_at: string; last_used_at: string | null }
 
 function formatDate(value: string | null) {
@@ -111,7 +119,23 @@ export function AccountSettings() {
           <CardTitle className="flex items-center gap-2 text-base font-semibold"><Smartphone className="h-4 w-4" />Claves para Atajos de iPhone</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-xs text-muted-foreground">Cada clave deja que un Atajo apunte movimientos en <strong>tu</strong> cuenta. Pégala en el Atajo donde antes iba la clave secreta. Si pierdes el móvil, revócala aquí.</p>
+          <p className="text-xs text-muted-foreground">Apunta gastos, ingresos y traspasos desde el iPhone en dos toques, sin abrir Garra. Tus cuentas y categorías salen solas.</p>
+          <ol className="space-y-2">
+            {SHORTCUT_STEPS.map((step, i) => (
+              <li key={i} className="flex items-start gap-3 text-sm">
+                <span aria-hidden className="mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary tabular-nums">{i + 1}</span>
+                <span className="min-w-0 pt-0.5">{step}</span>
+              </li>
+            ))}
+          </ol>
+          <a
+            href={SHORTCUT_URL}
+            download="Apuntar en Garra.shortcut"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/20 outline-none transition-all hover:brightness-110 focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.97] sm:w-auto"
+          >
+            <Download className="h-4 w-4" />Instalar el Atajo
+          </a>
+          <p className="text-xs text-muted-foreground">Ábrelo en el iPhone. Si no pasa nada, entra en Garra desde Safari y tócalo ahí. Cada clave es solo para <strong>tu</strong> cuenta: si pierdes el móvil, revócala aquí.</p>
           {newToken && (
             <div className="space-y-2 rounded-xl border border-amber-500/40 bg-amber-500/[0.06] p-3">
               <p className="text-xs font-medium">Copia esta clave ahora: no se volverá a mostrar.</p>
@@ -123,8 +147,8 @@ export function AccountSettings() {
             </div>
           )}
           <div className="flex gap-2">
-            <Input placeholder="Nombre (p. ej. iPhone de Moha)" value={tokenName} maxLength={60} onChange={(e) => setTokenName(e.target.value)} />
-            <Button size="sm" disabled={busy} onClick={createToken}><KeyRound className="mr-1.5 h-3.5 w-3.5" />Crear clave</Button>
+            <Input className="h-11" placeholder="Nombre (p. ej. Mi iPhone)" value={tokenName} maxLength={60} onChange={(e) => setTokenName(e.target.value)} />
+            <Button className="h-11 rounded-xl" disabled={busy} onClick={createToken}><KeyRound className="mr-1.5 h-3.5 w-3.5" />Crear clave</Button>
           </div>
           {tokensError ? (
             <p className="text-xs text-destructive">{tokensError}</p>

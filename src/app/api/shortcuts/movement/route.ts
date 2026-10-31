@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabase-server"
 import { resolveShortcutUser } from "@/lib/server/shortcut-auth"
 import { guessCategory } from "@/lib/guess-category"
 import { dateKeyInTimeZone, isDateKey } from "@/lib/date-utils"
+import { AUTO_CATEGORY, movementMessage, transferMessage } from "@/lib/shortcut-messages"
 
 
 // Endpoint pensado para un Atajo de iOS disparado a mano (Toque Trasero o
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
           transactionExists(sourceTransactionId),
           transactionExists(destinationTransactionId),
         ])
-        if (sourceExists && destinationExists) return NextResponse.json({ ok: true, duplicate: true })
+        if (sourceExists && destinationExists) return NextResponse.json({ ok: true, duplicate: true, mensaje: "Este traspaso ya estaba apuntado" })
         if (sourceExists || destinationExists) {
           return NextResponse.json({ error: "Este traspaso quedó incompleto y necesita revisión" }, { status: 409 })
         }
@@ -144,11 +145,16 @@ export async function POST(request: Request) {
     const { error: updateDestinoError } = await supabaseServer.from("accounts").update({ saldo: Number(destino.saldo) + destinationAmount }).eq("user_id", userId).eq("id", destino.id)
     if (updateDestinoError) return NextResponse.json({ error: updateDestinoError.message }, { status: 500 })
 
-    return NextResponse.json({ ok: true, origen: { monto, currency: sourceCurrency }, destino: { monto: destinationAmount, currency: destinationCurrency } })
+    return NextResponse.json({
+      ok: true,
+      origen: { monto, currency: sourceCurrency },
+      destino: { monto: destinationAmount, currency: destinationCurrency },
+      mensaje: transferMessage(monto, sourceCurrency, origen.nombre, destino.nombre),
+    })
   }
 
   let categoria = guessCategory(descripcion, body.tipo)
-  if (typeof body.categoria === "string" && body.categoria.trim()) {
+  if (typeof body.categoria === "string" && body.categoria.trim() && body.categoria.trim() !== AUTO_CATEGORY) {
     const selectedCategory = body.categoria.trim()
     const { data: category, error: categoryError } = await supabaseServer
       .from("categories")
@@ -169,7 +175,7 @@ export async function POST(request: Request) {
   const id = shortcutId ?? crypto.randomUUID()
   if (shortcutId) {
     try {
-      if (await transactionExists(id)) return NextResponse.json({ ok: true, id, duplicate: true })
+      if (await transactionExists(id)) return NextResponse.json({ ok: true, id, duplicate: true, mensaje: "Este movimiento ya estaba apuntado" })
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo comprobar el movimiento" }, { status: 500 })
     }
@@ -193,5 +199,5 @@ export async function POST(request: Request) {
   const { error: updateError } = await supabaseServer.from("accounts").update({ saldo: newSaldo }).eq("user_id", userId).eq("id", account.id)
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
 
-  return NextResponse.json({ ok: true, id })
+  return NextResponse.json({ ok: true, id, mensaje: movementMessage(body.tipo, monto, account.currency || "EUR", categoria, account.nombre) })
 }

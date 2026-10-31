@@ -25,8 +25,22 @@ export async function GET(request: Request) {
     id: account.id,
   }))
 
+  // Para el Atajo compartido (public/atajos): «names» va al selector «Elegir
+  // de la lista» y «map» traduce el nombre elegido a su id. Shortcuts lee los
+  // puntos de una clave como ruta anidada, así que se cambian por «․» (U+2024,
+  // se ve igual) y los nombres repetidos se numeran para que el mapa no pise.
+  const names: string[] = []
+  const map: Record<string, string> = {}
+  for (const account of accounts) {
+    const base = account.Name.replace(/\./g, "\u2024")
+    let label = base
+    for (let n = 2; Object.prototype.hasOwnProperty.call(map, label); n++) label = `${base} (${n})`
+    names.push(label)
+    map[label] = account.id
+  }
+
   return NextResponse.json(
-    { accounts },
+    { accounts, names, map },
     { headers: { "Cache-Control": "private, no-store, max-age=0" } },
   )
 }

@@ -22,6 +22,16 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
       },
+      // Atajo de iPhone compartido (firmado, sin claves dentro): se descarga
+      // con su nombre bonito para que al importarlo se llame «Apuntar en Garra».
+      {
+        source: "/atajos/apuntar-en-garra.shortcut",
+        headers: [
+          { key: "Content-Type", value: "application/octet-stream" },
+          { key: "Content-Disposition", value: "attachment; filename=\"Apuntar en Garra.shortcut\"" },
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+        ],
+      },
     ];
   },
   // /objetivos se fusionó dentro de /cuentas (misma página, sección "Metas de

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase-server"
 import { resolveShortcutUser } from "@/lib/server/shortcut-auth"
+import { AUTO_CATEGORY } from "@/lib/shortcut-messages"
 
 export async function GET(request: Request) {
   const auth = await resolveShortcutUser(request)
@@ -17,7 +18,10 @@ export async function GET(request: Request) {
   const filtered = kind === "gasto" || kind === "ingreso"
     ? (data ?? []).filter((category) => !category.kind || category.kind === kind || category.kind === "both")
     : data
-  const categories = (filtered ?? []).map((category) => category.name)
+  const names = (filtered ?? []).map((category) => category.name)
+  // Cuenta recién creada sin categorías guardadas aún: el Atajo necesita al
+  // menos una opción; «Automática» deja que movement la adivine.
+  const categories = names.length > 0 ? names : [AUTO_CATEGORY]
 
   return NextResponse.json(
     { categories },
