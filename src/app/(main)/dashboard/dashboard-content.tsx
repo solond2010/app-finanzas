@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { BarChart } from "@tremor/react"
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "@/components/icons"
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp, X } from "@/components/icons"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -27,10 +27,11 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
-import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
 import { CategoryIcon } from "@/components/icons/category-icon"
+import { SHEET_CONTENT, SheetHandle } from "@/components/dashboard/sheet-handle"
+import { CashflowDrilldown, CashflowHoverTooltip, type CashflowBucket } from "@/components/dashboard/cashflow-drilldown"
 
 const CARD = "rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
@@ -52,8 +53,6 @@ const RANGES = [
 
 type DashboardMetric = "gastos" | "ingresos" | "neto" | "inversion" | "cash" | "patrimonio"
 type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYear" | "custom"
-const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["emerald", "red"])
-const MonthlyCashflowTooltip = createChartTooltip(["Ingresos", "Gastos", "Ahorro neto"], ["emerald", "red", "amber"])
 const MONTHS_SHORT = Array.from({ length: 12 }, (_, month) => new Date(2026, month, 1).toLocaleDateString("es-ES", { month: "short" }).replace(".", ""))
 const MONTHLY_CASHFLOW_SERIES = [
   { key: "Ingresos", label: "Ingresos", color: "var(--accent-green)" },
@@ -61,9 +60,10 @@ const MONTHLY_CASHFLOW_SERIES = [
   { key: "Ahorro neto", label: "Ahorro neto", color: "var(--gold)" },
 ] as const
 
-function SingleBucketCashflowChart({ bucket, includeSavings }: {
+function SingleBucketCashflowChart({ bucket, includeSavings, onOpen }: {
   bucket: { label: string; Ingresos: number; Gastos: number; "Ahorro neto": number }
   includeSavings: boolean
+  onOpen: () => void
 }) {
   const series = MONTHLY_CASHFLOW_SERIES.slice(0, includeSavings ? 3 : 2)
   const values = series.map(({ key }) => bucket[key])
@@ -80,7 +80,7 @@ function SingleBucketCashflowChart({ bucket, includeSavings }: {
   const axisWidth = moneyAxisWidth(ticks.map((tick) => tick.value), 48, 120)
 
   return (
-    <div className="mt-3 w-full" role="img" aria-label={`${bucket.label}: ${series.map(({ key, label }) => `${label} ${formatMoney(bucket[key], "EUR")}`).join(", ")}`}>
+    <button type="button" onClick={onOpen} className="mt-3 block w-full rounded-xl text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label={`${bucket.label}: ${series.map(({ key, label }) => `${label} ${formatMoney(bucket[key], "EUR")}`).join(", ")}. Ver desglose`}>
       <div className="mb-3 flex flex-wrap justify-end gap-x-4 gap-y-1" aria-hidden="true">
         {series.map(({ key, label, color }) => (
           <span key={key} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -130,7 +130,7 @@ function SingleBucketCashflowChart({ bucket, includeSavings }: {
         </div>
       </div>
       <p className="mt-2 text-center text-xs text-muted-foreground">{bucket.label}</p>
-    </div>
+    </button>
   )
 }
 
@@ -202,12 +202,20 @@ export default function DashboardContent() {
   const [customEndpoint, setCustomEndpoint] = useState<"start" | "end">("start")
   const [customYear, setCustomYear] = useState(() => new Date().getFullYear())
   const [cashflowGranularity, setCashflowGranularity] = useState<"week" | "month">("month")
+  // Tramo abierto en el desglose de «Ingresos vs gastos» y clave para
+  // remontar la gráfica al cerrar (Tremor deja la barra pulsada resaltada).
+  const [cashflowDrillKey, setCashflowDrillKey] = useState<string | null>(null)
+  const [cashflowChartKey, setCashflowChartKey] = useState(0)
   const [rangeId, setRangeId] = useState<string>("6M")
   const activeRange = RANGES.find((r) => r.id === rangeId) ?? RANGES[3]
   const [showNewAccount, setShowNewAccount] = useState(false)
   const [showAnnual, setShowAnnual] = useState(true)
   const [showSpendBreakdown, setShowSpendBreakdown] = useState(false)
   const [metricDetail, setMetricDetail] = useState<DashboardMetric | null>(null)
+  // Punto fijado en «Evolución del patrimonio» (por fecha+etiqueta, así se
+  // suelta solo si cambia el rango y el punto deja de existir).
+  const [pinnedNetWorth, setPinnedNetWorth] = useState<{ date: string; mes: string } | null>(null)
+  const [compositionTipo, setCompositionTipo] = useState<Account["tipo"] | null>(null)
   const [storedNetWorthPeak, setStoredNetWorthPeak] = useState<StoredNetWorthPeak | null>(() => {
     if (typeof window === "undefined") return null
     try {
@@ -300,6 +308,18 @@ export default function DashboardContent() {
       : `${monthName(start)} – ${monthName(end)}`
     return { start, end, startKey: key(start), endKey: key(end), label }
   }, [dashboardPeriod, selectedDate, monthOffset, today, customStartMonth, customEndMonth])
+  // Meses que abarca el periodo: Movimientos solo filtra por mes, así que en
+  // periodos largos se ofrece un acceso por cada mes.
+  const periodMonths = useMemo(() => {
+    const months: { key: string; label: string }[] = []
+    const cursor = new Date(periodBounds.start.getFullYear(), periodBounds.start.getMonth(), 1)
+    const last = new Date(periodBounds.end.getFullYear(), periodBounds.end.getMonth(), 1)
+    while (cursor <= last && months.length < 36) {
+      months.push({ key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`, label: cursor.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }) })
+      cursor.setMonth(cursor.getMonth() + 1)
+    }
+    return months
+  }, [periodBounds.start, periodBounds.end])
   const periodTransactions = useMemo(
     () => analysisTransactions.filter((transaction) => transaction.fecha >= periodBounds.startKey && transaction.fecha <= periodBounds.endKey && countsTowardCashFlow(transaction, analysisTransactions)).sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.created_at ?? "").localeCompare(a.created_at ?? "")),
     [analysisTransactions, periodBounds.startKey, periodBounds.endKey]
@@ -315,12 +335,12 @@ export default function DashboardContent() {
     return totals
   }, [periodTransactions, currencyByAccount])
   const periodCashflow = useMemo(() => {
-    const buckets: { key: string; label: string; Ingresos: number; Gastos: number; "Ahorro neto": number }[] = []
+    const buckets: CashflowBucket[] = []
     if (cashflowGranularity === "month") {
       const cursor = new Date(periodBounds.start.getFullYear(), periodBounds.start.getMonth(), 1)
       const last = new Date(periodBounds.end.getFullYear(), periodBounds.end.getMonth(), 1)
       while (cursor <= last) {
-        buckets.push({ key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`, label: cursor.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), Ingresos: 0, Gastos: 0, "Ahorro neto": 0 })
+        buckets.push({ key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`, label: cursor.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), Ingresos: 0, Gastos: 0, "Ahorro neto": 0, prev: null })
         cursor.setMonth(cursor.getMonth() + 1)
       }
     } else {
@@ -331,7 +351,7 @@ export default function DashboardContent() {
         const finish = new Date(cursor)
         finish.setDate(finish.getDate() + 6)
         const label = `${cursor.getDate()}–${finish.getDate()} ${finish.toLocaleDateString("es-ES", { month: "short" })}`
-        buckets.push({ key, label, Ingresos: 0, Gastos: 0, "Ahorro neto": 0 })
+        buckets.push({ key, label, Ingresos: 0, Gastos: 0, "Ahorro neto": 0, prev: null })
         cursor.setDate(cursor.getDate() + 7)
       }
     }
@@ -348,8 +368,26 @@ export default function DashboardContent() {
       if (transaction.tipo === "gasto") bucket.Gastos += amount
     }
     for (const bucket of buckets) bucket["Ahorro neto"] = bucket.Ingresos - bucket.Gastos
+    // Comparativa con el tramo anterior: el previo de la serie o, para el
+    // primer mes, el mes natural anterior (la primera semana no compara).
+    buckets.forEach((bucket, index) => {
+      const previous = buckets[index - 1]
+      if (previous) bucket.prev = { label: previous.label, ingresos: previous.Ingresos, gastos: previous.Gastos }
+      else if (cashflowGranularity === "month") {
+        const date = parseLocalDate(`${bucket.key}-01`)
+        date.setMonth(date.getMonth() - 1)
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+        const totals = getMonthTotalsByString(analysisTransactions, key, currencyByAccount)
+        if (totals.ingresos > 0 || totals.gastos > 0) bucket.prev = { label: date.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), ingresos: totals.ingresos, gastos: totals.gastos }
+      }
+    })
     return buckets
-  }, [cashflowGranularity, periodBounds, periodTransactions, currencyByAccount])
+  }, [cashflowGranularity, periodBounds, periodTransactions, currencyByAccount, analysisTransactions])
+  const cashflowDrillBucket = periodCashflow.find((bucket) => bucket.key === cashflowDrillKey) ?? null
+  const closeCashflowDrill = () => {
+    setCashflowDrillKey(null)
+    setCashflowChartKey((key) => key + 1)
+  }
   const periodIncomeTransactions = useMemo(() => periodTransactions.filter((transaction) => transaction.tipo === "ingreso"), [periodTransactions])
   const periodExpenseTransactions = useMemo(() => periodTransactions.filter((transaction) => transaction.tipo === "gasto"), [periodTransactions])
   const periodSavingsRate = getSavingsRate(periodTotals.ingresos, periodTotals.neto)
@@ -548,6 +586,9 @@ export default function DashboardContent() {
     return points
   }, [netWorthTrend, activeRange, currentMonthDailyPeak, monthOffset, netWorthDisplay, today])
 
+  const pinnedNetWorthIndex = pinnedNetWorth ? chartTrend.findIndex((point) => point.date === pinnedNetWorth.date && point.mes === pinnedNetWorth.mes) : -1
+  const pinnedNetWorthPoint = pinnedNetWorthIndex >= 0 ? chartTrend[pinnedNetWorthIndex] : null
+  const pinnedNetWorthPrev = pinnedNetWorthIndex > 0 ? chartTrend[pinnedNetWorthIndex - 1] : null
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
   const rangeDelta = netWorthDisplay - rangeStart
@@ -708,24 +749,27 @@ export default function DashboardContent() {
   // Racha de meses consecutivos con flujo de caja positivo, contando hacia
   // atrás desde el mes anterior al seleccionado (el mes en curso se excluye
   // porque suele estar incompleto y falsearía la racha).
-  const streak = useMemo(() => {
+  // `streakBreak` es el mes en negativo que cortó la racha (null si la corta
+  // un mes sin datos), para poder enlazar a sus movimientos.
+  const { count: streak, breakMonth: streakBreak } = useMemo(() => {
     let count = 0
+    let breakMonth: { key: string; label: string } | null = null
     for (let offset = 1; offset <= 24; offset++) {
       const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
       const t = getMonthTotalsByString(analysisTransactions, key, currencyByAccount)
       if (t.ingresos === 0 && t.gastos === 0) break
-      if (t.neto <= 0) break
+      if (t.neto <= 0) { breakMonth = { key, label: d.toLocaleDateString("es-ES", { month: "long" }) }; break }
       count++
     }
-    return count
+    return { count, breakMonth }
   }, [selectedDate, analysisTransactions, currencyByAccount])
 
   const bestMonth = useMemo(() => {
     let best = { idx: -1, neto: 0 }
     monthlyYear.forEach((m, i) => { if (m.neto > best.neto) best = { idx: i, neto: m.neto } })
     if (best.idx < 0) return null
-    return { label: new Date(year, best.idx, 1).toLocaleDateString("es-ES", { month: "long" }), value: best.neto }
+    return { label: new Date(year, best.idx, 1).toLocaleDateString("es-ES", { month: "long" }), key: `${year}-${String(best.idx + 1).padStart(2, "0")}`, value: best.neto }
   }, [monthlyYear, year])
 
   const nextGoal = useMemo(() => {
@@ -791,6 +835,14 @@ export default function DashboardContent() {
     [savingsRate, monthTotals.neto, netWorthDisplay, scoreBaseline, displayAccounts]
   )
 
+  // Dónde se arregla cada factor de la puntuación que no se cumple.
+  const hasEmergencyAccount = displayAccounts.some((account) => account.tipo === "emergencia")
+  const scoreFixes: Record<string, { href: string; hint: string }> = {
+    "Tasa de ahorro ≥ 20%": { href: `/transactions?tipo=gasto&mes=${selectedMonth}`, hint: "Revisa los gastos del mes" },
+    "Flujo del mes positivo": { href: `/transactions?mes=${selectedMonth}`, hint: "Mira los movimientos del mes" },
+    "Patrimonio en crecimiento": { href: "/cuentas", hint: "Revisa los saldos de tus cuentas" },
+    "Fondo de emergencia activo": { href: hasEmergencyAccount ? "/cuentas?tipo=emergencia" : "/cuentas", hint: hasEmergencyAccount ? "Recarga tu cuenta de emergencia" : "Crea una cuenta de emergencia" },
+  }
   const scoreDisplayLabel = scoreTier.label
   const scoreColor = scoreTier.label === "Excelente" ? "var(--gold)" : scoreTier.color
 
@@ -1041,10 +1093,20 @@ export default function DashboardContent() {
               </div>
             </div>
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? periodCashflow.length === 1 ? (
-              <SingleBucketCashflowChart bucket={periodCashflow[0]} includeSavings={cashflowGranularity === "month"} />
+              <SingleBucketCashflowChart bucket={periodCashflow[0]} includeSavings={cashflowGranularity === "month"} onOpen={() => setCashflowDrillKey(periodCashflow[0].key)} />
             ) : (
-              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["cyan", "orange", "emerald"] : ["cyan", "orange"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={cashflowGranularity === "month" ? MonthlyCashflowTooltip : CashflowTooltip} className="dashboard-cashflow-chart h-56 sm:h-72" showAnimation />
+              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["cyan", "orange", "emerald"] : ["cyan", "orange"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={CashflowHoverTooltip} key={cashflowChartKey} onValueChange={(value) => { const key = value && typeof value.key === "string" ? value.key : null; if (key) setCashflowDrillKey(key) }} className="dashboard-cashflow-chart h-56 cursor-pointer sm:h-72" showAnimation={cashflowChartKey === 0} />
             ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
+            {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] text-muted-foreground"><span className="sm:hidden">Toca una barra</span><span className="hidden sm:inline">Haz clic en una barra</span> para ver el desglose por semana y categoría.</p>
+                {periodCashflow.length > 1 && (
+                  <button type="button" onClick={() => setCashflowDrillKey(periodCashflow[periodCashflow.length - 1].key)} className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 sm:min-h-9">
+                    Desglose de {periodCashflow[periodCashflow.length - 1].label} <ChevronRight className="size-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
           </section>
 
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
@@ -1096,7 +1158,42 @@ export default function DashboardContent() {
                 <EmptyPlaceholder text="Sin movimientos registrados hoy todavía" className="mt-4 h-52 sm:h-64" />
               ) : netWorthHasData ? (
                 <div className="mt-4">
-                  <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-36 sm:h-52 2xl:h-60" />
+                  <MountainChart
+                    data={chartTrend}
+                    index="mes"
+                    category="patrimonio"
+                    valueFormatter={chartFormatter}
+                    className="h-36 sm:h-52 2xl:h-60"
+                    pinnedIndex={pinnedNetWorthIndex >= 0 ? pinnedNetWorthIndex : null}
+                    onPin={(index) => { const point = index === null ? null : chartTrend[index]; setPinnedNetWorth(point ? { date: point.date, mes: point.mes } : null) }}
+                  />
+                  {pinnedNetWorthPoint ? (() => {
+                    const monthKey = /^\d{4}-\d{2}/.test(pinnedNetWorthPoint.date) ? pinnedNetWorthPoint.date.slice(0, 7) : selectedMonth
+                    const monthLabel = parseLocalDate(`${monthKey}-01`).toLocaleDateString("es-ES", { month: "short", year: "numeric" }).replace(".", "")
+                    const change = pinnedNetWorthPrev ? pinnedNetWorthPoint.patrimonio - pinnedNetWorthPrev.patrimonio : null
+                    const changePct = change !== null && pinnedNetWorthPrev && Math.abs(pinnedNetWorthPrev.patrimonio) >= 100 ? (change / Math.abs(pinnedNetWorthPrev.patrimonio)) * 100 : null
+                    return (
+                      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/[0.06] p-3 sm:flex-row sm:items-center" role="status">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">{pinnedNetWorthPoint.mes === "hoy" ? "Hoy" : pinnedNetWorthPoint.mes}</p>
+                          <p className="mt-0.5 text-lg font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(pinnedNetWorthPoint.patrimonio, "EUR")}</Sensitive></p>
+                          {change !== null && pinnedNetWorthPrev && (
+                            <p className={cn("text-xs font-medium tabular-nums", change >= 0 ? "text-emerald-500" : "text-red-500")}>
+                              <Sensitive>{change >= 0 ? "+" : "−"}{formatMoney(Math.abs(change), "EUR")}</Sensitive>{changePct !== null && Math.abs(changePct) <= PCT_CHANGE_CAP ? ` · ${formatCappedPct(changePct)}` : ""} <span className="text-muted-foreground">vs. {pinnedNetWorthPrev.mes}</span>
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/transactions?mes=${monthKey}`} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:flex-none">
+                            Movimientos de {monthLabel} <ChevronRight className="size-4" />
+                          </Link>
+                          <button type="button" onClick={() => setPinnedNetWorth(null)} aria-label="Soltar punto" className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><X className="size-4" /></button>
+                        </div>
+                      </div>
+                    )
+                  })() : (
+                    <p className="mt-3 text-center text-[11px] text-muted-foreground"><span className="sm:hidden">Desliza el dedo por la curva y suelta para fijar un punto.</span><span className="hidden sm:inline">Haz clic en la curva para fijar un punto y ver su cambio.</span></p>
+                  )}
                   <p className="mx-auto mt-4 max-w-[62ch] border-t border-border/60 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
                     El histórico se reconstruye desde los saldos actuales y los movimientos guardados; no equivale a una captura bancaria de cada fecha.
                   </p>
@@ -1131,15 +1228,28 @@ export default function DashboardContent() {
                 </div>
               </div>
               <p className="text-center text-sm font-semibold" style={{ color: scoreColor }}>{scoreDisplayLabel}</p>
-              <div className="mt-4 space-y-2 border-t border-border pt-4">
-                {scoreFactors.map((f) => (
-                  <div key={f.label} className="flex items-center gap-2 text-xs">
-                    <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded-full", f.ok ? "bg-emerald-500/15 text-emerald-500" : "bg-muted text-muted-foreground")}>
+              <div className="mt-4 space-y-1 border-t border-border pt-3">
+                {scoreFactors.map((f) => {
+                  const fix = scoreFixes[f.label]
+                  const icon = (
+                    <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded-full", f.ok ? "bg-emerald-500/15 text-emerald-500" : "bg-primary/15 text-primary")}>
                       {f.ok ? <Check className="h-2.5 w-2.5" strokeWidth={2.2} /> : <Minus className="h-2.5 w-2.5" />}
                     </span>
-                    <span className={f.ok ? "text-foreground" : "text-muted-foreground"}>{f.label}</span>
-                  </div>
-                ))}
+                  )
+                  if (f.ok || !fix) {
+                    return <div key={f.label} className="flex min-h-9 items-center gap-2 px-2 text-xs">{icon}<span className={f.ok ? "text-foreground" : "text-muted-foreground"}>{f.label}</span></div>
+                  }
+                  return (
+                    <Link key={f.label} href={fix.href} className="-mx-0 flex min-h-11 items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                      {icon}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-muted-foreground">{f.label}</span>
+                        <span className="block text-[11px] font-medium text-primary">{fix.hint}</span>
+                      </span>
+                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                    </Link>
+                  )
+                })}
               </div>
             </div>
             <div className="flex min-w-0 flex-col gap-4 2xl:col-span-3">
@@ -1149,35 +1259,69 @@ export default function DashboardContent() {
                 <p className="mt-4 text-sm text-muted-foreground">Sin datos todavía.</p>
               ) : (
                 <>
-                  <div className="mt-5 flex h-2.5 w-full overflow-hidden rounded-full">
+                  <div className="mt-5 flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full">
                     {composicion.map((c) => (
-                      <div key={c.tipo} style={{ width: `${c.pct}%`, backgroundColor: c.color }} title={c.label} />
+                      <button key={c.tipo} type="button" tabIndex={-1} aria-hidden="true" onClick={() => setCompositionTipo(c.tipo as Account["tipo"])} className="h-full transition-opacity hover:opacity-75" style={{ width: `${c.pct}%`, backgroundColor: c.color }} title={`${c.label}: ver cuentas`} />
                     ))}
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+                  <div className="-mx-2 mt-2 grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-x-1 sm:gap-y-0">
                     {composicion.map((c) => (
-                      <div key={c.tipo} className="flex items-center gap-2 text-xs">
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
-                        <span className="text-foreground">{c.label}</span>
+                      <button key={c.tipo} type="button" onClick={() => setCompositionTipo(c.tipo as Account["tipo"])} aria-label={`${c.label}, ${Math.round(c.pct)}%: ver cuentas`} className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-left text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-9">
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
+                        <span className="truncate text-foreground">{c.label}</span>
                         <span className="tabular-nums text-muted-foreground">{Math.round(c.pct)}%</span>
-                      </div>
+                        <ChevronRight className="ml-auto size-3.5 shrink-0 text-muted-foreground sm:ml-0" />
+                      </button>
                     ))}
                   </div>
                 </>
               )}
-              <div className="mt-5 space-y-3 border-t border-border pt-4">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><Flame className="h-3.5 w-3.5 text-amber-500" /> Racha de ahorro</span>
-                  <span className="text-sm font-semibold tabular-nums text-foreground">{streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> Mejor mes</span>
-                  <span className="text-sm font-semibold tabular-nums text-emerald-500">{bestMonth ? <Sensitive>{formatMoney(bestMonth.value, "EUR")}</Sensitive> : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><Target className="h-3.5 w-3.5 text-primary" /> Próximo objetivo</span>
-                  <span className="truncate text-sm font-semibold tabular-nums text-foreground">{nextGoal ? <Sensitive>{formatMoney(nextGoal.objetivo, "EUR")}</Sensitive> : "—"}</span>
-                </div>
+              <div className="mt-4 space-y-0.5 border-t border-border pt-3">
+                {([
+                  {
+                    key: "racha",
+                    icon: <Flame className="h-3.5 w-3.5 text-amber-500" />,
+                    label: "Racha de ahorro",
+                    hint: streak === 0 && streakBreak ? `${streakBreak.label} cerró en negativo · revisar` : null,
+                    value: <span className="text-foreground">{streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"}</span>,
+                    href: streak === 0 && streakBreak ? `/transactions?mes=${streakBreak.key}` : null,
+                  },
+                  {
+                    key: "mejor",
+                    icon: <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />,
+                    label: "Mejor mes",
+                    hint: bestMonth ? bestMonth.label : null,
+                    value: <span className="text-emerald-500">{bestMonth ? <Sensitive>{formatMoney(bestMonth.value, "EUR")}</Sensitive> : "—"}</span>,
+                    href: bestMonth ? `/transactions?mes=${bestMonth.key}` : null,
+                  },
+                  {
+                    key: "objetivo",
+                    icon: <Target className="h-3.5 w-3.5 text-primary" />,
+                    label: "Próximo objetivo",
+                    hint: nextGoal ? nextGoal.nombre : "Crea una meta de ahorro",
+                    value: <span className="text-foreground">{nextGoal ? <Sensitive>{formatMoney(nextGoal.objetivo, "EUR")}</Sensitive> : "—"}</span>,
+                    href: "/cuentas#metas",
+                  },
+                ]).map((row) => {
+                  const body = (
+                    <>
+                      <span className="flex min-w-0 flex-1 items-center gap-2 text-xs text-muted-foreground">
+                        {row.icon}
+                        <span className="min-w-0">
+                          <span className="block">{row.label}</span>
+                          {row.hint && <span className={cn("block truncate text-[11px] first-letter:uppercase", row.key === "racha" ? "font-medium text-primary" : "text-muted-foreground/80")}>{row.hint}</span>}
+                        </span>
+                      </span>
+                      <span className="max-w-[45%] truncate text-sm font-semibold tabular-nums">{row.value}</span>
+                      {row.href && <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
+                    </>
+                  )
+                  return row.href ? (
+                    <Link key={row.key} href={row.href} className="-mx-2 flex min-h-11 items-center gap-2 rounded-lg px-2 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{body}</Link>
+                  ) : (
+                    <div key={row.key} className="flex min-h-11 items-center gap-2">{body}</div>
+                  )
+                })}
               </div>
             </div>
 
@@ -1376,9 +1520,10 @@ export default function DashboardContent() {
       )}
 
       <Dialog open={metricDetail !== null} onOpenChange={(open) => { if (!open) setMetricDetail(null) }}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className={cn("sm:max-w-xl", SHEET_CONTENT)}>
           {metricDetail && (
             <>
+              <SheetHandle />
               <DialogHeader>
                 <DialogTitle className="pr-8 text-lg">{metricTitles[metricDetail]}</DialogTitle>
                 <DialogDescription>
@@ -1414,10 +1559,21 @@ export default function DashboardContent() {
                         })}
                       </div>
                     ) : <p className="rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">Todavía no hay movimientos de este tipo en {periodBounds.label}.</p>}
-                    {(dashboardPeriod === "month" || dashboardPeriod === "previous") && (
-                      <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => { const type = metricDetail === "gastos" ? "gasto" : "ingreso"; setMetricDetail(null); router.push(`/transactions?tipo=${type}&mes=${selectedMonth}`) }}>
-                        Ver todos los movimientos
-                      </Button>
+                    {periodMonths.length === 1 ? (
+                      <Link href={`/transactions?tipo=${metricDetail === "gastos" ? "gasto" : "ingreso"}&mes=${periodMonths[0].key}`} onClick={() => setMetricDetail(null)} className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:bg-muted">
+                        Ver todos los movimientos <ChevronRight className="size-4" />
+                      </Link>
+                    ) : periodMonths.length > 1 && (
+                      <div>
+                        <p className="mb-2 text-xs font-medium text-muted-foreground">Ver todos los movimientos de:</p>
+                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                          {periodMonths.map((month) => (
+                            <Link key={month.key} href={`/transactions?tipo=${metricDetail === "gastos" ? "gasto" : "ingreso"}&mes=${month.key}`} onClick={() => setMetricDetail(null)} className="flex min-h-11 items-center justify-center rounded-xl border border-border text-sm font-medium capitalize text-foreground transition-colors hover:border-primary/40 hover:bg-muted">
+                              {month.label}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </>
                 )}
@@ -1428,6 +1584,10 @@ export default function DashboardContent() {
                     <div className="flex justify-between gap-3 text-sm"><span className="text-muted-foreground">Gastos</span><Sensitive className="font-medium tabular-nums text-red-500">−{formatMoney(periodTotals.gastos, "EUR")}</Sensitive></div>
                     <div className="flex justify-between gap-3 border-t border-border pt-3 text-sm"><span className="font-semibold">Tasa de ahorro</span><span className="font-semibold tabular-nums">{periodSavingsRate}%</span></div>
                     <p className="text-xs leading-5 text-muted-foreground">Ahorro neto = ingresos del periodo − gastos del periodo. Los traspasos entre tus cuentas no alteran este cálculo.</p>
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button type="button" onClick={() => setMetricDetail("ingresos")} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-muted"><ArrowUpRight className="size-4 text-emerald-500" /> Ver ingresos</button>
+                      <button type="button" onClick={() => setMetricDetail("gastos")} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-muted"><ArrowDownRight className="size-4 text-red-500" /> Ver gastos</button>
+                    </div>
                   </div>
                 )}
 
@@ -1463,6 +1623,49 @@ export default function DashboardContent() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={compositionTipo !== null} onOpenChange={(open) => { if (!open) setCompositionTipo(null) }}>
+        <DialogContent className={cn("sm:max-w-md", SHEET_CONTENT)}>
+          {compositionTipo && (() => {
+            const group = composicion.find((c) => c.tipo === compositionTipo)
+            const accounts = displayAccounts.filter((account) => account.tipo === compositionTipo).sort((a, b) => convertToEur(b.saldo, b.currency) - convertToEur(a.saldo, a.currency))
+            const config = typeConfig[compositionTipo]
+            const TypeIcon = config?.icon
+            return (
+              <>
+                <SheetHandle />
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 pr-8 text-lg">
+                    {TypeIcon && <span className="flex size-8 items-center justify-center rounded-lg" style={{ backgroundColor: `color-mix(in oklab, ${config.color} 16%, transparent)`, color: config.color }}><TypeIcon className="size-4" /></span>}
+                    {config?.label ?? compositionTipo}
+                  </DialogTitle>
+                  <DialogDescription>{group ? `${Math.round(group.pct)}% de tu patrimonio` : "Sin saldo"} · saldos a {formatMonth(selectedDate)}</DialogDescription>
+                </DialogHeader>
+                <p className="text-3xl font-bold tracking-tight tabular-nums"><Sensitive>{formatMoney(group?.value ?? 0, "EUR")}</Sensitive></p>
+                <ul className="max-h-[42dvh] divide-y divide-border/70 overflow-y-auto rounded-xl border border-border/70">
+                  {accounts.map((account) => (
+                    <li key={account.id}>
+                      <Link href={`/cuentas/${account.id}`} onClick={() => setCompositionTipo(null)} className="flex min-h-12 items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none">
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-foreground">{account.nombre}</span>
+                          {account.banco && <span className="block truncate text-xs text-muted-foreground">{account.banco}</span>}
+                        </span>
+                        <Sensitive className="shrink-0 text-sm font-semibold tabular-nums">{formatMoney(account.saldo, account.currency)}</Sensitive>
+                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <Link href={`/cuentas?tipo=${compositionTipo}`} onClick={() => setCompositionTipo(null)} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:bg-muted">
+                  Ver en Cuentas <ChevronRight className="size-4" />
+                </Link>
+              </>
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      <CashflowDrilldown bucket={cashflowDrillBucket} granularity={cashflowGranularity} transactions={periodTransactions} currencyByAccount={currencyByAccount} catColor={catColor} onClose={closeCashflowDrill} />
 
       <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={handleCreateAccount} />
     </div>
