@@ -17,6 +17,11 @@ function isSafeToReload() {
   const fields = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=button]), textarea")
   for (const field of fields) {
     if (field.readOnly || field.disabled) continue
+    // Con foco y con texto: está escribiendo. Fuera de foco, React iguala
+    // defaultValue al valor en los campos controlados, así que esto solo
+    // detecta campos no controlados modificados (los formularios grandes
+    // de la app van en diálogos, ya cubiertos arriba).
+    if (field === active && field.value !== "") return false
     if (field.value !== field.defaultValue) return false
   }
   return true
