@@ -32,6 +32,9 @@ export default function CuentasPage() {
   const [tab, setTab] = useState<"cuentas" | "metas">("cuentas")
   useEffect(() => {
     if (window.location.hash === "#metas") queueMicrotask(() => setTab("metas"))
+    // «?tipo=inversion» (p. ej. desde Composición del Resumen) abre ya filtrado.
+    const requestedType = new URLSearchParams(window.location.search).get("tipo")
+    if (requestedType && requestedType in typeConfig) queueMicrotask(() => setAccountType(requestedType))
   }, [])
   const selectTab = (next: "cuentas" | "metas") => {
     setTab(next)

@@ -30,6 +30,7 @@ import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
 import { CategoryIcon } from "@/components/icons/category-icon"
+import { SheetHandle } from "@/components/dashboard/sheet-handle"
 import { CashflowDrilldown, CashflowHoverTooltip, type CashflowBucket } from "@/components/dashboard/cashflow-drilldown"
 
 const CARD = "rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
@@ -211,6 +212,7 @@ export default function DashboardContent() {
   const [showAnnual, setShowAnnual] = useState(true)
   const [showSpendBreakdown, setShowSpendBreakdown] = useState(false)
   const [metricDetail, setMetricDetail] = useState<DashboardMetric | null>(null)
+  const [compositionTipo, setCompositionTipo] = useState<Account["tipo"] | null>(null)
   const [storedNetWorthPeak, setStoredNetWorthPeak] = useState<StoredNetWorthPeak | null>(() => {
     if (typeof window === "undefined") return null
     try {
@@ -1180,18 +1182,19 @@ export default function DashboardContent() {
                 <p className="mt-4 text-sm text-muted-foreground">Sin datos todavía.</p>
               ) : (
                 <>
-                  <div className="mt-5 flex h-2.5 w-full overflow-hidden rounded-full">
+                  <div className="mt-5 flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full">
                     {composicion.map((c) => (
-                      <div key={c.tipo} style={{ width: `${c.pct}%`, backgroundColor: c.color }} title={c.label} />
+                      <button key={c.tipo} type="button" tabIndex={-1} aria-hidden="true" onClick={() => setCompositionTipo(c.tipo as Account["tipo"])} className="h-full transition-opacity hover:opacity-75" style={{ width: `${c.pct}%`, backgroundColor: c.color }} title={`${c.label}: ver cuentas`} />
                     ))}
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+                  <div className="-mx-2 mt-2 grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-x-1 sm:gap-y-0">
                     {composicion.map((c) => (
-                      <div key={c.tipo} className="flex items-center gap-2 text-xs">
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
-                        <span className="text-foreground">{c.label}</span>
+                      <button key={c.tipo} type="button" onClick={() => setCompositionTipo(c.tipo as Account["tipo"])} aria-label={`${c.label}, ${Math.round(c.pct)}%: ver cuentas`} className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-left text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-9">
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
+                        <span className="truncate text-foreground">{c.label}</span>
                         <span className="tabular-nums text-muted-foreground">{Math.round(c.pct)}%</span>
-                      </div>
+                        <ChevronRight className="ml-auto size-3.5 shrink-0 text-muted-foreground sm:ml-0" />
+                      </button>
                     ))}
                   </div>
                 </>
@@ -1492,6 +1495,47 @@ export default function DashboardContent() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={compositionTipo !== null} onOpenChange={(open) => { if (!open) setCompositionTipo(null) }}>
+        <DialogContent className="sm:max-w-md">
+          {compositionTipo && (() => {
+            const group = composicion.find((c) => c.tipo === compositionTipo)
+            const accounts = displayAccounts.filter((account) => account.tipo === compositionTipo).sort((a, b) => convertToEur(b.saldo, b.currency) - convertToEur(a.saldo, a.currency))
+            const config = typeConfig[compositionTipo]
+            const TypeIcon = config?.icon
+            return (
+              <>
+                <SheetHandle />
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 pr-8 text-lg">
+                    {TypeIcon && <span className="flex size-8 items-center justify-center rounded-lg" style={{ backgroundColor: `color-mix(in oklab, ${config.color} 16%, transparent)`, color: config.color }}><TypeIcon className="size-4" /></span>}
+                    {config?.label ?? compositionTipo}
+                  </DialogTitle>
+                  <DialogDescription>{group ? `${Math.round(group.pct)}% de tu patrimonio` : "Sin saldo"} · saldos a {formatMonth(selectedDate)}</DialogDescription>
+                </DialogHeader>
+                <p className="text-3xl font-bold tracking-tight tabular-nums"><Sensitive>{formatMoney(group?.value ?? 0, "EUR")}</Sensitive></p>
+                <ul className="max-h-[42dvh] divide-y divide-border/70 overflow-y-auto rounded-xl border border-border/70">
+                  {accounts.map((account) => (
+                    <li key={account.id}>
+                      <Link href={`/cuentas/${account.id}`} onClick={() => setCompositionTipo(null)} className="flex min-h-12 items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none">
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-foreground">{account.nombre}</span>
+                          {account.banco && <span className="block truncate text-xs text-muted-foreground">{account.banco}</span>}
+                        </span>
+                        <Sensitive className="shrink-0 text-sm font-semibold tabular-nums">{formatMoney(account.saldo, account.currency)}</Sensitive>
+                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <Link href={`/cuentas?tipo=${compositionTipo}`} onClick={() => setCompositionTipo(null)} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:bg-muted">
+                  Ver en Cuentas <ChevronRight className="size-4" />
+                </Link>
+              </>
+            )
+          })()}
         </DialogContent>
       </Dialog>
 
