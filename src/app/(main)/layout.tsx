@@ -3,6 +3,7 @@
 import { Sidebar } from "@/components/layout/sidebar"
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav"
 import { QuickActionsFAB } from "@/components/layout/quick-actions"
+import { FeedbackDialog } from "@/components/feedback/feedback-dialog"
 import { GoalsEditor } from "@/components/goals/goals-editor"
 import { LimitWatcher } from "@/components/layout/limit-watcher"
 import { FinanceProvider } from "@/lib/store"
@@ -51,7 +52,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             </SidebarProvider>
             <QuickActionsFAB />
             <GoalsEditor />
-              <LimitWatcher />
+            <LimitWatcher />
+            <FeedbackDialog />
           </PrivacyProvider>
         </ToastProvider>
       </InvestmentsProvider>

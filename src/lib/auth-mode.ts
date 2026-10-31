@@ -24,6 +24,19 @@ export function isPublicAuthPath(pathname: string): boolean {
     pathname === "/auth/callback" ||
     pathname === "/auth/confirm" ||
     pathname.startsWith("/auth/confirm/") ||
-    pathname.startsWith("/api/auth/")
+    pathname.startsWith("/api/auth/") ||
+    // Avisos de error: también desde /login (sin sesión). Solo admite INSERT,
+    // con límite por IP y sin datos financieros (ver api/errors/route.ts).
+    pathname === "/api/errors"
   )
+}
+
+/** Usuarios que ven la sección de administración (comentarios y errores).
+ * Por defecto solo Moha; se puede ampliar con GARRA_ADMIN_USER_IDS
+ * (ids separados por comas). La base de datos aplica la misma regla con la
+ * tabla app_admins (ver supabase/2026-11-fase3-beta.sql). */
+export function isAdminUserId(userId: string | null | undefined, configured = process.env.GARRA_ADMIN_USER_IDS): boolean {
+  if (!userId) return false
+  const extra = (configured ?? "").split(",").map((id) => id.trim()).filter(Boolean)
+  return userId === LEGACY_USER_ID || extra.includes(userId)
 }

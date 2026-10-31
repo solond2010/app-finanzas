@@ -1,12 +1,13 @@
 "use client"
 
 import { useEffect } from "react"
+import { reportClientError } from "@/lib/report-error-client"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, ArrowLeft, RotateCcw } from "@/components/icons"
 import Link from "next/link"
 
 export default function MainError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => { console.error(error) }, [error])
+  useEffect(() => { console.error(error); reportClientError(error, { digest: error.digest }) }, [error])
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center">
@@ -16,7 +17,7 @@ export default function MainError({ error, reset }: { error: Error & { digest?: 
       <div className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight">Algo salió mal</h1>
         <p className="max-w-md text-sm text-muted-foreground">
-          Hubo un error inesperado. Puedes intentar de nuevo o volver al inicio.
+          Hubo un error inesperado y ya nos ha llegado el aviso. Puedes intentar de nuevo o volver al inicio.
         </p>
       </div>
       <div className="flex gap-3">

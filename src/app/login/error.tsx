@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect } from "react"
+import { reportClientError } from "@/lib/report-error-client"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, RotateCcw } from "@/components/icons"
 
 export default function LoginError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => { console.error(error) }, [error])
+  useEffect(() => { console.error(error); reportClientError(error, { digest: error.digest }) }, [error])
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 text-center">

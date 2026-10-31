@@ -52,6 +52,14 @@ export function AccountSettings({ part = "ambas" }: { part?: "cuenta" | "atajos"
     })()
   }, [loadTokens, part])
 
+  // «#atajos» (desde la guía de bienvenida): la tarjeta aparece tras cargar
+  // la sesión, así que el salto al ancla se hace a mano cuando ya existe.
+  useEffect(() => {
+    if (me?.mode !== "accounts" || window.location.hash !== "#atajos") return
+    const id = window.setTimeout(() => document.getElementById("atajos")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150)
+    return () => window.clearTimeout(id)
+  }, [me])
+
   if (!me || me.mode !== "accounts") return null
 
   async function createToken() {
@@ -115,7 +123,7 @@ export function AccountSettings({ part = "ambas" }: { part?: "cuenta" | "atajos"
         </CardContent>
       </Card>}
 
-      {part !== "cuenta" && <Card className="border border-border">
+      {part !== "cuenta" && <Card id="atajos" className="scroll-mt-6 border border-border">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base font-semibold"><Smartphone className="h-4 w-4" />Claves para Atajos de iPhone</CardTitle>
         </CardHeader>

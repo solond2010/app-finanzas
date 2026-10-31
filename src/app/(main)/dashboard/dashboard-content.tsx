@@ -36,6 +36,7 @@ import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
 import { CategoryIcon } from "@/components/icons/category-icon"
 import { SHEET_CONTENT, SheetHandle } from "@/components/dashboard/sheet-handle"
+import { OnboardingGuide } from "@/components/onboarding/onboarding-guide"
 import { CashflowDrilldown, CashflowHoverTooltip, type CashflowBucket } from "@/components/dashboard/cashflow-drilldown"
 
 const CARD = "rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
@@ -1077,6 +1078,8 @@ export default function DashboardContent() {
           )}
         </div>
       </header>
+
+      <OnboardingGuide />
 
       {!loading && overduePayments.length > 0 && (
         <button

@@ -3,8 +3,9 @@
 import { useEffect, useState, type ElementType } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { CalendarDays, ChartPie, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, Plus, ReceiptText, SlidersHorizontal, SunMedium, X } from "@/components/icons"
+import { CalendarDays, ChartPie, ChatText, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, Plus, ReceiptText, SlidersHorizontal, SunMedium, X } from "@/components/icons"
 import { openMovementDialog } from "@/components/layout/quick-actions"
+import { openFeedbackDialog } from "@/components/feedback/feedback-dialog"
 import { cn } from "@/lib/utils"
 import { usePrivacy } from "@/lib/privacy"
 
@@ -101,6 +102,19 @@ export function MobileBottomNav() {
                   </Link>
                 )
               })}
+              <button
+                type="button"
+                onClick={() => { setMoreOpen(false); openFeedbackDialog() }}
+                className="flex min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-foreground transition-colors hover:bg-muted/70 active:scale-[0.99]"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                  <ChatText className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">Enviar comentario</span>
+                  <span className="block text-xs text-muted-foreground">Cuéntanos un fallo o una idea</span>
+                </span>
+              </button>
             </nav>
             <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3">
               <button type="button" onClick={togglePrivacy} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-background/60 px-2 text-xs font-medium text-foreground transition-colors hover:bg-muted active:scale-[0.98]">

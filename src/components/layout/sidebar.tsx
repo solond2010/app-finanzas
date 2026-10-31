@@ -23,10 +23,12 @@ import {
   Eye,
   EyeOff,
   Plus,
+  ChatText,
 } from "@/components/icons"
 import { useEffect } from "react"
 import { useSidebar } from "@/lib/sidebar"
 import { openMovementDialog } from "@/components/layout/quick-actions"
+import { openFeedbackDialog } from "@/components/feedback/feedback-dialog"
 
 const navItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
@@ -163,6 +165,16 @@ export function Sidebar() {
             })}
           </nav>
           <div className="flex flex-col gap-1 mt-auto">
+            <Tooltip label="Enviar comentario">
+              <button
+                type="button"
+                onClick={() => openFeedbackDialog()}
+                aria-label="Enviar comentario"
+                className="flex items-center justify-center rounded-xl p-2.5 text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all active:scale-95"
+              >
+                <ChatText className="h-4 w-4" />
+              </button>
+            </Tooltip>
             <Tooltip label={privacy ? "Mostrar cifras" : "Ocultar cifras"}>
               <button
                 onClick={togglePrivacy}
@@ -253,6 +265,16 @@ export function Sidebar() {
 
         {/* Ajustes globales de escritorio; en móvil viven en el panel «Más». */}
         <div className="mt-auto space-y-1 px-3 pt-4 border-t border-sidebar-border/50">
+          <button
+            type="button"
+            onClick={() => openFeedbackDialog()}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors duration-150 active:scale-[0.98]"
+          >
+            <div className="flex size-4 items-center justify-center">
+              <ChatText className="h-4 w-4" />
+            </div>
+            Enviar comentario
+          </button>
           <button
             onClick={togglePrivacy}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors duration-150 active:scale-[0.98]"

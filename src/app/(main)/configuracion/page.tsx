@@ -16,6 +16,7 @@ import { auditFinanceState } from "@/lib/finance-integrity"
 import Link from "next/link"
 import { LEGACY_USER_ID, USER_ID_COOKIE } from "@/lib/auth-mode"
 import { AccountSettings } from "@/components/settings/account-settings"
+import { FeedbackCard } from "@/components/settings/feedback-card"
 import { CategoryIcon } from "@/components/icons/category-icon"
 import { CategoryIconPicker } from "@/components/categories/category-icon-picker"
 
@@ -344,6 +345,7 @@ export default function ConfiguracionPage() {
           </CardContent>
         </Card>
           <AccountSettings part="cuenta" />
+          <FeedbackCard />
         </div>
       </div>
       )}

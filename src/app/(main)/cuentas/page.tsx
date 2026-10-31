@@ -33,6 +33,11 @@ export default function CuentasPage() {
   const [tab, setTab] = useState<"cuentas" | "metas">("cuentas")
   useEffect(() => {
     if (window.location.hash === "#metas") queueMicrotask(() => setTab("metas"))
+    // «#nueva» (desde la guía de bienvenida) abre directamente «Nueva cuenta».
+    if (window.location.hash === "#nueva") {
+      queueMicrotask(() => setShowNewAccount(true))
+      try { window.history.replaceState(null, "", window.location.pathname) } catch {}
+    }
     // «?tipo=inversion» (p. ej. desde Composición del Resumen) abre ya filtrado.
     const requestedType = new URLSearchParams(window.location.search).get("tipo")
     if (requestedType && requestedType in typeConfig) queueMicrotask(() => setAccountType(requestedType))
