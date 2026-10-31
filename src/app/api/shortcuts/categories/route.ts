@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase-server"
-import { timingSafeEqualString } from "@/lib/auth"
+import { resolveShortcutUser } from "@/lib/server/shortcut-auth"
 
 export async function GET(request: Request) {
-  const secret = process.env.SHORTCUTS_SECRET
-  if (!secret) return NextResponse.json({ error: "SHORTCUTS_SECRET no configurado" }, { status: 503 })
-
-  const provided = request.headers.get("x-shortcuts-secret")
-  if (!provided || !timingSafeEqualString(provided, secret)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+  const auth = await resolveShortcutUser(request)
+  if (auth instanceof NextResponse) return auth
 
   const { data, error } = await supabaseServer
     .from("categories")
     .select("id, name, kind")
+    .eq("user_id", auth.userId)
     .order("name", { ascending: true })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

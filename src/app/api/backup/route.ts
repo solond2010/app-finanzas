@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
-import { selectAllRows } from "@/lib/supabase-server"
-import { timingSafeEqualString } from "@/lib/auth"
+import { selectAllRows, supabaseServer } from "@/lib/supabase-server"
+import { resolveShortcutUser } from "@/lib/server/shortcut-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -16,15 +16,13 @@ const BACKUP_TABLES = [
   "settings",
 ] as const
 
-/** Read-only complete snapshot. The app-auth proxy protects this route. */
+/** Copia completa (solo lectura) de los datos DEL DUEÑO de la clave. */
 export async function GET(request: Request) {
-  const secret = process.env.SHORTCUTS_SECRET
-  const provided = request.headers.get("x-shortcuts-secret")
-  if (!secret || !provided || !timingSafeEqualString(provided, secret)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401, headers: { "Cache-Control": "no-store" } })
-  }
+  const auth = await resolveShortcutUser(request)
+  if (auth instanceof NextResponse) return auth
+  const scope = { db: supabaseServer, userId: auth.userId }
   try {
-    const entries = await Promise.all(BACKUP_TABLES.map(async (table) => [table, await selectAllRows(table)] as const))
+    const entries = await Promise.all(BACKUP_TABLES.map(async (table) => [table, await selectAllRows(table, scope)] as const))
 
     const tables = Object.fromEntries(entries)
     return NextResponse.json({

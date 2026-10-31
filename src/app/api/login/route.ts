@@ -7,6 +7,7 @@ import {
   recordFailedLogin,
   timingSafeEqualString,
 } from "@/lib/auth"
+import { isSupabaseAuthEnabled } from "@/lib/auth-mode"
 
 // x-forwarded-for puede traer varias IPs separadas por coma (cadena de
 // proxies); la primera es la del cliente original.
@@ -16,6 +17,10 @@ function getClientIp(request: Request): string {
 }
 
 export async function POST(request: Request) {
+  // Con cuentas activadas, la contraseña compartida deja de existir.
+  if (isSupabaseAuthEnabled()) {
+    return NextResponse.json({ error: "Entra con tu email y contraseña" }, { status: 410 })
+  }
   const expected = process.env.APP_PASSWORD
   if (!expected) {
     return NextResponse.json(

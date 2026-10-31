@@ -13,6 +13,7 @@ import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Sear
 import { Skeleton } from "@/components/shared/skeleton"
 import { auditFinanceState } from "@/lib/finance-integrity"
 import Link from "next/link"
+import { AccountSettings } from "@/components/settings/account-settings"
 
 export default function ConfiguracionPage() {
   const { state, loading, dispatch } = useFinance()
@@ -296,6 +297,8 @@ export default function ConfiguracionPage() {
         </Card>
       </div>
       )}
+
+      {!loading && <AccountSettings />}
 
       {!loading && (
         <Card className="border border-red-500/30 bg-red-500/[0.03]">

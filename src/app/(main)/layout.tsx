@@ -9,6 +9,7 @@ import { ToastProvider } from "@/components/ui/toast"
 import { PrivacyProvider } from "@/lib/privacy"
 import { SidebarProvider, useSidebar } from "@/lib/sidebar"
 import { cn } from "@/lib/utils"
+import { ensureLocalCacheOwnerOnce } from "@/lib/local-owner"
 
 function MainInner({ children }: { children: React.ReactNode }) {
   const { open } = useSidebar()
@@ -32,6 +33,10 @@ function MainInner({ children }: { children: React.ReactNode }) {
 }
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
+  // Debe ir ANTES de que FinanceProvider/InvestmentsProvider lean localStorage
+  // (sus efectos corren después del primer render): si en este navegador ha
+  // entrado otra cuenta, se vacía la copia local de la anterior.
+  ensureLocalCacheOwnerOnce()
   return (
     <FinanceProvider>
       <InvestmentsProvider>

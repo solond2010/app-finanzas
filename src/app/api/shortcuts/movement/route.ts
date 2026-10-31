@@ -1,27 +1,20 @@
 import { NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase-server"
-import { timingSafeEqualString } from "@/lib/auth"
+import { resolveShortcutUser } from "@/lib/server/shortcut-auth"
 import { guessCategory } from "@/lib/guess-category"
 import { dateKeyInTimeZone, isDateKey } from "@/lib/date-utils"
 
-// Mismo USER_ID hardcodeado que usa el resto de la app (ver USER_ID en
-// src/lib/store.tsx) — duplicado como literal en vez de importado porque
-// store.tsx es "use client" y esta ruta no necesita nada más de ese módulo.
-const USER_ID = "8c449806-d8b4-498a-98d7-28809bb7c95a"
 
 // Endpoint pensado para un Atajo de iOS disparado a mano (Toque Trasero o
 // icono en pantalla de inicio, no una automatización de Apple Pay): registra
 // un gasto, ingreso o traspaso sin pasar por el reducer del navegador (no hay
 // sesión abierta). No usa la cookie app-auth (proxy.ts excluye esta ruta del
-// gate de contraseña) — la única protección es el secreto propio de aquí.
+// gate de sesión) — se protege con la clave del Atajo (ver shortcut-auth.ts),
+// que además dice de qué usuario son los datos.
 export async function POST(request: Request) {
-  const secret = process.env.SHORTCUTS_SECRET
-  if (!secret) return NextResponse.json({ error: "SHORTCUTS_SECRET no configurado" }, { status: 503 })
-
-  const provided = request.headers.get("x-shortcuts-secret")
-  if (!provided || !timingSafeEqualString(provided, secret)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+  const auth = await resolveShortcutUser(request)
+  if (auth instanceof NextResponse) return auth
+  const userId = auth.userId
 
   const body = await request.json().catch(() => null)
   if (!body || (body.tipo !== "gasto" && body.tipo !== "ingreso" && body.tipo !== "traspaso")) {
@@ -53,14 +46,14 @@ export async function POST(request: Request) {
   }
 
   async function transactionExists(id: string) {
-    const { data, error } = await supabaseServer.from("transactions").select("id").eq("id", id).maybeSingle()
+    const { data, error } = await supabaseServer.from("transactions").select("id").eq("user_id", userId).eq("id", id).maybeSingle()
     if (error) throw error
     return Boolean(data)
   }
 
   async function getAccount(id: unknown) {
     if (typeof id !== "string" || !id) return null
-    const { data, error } = await supabaseServer.from("accounts").select("id, nombre, saldo, currency").eq("id", id).single()
+    const { data, error } = await supabaseServer.from("accounts").select("id, nombre, saldo, currency").eq("user_id", userId).eq("id", id).single()
     if (error || !data) return null
     return data as { id: string; nombre: string; saldo: number | string; currency: string | null }
   }
@@ -127,7 +120,7 @@ export async function POST(request: Request) {
         es_necesidad: false,
         descripcion: `${descripcion} → ${destino.nombre}`,
         tags: ["traspaso", "atajo", pairTag],
-        user_id: USER_ID,
+        user_id: userId,
         created_at: new Date().toISOString(),
       },
       {
@@ -140,15 +133,15 @@ export async function POST(request: Request) {
         es_necesidad: false,
         descripcion: `${descripcion} ← ${origen.nombre}`,
         tags: ["traspaso", "atajo", pairTag],
-        user_id: USER_ID,
+        user_id: userId,
         created_at: new Date().toISOString(),
       },
     ])
     if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
-    const { error: updateOrigenError } = await supabaseServer.from("accounts").update({ saldo: Number(origen.saldo) - monto }).eq("id", origen.id)
+    const { error: updateOrigenError } = await supabaseServer.from("accounts").update({ saldo: Number(origen.saldo) - monto }).eq("user_id", userId).eq("id", origen.id)
     if (updateOrigenError) return NextResponse.json({ error: updateOrigenError.message }, { status: 500 })
-    const { error: updateDestinoError } = await supabaseServer.from("accounts").update({ saldo: Number(destino.saldo) + destinationAmount }).eq("id", destino.id)
+    const { error: updateDestinoError } = await supabaseServer.from("accounts").update({ saldo: Number(destino.saldo) + destinationAmount }).eq("user_id", userId).eq("id", destino.id)
     if (updateDestinoError) return NextResponse.json({ error: updateDestinoError.message }, { status: 500 })
 
     return NextResponse.json({ ok: true, origen: { monto, currency: sourceCurrency }, destino: { monto: destinationAmount, currency: destinationCurrency } })
@@ -160,6 +153,7 @@ export async function POST(request: Request) {
     const { data: category, error: categoryError } = await supabaseServer
       .from("categories")
       .select("name, kind")
+      .eq("user_id", userId)
       .eq("name", selectedCategory)
       .maybeSingle()
     if (categoryError) return NextResponse.json({ error: categoryError.message }, { status: 500 })
@@ -190,13 +184,13 @@ export async function POST(request: Request) {
     es_necesidad: false,
     descripcion,
     tags: ["atajo"],
-    user_id: USER_ID,
+    user_id: userId,
     created_at: new Date().toISOString(),
   })
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
   const newSaldo = body.tipo === "ingreso" ? Number(account.saldo) + monto : Number(account.saldo) - monto
-  const { error: updateError } = await supabaseServer.from("accounts").update({ saldo: newSaldo }).eq("id", account.id)
+  const { error: updateError } = await supabaseServer.from("accounts").update({ saldo: newSaldo }).eq("user_id", userId).eq("id", account.id)
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
 
   return NextResponse.json({ ok: true, id })
