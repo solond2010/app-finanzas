@@ -9,7 +9,7 @@ import { formatMoney, convertToEur } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
 import { AccountLogo } from "@/components/dashboard/account-logo"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { useToast } from "@/components/ui/toast"
@@ -28,6 +28,15 @@ export default function CuentasPage() {
   const [accountSearch, setAccountSearch] = useState("")
   const [accountType, setAccountType] = useState("all")
   const [groupOpenState, setGroupOpenState] = useState<Record<string, boolean>>({})
+  // Pestañas Cuentas | Metas. "#metas" en la URL abre directamente la de metas.
+  const [tab, setTab] = useState<"cuentas" | "metas">("cuentas")
+  useEffect(() => {
+    if (window.location.hash === "#metas") queueMicrotask(() => setTab("metas"))
+  }, [])
+  const selectTab = (next: "cuentas" | "metas") => {
+    setTab(next)
+    try { window.history.replaceState(null, "", next === "metas" ? "#metas" : window.location.pathname) } catch {}
+  }
   // El saldo manual de cada cuenta es la única fuente de verdad.
   // No se estiman cambios de mercado dentro de la app.
   const accountValue = (a: Account) => a.saldo
@@ -57,7 +66,7 @@ export default function CuentasPage() {
       .sort((a, b) => a.title.localeCompare(b.title, "es"))
   }, [visibleAccounts])
   const filtersActive = Boolean(accountSearch.trim()) || accountType !== "all"
-  const allGroupsExpanded = accountGroups.length > 0 && accountGroups.every((group) => groupOpenState[group.key] ?? filtersActive)
+  const allGroupsExpanded = accountGroups.length > 0 && accountGroups.every((group) => groupOpenState[group.key] ?? true)
   const toggleAllGroups = () => setGroupOpenState((current) => ({ ...current, ...Object.fromEntries(accountGroups.map((group) => [group.key, !allGroupsExpanded])) }))
 
   // Cuenta con mayor saldo y cuenta más cerca de completar su objetivo, para
@@ -103,7 +112,7 @@ export default function CuentasPage() {
         <div>
           <p className="page-section-label">Patrimonio</p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Cuentas</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Saldos, bancos y progreso de objetivos en un vistazo.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Saldos por banco y metas de ahorro.</p>
         </div>
         <div className="flex flex-row items-center justify-between gap-4 rounded-[18px] hero-panel px-4 py-3.5 sm:flex-col sm:items-end sm:px-5">
           <p className="page-section-label">Patrimonio neto total</p>
@@ -113,7 +122,15 @@ export default function CuentasPage() {
         </div>
       </header>
 
-      {loading ? (
+      <div role="tablist" aria-label="Secciones de Cuentas" className="inline-flex rounded-full bg-muted/60 p-1 text-sm font-semibold">
+        {([["cuentas", "Cuentas"], ["metas", "Metas"]] as const).map(([key, label]) => (
+          <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => selectTab(key)} className={`min-h-10 rounded-full px-5 transition-colors ${tab === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+            {label}{key === "metas" && hasMetas ? ` · ${state.sinkingFunds.length}` : ""}
+          </button>
+        ))}
+      </div>
+
+      {tab === "cuentas" && (loading ? (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" />
@@ -151,7 +168,7 @@ export default function CuentasPage() {
           </div>
           <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3 sm:gap-4">
             {accountGroups.map((group, index) => {
-              const isOpen = groupOpenState[group.key] ?? filtersActive
+              const isOpen = groupOpenState[group.key] ?? true
               const groupValue = group.accounts.reduce((sum, account) => sum + accountValueEur(account), 0)
               const kinds = [...new Set(group.accounts.map((account) => typeConfig[account.tipo]?.label ?? "Cuenta"))]
               return (
@@ -203,9 +220,9 @@ export default function CuentasPage() {
             </button>
           </div>
         </>
-      )}
+      ))}
 
-      <section className="space-y-6 border-t border-border pt-6 sm:space-y-7 sm:pt-7">
+      {tab === "metas" && <section className="space-y-6 sm:space-y-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="page-section-label">Metas de ahorro</p>
@@ -238,7 +255,7 @@ export default function CuentasPage() {
         )}
 
         <SinkingFundsGrid />
-      </section>
+      </section>}
 
       <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={(a) => { dispatch({ type: "ADD_ACCOUNT", payload: a }); setShowNewAccount(false); toast("Cuenta creada", "success") }} />
     </div>

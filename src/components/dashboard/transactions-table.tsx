@@ -350,12 +350,15 @@ export function TransactionsTable({
   onMonthChange,
   onToday,
   mobileSummary,
+  hideNewButton,
 }: {
   cuentaId?: string
   selectedMonth?: string
   onMonthChange?: (delta: number) => void
   onToday?: () => void
   mobileSummary?: { ingresos: number; gastos: number; neto: number }
+  /** Oculta el botón «Nueva» de la cabecera cuando la página ya ofrece la acción global. */
+  hideNewButton?: boolean
 }) {
   const { state, loading, dispatch } = useFinance()
   const { toast } = useToast()
@@ -687,9 +690,11 @@ export function TransactionsTable({
             <option value="newest">Más recientes</option>
             <option value="oldest">Más antiguos</option>
           </select>
-          <Button size="sm" className="hidden gap-1 sm:inline-flex" onClick={() => setShowNew(true)}>
-            <Plus className="h-3.5 w-3.5" /> Nueva
-          </Button>
+          {!hideNewButton && (
+            <Button size="sm" className="hidden gap-1 sm:inline-flex" onClick={() => setShowNew(true)}>
+              <Plus className="h-3.5 w-3.5" /> Nueva
+            </Button>
+          )}
           <Dialog open={showNew} onOpenChange={setShowNew}>
             <DialogContent>
               <DialogHeader>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { AreaChart } from "@tremor/react"
-import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp, X } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp, X } from "lucide-react"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { ImportCsvButton } from "@/components/dashboard/import-csv-button"
 import { getSetting, setSetting } from "@/lib/settings"
@@ -59,6 +59,7 @@ export default function IngresosGastosPage() {
   const [rangeM, setRangeM] = useState(6)
   const [target, setTarget] = useState(2000)
   const [accIdx, setAccIdx] = useState(0)
+  const [summaryOpen, setSummaryOpen] = useState(false)
   const displayAccounts = state.accounts
 
   useEffect(() => {
@@ -179,163 +180,197 @@ export default function IngresosGastosPage() {
       </header>
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-          <Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" />
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          <Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" />
         </div>
       ) : (
-      <>
-      {/* Ticker: pulso del mes */}
-      <section aria-label="Resumen del mes" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
-        <TickerTile label="Pagos pendientes" value={upcomingRecurring.length > 0 ? String(upcomingRecurring.length) : "Al día"} valueColor="var(--accent-amber)" />
-        <TickerTile label="Mayor gasto" value={biggestExpense > 0 ? <Sensitive>{formatMoney(biggestExpense, "EUR")}</Sensitive> : "—"} valueColor="var(--accent-red)" />
-        <TickerTile label="Categoría top" value={topCategory ? `${topCategoryPct}%` : "—"} detail={topCategory?.categoria} valueColor="var(--gold)" />
-      </section>
-
-      {/* Fila 1: Cuenta principal · Objetivo ingresos · Próximos pagos */}
-      <section className="hidden grid-cols-1 gap-4 sm:gap-6 md:grid lg:grid-cols-3">
-        {/* Cuenta (carrusel) */}
-        <div className="relative min-w-0 overflow-hidden rounded-[16px] bg-primary p-5 text-white sm:p-6">
-          <div className="flex items-center justify-between text-xs font-medium text-white/70">
-            <div className="flex items-center gap-1">
-              {accCount > 1 && (
-                <>
-                  <button onClick={() => setAccIdx((p) => p - 1)} aria-label="Cuenta anterior" className="rounded-full border border-white/25 p-1.5 text-white/80 transition-colors hover:bg-white/10 active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-                  <button onClick={() => setAccIdx((p) => p + 1)} aria-label="Cuenta siguiente" className="rounded-full border border-white/25 p-1.5 text-white/80 transition-colors hover:bg-white/10 active:scale-90"><ChevronRight className="h-4 w-4" /></button>
-                </>
-              )}
-            </div>
-            <span>Todas: <Sensitive>{formatMoney(totalBalance, "EUR")}</Sensitive></span>
+        // Total del mes siempre visible y legible, justo encima de la tabla.
+        <section aria-label={`Total de ${formatMonth(selectedDate)}`} className="grid grid-cols-3 gap-2 sm:gap-4">
+          <div className={`${CARD} min-w-0 !p-3 sm:!p-5`}>
+            <p className="flex items-center gap-1 truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" /> Ingresos</p>
+            <p className="mt-1 truncate text-base font-bold tabular-nums text-emerald-500 sm:text-2xl"><Sensitive>{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive></p>
           </div>
-          {currentAccount ? (
-            <>
-              <div className="mt-5 flex items-center gap-3">
-                <AccountLogo account={currentAccount} className="h-11 w-11" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{currentAccount.nombre}</p>
-                  <p className="truncate text-xs text-white/70">{currentAccount.banco || "Cuenta corriente"}</p>
-                </div>
-              </div>
-              <p className="mt-4 text-3xl font-bold tabular-nums tracking-tight">
-                <Sensitive>{formatMoney(currentAccount.saldo, currentAccount.currency)}</Sensitive>
-              </p>
-              {accCount > 1 && (
-                <div className="mt-4 flex items-center gap-1.5">
-                  {displayAccounts.map((a, i) => (
-                    <button key={a.id} onClick={() => setAccIdx(i)} aria-label={`Ver ${a.nombre}`} className={cn("h-1.5 rounded-full transition-all", i === safeAccIdx ? "w-5 bg-white" : "w-1.5 bg-white/30 hover:bg-white/50")} />
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="mt-8 text-sm text-white/80">Aún no tienes cuentas. Créalas en la sección Cuentas.</p>
-          )}
-        </div>
-
-        {/* Objetivo ingresos mensual */}
-        <div className={`${CARD} min-w-0`}>
-          <div className="flex items-center justify-between">
-            <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Target className="h-4 w-4 text-primary" /> Objetivo de ingresos</p>
-            <button onClick={editTarget} aria-label="Editar objetivo" className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+          <div className={`${CARD} min-w-0 !p-3 sm:!p-5`}>
+            <p className="flex items-center gap-1 truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><ArrowDownRight className="h-3.5 w-3.5 text-red-500" /> Gastos</p>
+            <p className="mt-1 truncate text-base font-bold tabular-nums text-red-500 sm:text-2xl"><Sensitive>{formatMoney(monthTotals.gastos, "EUR")}</Sensitive></p>
           </div>
-          <div className="mt-2 flex flex-col items-center">
-            <Gauge value={monthTotals.ingresos} max={target} />
-            <p className="-mt-6 text-2xl font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive></p>
-            <div className="mt-1 flex w-full max-w-[210px] justify-between text-[11px] font-medium text-muted-foreground">
-              <span>€0</span>
-              <span>de {formatMoney(target, "EUR")}</span>
-            </div>
+          <div className={`${CARD} min-w-0 !p-3 sm:!p-5`}>
+            <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Neto del mes</p>
+            <p className={cn("mt-1 truncate text-base font-bold tabular-nums sm:text-2xl", monthTotals.neto >= 0 ? "text-foreground" : "text-red-500")}><Sensitive>{monthTotals.neto > 0 ? "+" : ""}{formatMoney(monthTotals.neto, "EUR")}</Sensitive></p>
           </div>
-        </div>
-
-        {/* Próximos pagos */}
-        <div className={`${CARD} flex min-w-0 flex-col`}>
-          <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><CalendarClock className="h-4 w-4 text-primary" /> Próximos pagos</p>
-          {upcomingRecurring.length === 0 ? (
-            <EmptyState className="flex-1 py-8" icon={CalendarClock} title="Sin pagos programados" description="Marca transacciones como recurrentes para verlas aquí." />
-          ) : (
-            <div className="mt-3 flex-1 space-y-2">
-              {upcomingRecurring.map((item) => (
-                <div key={item.key} className="flex items-center gap-2 rounded-xl border border-border p-2.5">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold text-foreground">{item.descripcion || item.categoria}</p>
-                    <p className={cn("text-[11px] font-medium", item.overdueDays > 0 ? "text-red-500" : "text-muted-foreground")}>
-                      {recurringDateLabel(item)}
-                      {item.frequency !== "mensual" && ` · ${item.frequency === "semanal" ? "Semanal" : "Anual"}`}
-                    </p>
-                  </div>
-                  <span className={cn("shrink-0 text-xs font-bold tabular-nums", (item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "text-emerald-500" : "text-foreground")}>
-                    <Sensitive>{(item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(item.monto), "EUR")}</Sensitive>
-                  </span>
-                  <button onClick={() => stopRecurring(item)} aria-label="Dejar de repetir" title="Dejar de repetir" className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500">
-                    <X className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => registerRecurring(item)} aria-label="Registrar pago" title="Registrar pago" className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-emerald-500/10 hover:text-emerald-500">
-                    <Check className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Fila 2: Cash flow + balance */}
-      <section className="hidden grid-cols-1 gap-4 sm:gap-6 md:grid lg:grid-cols-3">
-        <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-            <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><TrendingUp className="h-4 w-4 text-primary" /> Evolución del cash flow</p>
-            <div className="range-tabs">
-              {RANGES.map((r) => (
-                <button key={r.m} onClick={() => setRangeM(r.m)} data-active={rangeM === r.m} className="range-tab">{r.label}</button>
-              ))}
-            </div>
-          </div>
-          {cashflowHasData ? (
-            <div role="img" aria-label="Gráfico de área: evolución de ingresos y gastos por mes">
-              <AreaChart data={cashflow} index="mes" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(cashflow.flatMap((month) => [month.Ingresos, month.Gastos]))} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="mt-2 h-64 sm:h-72" curveType="monotone" showAnimation />
-            </div>
-          ) : (
-            <EmptyPlaceholder text="Sin movimientos en este periodo" className="mt-2 h-64 sm:h-72" />
-          )}
-        </div>
-
-        {/* Balance */}
-        <div className={`${CARD} flex min-w-0 flex-col gap-4`}>
-          <div>
-            <p className="page-section-label">Balance · {formatMonth(selectedDate)}</p>
-            <p className={cn("mt-1 text-3xl font-bold tabular-nums tracking-tight", monthTotals.neto >= 0 ? "text-foreground" : "text-red-500")}>
-              <Sensitive><AnimatedNumber value={monthTotals.neto} prefix={monthTotals.neto >= 0 ? "+" : ""} /></Sensitive>
-            </p>
-            <p className="mt-1 text-xs"><span className={cn("font-semibold", savingsRate >= 0 ? "text-emerald-500" : "text-red-500")}>{savingsRate}%</span> <span className="text-muted-foreground">de ahorro este mes</span></p>
-          </div>
-          <div className="rounded-2xl border border-border p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ingresos</span>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500"><ArrowUpRight className="h-4 w-4" /></span>
-            </div>
-            <p className="mt-1 text-xl font-bold tabular-nums text-emerald-500"><Sensitive><AnimatedNumber value={monthTotals.ingresos} prefix={monthTotals.ingresos > 0 ? "+" : ""} /></Sensitive></p>
-          </div>
-          <div className="rounded-2xl border border-border p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Gastos</span>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10 text-red-500"><ArrowDownRight className="h-4 w-4" /></span>
-            </div>
-            <p className="mt-1 text-xl font-bold tabular-nums text-red-500"><Sensitive><AnimatedNumber value={monthTotals.gastos} prefix={monthTotals.gastos > 0 ? "-" : ""} /></Sensitive></p>
-          </div>
-        </div>
-      </section>
-      </>
+        </section>
       )}
-
 
       {/* Transacciones */}
       <TransactionsTable
         selectedMonth={selectedMonth}
         onMonthChange={(delta) => setMonthOffset((offset) => Math.max(0, offset + delta))}
         onToday={() => setMonthOffset(0)}
-        mobileSummary={{ ingresos: monthTotals.ingresos, gastos: monthTotals.gastos, neto: monthTotals.neto }}
+        hideNewButton
       />
+
+      {/* Bloques secundarios, plegados por defecto para no tapar la tabla */}
+      {!loading && (
+        <section className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setSummaryOpen((open) => !open)}
+            aria-expanded={summaryOpen}
+            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/40"
+          >
+            <span className="min-w-0">
+              <span className="block text-base font-bold tracking-tight text-foreground">Resumen</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">Indicadores, cuentas, objetivo de ingresos, próximos pagos y cash flow</span>
+            </span>
+            <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", summaryOpen && "rotate-180")} />
+          </button>
+          {summaryOpen && (
+            <>
+          {/* Ticker: pulso del mes */}
+          <section aria-label="Resumen del mes" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+            <TickerTile label="Tasa de ahorro" value={`${savingsRate}%`} valueColor="var(--primary)" trend={savingsRateTrend} trendColor="blue" />
+            <TickerTile label="Pagos pendientes" value={upcomingRecurring.length > 0 ? String(upcomingRecurring.length) : "Al día"} valueColor="var(--accent-amber)" />
+            <TickerTile label="Mayor gasto" value={biggestExpense > 0 ? <Sensitive>{formatMoney(biggestExpense, "EUR")}</Sensitive> : "—"} valueColor="var(--accent-red)" />
+            <TickerTile label="Categoría top" value={topCategory ? `${topCategoryPct}%` : "—"} detail={topCategory?.categoria} valueColor="var(--gold)" />
+          </section>
+
+          {/* Fila 1: Cuenta principal · Objetivo ingresos · Próximos pagos */}
+          <section className="hidden grid-cols-1 gap-4 sm:gap-6 md:grid lg:grid-cols-3">
+            {/* Cuenta (carrusel) */}
+            <div className="relative min-w-0 overflow-hidden rounded-[16px] bg-primary p-5 text-white sm:p-6">
+              <div className="flex items-center justify-between text-xs font-medium text-white/70">
+                <div className="flex items-center gap-1">
+                  {accCount > 1 && (
+                    <>
+                      <button onClick={() => setAccIdx((p) => p - 1)} aria-label="Cuenta anterior" className="rounded-full border border-white/25 p-1.5 text-white/80 transition-colors hover:bg-white/10 active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
+                      <button onClick={() => setAccIdx((p) => p + 1)} aria-label="Cuenta siguiente" className="rounded-full border border-white/25 p-1.5 text-white/80 transition-colors hover:bg-white/10 active:scale-90"><ChevronRight className="h-4 w-4" /></button>
+                    </>
+                  )}
+                </div>
+                <span>Todas: <Sensitive>{formatMoney(totalBalance, "EUR")}</Sensitive></span>
+              </div>
+              {currentAccount ? (
+                <>
+                  <div className="mt-5 flex items-center gap-3">
+                    <AccountLogo account={currentAccount} className="h-11 w-11" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{currentAccount.nombre}</p>
+                      <p className="truncate text-xs text-white/70">{currentAccount.banco || "Cuenta corriente"}</p>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-3xl font-bold tabular-nums tracking-tight">
+                    <Sensitive>{formatMoney(currentAccount.saldo, currentAccount.currency)}</Sensitive>
+                  </p>
+                  {accCount > 1 && (
+                    <div className="mt-4 flex items-center gap-1.5">
+                      {displayAccounts.map((a, i) => (
+                        <button key={a.id} onClick={() => setAccIdx(i)} aria-label={`Ver ${a.nombre}`} className={cn("h-1.5 rounded-full transition-all", i === safeAccIdx ? "w-5 bg-white" : "w-1.5 bg-white/30 hover:bg-white/50")} />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="mt-8 text-sm text-white/80">Aún no tienes cuentas. Créalas en la sección Cuentas.</p>
+              )}
+            </div>
+
+            {/* Objetivo ingresos mensual */}
+            <div className={`${CARD} min-w-0`}>
+              <div className="flex items-center justify-between">
+                <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Target className="h-4 w-4 text-primary" /> Objetivo de ingresos</p>
+                <button onClick={editTarget} aria-label="Editar objetivo" className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+              </div>
+              <div className="mt-2 flex flex-col items-center">
+                <Gauge value={monthTotals.ingresos} max={target} />
+                <p className="-mt-6 text-2xl font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive></p>
+                <div className="mt-1 flex w-full max-w-[210px] justify-between text-[11px] font-medium text-muted-foreground">
+                  <span>€0</span>
+                  <span>de {formatMoney(target, "EUR")}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Próximos pagos */}
+            <div className={`${CARD} flex min-w-0 flex-col`}>
+              <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><CalendarClock className="h-4 w-4 text-primary" /> Próximos pagos</p>
+              {upcomingRecurring.length === 0 ? (
+                <EmptyState className="flex-1 py-8" icon={CalendarClock} title="Sin pagos programados" description="Marca transacciones como recurrentes para verlas aquí." />
+              ) : (
+                <div className="mt-3 flex-1 space-y-2">
+                  {upcomingRecurring.map((item) => (
+                    <div key={item.key} className="flex items-center gap-2 rounded-xl border border-border p-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold text-foreground">{item.descripcion || item.categoria}</p>
+                        <p className={cn("text-[11px] font-medium", item.overdueDays > 0 ? "text-red-500" : "text-muted-foreground")}>
+                          {recurringDateLabel(item)}
+                          {item.frequency !== "mensual" && ` · ${item.frequency === "semanal" ? "Semanal" : "Anual"}`}
+                        </p>
+                      </div>
+                      <span className={cn("shrink-0 text-xs font-bold tabular-nums", (item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "text-emerald-500" : "text-foreground")}>
+                        <Sensitive>{(item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(item.monto), "EUR")}</Sensitive>
+                      </span>
+                      <button onClick={() => stopRecurring(item)} aria-label="Dejar de repetir" title="Dejar de repetir" className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500">
+                        <X className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => registerRecurring(item)} aria-label="Registrar pago" title="Registrar pago" className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-emerald-500/10 hover:text-emerald-500">
+                        <Check className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Fila 2: Cash flow + balance */}
+          <section className="hidden grid-cols-1 gap-4 sm:gap-6 md:grid lg:grid-cols-3">
+            <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><TrendingUp className="h-4 w-4 text-primary" /> Evolución del cash flow</p>
+                <div className="range-tabs">
+                  {RANGES.map((r) => (
+                    <button key={r.m} onClick={() => setRangeM(r.m)} data-active={rangeM === r.m} className="range-tab">{r.label}</button>
+                  ))}
+                </div>
+              </div>
+              {cashflowHasData ? (
+                <div role="img" aria-label="Gráfico de área: evolución de ingresos y gastos por mes">
+                  <AreaChart data={cashflow} index="mes" categories={["Ingresos", "Gastos"]} colors={["blue", "red"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(cashflow.flatMap((month) => [month.Ingresos, month.Gastos]))} showLegend showGridLines={false} customTooltip={CashflowTooltip} className="mt-2 h-64 sm:h-72" curveType="monotone" showAnimation />
+                </div>
+              ) : (
+                <EmptyPlaceholder text="Sin movimientos en este periodo" className="mt-2 h-64 sm:h-72" />
+              )}
+            </div>
+
+            {/* Balance */}
+            <div className={`${CARD} flex min-w-0 flex-col gap-4`}>
+              <div>
+                <p className="page-section-label">Balance · {formatMonth(selectedDate)}</p>
+                <p className={cn("mt-1 text-3xl font-bold tabular-nums tracking-tight", monthTotals.neto >= 0 ? "text-foreground" : "text-red-500")}>
+                  <Sensitive><AnimatedNumber value={monthTotals.neto} prefix={monthTotals.neto >= 0 ? "+" : ""} /></Sensitive>
+                </p>
+                <p className="mt-1 text-xs"><span className={cn("font-semibold", savingsRate >= 0 ? "text-emerald-500" : "text-red-500")}>{savingsRate}%</span> <span className="text-muted-foreground">de ahorro este mes</span></p>
+              </div>
+              <div className="rounded-2xl border border-border p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ingresos</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500"><ArrowUpRight className="h-4 w-4" /></span>
+                </div>
+                <p className="mt-1 text-xl font-bold tabular-nums text-emerald-500"><Sensitive><AnimatedNumber value={monthTotals.ingresos} prefix={monthTotals.ingresos > 0 ? "+" : ""} /></Sensitive></p>
+              </div>
+              <div className="rounded-2xl border border-border p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Gastos</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10 text-red-500"><ArrowDownRight className="h-4 w-4" /></span>
+                </div>
+                <p className="mt-1 text-xl font-bold tabular-nums text-red-500"><Sensitive><AnimatedNumber value={monthTotals.gastos} prefix={monthTotals.gastos > 0 ? "-" : ""} /></Sensitive></p>
+              </div>
+            </div>
+          </section>
+            </>
+          )}
+        </section>
+      )}
     </div>
   )
 }

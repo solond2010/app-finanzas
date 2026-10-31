@@ -4,11 +4,12 @@ import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useFinance, useSyncStatus, type CategoryKind } from "@/lib/store"
 import { useInvestments } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
-import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X, Cloud, CloudOff, Loader2, HardDrive, ShieldCheck, ShieldAlert } from "lucide-react"
+import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X, Cloud, CloudOff, Loader2, HardDrive, ShieldCheck, ShieldAlert, AlertTriangle } from "lucide-react"
 import { Skeleton } from "@/components/shared/skeleton"
 import { auditFinanceState } from "@/lib/finance-integrity"
 import Link from "next/link"
@@ -36,12 +37,26 @@ export default function ConfiguracionPage() {
   const integrityFindings = useMemo(() => auditFinanceState(state, positions, contributions), [state, positions, contributions])
   const integrityReviewLink = (code: string) => {
     if (["duplicate-accounts", "orphan-funds", "invalid-balances", "balance-mismatch"].includes(code)) return { href: "/cuentas", label: "Revisar cuentas" }
-    if (code === "estimated-net-worth-history") return { href: "/dashboard", label: "Ver histórico de patrimonio" }
+    if (code === "estimated-net-worth-history") return { href: "/cuentas", label: "Ver cuentas" }
     if (["duplicate-transactions", "orphan-transactions", "invalid-amounts", "invalid-types", "invalid-dates"].includes(code)) return { href: "/transactions", label: "Revisar movimientos" }
     if (["duplicate-categories", "duplicate-category-names", "orphan-budgets"].includes(code)) return { href: "#categorias", label: "Revisar categorías" }
-    if (["orphan-positions", "duplicate-positions", "invalid-positions", "orphan-contributions", "invalid-contributions"].includes(code)) return { href: "/inversiones", label: "Revisar inversiones" }
+    if (["orphan-positions", "duplicate-positions", "invalid-positions", "orphan-contributions", "invalid-contributions"].includes(code)) return { href: "/cuentas", label: "Revisar inversiones en Cuentas" }
     return null
   }
+  // Explicación en lenguaje llano de cada incidencia: qué significa y dónde se corrige.
+  const integrityHelp: Record<string, string> = {
+    "balance-mismatch": "El saldo guardado de la cuenta no coincide con la suma de sus movimientos. Suele deberse a un movimiento que falta o sobra, o a un saldo cambiado fuera de la app. Abre la cuenta, compara sus movimientos con el banco y añade el que falte o corrige el saldo desde «Editar cuenta» (se registra como ajuste).",
+    "estimated-net-worth-history": "Tus totales son correctos. La app no sabe en qué fecha entró el saldo de apertura de estas cuentas, así que la evolución histórica del patrimonio es aproximada. Es informativo: no hace falta hacer nada.",
+    "duplicate-category-names": "Hay categorías que se llaman igual (aunque cambien mayúsculas o tildes) y tus movimientos pueden quedar repartidos entre ellas. En Categorías, abajo, elimina la copia que sobre o renómbrala.",
+    "duplicate-categories": "Hay categorías repetidas con el mismo identificador. Elimina la copia sobrante en Categorías.",
+    "orphan-transactions": "Hay movimientos cuya cuenta ya no existe. No cuentan en ningún saldo.",
+    "orphan-funds": "Hay metas de ahorro vinculadas a una cuenta que ya no existe.",
+    "orphan-budgets": "Hay presupuestos de una categoría que ya no existe.",
+  }
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetText, setResetText] = useState("")
+  const resetConfirmed = resetText.trim().toUpperCase() === "BORRAR"
+  const closeReset = (open: boolean) => { setResetOpen(open); if (!open) setResetText("") }
 
   const addCategory = () => {
     const name = newCat.trim()
@@ -255,7 +270,7 @@ export default function ConfiguracionPage() {
               </span>
               {localBackupStatus === "error" && <Button variant="outline" size="sm" className="shrink-0" onClick={retryLocalBackup}>Reintentar</Button>}
             </div>
-            <div className={cn("rounded-2xl border p-4", integrityFindings.length ? "border-amber-500/25 bg-amber-500/5" : "border-emerald-500/20 bg-emerald-500/5")}>
+            <div id="revision-datos" className={cn("scroll-mt-6 rounded-2xl border p-4", integrityFindings.length ? "border-amber-500/25 bg-amber-500/5" : "border-emerald-500/20 bg-emerald-500/5")}>
               <div className="flex items-start gap-3">
                 {!investmentsLoaded ? <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-muted-foreground" /> : integrityFindings.length ? <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> : <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />}
                 <div className="min-w-0">
@@ -265,7 +280,11 @@ export default function ConfiguracionPage() {
                     const reviewLink = integrityReviewLink(finding.code)
                     return <li key={finding.code}>
                       <span className="font-medium">{finding.count} · {finding.label}</span>
-                      {finding.details?.length ? <ul className="mt-1 space-y-0.5 pl-3 text-amber-800/80 dark:text-amber-200/80">{finding.details.map((detail, index) => <li key={`${finding.code}-${index}`} className="break-words">{detail}</li>)}</ul> : null}
+                      {integrityHelp[finding.code] && <p className="mt-0.5 leading-5 text-muted-foreground">{integrityHelp[finding.code]}</p>}
+                      {finding.details?.length ? <ul className="mt-1 space-y-0.5 pl-3 text-amber-800/80 dark:text-amber-200/80">{finding.details.map((detail, index) => {
+                        const accountId = finding.refs?.[index]
+                        return <li key={`${finding.code}-${index}`} className="break-words">{accountId ? <Link href={`/cuentas/${encodeURIComponent(accountId)}`} className="underline decoration-amber-500/40 underline-offset-2 hover:text-amber-900 dark:hover:text-amber-100">{detail}</Link> : detail}</li>
+                      })}</ul> : null}
                       {reviewLink && <Link href={reviewLink.href} className="mt-1 inline-flex min-h-8 items-center rounded-lg px-2 font-semibold text-amber-800 underline decoration-amber-500/40 underline-offset-2 transition-colors hover:bg-amber-500/10 dark:text-amber-200">{reviewLink.label}</Link>}
                     </li>
                   })}</ul>}
@@ -277,6 +296,38 @@ export default function ConfiguracionPage() {
         </Card>
       </div>
       )}
+
+      {!loading && (
+        <Card className="border border-red-500/30 bg-red-500/[0.03]">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-red-600 dark:text-red-400">
+              <AlertTriangle className="h-4 w-4" />
+              Zona de peligro
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Borrar todos los datos</p>
+              <p className="text-xs text-muted-foreground">Elimina todas tus cuentas, movimientos y metas. No se puede deshacer: descarga antes la copia completa (JSON).</p>
+            </div>
+            <Button variant="destructive" size="sm" className="shrink-0" onClick={() => setResetOpen(true)}>Borrar todos los datos</Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={resetOpen} onOpenChange={closeReset}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>¿Borrar todos los datos?</DialogTitle>
+            <DialogDescription>Esta acción eliminará todas tus cuentas, transacciones y metas. No se puede deshacer. Escribe <strong>BORRAR</strong> para confirmar.</DialogDescription>
+          </DialogHeader>
+          <Input value={resetText} onChange={(e) => setResetText(e.target.value)} placeholder="BORRAR" aria-label="Escribe BORRAR para confirmar" autoComplete="off" />
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => closeReset(false)}>Cancelar</Button>
+            <Button variant="destructive" disabled={!resetConfirmed} onClick={() => { if (!resetConfirmed) return; dispatch({ type: "RESET" }); closeReset(false) }}>Borrar todo</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

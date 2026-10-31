@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { BarChart } from "@tremor/react"
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
 import { openMovementDialog } from "@/components/layout/quick-actions"
@@ -1067,7 +1068,8 @@ export default function DashboardContent() {
                   )}
                   {netWorthTrend.length > 1 && !hasUsableRangeBaseline && (
                     <p className="mt-1 text-xs text-muted-foreground" role="note">
-                      Variación no disponible: el saldo inicial del periodo no se puede validar con el historial guardado.
+                      Sin comparativa para este periodo.{" "}
+                      <Link href="/configuracion#revision-datos" className="font-medium text-foreground/80 underline decoration-border underline-offset-2 hover:text-foreground">Ver por qué</Link>
                     </p>
                   )}
                   {showRangeMax && rangeMaxPoint && (

@@ -9,7 +9,6 @@ import { parseLocalDate } from "@/lib/date-utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -151,7 +150,7 @@ const DayHeatmap = memo(function DayHeatmap({ dailyTotals, firstWeekday }: { dai
 })
 
 export default function AnalyticsPage() {
-  const { state, loading, dispatch } = useFinance()
+  const { state, loading } = useFinance()
   const currencyByAccount = useMemo(() => getCurrencyByAccount(state.accounts), [state.accounts])
   const [monthOffset, setMonthOffset] = useState(0)
   const TREND_MONTHS = 6
@@ -163,8 +162,6 @@ export default function AnalyticsPage() {
   const previousMonth = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, "0")}`
   const analysisTransactions = useMemo(() => state.transactions.filter((t) => !isInitialBalanceTransaction(t.id)), [state.transactions])
   const hasData = analysisTransactions.length > 0
-
-  const [confirmReset, setConfirmReset] = useState(false)
 
   const monthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   const previousMonthTotals = useMemo(() => getMonthTotalsByString(analysisTransactions, previousMonth, currencyByAccount), [analysisTransactions, previousMonth, currencyByAccount])
@@ -409,7 +406,6 @@ export default function AnalyticsPage() {
               <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Descargar PDF"}
             </Button>
           )}
-          {hasData && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmReset(true)}>Borrar todos los datos</Button>}
         </div>
       </header>
 
@@ -661,16 +657,6 @@ export default function AnalyticsPage() {
           </CollapsibleBlock>
         </>
       )}
-
-      <ConfirmDialog
-        open={confirmReset}
-        onOpenChange={setConfirmReset}
-        onConfirm={() => dispatch({ type: "RESET" })}
-        title="¿Borrar todos los datos?"
-        description="Esta acción eliminará todas tus cuentas, transacciones y metas. No se puede deshacer."
-        confirmLabel="Borrar todo"
-        destructive
-      />
     </div>
   )
 }

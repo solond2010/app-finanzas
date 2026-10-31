@@ -2,7 +2,8 @@ import type { FinanceState } from "./store"
 import type { Contribution, Position } from "./investments"
 import { isSyntheticOpeningBalanceResidual } from "./calculations"
 
-export type IntegrityFinding = { code: string; label: string; count: number; details?: string[] }
+/** `refs` (opcional) va alineado con `details`: id de la cuenta afectada, para enlazarla en la UI. */
+export type IntegrityFinding = { code: string; label: string; count: number; details?: string[]; refs?: string[] }
 
 /** Read-only audit: report inconsistencies without rewriting or deleting records. */
 export function auditFinanceState(state: FinanceState, positions: Position[] = [], contributions: Contribution[] = []): IntegrityFinding[] {
@@ -17,8 +18,8 @@ export function auditFinanceState(state: FinanceState, positions: Position[] = [
     }
     return duplicates
   }
-  const add = (code: string, label: string, count: number, details?: string[]) => {
-    if (count > 0) findings.push({ code, label, count, ...(details?.length ? { details: details.slice(0, 5) } : {}) })
+  const add = (code: string, label: string, count: number, details?: string[], refs?: string[]) => {
+    if (count > 0) findings.push({ code, label, count, ...(details?.length ? { details: details.slice(0, 5) } : {}), ...(refs?.length ? { refs: refs.slice(0, 5) } : {}) })
   }
 
   add("duplicate-accounts", "Cuentas con identificadores repetidos", duplicateCount(state.accounts, (row) => row.id))
@@ -49,7 +50,8 @@ export function auditFinanceState(state: FinanceState, positions: Position[] = [
     "estimated-net-worth-history",
     "Cuentas con saldo inicial histórico estimado",
     residualAccountIds.size,
-    [...residualAccountIds].map((id) => state.accounts.find((account) => account.id === id)?.nombre ?? id)
+    [...residualAccountIds].map((id) => state.accounts.find((account) => account.id === id)?.nombre ?? id),
+    [...residualAccountIds]
   )
 
   const ledgerByAccount = new Map<string, number>()
@@ -62,10 +64,12 @@ export function auditFinanceState(state: FinanceState, positions: Position[] = [
   add("balance-mismatch", "Cuentas cuyo saldo no cuadra con su historial", mismatchedAccounts.length, mismatchedAccounts.map((account) => {
     const ledger = ledgerByAccount.get(account.id) ?? 0
     const money = (value: number) => `${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${account.currency ?? "€"}`
-    return `${account.nombre}: saldo ${money(account.saldo)} · historial ${money(ledger)}`
-  }))
+    return `${account.nombre}: saldo ${money(account.saldo)} · suma de movimientos ${money(ledger)}`
+  }), mismatchedAccounts.map((account) => account.id))
   const normalizedNames = state.categories.map((row) => row.name.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES"))
-  add("duplicate-category-names", "Categorías con nombres duplicados", normalizedNames.length - new Set(normalizedNames).size)
+  const repeatedNames = [...new Set(normalizedNames.filter((name, index) => normalizedNames.indexOf(name) !== index))]
+  add("duplicate-category-names", "Categorías con nombres duplicados", normalizedNames.length - new Set(normalizedNames).size,
+    repeatedNames.map((name) => state.categories.filter((_, index) => normalizedNames[index] === name).map((row) => `«${row.name}»`).join(" y ")))
 
   const positionIds = new Set(positions.map((position) => position.id))
   const investmentAccountIds = new Set(state.accounts.map((account) => account.id))
