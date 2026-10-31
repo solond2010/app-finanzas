@@ -49,9 +49,9 @@ import { Skeleton } from "@/components/shared/skeleton"
 function categoryChipStyle(hex: string | undefined): CSSProperties | undefined {
   if (!hex) return undefined
   return {
-    backgroundColor: `color-mix(in oklch, ${hex}, transparent 88%)`,
-    color: `color-mix(in oklch, ${hex}, var(--foreground) 45%)`,
-    boxShadow: `inset 0 0 0 1px color-mix(in oklch, ${hex}, transparent 75%)`,
+    backgroundColor: `color-mix(in oklab, ${hex}, transparent 88%)`,
+    color: `color-mix(in oklab, ${hex}, var(--foreground) 45%)`,
+    boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${hex}, transparent 75%)`,
   }
 }
 

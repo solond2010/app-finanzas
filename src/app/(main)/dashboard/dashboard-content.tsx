@@ -170,7 +170,7 @@ function AnnualStat({ label, year, value, accent, icon: Icon, children }: { labe
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">Acumulado {year}</p>
         </div>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `color-mix(in oklch, ${accent} 14%, transparent)`, color: accent }}>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `color-mix(in oklab, ${accent} 14%, transparent)`, color: accent }}>
           <Icon className="h-4 w-4" />
         </span>
       </div>

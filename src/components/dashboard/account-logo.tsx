@@ -48,7 +48,7 @@ export function AccountLogo({ account, className = "h-11 w-11" }: { account: Acc
   return (
     <span
       className={`flex shrink-0 items-center justify-center rounded-2xl ${className}`}
-      style={{ backgroundColor: `color-mix(in oklch, ${cfg.color} 14%, transparent)`, color: cfg.color }}
+      style={{ backgroundColor: `color-mix(in oklab, ${cfg.color} 14%, transparent)`, color: cfg.color }}
     >
       <Icon className="h-1/2 w-1/2" />
     </span>
