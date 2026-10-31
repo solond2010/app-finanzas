@@ -8,12 +8,17 @@ const RELOADED_KEY = "garra-reloaded-for"
 const INTERVAL_MS = 5 * 60 * 1000
 const MIN_GAP_MS = 20 * 1000
 
-// Es seguro recargar si no hay ningún diálogo/hoja abierto ni el foco en un
-// campo de texto (no se pierde nada a medio escribir).
+// Es seguro recargar si no hay ningún diálogo/hoja abierto ni texto escrito
+// sin guardar (un campo vacío con foco, como el del login, no cuenta).
 function isSafeToReload() {
   if (document.querySelector('[role="dialog"], [role="alertdialog"], [data-slot="dialog-content"], #mobile-more-menu')) return false
-  const el = document.activeElement as HTMLElement | null
-  if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName))) return false
+  const active = document.activeElement as HTMLElement | null
+  if (active?.isContentEditable) return false
+  const fields = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=button]), textarea")
+  for (const field of fields) {
+    if (field.readOnly || field.disabled) continue
+    if (field.value !== field.defaultValue) return false
+  }
   return true
 }
 
