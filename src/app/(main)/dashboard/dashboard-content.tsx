@@ -731,24 +731,27 @@ export default function DashboardContent() {
   // Racha de meses consecutivos con flujo de caja positivo, contando hacia
   // atrás desde el mes anterior al seleccionado (el mes en curso se excluye
   // porque suele estar incompleto y falsearía la racha).
-  const streak = useMemo(() => {
+  // `streakBreak` es el mes en negativo que cortó la racha (null si la corta
+  // un mes sin datos), para poder enlazar a sus movimientos.
+  const { count: streak, breakMonth: streakBreak } = useMemo(() => {
     let count = 0
+    let breakMonth: { key: string; label: string } | null = null
     for (let offset = 1; offset <= 24; offset++) {
       const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - offset, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
       const t = getMonthTotalsByString(analysisTransactions, key, currencyByAccount)
       if (t.ingresos === 0 && t.gastos === 0) break
-      if (t.neto <= 0) break
+      if (t.neto <= 0) { breakMonth = { key, label: d.toLocaleDateString("es-ES", { month: "long" }) }; break }
       count++
     }
-    return count
+    return { count, breakMonth }
   }, [selectedDate, analysisTransactions, currencyByAccount])
 
   const bestMonth = useMemo(() => {
     let best = { idx: -1, neto: 0 }
     monthlyYear.forEach((m, i) => { if (m.neto > best.neto) best = { idx: i, neto: m.neto } })
     if (best.idx < 0) return null
-    return { label: new Date(year, best.idx, 1).toLocaleDateString("es-ES", { month: "long" }), value: best.neto }
+    return { label: new Date(year, best.idx, 1).toLocaleDateString("es-ES", { month: "long" }), key: `${year}-${String(best.idx + 1).padStart(2, "0")}`, value: best.neto }
   }, [monthlyYear, year])
 
   const nextGoal = useMemo(() => {
@@ -814,6 +817,14 @@ export default function DashboardContent() {
     [savingsRate, monthTotals.neto, netWorthDisplay, scoreBaseline, displayAccounts]
   )
 
+  // Dónde se arregla cada factor de la puntuación que no se cumple.
+  const hasEmergencyAccount = displayAccounts.some((account) => account.tipo === "emergencia")
+  const scoreFixes: Record<string, { href: string; hint: string }> = {
+    "Tasa de ahorro ≥ 20%": { href: `/transactions?tipo=gasto&mes=${selectedMonth}`, hint: "Revisa los gastos del mes" },
+    "Flujo del mes positivo": { href: `/transactions?mes=${selectedMonth}`, hint: "Mira los movimientos del mes" },
+    "Patrimonio en crecimiento": { href: "/cuentas", hint: "Revisa los saldos de tus cuentas" },
+    "Fondo de emergencia activo": { href: hasEmergencyAccount ? "/cuentas?tipo=emergencia" : "/cuentas", hint: hasEmergencyAccount ? "Recarga tu cuenta de emergencia" : "Crea una cuenta de emergencia" },
+  }
   const scoreDisplayLabel = scoreTier.label
   const scoreColor = scoreTier.label === "Excelente" ? "var(--gold)" : scoreTier.color
 
@@ -1164,15 +1175,28 @@ export default function DashboardContent() {
                 </div>
               </div>
               <p className="text-center text-sm font-semibold" style={{ color: scoreColor }}>{scoreDisplayLabel}</p>
-              <div className="mt-4 space-y-2 border-t border-border pt-4">
-                {scoreFactors.map((f) => (
-                  <div key={f.label} className="flex items-center gap-2 text-xs">
-                    <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded-full", f.ok ? "bg-emerald-500/15 text-emerald-500" : "bg-muted text-muted-foreground")}>
+              <div className="mt-4 space-y-1 border-t border-border pt-3">
+                {scoreFactors.map((f) => {
+                  const fix = scoreFixes[f.label]
+                  const icon = (
+                    <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded-full", f.ok ? "bg-emerald-500/15 text-emerald-500" : "bg-primary/15 text-primary")}>
                       {f.ok ? <Check className="h-2.5 w-2.5" strokeWidth={2.2} /> : <Minus className="h-2.5 w-2.5" />}
                     </span>
-                    <span className={f.ok ? "text-foreground" : "text-muted-foreground"}>{f.label}</span>
-                  </div>
-                ))}
+                  )
+                  if (f.ok || !fix) {
+                    return <div key={f.label} className="flex min-h-9 items-center gap-2 px-2 text-xs">{icon}<span className={f.ok ? "text-foreground" : "text-muted-foreground"}>{f.label}</span></div>
+                  }
+                  return (
+                    <Link key={f.label} href={fix.href} className="-mx-0 flex min-h-11 items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                      {icon}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-muted-foreground">{f.label}</span>
+                        <span className="block text-[11px] font-medium text-primary">{fix.hint}</span>
+                      </span>
+                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                    </Link>
+                  )
+                })}
               </div>
             </div>
             <div className="flex min-w-0 flex-col gap-4 2xl:col-span-3">
@@ -1199,19 +1223,52 @@ export default function DashboardContent() {
                   </div>
                 </>
               )}
-              <div className="mt-5 space-y-3 border-t border-border pt-4">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><Flame className="h-3.5 w-3.5 text-amber-500" /> Racha de ahorro</span>
-                  <span className="text-sm font-semibold tabular-nums text-foreground">{streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> Mejor mes</span>
-                  <span className="text-sm font-semibold tabular-nums text-emerald-500">{bestMonth ? <Sensitive>{formatMoney(bestMonth.value, "EUR")}</Sensitive> : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground"><Target className="h-3.5 w-3.5 text-primary" /> Próximo objetivo</span>
-                  <span className="truncate text-sm font-semibold tabular-nums text-foreground">{nextGoal ? <Sensitive>{formatMoney(nextGoal.objetivo, "EUR")}</Sensitive> : "—"}</span>
-                </div>
+              <div className="mt-4 space-y-0.5 border-t border-border pt-3">
+                {([
+                  {
+                    key: "racha",
+                    icon: <Flame className="h-3.5 w-3.5 text-amber-500" />,
+                    label: "Racha de ahorro",
+                    hint: streak === 0 && streakBreak ? `${streakBreak.label} cerró en negativo · revisar` : null,
+                    value: <span className="text-foreground">{streak > 0 ? `${streak} ${streak === 1 ? "mes" : "meses"}` : "—"}</span>,
+                    href: streak === 0 && streakBreak ? `/transactions?mes=${streakBreak.key}` : null,
+                  },
+                  {
+                    key: "mejor",
+                    icon: <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />,
+                    label: "Mejor mes",
+                    hint: bestMonth ? bestMonth.label : null,
+                    value: <span className="text-emerald-500">{bestMonth ? <Sensitive>{formatMoney(bestMonth.value, "EUR")}</Sensitive> : "—"}</span>,
+                    href: bestMonth ? `/transactions?mes=${bestMonth.key}` : null,
+                  },
+                  {
+                    key: "objetivo",
+                    icon: <Target className="h-3.5 w-3.5 text-primary" />,
+                    label: "Próximo objetivo",
+                    hint: nextGoal ? nextGoal.nombre : "Crea una meta de ahorro",
+                    value: <span className="text-foreground">{nextGoal ? <Sensitive>{formatMoney(nextGoal.objetivo, "EUR")}</Sensitive> : "—"}</span>,
+                    href: "/cuentas#metas",
+                  },
+                ]).map((row) => {
+                  const body = (
+                    <>
+                      <span className="flex min-w-0 flex-1 items-center gap-2 text-xs text-muted-foreground">
+                        {row.icon}
+                        <span className="min-w-0">
+                          <span className="block">{row.label}</span>
+                          {row.hint && <span className={cn("block truncate text-[11px] first-letter:uppercase", row.key === "racha" ? "font-medium text-primary" : "text-muted-foreground/80")}>{row.hint}</span>}
+                        </span>
+                      </span>
+                      <span className="max-w-[45%] truncate text-sm font-semibold tabular-nums">{row.value}</span>
+                      {row.href && <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
+                    </>
+                  )
+                  return row.href ? (
+                    <Link key={row.key} href={row.href} className="-mx-2 flex min-h-11 items-center gap-2 rounded-lg px-2 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{body}</Link>
+                  ) : (
+                    <div key={row.key} className="flex min-h-11 items-center gap-2">{body}</div>
+                  )
+                })}
               </div>
             </div>
 
