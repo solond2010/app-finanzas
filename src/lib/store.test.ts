@@ -282,3 +282,21 @@ describe("collectDeletesFromAction", () => {
     expect(pending.accounts.has("acc_principal")).toBe(false)
   })
 })
+
+import { mergeDefaultCategories } from "./store"
+describe("mergeDefaultCategories (categorías borradas no vuelven)", () => {
+  it("cuenta nueva sin categorías: siembra las predeterminadas", () => {
+    expect(mergeDefaultCategories([]).length).toBe(defaultState.categories.length)
+  })
+  it("no vuelve a añadir las predeterminadas que el usuario borró", () => {
+    const kept = defaultState.categories.slice(0, 3)
+    const merged = mergeDefaultCategories(kept)
+    expect(merged.map((c) => c.id)).toEqual(kept.map((c) => c.id))
+  })
+  it("rellena kind de las antiguas y deja «both» en las personalizadas", () => {
+    const first = defaultState.categories[0]
+    const merged = mergeDefaultCategories([{ ...first, kind: undefined }, { id: "cat_x", name: "X", color: "#000" }])
+    expect(merged[0].kind).toBe(first.kind)
+    expect(merged[1].kind).toBe("both")
+  })
+})

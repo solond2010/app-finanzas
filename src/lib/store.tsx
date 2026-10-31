@@ -171,18 +171,24 @@ const DEFAULT_CATEGORIES: Category[] = DEFAULT_CATEGORY_DEFS.map((d, i) => ({
   kind: d.kind,
 }))
 
-// Garantiza que existan todas las categorías predeterminadas y que cada categoría
-// tenga `kind`. Rellena el tipo de las antiguas (por id) y deja las personalizadas
+// Rellena `kind` en las categorías antiguas (por id) y deja las personalizadas
 // sin tipo conocido como "both" para que sigan apareciendo en ambos formularios.
-function mergeDefaultCategories(loaded: Category[]): Category[] {
-  const existing = new Set(loaded.map((c) => c.id))
-  const result: Category[] = loaded.map((c) => {
+// Las categorías predeterminadas SOLO se siembran si el usuario aún no tiene
+// ninguna (cuenta nueva). Antes se volvían a añadir en cada carga todas las
+// predeterminadas que faltaban, así que las que el usuario borraba
+// «resucitaban» y el siguiente sync las volvía a subir a Supabase.
+export function mergeDefaultCategories(loaded: Category[]): Category[] {
+  if (loaded.length === 0) return DEFAULT_CATEGORIES
+  return loaded.map((c) => {
     if (c.kind) return c
     const def = DEFAULT_CATEGORIES.find((d) => d.id === c.id)
     return { ...c, kind: def?.kind ?? "both" }
   })
-  for (const d of DEFAULT_CATEGORIES) if (!existing.has(d.id)) result.push(d)
-  return result
+}
+
+/** ¿Hay datos del usuario en la nube? (también cuenta si solo tiene categorías). */
+function hasRemoteData(remote: FinanceState | null | undefined): remote is FinanceState {
+  return !!remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0 || remote.categories.length > 0)
 }
 
 type AccountRow = {
@@ -569,7 +575,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         pendingDeletesRef.current = restorePendingDeletes()
         dirtyRef.current = true
         dispatch({ type: "SET_STATE", payload: { ...local, categories: mergeDefaultCategories(local.categories) } })
-      } else if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
+      } else if (hasRemoteData(remote)) {
         skipNextSyncRef.current = true
         dispatch({ type: "SET_STATE", payload: { ...remote, categories: mergeDefaultCategories(remote.categories) } })
       } else {
@@ -612,7 +618,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       lastRefetchRef.current = now
       loadFromSupabase().then((remote) => {
         if (dirtyRef.current) return
-        if (remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)) {
+        if (hasRemoteData(remote)) {
           skipNextSyncRef.current = true
           dispatch({ type: "SET_STATE", payload: { ...remote, categories: mergeDefaultCategories(remote.categories) } })
         }
