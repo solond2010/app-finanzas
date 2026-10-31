@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import * as XLSX from "xlsx"
-import { CalendarRange, Download, Maximize2, Plus } from "lucide-react"
+import { CalendarRange, Download, Maximize2, Plus } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"

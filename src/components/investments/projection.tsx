@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { BarChart } from "@tremor/react"
-import { LineChart as LineChartIcon } from "lucide-react"
+import { LineChart as LineChartIcon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatMoney } from "@/lib/currency"

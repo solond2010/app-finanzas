@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { AreaChart } from "@tremor/react"
-import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp, X } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp, X } from "@/components/icons"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { ImportCsvButton } from "@/components/dashboard/import-csv-button"
 import { getSetting, setSetting } from "@/lib/settings"

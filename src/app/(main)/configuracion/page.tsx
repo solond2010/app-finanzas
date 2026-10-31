@@ -9,11 +9,12 @@ import { useFinance, useSyncStatus, type CategoryKind } from "@/lib/store"
 import { useInvestments } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
-import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X, Cloud, CloudOff, Loader2, HardDrive, ShieldCheck, ShieldAlert, AlertTriangle } from "lucide-react"
+import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X, Cloud, CloudOff, Loader2, HardDrive, ShieldCheck, ShieldAlert, AlertTriangle } from "@/components/icons"
 import { Skeleton } from "@/components/shared/skeleton"
 import { auditFinanceState } from "@/lib/finance-integrity"
 import Link from "next/link"
 import { AccountSettings } from "@/components/settings/account-settings"
+import { CategoryIcon } from "@/components/icons/category-icon"
 
 export default function ConfiguracionPage() {
   const { state, loading, dispatch } = useFinance()
@@ -213,7 +214,7 @@ export default function ConfiguracionPage() {
                     <div className="flex flex-wrap gap-2">
                       {cats.map((cat) => (
                         <div key={cat.id} className="stagger-fade group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 bg-muted/60 text-foreground ring-border/40">
-                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                          <CategoryIcon name={cat.name} color={cat.color} className="size-3.5" />
                           {editingId === cat.id ? <><Input autoFocus value={editingName} onChange={(e) => setEditingName(e.target.value)} className="h-7 w-32 bg-background px-2 text-xs" onKeyDown={(e) => { if (e.key === "Enter") saveCategoryName(cat.id); if (e.key === "Escape") setEditingId(null) }} /><button onClick={() => saveCategoryName(cat.id)} aria-label="Guardar categoría"><Check className="h-3 w-3 text-emerald-500" /></button><button onClick={() => setEditingId(null)} aria-label="Cancelar"><X className="h-3 w-3" /></button></> : <><span>{cat.name}</span><button onClick={() => { setEditingId(cat.id); setEditingName(cat.name) }} aria-label={`Renombrar categoría ${cat.name}`} className="opacity-50 hover:opacity-100"><Pencil className="h-3 w-3" /></button></>}
                           <button onClick={() => deleteCategory(cat.id, cat.name)} className="opacity-40 group-hover:opacity-100 transition-opacity hover:opacity-100 cursor-pointer" aria-label={`Eliminar categoría ${cat.name}`}>
                             <Trash2 className="h-3 w-3" />

@@ -23,7 +23,7 @@ import {
   Eye,
   EyeOff,
   Plus,
-} from "lucide-react"
+} from "@/components/icons"
 import { useEffect } from "react"
 import { useSidebar } from "@/lib/sidebar"
 import { openMovementDialog } from "@/components/layout/quick-actions"

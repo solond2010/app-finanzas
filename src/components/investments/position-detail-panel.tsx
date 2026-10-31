@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, Pencil, Trash2, TrendingDown, TrendingUp } from "lucide-react"
+import { ArrowLeft, Pencil, Trash2, TrendingDown, TrendingUp } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { useFinance } from "@/lib/store"
 import { type Position } from "@/lib/investments"

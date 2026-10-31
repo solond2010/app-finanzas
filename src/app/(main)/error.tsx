@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { AlertTriangle, ArrowLeft, RotateCcw } from "lucide-react"
+import { AlertTriangle, ArrowLeft, RotateCcw } from "@/components/icons"
 import Link from "next/link"
 
 export default function MainError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {

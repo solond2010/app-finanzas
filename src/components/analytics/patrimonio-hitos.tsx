@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, Check, Flag, TrendingUp } from "lucide-react"
+import { ArrowRight, Check, Flag, TrendingUp } from "@/components/icons"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Sensitive } from "@/components/shared/sensitive"

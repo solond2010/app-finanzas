@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { SparkLineChart } from "@tremor/react"
-import { ArrowUpRight } from "lucide-react"
+import { ArrowUpRight } from "@/components/icons"
 
 // Tarjeta compacta estilo "ticker" con un mini-gráfico de tendencia opcional
 // (si no hay serie histórica disponible, como en la rentabilidad de cartera,

@@ -3,7 +3,7 @@
 import { useEffect, useState, type ElementType } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { CalendarDays, ChartPie, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, Plus, ReceiptText, SlidersHorizontal, SunMedium, X } from "lucide-react"
+import { CalendarDays, ChartPie, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, Plus, ReceiptText, SlidersHorizontal, SunMedium, X } from "@/components/icons"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { cn } from "@/lib/utils"
 import { usePrivacy } from "@/lib/privacy"

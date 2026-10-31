@@ -1,5 +1,5 @@
 import React, { memo } from "react"
-import { TrendingDown, TrendingUp } from "lucide-react"
+import { TrendingDown, TrendingUp } from "@/components/icons"
 import { formatCappedPct } from "@/lib/format"
 
 type MetricTone = "emerald" | "red" | "blue" | "amber" | "violet"

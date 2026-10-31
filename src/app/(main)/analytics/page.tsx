@@ -3,7 +3,7 @@
 import React from "react"
 import { useMemo, useState, memo, useEffect } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
-import { Activity, AlertTriangle, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Target, Wallet, Wallet2 } from "lucide-react"
+import { Activity, AlertTriangle, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, FileDown, Gauge, Layers3, Lightbulb, PiggyBank, Target, Wallet, Wallet2 } from "@/components/icons"
 import { parseLocalDate } from "@/lib/date-utils"
 
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,7 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 import { PatrimonioMensualSection } from "@/components/analytics/patrimonio-mensual"
 import { PatrimonioHitos } from "@/components/analytics/patrimonio-hitos"
+import { CategoryIcon } from "@/components/icons/category-icon"
 
 // Mismo umbral que MonthlyBudget (src/components/dashboard/monthly-budget.tsx).
 const BUDGET_WARNING_THRESHOLD = 80
@@ -496,7 +497,7 @@ export default function AnalyticsPage() {
                         <div key={b.id} className="space-y-2">
                           <div className="flex items-center justify-between gap-2 text-xs">
                             <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
-                              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: b.categoryColor }} />
+                              <CategoryIcon name={b.categoryName} color={b.categoryColor} />
                               <span className="truncate">{b.categoryName}</span>
                               {(over || warning) && <AlertTriangle className={cn("h-3 w-3 shrink-0", over ? "text-red-500" : "text-amber-500")} />}
                             </span>

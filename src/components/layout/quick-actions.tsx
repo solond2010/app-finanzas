@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { AlertCircle } from "lucide-react"
-import { ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, Repeat2, Send } from "lucide-react"
+import { AlertCircle } from "@/components/icons"
+import { ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, Repeat2, Send } from "@/components/icons"
 import { useToast } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

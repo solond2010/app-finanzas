@@ -2,7 +2,7 @@
 
 import { useState, FormEvent } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Loader2 } from "lucide-react"
+import { Loader2 } from "@/components/icons"
 import { GarraLogo } from "@/components/brand/garra-logo"
 
 export function PasswordLoginForm() {

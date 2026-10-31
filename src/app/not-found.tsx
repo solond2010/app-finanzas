@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { SearchX, ArrowLeft } from "lucide-react"
+import { SearchX, ArrowLeft } from "@/components/icons"
 
 export default function GlobalNotFound() {
   return (

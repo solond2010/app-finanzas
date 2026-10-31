@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CURRENCY_OPTIONS, currencySymbol } from "@/lib/currency"
 import { BANKS, matchBank } from "@/components/dashboard/account-logo"
 import { useToast } from "@/components/ui/toast"
-import { Upload, X, AlertCircle } from "lucide-react"
+import { Upload, X, AlertCircle } from "@/components/icons"
 import { parseAmount } from "@/lib/validation"
 
 const COLORS = ["#F5A524", "#2BD9A0", "#FF6B5B", "#FFD08A", "#8B95A5", "#4F5B6B", "#C98A1E", "#F3F1EA"]

@@ -1,5 +1,5 @@
 import type { Account } from "./store"
-import { ShieldCheck, Wallet, TrendingUp, Landmark, CreditCard } from "lucide-react"
+import { ShieldCheck, Wallet, TrendingUp, Landmark, CreditCard } from "@/components/icons"
 import type { ElementType } from "react"
 
 export const typeConfig: Record<Account["tipo"], { label: string; icon: ElementType; color: string; tint: string }> = {
