@@ -58,14 +58,16 @@ export function MobileBottomNav() {
           <button
             type="button"
             aria-label="Cerrar menú"
-            className="fixed inset-0 z-[59] bg-black/45 backdrop-blur-[2px] lg:hidden"
+            className="fixed inset-0 z-[59] bg-black/50 backdrop-blur-[2px] animate-in fade-in-0 duration-200 lg:hidden"
             onClick={() => setMoreOpen(false)}
           />
+          {/* Hoja inferior real: pegada al borde de la pantalla y por encima de
+              la barra (z-60 > z-50), que queda atenuada bajo el fondo. */}
           <section
             id="mobile-more-menu"
             aria-labelledby="mobile-more-title"
             aria-label="Más secciones"
-            className="mobile-more-sheet fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-[60] mx-auto max-h-[calc(100dvh-var(--bottom-nav-h)-env(safe-area-inset-bottom)-env(safe-area-inset-top)-1rem)] max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] border border-b-0 border-border bg-card px-4 pb-5 pt-6 shadow-2xl lg:hidden animate-in slide-in-from-bottom-4 duration-200"
+            className="mobile-more-sheet fixed inset-x-0 bottom-0 z-[60] mx-auto max-h-[calc(100dvh-env(safe-area-inset-top)-1rem)] max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] border border-b-0 border-border bg-card px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-6 shadow-2xl lg:hidden animate-in slide-in-from-bottom duration-300 ease-out"
           >
             <div className="mb-3 flex items-center justify-between px-1">
               <div>
