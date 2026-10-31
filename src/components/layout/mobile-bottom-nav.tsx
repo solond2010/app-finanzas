@@ -42,7 +42,13 @@ export function MobileBottomNav() {
       if (event.key === "Escape") setMoreOpen(false)
     }
     window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
+    // Mientras está abierta, la página de detrás no se desplaza.
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      window.removeEventListener("keydown", onKeyDown)
+      document.body.style.overflow = prevOverflow
+    }
   }, [moreOpen])
 
   return (
@@ -59,7 +65,7 @@ export function MobileBottomNav() {
             id="mobile-more-menu"
             aria-labelledby="mobile-more-title"
             aria-label="Más secciones"
-            className="mobile-more-sheet fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-[60] mx-auto max-w-lg rounded-t-[28px] border border-border bg-card p-4 pb-5 shadow-2xl lg:hidden animate-in slide-in-from-bottom-4 duration-200"
+            className="mobile-more-sheet fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-[60] mx-auto max-h-[calc(100dvh-var(--bottom-nav-h)-env(safe-area-inset-bottom)-env(safe-area-inset-top)-1rem)] max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] border border-b-0 border-border bg-card px-4 pb-5 pt-6 shadow-2xl lg:hidden animate-in slide-in-from-bottom-4 duration-200"
           >
             <div className="mb-3 flex items-center justify-between px-1">
               <div>

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { Loader2 } from "@/components/icons"
 import { GarraLogo } from "@/components/brand/garra-logo"
 import { loginNotice } from "@/lib/auth-links"
+import { PasswordInput } from "@/components/ui/password-input"
 
 type Mode = "login" | "signup" | "magic"
 
@@ -93,8 +94,7 @@ export function AccountLoginForm() {
           required
         />
         {mode !== "magic" && (
-          <input
-            type="password"
+          <PasswordInput
             autoComplete={mode === "signup" ? "new-password" : "current-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}

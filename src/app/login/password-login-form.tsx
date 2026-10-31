@@ -4,6 +4,7 @@ import { useState, FormEvent } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2 } from "@/components/icons"
 import { GarraLogo } from "@/components/brand/garra-logo"
+import { PasswordInput } from "@/components/ui/password-input"
 
 export function PasswordLoginForm() {
   const [password, setPassword] = useState("")
@@ -56,8 +57,7 @@ export function PasswordLoginForm() {
         <p className="text-sm text-muted-foreground">Introduce la contraseña para acceder a tu panel financiero.</p>
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <input
-          type="password"
+        <PasswordInput
           value={password}
           onChange={(e) => { setPassword(e.target.value); setError(false); setErrorMsg("") }}
           className="flex h-12 w-full rounded-xl border border-input bg-background/60 px-4 text-sm ring-1 ring-border/25 transition-all placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"

@@ -585,8 +585,9 @@ aside nav a[aria-current="page"] {
 .mobile-bottom-navigation a[aria-current="page"] > span:first-child {
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--gold), transparent 78%);
 }
+/* Sin "position" aquí: el CSS sin capa gana a las utilidades de Tailwind y
+   un "relative" anulaba el "fixed" de la hoja (salía como columna lateral). */
 .mobile-more-sheet {
-  position: relative;
   border-color: color-mix(in oklab, var(--border), var(--gold) 20%);
   background-image:
     linear-gradient(145deg, color-mix(in oklab, var(--accent-blue), transparent 96%), transparent 60%);

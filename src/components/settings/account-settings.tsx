@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
 import { Copy, KeyRound, LogOut, Smartphone, Trash2, UserRound } from "@/components/icons"
+import { PasswordInput } from "@/components/ui/password-input"
 
 type Me = { mode: "accounts" | "password"; userId: string; email: string | null }
 type TokenItem = { id: string; name: string; prefix: string; created_at: string; last_used_at: string | null }
@@ -98,7 +99,7 @@ export function AccountSettings() {
           <div className="space-y-2">
             <p className="text-sm font-medium">Cambiar contraseña</p>
             <div className="flex gap-2">
-              <Input type="password" autoComplete="new-password" placeholder="Nueva contraseña (mín. 8)" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <PasswordInput className="h-11 w-full min-w-0 rounded-xl border border-input bg-transparent px-3 text-base outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30" autoComplete="new-password" placeholder="Nueva contraseña (mín. 8)" value={password} onChange={(e) => setPassword(e.target.value)} />
               <Button size="sm" disabled={busy || password.length < 8} onClick={changePassword}>Guardar</Button>
             </div>
           </div>
