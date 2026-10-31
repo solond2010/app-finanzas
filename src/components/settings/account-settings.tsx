@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
-import { Copy, KeyRound, LogOut, Smartphone, Trash2, UserRound } from "lucide-react"
+import { Copy, KeyRound, LogOut, Smartphone, Trash2, UserRound } from "@/components/icons"
 
 type Me = { mode: "accounts" | "password"; userId: string; email: string | null }
 type TokenItem = { id: string; name: string; prefix: string; created_at: string; last_used_at: string | null }

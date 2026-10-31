@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Plus, Search, TrendingDown, TrendingUp, X } from "lucide-react"
+import { Plus, Search, TrendingDown, TrendingUp, X } from "@/components/icons"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useInvestments, type WatchItem } from "@/lib/investments"

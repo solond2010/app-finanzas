@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
 import { formatMonth } from "@/lib/format"
+import { CategoryIcon } from "@/components/icons/category-icon"
 
 interface BudgetDialogProps {
   open: boolean
@@ -82,7 +83,7 @@ export function BudgetDialog({ open, onOpenChange, selectedMonth }: BudgetDialog
           ) : (
             sortedCategories.map((cat) => (
               <div key={cat.id} className="flex items-center gap-3 rounded-2xl bg-muted/40 px-3 py-2">
-                <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                <CategoryIcon name={cat.name} color={cat.color} />
                 <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{cat.name}</span>
                 <div className="relative w-28 shrink-0">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">€</span>

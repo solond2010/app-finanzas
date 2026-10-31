@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { SlidersHorizontal, Plus, AlertTriangle } from "lucide-react"
+import { SlidersHorizontal, Plus, AlertTriangle } from "@/components/icons"
 import { Progress } from "@/components/ui/progress"
 import { Sensitive } from "@/components/shared/sensitive"
 import { formatMoney } from "@/lib/currency"
@@ -10,6 +10,7 @@ import { countsTowardCashFlow, reportingAmount, type CurrencyByAccount } from "@
 import { BudgetDialog } from "@/components/dashboard/budget-dialog"
 import { EmptyState } from "@/components/shared/empty-state"
 import { cn } from "@/lib/utils"
+import { CategoryIcon } from "@/components/icons/category-icon"
 
 // A partir de este % de un presupuesto se avisa (ámbar); a partir de 100% ya
 // está superado (rojo).
@@ -107,7 +108,7 @@ export function MonthlyBudget({ budgets, transactions, categories, selectedMonth
               <div key={b.id} className="space-y-2">
                 <div className="flex items-center justify-between gap-2 text-xs">
                   <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: b.categoryColor }} />
+                    <CategoryIcon name={b.categoryName} color={b.categoryColor} />
                     <span className="truncate">{b.categoryName}</span>
                     {(over || warning) && <AlertTriangle className={cn("h-3 w-3 shrink-0", over ? "text-red-500" : "text-amber-500")} />}
                   </span>

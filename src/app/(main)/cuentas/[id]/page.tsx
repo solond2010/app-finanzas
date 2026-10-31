@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation"
 import { useFinance } from "@/lib/store"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
-import { ArrowLeft, Pencil, SearchX, Wallet, ArrowUpRight, ArrowDownRight, Copy } from "lucide-react"
+import { ArrowLeft, Pencil, SearchX, Wallet, ArrowUpRight, ArrowDownRight, Copy } from "@/components/icons"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"

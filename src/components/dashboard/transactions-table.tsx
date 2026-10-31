@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Category, generateId } from "@/lib/store"
 import { dbDeleteEq } from "@/lib/db-client"
-import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X, ArrowLeftRight, Repeat, ChevronLeft, ChevronRight, CalendarDays, List, TrendingDown, TrendingUp, SlidersHorizontal, Copy } from "lucide-react"
+import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X, ArrowLeftRight, Repeat, ChevronLeft, ChevronRight, CalendarDays, List, TrendingDown, TrendingUp, SlidersHorizontal, Copy } from "@/components/icons"
 import { parseAmount } from "@/lib/validation"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
@@ -40,6 +40,7 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurringFrequency, recurringTag, type RecurringFrequency } from "@/lib/calculations"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
+import { CategoryIcon } from "@/components/icons/category-icon"
 
 // Estilo del chip de categoría a partir del color REAL de la categoría (el
 // hex que el usuario ve en Configuración y en el punto de la descripción),
@@ -922,7 +923,7 @@ export function TransactionsTable({
                             <InlineEditInput defaultValue={t.descripcion} onDone={(ok, v) => handleInlineDone(t, "descripcion", ok, v)} />
                           ) : (
                             <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setEditingCell({ id: t.id, field: "descripcion" })} className="flex w-full items-center gap-2 rounded px-1 py-0.5 -mx-1 text-left hover:bg-muted/60" aria-label="Editar descripción">
-                              <span className="inline-flex h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: catHex ?? "var(--muted-foreground)" }} />
+                              <CategoryIcon name={t.categoria} color={catHex} />
                               <span className="truncate font-medium">{t.descripcion || t.categoria}</span>
                             </button>
                           )}
@@ -1046,7 +1047,7 @@ export function TransactionsTable({
                           disabled={systemAdjustment}
                           onChange={() => toggleSelected(t.id)}
                         />
-                        <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: category?.color ?? "var(--muted-foreground)" }} />
+                        <CategoryIcon name={t.categoria} color={category?.color} className="mt-0.5 size-5" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-3">
                             <p className="min-w-0 break-words text-sm font-semibold leading-snug text-foreground">{t.descripcion || t.categoria}</p>
@@ -1119,7 +1120,7 @@ export function TransactionsTable({
                     return (
                       <article key={t.id} className={cn("rounded-2xl border border-border bg-card p-3.5 shadow-sm", transfer && "border-violet-500/20 bg-violet-500/[0.025]", selectedIds.has(t.id) && "ring-1 ring-primary/30")}>
                         <div className="flex items-start gap-3">
-                          <span className="mt-1.5 size-2.5 shrink-0 rounded-full" style={{ backgroundColor: category?.color ?? "var(--muted-foreground)" }} />
+                          <CategoryIcon name={t.categoria} color={category?.color} className="mt-0.5 size-5" />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-3">
                               <p className="min-w-0 break-words text-sm font-semibold leading-snug text-foreground">{t.descripcion || t.categoria}</p>

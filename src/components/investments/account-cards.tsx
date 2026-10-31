@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Star } from "lucide-react"
+import { Star } from "@/components/icons"
 import { type Account } from "@/lib/store"
 import { getSetting, setSetting } from "@/lib/settings"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"

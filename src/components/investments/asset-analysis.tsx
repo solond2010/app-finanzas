@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { AreaChart } from "@tremor/react"
-import { Search, TrendingDown, TrendingUp, X, Loader2 } from "lucide-react"
+import { Search, TrendingDown, TrendingUp, X, Loader2 } from "@/components/icons"
 import { Input } from "@/components/ui/input"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { cn } from "@/lib/utils"

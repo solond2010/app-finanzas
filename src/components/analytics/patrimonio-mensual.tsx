@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useMemo, useState } from "react"
 import { AreaChart, BarChart } from "@tremor/react"
-import { CalendarDays, Percent, TrendingDown, TrendingUp, Wallet } from "lucide-react"
+import { CalendarDays, Percent, TrendingDown, TrendingUp, Wallet } from "@/components/icons"
 
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"

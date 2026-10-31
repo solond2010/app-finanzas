@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, type FormEvent } from "react"
-import { Check, PencilLine, ShieldCheck } from "lucide-react"
+import { Check, PencilLine, ShieldCheck } from "@/components/icons"
 import { Sensitive } from "@/components/shared/sensitive"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

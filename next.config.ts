@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Solo se empaquetan los iconos de Phosphor que se usan.
+  experimental: { optimizePackageImports: ["@phosphor-icons/react"] },
   // Cabeceras de seguridad estándar para toda la app. Es una app financiera
   // con login por contraseña: X-Frame-Options evita que la página de login se
   // enmarque en un iframe ajeno (clickjacking), y las otras dos son

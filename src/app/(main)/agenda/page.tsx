@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import Link from "next/link"
-import { ArrowDownRight, ArrowUpRight, CalendarDays, Check, CircleAlert, Clock3, Repeat2, X } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, CalendarDays, Check, CircleAlert, Clock3, Repeat2, X } from "@/components/icons"
 import { useFinance, generateId } from "@/lib/store"
 import { getUpcomingRecurring, type UpcomingRecurring } from "@/lib/calculations"
 import { localDateKey, parseLocalDate } from "@/lib/date-utils"

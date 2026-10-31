@@ -22,7 +22,7 @@ import {
 import { useFinance, type SinkingFund, generateId } from "@/lib/store"
 import { calculateMonthlySaving, fundCurrentAmount } from "@/lib/calculations"
 import { CircularProgress } from "@/components/ui/circular-progress"
-import { PiggyBank, Plus, Pencil, Trash2, Target, AlertCircle } from "lucide-react"
+import { PiggyBank, Plus, Pencil, Trash2, Target, AlertCircle } from "@/components/icons"
 import { currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { EmptyState } from "@/components/shared/empty-state"

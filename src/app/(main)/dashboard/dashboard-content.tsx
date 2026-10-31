@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { BarChart } from "@tremor/react"
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "lucide-react"
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "@/components/icons"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -30,6 +30,7 @@ import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
+import { CategoryIcon } from "@/components/icons/category-icon"
 
 const CARD = "rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
@@ -1267,7 +1268,7 @@ export default function DashboardContent() {
                     <button key={c.categoria} type="button" aria-label={`Ver gastos de ${c.categoria}`} onClick={() => router.push(`/transactions?tipo=gasto&categoria=${encodeURIComponent(c.categoria)}&mes=${selectedMonth}`)} className="group space-y-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card rounded-md">
                       <div className="flex items-center justify-between gap-2 text-xs">
                         <span className="flex min-w-0 items-center gap-2 font-medium text-foreground">
-                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: catColor(c.categoria) }} />
+                          <CategoryIcon name={c.categoria} color={catColor(c.categoria)} />
                           <span className="truncate">{c.categoria}</span>
                         </span>
                         <span className="shrink-0 tabular-nums text-muted-foreground">

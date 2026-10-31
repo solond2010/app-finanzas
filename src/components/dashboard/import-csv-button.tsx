@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Upload } from "lucide-react"
+import { Upload } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useFinance, generateId, type Transaction } from "@/lib/store"

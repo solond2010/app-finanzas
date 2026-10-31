@@ -1,6 +1,6 @@
 "use client"
 
-import { CalendarClock, Flame, Repeat } from "lucide-react"
+import { CalendarClock, Flame, Repeat } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { useInvestments, dcaPendingDates, dcaNextDate, dcaStreak, planOf } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
