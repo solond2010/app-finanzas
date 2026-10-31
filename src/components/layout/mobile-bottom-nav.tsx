@@ -3,11 +3,12 @@
 import { useEffect, useState, type ElementType } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { CalendarDays, ChartPie, ChatText, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, Plus, ReceiptText, SlidersHorizontal, SunMedium, X } from "@/components/icons"
+import { CalendarDays, ChartPie, ChatText, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, Plus, ReceiptText, ShieldCheck, SlidersHorizontal, SunMedium, X } from "@/components/icons"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { openFeedbackDialog } from "@/components/feedback/feedback-dialog"
 import { cn } from "@/lib/utils"
 import { usePrivacy } from "@/lib/privacy"
+import { ADMIN_HREF, useAdminNav } from "@/lib/use-admin-nav"
 
 const primaryItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
@@ -25,7 +26,9 @@ export function MobileBottomNav() {
   const pathname = usePathname()
   const [moreOpen, setMoreOpen] = useState(false)
   const { privacy, toggle: togglePrivacy } = usePrivacy()
-  const moreActive = moreItems.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+  const admin = useAdminNav(pathname)
+  const sheetItems = admin.isAdmin ? [...moreItems, { href: ADMIN_HREF, label: "Administración", description: "Comentarios y errores de la beta", icon: ShieldCheck }] : moreItems
+  const moreActive = sheetItems.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
 
   const toggleTheme = () => {
     document.documentElement.classList.add("theme-transition")
@@ -80,7 +83,7 @@ export function MobileBottomNav() {
               </button>
             </div>
             <nav className="space-y-1" aria-label="Secciones adicionales">
-              {moreItems.map((item) => {
+              {sheetItems.map((item) => {
                 const Icon = item.icon
                 const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
                 return (
@@ -98,6 +101,7 @@ export function MobileBottomNav() {
                       <span className="block text-sm font-semibold">{item.label}</span>
                       <span className="block text-xs text-muted-foreground">{item.description}</span>
                     </span>
+                    {item.href === ADMIN_HREF && admin.nuevos > 0 && <span aria-label={`${admin.nuevos} comentarios sin revisar`} className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground tabular-nums">{admin.nuevos > 99 ? "99+" : admin.nuevos}</span>}
                     {active && <span className="size-2 rounded-full bg-primary" />}
                   </Link>
                 )

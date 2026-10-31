@@ -24,11 +24,13 @@ import {
   EyeOff,
   Plus,
   ChatText,
+  ShieldCheck,
 } from "@/components/icons"
 import { useEffect } from "react"
 import { useSidebar } from "@/lib/sidebar"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { openFeedbackDialog } from "@/components/feedback/feedback-dialog"
+import { ADMIN_HREF, useAdminNav } from "@/lib/use-admin-nav"
 
 const navItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
@@ -52,6 +54,8 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
 
 export function Sidebar() {
   const pathname = usePathname()
+  const admin = useAdminNav(pathname)
+  const items = admin.isAdmin ? [...navItems, { href: ADMIN_HREF, label: "Administración", icon: ShieldCheck }] : navItems
   const { status: syncStatus, retrySync, lastSyncedAt } = useSyncStatus()
   const { status: investmentSyncStatus, retrySync: retryInvestmentSync } = useInvestmentSyncStatus()
   const retryAllSync = () => { retrySync(); retryInvestmentSync() }
@@ -141,7 +145,7 @@ export function Sidebar() {
             </button>
           </Tooltip>
           <nav className="flex flex-col gap-1 flex-1" aria-label="Navegación principal">
-            {navItems.map((item) => {
+            {items.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
               return (
@@ -158,6 +162,7 @@ export function Sidebar() {
                     )}
                   >
                     <Icon className="h-4 w-4" />
+                    {item.href === ADMIN_HREF && admin.nuevos > 0 && <span aria-label={`${admin.nuevos} sin revisar`} className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-primary-foreground">{admin.nuevos > 9 ? "9+" : admin.nuevos}</span>}
                     {isActive && <span className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-1.5 w-1.5 rounded-full bg-[var(--gold)]" />}
                   </Link>
                 </Tooltip>
@@ -240,7 +245,7 @@ export function Sidebar() {
 
         {/* Rutas principales: solo en desktop. En móvil la bottom nav ya las cubre. */}
         <nav className="hidden flex-col gap-0.5 flex-1 px-3 lg:flex" aria-label="Navegación principal">
-          {navItems.map((item) => {
+          {items.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
             return (
@@ -257,6 +262,7 @@ export function Sidebar() {
               >
                 <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary" : "text-sidebar-foreground/40")} />
                 {item.label}
+                {item.href === ADMIN_HREF && admin.nuevos > 0 && <span aria-label={`${admin.nuevos} comentarios sin revisar`} className={cn("ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground tabular-nums", isActive && "mr-3")}>{admin.nuevos > 99 ? "99+" : admin.nuevos}</span>}
                 {isActive && <span className="absolute right-2 top-1/2 -translate-y-1/2 flex h-1.5 w-1.5 rounded-full bg-[var(--gold)]" />}
               </Link>
             )
