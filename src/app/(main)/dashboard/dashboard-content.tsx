@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { BarChart } from "@tremor/react"
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "@/components/icons"
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp, X } from "@/components/icons"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -30,7 +30,7 @@ import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
 import { CategoryIcon } from "@/components/icons/category-icon"
-import { SheetHandle } from "@/components/dashboard/sheet-handle"
+import { SHEET_CONTENT, SheetHandle } from "@/components/dashboard/sheet-handle"
 import { CashflowDrilldown, CashflowHoverTooltip, type CashflowBucket } from "@/components/dashboard/cashflow-drilldown"
 
 const CARD = "rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
@@ -212,6 +212,9 @@ export default function DashboardContent() {
   const [showAnnual, setShowAnnual] = useState(true)
   const [showSpendBreakdown, setShowSpendBreakdown] = useState(false)
   const [metricDetail, setMetricDetail] = useState<DashboardMetric | null>(null)
+  // Punto fijado en «Evolución del patrimonio» (por fecha+etiqueta, así se
+  // suelta solo si cambia el rango y el punto deja de existir).
+  const [pinnedNetWorth, setPinnedNetWorth] = useState<{ date: string; mes: string } | null>(null)
   const [compositionTipo, setCompositionTipo] = useState<Account["tipo"] | null>(null)
   const [storedNetWorthPeak, setStoredNetWorthPeak] = useState<StoredNetWorthPeak | null>(() => {
     if (typeof window === "undefined") return null
@@ -583,6 +586,9 @@ export default function DashboardContent() {
     return points
   }, [netWorthTrend, activeRange, currentMonthDailyPeak, monthOffset, netWorthDisplay, today])
 
+  const pinnedNetWorthIndex = pinnedNetWorth ? chartTrend.findIndex((point) => point.date === pinnedNetWorth.date && point.mes === pinnedNetWorth.mes) : -1
+  const pinnedNetWorthPoint = pinnedNetWorthIndex >= 0 ? chartTrend[pinnedNetWorthIndex] : null
+  const pinnedNetWorthPrev = pinnedNetWorthIndex > 0 ? chartTrend[pinnedNetWorthIndex - 1] : null
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
   const rangeDelta = netWorthDisplay - rangeStart
@@ -1152,7 +1158,42 @@ export default function DashboardContent() {
                 <EmptyPlaceholder text="Sin movimientos registrados hoy todavía" className="mt-4 h-52 sm:h-64" />
               ) : netWorthHasData ? (
                 <div className="mt-4">
-                  <MountainChart data={chartTrend} index="mes" category="patrimonio" valueFormatter={chartFormatter} className="h-36 sm:h-52 2xl:h-60" />
+                  <MountainChart
+                    data={chartTrend}
+                    index="mes"
+                    category="patrimonio"
+                    valueFormatter={chartFormatter}
+                    className="h-36 sm:h-52 2xl:h-60"
+                    pinnedIndex={pinnedNetWorthIndex >= 0 ? pinnedNetWorthIndex : null}
+                    onPin={(index) => { const point = index === null ? null : chartTrend[index]; setPinnedNetWorth(point ? { date: point.date, mes: point.mes } : null) }}
+                  />
+                  {pinnedNetWorthPoint ? (() => {
+                    const monthKey = /^\d{4}-\d{2}/.test(pinnedNetWorthPoint.date) ? pinnedNetWorthPoint.date.slice(0, 7) : selectedMonth
+                    const monthLabel = parseLocalDate(`${monthKey}-01`).toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+                    const change = pinnedNetWorthPrev ? pinnedNetWorthPoint.patrimonio - pinnedNetWorthPrev.patrimonio : null
+                    const changePct = change !== null && pinnedNetWorthPrev && Math.abs(pinnedNetWorthPrev.patrimonio) >= 100 ? (change / Math.abs(pinnedNetWorthPrev.patrimonio)) * 100 : null
+                    return (
+                      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/[0.06] p-3 sm:flex-row sm:items-center" role="status">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">{pinnedNetWorthPoint.mes === "hoy" ? "Hoy" : pinnedNetWorthPoint.mes}</p>
+                          <p className="mt-0.5 text-lg font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(pinnedNetWorthPoint.patrimonio, "EUR")}</Sensitive></p>
+                          {change !== null && pinnedNetWorthPrev && (
+                            <p className={cn("text-xs font-medium tabular-nums", change >= 0 ? "text-emerald-500" : "text-red-500")}>
+                              <Sensitive>{change >= 0 ? "+" : "−"}{formatMoney(Math.abs(change), "EUR")}</Sensitive>{changePct !== null && Math.abs(changePct) <= PCT_CHANGE_CAP ? ` · ${formatCappedPct(changePct)}` : ""} <span className="text-muted-foreground">vs. {pinnedNetWorthPrev.mes}</span>
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/transactions?mes=${monthKey}`} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:flex-none">
+                            Movimientos de {monthLabel} <ChevronRight className="size-4" />
+                          </Link>
+                          <button type="button" onClick={() => setPinnedNetWorth(null)} aria-label="Soltar punto" className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><X className="size-4" /></button>
+                        </div>
+                      </div>
+                    )
+                  })() : (
+                    <p className="mt-3 text-center text-[11px] text-muted-foreground"><span className="sm:hidden">Desliza el dedo por la curva y suelta para fijar un punto.</span><span className="hidden sm:inline">Haz clic en la curva para fijar un punto y ver su cambio.</span></p>
+                  )}
                   <p className="mx-auto mt-4 max-w-[62ch] border-t border-border/60 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
                     El histórico se reconstruye desde los saldos actuales y los movimientos guardados; no equivale a una captura bancaria de cada fecha.
                   </p>
@@ -1479,7 +1520,7 @@ export default function DashboardContent() {
       )}
 
       <Dialog open={metricDetail !== null} onOpenChange={(open) => { if (!open) setMetricDetail(null) }}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className={cn("sm:max-w-xl", SHEET_CONTENT)}>
           {metricDetail && (
             <>
               <SheetHandle />
@@ -1584,7 +1625,7 @@ export default function DashboardContent() {
       </Dialog>
 
       <Dialog open={compositionTipo !== null} onOpenChange={(open) => { if (!open) setCompositionTipo(null) }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={cn("sm:max-w-md", SHEET_CONTENT)}>
           {compositionTipo && (() => {
             const group = composicion.find((c) => c.tipo === compositionTipo)
             const accounts = displayAccounts.filter((account) => account.tipo === compositionTipo).sort((a, b) => convertToEur(b.saldo, b.currency) - convertToEur(a.saldo, a.currency))

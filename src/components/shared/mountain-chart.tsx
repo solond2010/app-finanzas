@@ -14,12 +14,17 @@ export function MountainChart<T extends object>({
   category,
   valueFormatter,
   className,
+  pinnedIndex = null,
+  onPin,
 }: {
   data: T[]
   index: keyof T & string
   category: keyof T & string
   valueFormatter: (v: number) => string
   className?: string
+  /** Punto fijado (controlado). Con `onPin`, clic/toque fija un punto. */
+  pinnedIndex?: number | null
+  onPin?: (index: number | null) => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
@@ -54,12 +59,28 @@ export function MountainChart<T extends object>({
       ? `${linePath} L${points.at(-1)!.x},${VB_H - PAD_BOTTOM} L${points[0].x},${VB_H - PAD_BOTTOM} Z`
       : ""
 
-  const handlePointer = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!containerRef.current || points.length === 0) return
+  const indexAt = (clientX: number) => {
+    if (!containerRef.current || points.length === 0) return null
     const rect = containerRef.current.getBoundingClientRect()
-    const ratio = (e.clientX - rect.left) / rect.width
-    const idx = Math.round(ratio * (points.length - 1))
-    setHoverIdx(Math.max(0, Math.min(points.length - 1, idx)))
+    const ratio = (clientX - rect.left) / rect.width
+    return Math.max(0, Math.min(points.length - 1, Math.round(ratio * (points.length - 1))))
+  }
+  const handlePointer = (e: React.PointerEvent<HTMLDivElement>) => {
+    const idx = indexAt(e.clientX)
+    if (idx !== null) setHoverIdx(idx)
+  }
+  // Al soltar se fija el punto: en táctil, tras arrastrar el dedo (scrub);
+  // con ratón, un clic sobre el mismo punto lo suelta.
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!onPin) return
+    const idx = indexAt(e.clientX)
+    if (idx === null) return
+    if (e.pointerType === "touch") {
+      setHoverIdx(null)
+      onPin(idx)
+    } else {
+      onPin(idx === pinnedIndex ? null : idx)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -73,8 +94,15 @@ export function MountainChart<T extends object>({
       return Math.max(0, Math.min(points.length - 1, start + (e.key === "ArrowRight" ? 1 : -1)))
     })
   }
+  const handleKeyAction = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!onPin) return
+    if ((e.key === "Enter" || e.key === " ") && hoverIdx !== null) { e.preventDefault(); onPin(hoverIdx) }
+    else if (e.key === "Escape" && pinnedIndex !== null) { e.preventDefault(); onPin(null) }
+  }
 
   const hovered = hoverIdx !== null ? points[hoverIdx] : null
+  const pinned = pinnedIndex !== null && pinnedIndex >= 0 ? points[pinnedIndex] ?? null : null
+  const hoveredPrev = hoverIdx !== null && hoverIdx > 0 ? points[hoverIdx - 1] : null
   const last = points.at(-1)
   const first = points[0]
   // Sin interacción de teclado (el detalle punto a punto solo se ve al pasar
@@ -90,13 +118,15 @@ export function MountainChart<T extends object>({
       className={`relative select-none outline-none focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-primary ${className ?? ""}`}
       onPointerMove={handlePointer}
       onPointerDown={(e) => { if (e.pointerType === "touch") handlePointer(e) }}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={(e) => { if (e.pointerType === "touch") setHoverIdx(null) }}
       onPointerLeave={(e) => { if (e.pointerType !== "touch") setHoverIdx(null) }}
-      onKeyDown={handleKeyDown}
+      onKeyDown={(e) => { handleKeyDown(e); handleKeyAction(e) }}
       role="group"
       aria-roledescription="gráfico interactivo"
-      aria-label={`${trendSummary} Usa las flechas para recorrer los puntos.`}
+      aria-label={`${trendSummary} Usa las flechas para recorrer los puntos${onPin ? " e Intro para fijar uno" : ""}.`}
       tabIndex={points.length ? 0 : -1}
-      style={{ touchAction: "pan-y" }}
+      style={{ touchAction: "pan-y", cursor: onPin ? "pointer" : undefined }}
     >
       <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="h-full w-full overflow-visible" aria-hidden="true">
         <defs>
@@ -116,6 +146,13 @@ export function MountainChart<T extends object>({
 
          {last && <circle cx={last.x} cy={last.y} r="4" fill="var(--gold)" stroke="var(--hero-bg)" strokeWidth="1.5" />}
 
+{pinned && (
+           <>
+             <line x1={pinned.x} y1={PAD_TOP} x2={pinned.x} y2={VB_H - PAD_BOTTOM} stroke="var(--primary)" strokeOpacity="0.55" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+             <circle cx={pinned.x} cy={pinned.y} r="6" fill="var(--primary)" stroke="var(--hero-bg)" strokeWidth="2" />
+           </>
+         )}
+
 {hovered && (
            <>
              <line x1={hovered.x} y1={PAD_TOP} x2={hovered.x} y2={VB_H - PAD_BOTTOM} stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
@@ -130,6 +167,11 @@ export function MountainChart<T extends object>({
           style={{ left: `${Math.max(6, Math.min(94, (hovered.x / VB_W) * 100))}%`, transform: `translate(-50%, -8px)` }}
         >
           <p className="font-semibold text-foreground tabular-nums">{valueFormatter(hovered.v)}</p>
+          {hoveredPrev && (
+            <p className={`tabular-nums ${hovered.v - hoveredPrev.v >= 0 ? "text-emerald-500" : "text-red-500"}`}>
+              {hovered.v - hoveredPrev.v >= 0 ? "+" : "−"}{valueFormatter(Math.abs(hovered.v - hoveredPrev.v))} vs. {hoveredPrev.label}
+            </p>
+          )}
           <p className="text-muted-foreground">{hovered.label}</p>
         </div>
       )}

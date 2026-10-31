@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { CategoryIcon } from "@/components/icons/category-icon"
 import { ChevronRight, TrendingDown, TrendingUp } from "@/components/icons"
 import { Sensitive } from "@/components/shared/sensitive"
-import { SheetHandle } from "@/components/dashboard/sheet-handle"
+import { SHEET_CONTENT, SheetHandle } from "@/components/dashboard/sheet-handle"
 import { formatMoney } from "@/lib/currency"
 import { reportingAmount, type CurrencyByAccount } from "@/lib/calculations"
 import { parseLocalDate } from "@/lib/date-utils"
@@ -155,7 +155,7 @@ export function CashflowDrilldown({ bucket, granularity, transactions, currencyB
 
   return (
     <Dialog open={bucket !== null} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className={cn("sm:max-w-lg", SHEET_CONTENT)}>
         {bucket && detail && (
           <>
             <SheetHandle />
