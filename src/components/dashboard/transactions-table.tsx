@@ -41,6 +41,7 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurringFrequency, recurringTag, type RecurringFrequency } from "@/lib/calculations"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
+import { AccountDot } from "@/components/dashboard/account-dot"
 import { CategoryIcon } from "@/components/icons/category-icon"
 
 // Estilo del chip de categoría a partir del color REAL de la categoría (el
@@ -69,7 +70,7 @@ function TransactionForm({
   onCancel,
 }: {
   transaction?: Transaction
-  accounts: { id: string; nombre: string; currency?: CurrencyCode }[]
+  accounts: { id: string; nombre: string; currency?: CurrencyCode; color?: string | null }[]
   categories: Category[]
   onSave: (t: Transaction) => void
   onCancel: () => void
@@ -135,7 +136,7 @@ function TransactionForm({
             <SelectTrigger id="transaction-account"><SelectValue /></SelectTrigger>
             <SelectContent>
               {accounts.map((a) => (
-                <SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>
+                <SelectItem key={a.id} value={a.id}><span className="flex items-center gap-2"><AccountDot account={a} />{a.nombre}</span></SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -635,7 +636,7 @@ export function TransactionsTable({
                 <SelectContent className="p-2">
                   <SelectItem value="all">Todas las cuentas</SelectItem>
                   {state.accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>
+                    <SelectItem key={a.id} value={a.id}><span className="flex items-center gap-2"><AccountDot account={a} />{a.nombre}</span></SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -919,7 +920,7 @@ export function TransactionsTable({
                             </button>
                           )}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell"><span className="text-xs text-muted-foreground">{account?.nombre}</span></TableCell>
+                        <TableCell className="hidden md:table-cell"><span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">{account && <AccountDot account={account} className="size-1.5" />}{account?.nombre}</span></TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {isEditing("categoria") ? (
                             <InlineEditSelect defaultValue={t.categoria} options={categoryOptions} onDone={(ok, v) => handleInlineDone(t, "categoria", ok, v)} />
@@ -1047,7 +1048,7 @@ export function TransactionsTable({
                             </span>
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-                            <span>{t.categoria}</span><span aria-hidden="true">·</span><span className="max-w-full truncate">{account?.nombre ?? "Cuenta eliminada"}</span>
+                            <span>{t.categoria}</span><span aria-hidden="true">·</span><span className="inline-flex min-w-0 max-w-full items-center gap-1">{account && <AccountDot account={account} className="size-1.5" />}<span className="truncate">{account?.nombre ?? "Cuenta eliminada"}</span></span>
                             {mobileMode === "list" && <><span aria-hidden="true">·</span><span className="tabular-nums">{dateLabel(t.fecha)}</span></>}
                           </div>
                           <div className="mt-3 flex items-center justify-between gap-3">
@@ -1118,7 +1119,7 @@ export function TransactionsTable({
                               <span className={cn("shrink-0 text-sm font-bold tabular-nums", positive ? "text-emerald-500" : transfer ? "text-violet-500" : "text-foreground")}><Sensitive>{positive ? "+" : transfer ? "" : "−"}{formatMoney(t.monto, account?.currency ?? "EUR")}</Sensitive></span>
                             </div>
                             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-                              <span>{t.categoria}</span><span aria-hidden="true">·</span><span className="max-w-full truncate">{account?.nombre ?? "Cuenta eliminada"}</span>
+                              <span>{t.categoria}</span><span aria-hidden="true">·</span><span className="inline-flex min-w-0 max-w-full items-center gap-1">{account && <AccountDot account={account} className="size-1.5" />}<span className="truncate">{account?.nombre ?? "Cuenta eliminada"}</span></span>
                             </div>
                             <div className="mt-3 flex items-center justify-between gap-3">
                               <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", transfer ? "bg-violet-500/10 text-violet-500" : positive ? "bg-emerald-500/10 text-emerald-500" : systemAdjustment ? "bg-muted text-muted-foreground" : "bg-red-500/10 text-red-500")}>{systemAdjustment ? "Ajuste" : transfer ? "Traspaso" : positive ? "Ingreso" : "Gasto"}</span>

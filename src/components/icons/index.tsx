@@ -36,6 +36,7 @@ import {
   ChartLine as PhChartLine,
   ChartLineUp as PhChartLineUp,
   Check as PhCheck,
+  Palette as PhPalette,
   CheckCircle as PhCheckCircle,
   CircleNotch as PhCircleNotch,
   Clock as PhClock,
@@ -139,6 +140,7 @@ export const ChartPie = makeIcon(PhChartLineUp, "duotone", "ChartPie")
 export const Check = makeIcon(PhCheck, "bold", "Check")
 export const CheckCircle = makeIcon(PhCheckCircle, "duotone", "CheckCircle")
 export const CheckIcon = makeIcon(PhCheck, "bold", "CheckIcon")
+export const Palette = makeIcon(PhPalette, "duotone", "Palette")
 export const ChevronDown = makeIcon(PhCaretDown, "regular", "ChevronDown")
 export const ChevronDownIcon = makeIcon(PhCaretDown, "regular", "ChevronDownIcon")
 export const ChevronLeft = makeIcon(PhCaretLeft, "regular", "ChevronLeft")

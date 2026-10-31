@@ -27,6 +27,7 @@ import { localDateKey } from "@/lib/date-utils"
 import { formatMoney, currencySymbol, type CurrencyCode } from "@/lib/currency"
 import { recurringTag, type RecurringFrequency } from "@/lib/calculations"
 import { Sensitive } from "@/components/shared/sensitive"
+import { AccountDot } from "@/components/dashboard/account-dot"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { cn } from "@/lib/utils"
 import { transferDescription } from "@/lib/transfer-description"
@@ -78,7 +79,7 @@ function AccountSelectItem({ account, showBalance = true }: { account: Account; 
     <div className="grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-2 sm:gap-2.5">
       <AccountLogo account={account} className="h-10 w-10 rounded-xl" />
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold leading-tight">{account.nombre}</p>
+        <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold leading-tight"><AccountDot account={account} /><span className="truncate">{account.nombre}</span></p>
         <div className="mt-1 flex min-w-0 items-center gap-1.5">
           <p className="min-w-0 truncate text-xs leading-tight text-muted-foreground">{account.banco || "Sin banco"}</p>
           {badge && (
@@ -286,7 +287,7 @@ function UnifiedMovementForm({
             <label className="text-sm font-medium text-foreground">Desde (origen)</label>
             <Select value={origenId} onValueChange={(v) => { if (v) { setOrigenId(v); setMontoDestino("") } }} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
               <SelectTrigger className="h-12 w-full text-sm">
-                <SelectValue />
+                <span className="flex min-w-0 items-center gap-2">{accounts.find((a) => a.id === origenId) && <AccountDot account={accounts.find((a) => a.id === origenId)!} />}<SelectValue /></span>
               </SelectTrigger>
               <SelectContent className="w-[min(28rem,calc(100vw-2rem))] p-1.5 sm:p-2">
                 {accounts.map((a) => (
@@ -308,7 +309,7 @@ function UnifiedMovementForm({
             <label className="text-sm font-medium text-foreground">Hacia (destino)</label>
             <Select value={destinoId} onValueChange={(v) => { if (v) { setDestinoId(v); setMontoDestino("") } }} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
               <SelectTrigger className="h-12 w-full text-sm">
-                <SelectValue />
+                <span className="flex min-w-0 items-center gap-2">{accounts.find((a) => a.id === destinoId) && <AccountDot account={accounts.find((a) => a.id === destinoId)!} />}<SelectValue /></span>
               </SelectTrigger>
               <SelectContent className="w-[min(28rem,calc(100vw-2rem))] p-1.5 sm:p-2">
                 {accounts.filter((a) => a.id !== origenId).map((a) => (
@@ -353,7 +354,7 @@ function UnifiedMovementForm({
             <label className="text-sm font-medium text-foreground">Cuenta</label>
             <Select value={cuentaId} onValueChange={(v) => v && setCuentaId(v)} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
               <SelectTrigger className="h-12 w-full text-sm">
-                <SelectValue />
+                <span className="flex min-w-0 items-center gap-2">{accounts.find((a) => a.id === cuentaId) && <AccountDot account={accounts.find((a) => a.id === cuentaId)!} />}<SelectValue /></span>
               </SelectTrigger>
               <SelectContent className="w-[min(28rem,calc(100vw-2rem))] p-1.5 sm:p-2">
                 {accounts.map((a) => (

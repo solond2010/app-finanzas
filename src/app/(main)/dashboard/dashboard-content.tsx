@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { accountColor, distinctAccountColors } from "@/lib/account-colors"
+import { AccountDot } from "@/components/dashboard/account-dot"
 import Link from "next/link"
 import { BarChart } from "@tremor/react"
 import { AlertTriangle, CalendarClock, ChartLineUp, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, HandCoins, Landmark, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp, Wallet, X } from "@/components/icons"
@@ -750,6 +752,43 @@ export default function DashboardContent() {
       .sort((a, b) => b.value - a.value)
   }, [displayAccounts, investmentDisplayTotal])
 
+  // La misma composición, pero cuenta a cuenta y con el color de cada una
+  // (las inversiones se agrupan porque su valor sale de las posiciones). Si
+  // dos colores se confunden, el gráfico usa otro tono de la paleta.
+  const composicionCuentas = useMemo(() => {
+    const items = displayAccounts
+      .filter((a) => a.tipo !== "inversion")
+      .map((a) => ({ account: a, value: convertToEur(a.saldo, a.currency) }))
+      .filter((x) => x.value > 0)
+      .sort((a, b) => b.value - a.value)
+    const invColor = typeConfig.inversion.color
+    const colors = distinctAccountColors(items.map((x) => x.account), investmentDisplayTotal > 0 ? [invColor] : [])
+    const total = items.reduce((s, x) => s + x.value, 0) + Math.max(investmentDisplayTotal, 0) || 1
+    const rows: { key: string; label: string; value: number; pct: number; color: string; accountId: string | null; tipo: Account["tipo"] }[] = items.map((x) => ({
+      key: x.account.id,
+      label: x.account.nombre,
+      value: x.value,
+      pct: (x.value / total) * 100,
+      color: colors.get(x.account.id) ?? accountColor(x.account),
+      accountId: x.account.id,
+      tipo: x.account.tipo,
+    }))
+    if (investmentDisplayTotal > 0) rows.push({ key: "inversion", label: "Inversiones", value: investmentDisplayTotal, pct: (investmentDisplayTotal / total) * 100, color: invColor, accountId: null, tipo: "inversion" })
+    return rows.sort((a, b) => b.value - a.value)
+  }, [displayAccounts, investmentDisplayTotal])
+  const composicionLeyenda = useMemo(() => {
+    const MAX = 5
+    if (composicionCuentas.length <= MAX + 1) return composicionCuentas
+    const rest = composicionCuentas.slice(MAX)
+    const value = rest.reduce((s, r) => s + r.value, 0)
+    return [...composicionCuentas.slice(0, MAX), { key: "otras", label: `Otras ${rest.length}`, value, pct: rest.reduce((s, r) => s + r.pct, 0), color: "var(--muted-foreground)", accountId: null, tipo: "efectivo" as Account["tipo"] }]
+  }, [composicionCuentas])
+  const openCompositionItem = (item: { key: string; accountId: string | null; tipo: Account["tipo"] }) => {
+    if (item.accountId) router.push(`/cuentas/${item.accountId}`)
+    else if (item.key === "otras") router.push("/cuentas")
+    else setCompositionTipo(item.tipo)
+  }
+
   // Racha de meses consecutivos con flujo de caja positivo, contando hacia
   // atrás desde el mes anterior al seleccionado (el mes en curso se excluye
   // porque suele estar incompleto y falsearía la racha).
@@ -1258,20 +1297,20 @@ export default function DashboardContent() {
             <div className="flex min-w-0 flex-col gap-4 2xl:col-span-3">
             <div className={`${CARD} flex min-w-0 flex-col p-4 sm:p-4`}>
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Layers3 className="h-4 w-4 text-primary" /> Composición del patrimonio</p>
-              {composicion.length === 0 ? (
+              {composicionCuentas.length === 0 ? (
                 <p className="mt-4 text-sm text-muted-foreground">Sin datos todavía.</p>
               ) : (
                 <>
                   <div className="mt-5 flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full">
-                    {composicion.map((c) => (
-                      <button key={c.tipo} type="button" tabIndex={-1} aria-hidden="true" onClick={() => setCompositionTipo(c.tipo as Account["tipo"])} className="h-full transition-opacity hover:opacity-75" style={{ width: `${c.pct}%`, backgroundColor: c.color }} title={`${c.label}: ver cuentas`} />
+                    {composicionCuentas.map((c) => (
+                      <button key={c.key} type="button" tabIndex={-1} aria-hidden="true" onClick={() => openCompositionItem(c)} className="h-full min-w-[3px] transition-opacity hover:opacity-75" style={{ width: `${c.pct}%`, backgroundColor: c.color }} title={`${c.label}: ${Math.round(c.pct)}%`} />
                     ))}
                   </div>
                   <div className="-mx-2 mt-2 grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-x-1 sm:gap-y-0">
-                    {composicion.map((c) => (
-                      <button key={c.tipo} type="button" onClick={() => setCompositionTipo(c.tipo as Account["tipo"])} aria-label={`${c.label}, ${Math.round(c.pct)}%: ver cuentas`} className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-left text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-9">
-                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
-                        <span className="truncate text-foreground">{c.label}</span>
+                    {composicionLeyenda.map((c) => (
+                      <button key={c.key} type="button" onClick={() => openCompositionItem(c)} aria-label={`${c.label}, ${Math.round(c.pct)}%: ver ${c.accountId ? "cuenta" : "cuentas"}`} className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 text-left text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-9">
+                        <span className="h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/15" style={{ backgroundColor: c.color }} />
+                        <span className="min-w-0 truncate text-foreground sm:max-w-[9rem]">{c.label}</span>
                         <span className="tabular-nums text-muted-foreground">{Math.round(c.pct)}%</span>
                         <ChevronRight className="ml-auto size-3.5 shrink-0 text-muted-foreground sm:ml-0" />
                       </button>
@@ -1662,6 +1701,7 @@ export default function DashboardContent() {
                   {accounts.map((account) => (
                     <li key={account.id}>
                       <Link href={`/cuentas/${account.id}`} onClick={() => setCompositionTipo(null)} className="flex min-h-12 items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none">
+                        <AccountDot account={account} className="size-2.5" />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium text-foreground">{account.nombre}</span>
                           {account.banco && <span className="block truncate text-xs text-muted-foreground">{account.banco}</span>}

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { type Account } from "@/lib/store"
 import { typeConfig } from "@/lib/account-types"
+import { accountColor } from "@/lib/account-colors"
 
 export interface Bank {
   name: string
@@ -28,6 +29,7 @@ export function AccountLogo({ account, className = "h-11 w-11" }: { account: Acc
   const bank = matchBank(account.banco)
   const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
   const Icon = cfg.icon
+  const tint = accountColor(account)
 
   // El logo subido por el usuario tiene prioridad sobre el de un banco
   // reconocido; si no hay banco pero la cuenta es de efectivo, usamos su
@@ -48,7 +50,7 @@ export function AccountLogo({ account, className = "h-11 w-11" }: { account: Acc
   return (
     <span
       className={`flex shrink-0 items-center justify-center rounded-2xl ${className}`}
-      style={{ backgroundColor: `color-mix(in oklab, ${cfg.color} 14%, transparent)`, color: cfg.color }}
+      style={{ backgroundColor: `color-mix(in oklab, ${tint} 16%, transparent)`, color: tint }}
     >
       <Icon className="h-1/2 w-1/2" />
     </span>

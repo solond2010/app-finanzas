@@ -11,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CURRENCY_OPTIONS, currencySymbol } from "@/lib/currency"
 import { BANKS, matchBank } from "@/components/dashboard/account-logo"
 import { useToast } from "@/components/ui/toast"
-import { Upload, X, AlertCircle } from "@/components/icons"
+import { Upload, X, AlertCircle, Check, Palette } from "@/components/icons"
 import { parseAmount } from "@/lib/validation"
+import { ACCOUNT_COLORS, accountColor, isHexColor, normalizeHex, readableOn } from "@/lib/account-colors"
 
-const COLORS = ["#F5A524", "#2BD9A0", "#FF6B5B", "#FFD08A", "#8B95A5", "#4F5B6B", "#C98A1E", "#F3F1EA"]
+const COLORS = ACCOUNT_COLORS.map((c) => c.hex)
 
 export function AccountDialog({
   account,
@@ -36,7 +37,7 @@ export function AccountDialog({
   const [currency, setCurrency] = useState<Account["currency"]>(account?.currency ?? "EUR")
   const [objetivo, setObjetivo] = useState(String(account?.objetivo ?? ""))
   const [limiteMensual, setLimiteMensual] = useState(String(account?.limite_mensual ?? ""))
-  const [color, setColor] = useState(account?.color ?? COLORS[0])
+  const [color, setColor] = useState(account ? accountColor(account) : COLORS[0])
   const [logoUrl, setLogoUrl] = useState(account?.logoUrl ?? "")
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
@@ -62,7 +63,7 @@ export function AccountDialog({
       setCurrency(account?.currency ?? "EUR")
       setObjetivo(String(account?.objetivo ?? ""))
       setLimiteMensual(String(account?.limite_mensual ?? ""))
-      setColor(account?.color ?? COLORS[0])
+      setColor(account ? accountColor(account) : COLORS[0])
       setLogoUrl(account?.logoUrl ?? "")
     })
   }, [account, open])
@@ -224,31 +225,68 @@ export function AccountDialog({
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Objetivo ({currencySymbol(currency)})</label>
               <Input type="number" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} placeholder={inheritedGoal > 0 ? formatMoney(inheritedGoal, currency) : "Sin objetivo"} />
-              {objetivo.trim() === "" && inheritedGoal > 0 && (
+              {objetivo.trim() === "" && inheritedGoal > 0 ? (
                 <p className="text-[11px] leading-4 text-muted-foreground">
                   Heredado de sus metas de ahorro. Escribe un importe solo si quieres fijar uno propio.
                 </p>
+              ) : (
+                <p className="text-[11px] leading-4 text-muted-foreground">Cuánto quieres llegar a tener en esta cuenta. Verás tu progreso en la cuenta y en Analíticas.</p>
               )}
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <label className="text-xs text-muted-foreground">Color</label>
-              <div className="flex gap-1.5 flex-wrap">
-                {COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`h-7 w-7 sm:h-6 sm:w-6 rounded-full border-2 transition-all active:scale-90 touch-manipulation ${color === c ? "border-white scale-110" : "border-transparent"}`}
-                    style={{ backgroundColor: c }}
-                    onClick={() => setColor(c)}
-                  />
-                ))}
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs text-muted-foreground">Color</label>
+                <span className="text-[11px] text-muted-foreground">{ACCOUNT_COLORS.find((c) => c.hex === normalizeHex(color))?.name ?? "Personalizado"}</span>
               </div>
+              <div role="radiogroup" aria-label="Color de la cuenta" className="grid grid-cols-9 gap-1.5 sm:gap-2">
+                {ACCOUNT_COLORS.map((c) => {
+                  const active = normalizeHex(color) === c.hex
+                  return (
+                    <button
+                      key={c.hex}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      aria-label={c.name}
+                      title={c.name}
+                      className={`flex aspect-square w-full max-w-9 items-center justify-center rounded-full ring-offset-2 ring-offset-background transition-transform active:scale-90 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${active ? "ring-2 ring-foreground" : "ring-1 ring-black/10 dark:ring-white/10"}`}
+                      style={{ backgroundColor: c.hex }}
+                      onClick={() => setColor(c.hex)}
+                    >
+                      {active && <Check className="size-3.5" style={{ color: readableOn(c.hex) }} />}
+                    </button>
+                  )
+                })}
+                {(() => {
+                  const custom = !COLORS.includes(normalizeHex(color))
+                  return (
+                    <label
+                      title="Elegir otro color"
+                      className={`relative flex aspect-square w-full max-w-9 cursor-pointer items-center justify-center rounded-full ring-offset-2 ring-offset-background transition-transform active:scale-90 focus-within:ring-2 focus-within:ring-primary ${custom ? "ring-2 ring-foreground" : "ring-1 ring-border"}`}
+                      style={custom ? { backgroundColor: color } : { background: "conic-gradient(#FF6B5B, #FACC15, #2BD9A0, #38BDF8, #8B5CF6, #F06292, #FF6B5B)" }}
+                    >
+                      <span className="flex size-[62%] items-center justify-center rounded-full bg-card/90">
+                        <Palette className="size-3.5 text-foreground" />
+                      </span>
+                      <input
+                        type="color"
+                        aria-label="Elegir otro color"
+                        value={isHexColor(color) ? color.toLowerCase() : "#f5a524"}
+                        onChange={(e) => setColor(normalizeHex(e.target.value))}
+                        className="absolute inset-0 size-full cursor-pointer opacity-0"
+                      />
+                    </label>
+                  )
+                })()}
+              </div>
+              <p className="text-[11px] leading-4 text-muted-foreground">Se usa en Cuentas, en los gráficos y en tus movimientos para reconocerla de un vistazo.</p>
             </div>
           </div>
           {tipo === "gastos" && (
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Límite mensual (€)</label>
               <Input type="number" value={limiteMensual} onChange={(e) => setLimiteMensual(e.target.value)} placeholder="Ej: 2000" />
+              <p className="text-[11px] leading-4 text-muted-foreground">Tope de gasto al mes para esta cuenta. Te avisamos al llegar al 80 % y si lo pasas.</p>
             </div>
           )}
           {error && (

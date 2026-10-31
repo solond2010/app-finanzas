@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useFinance, type Account, type SinkingFund } from "@/lib/store"
 import { accountGoal, fundCurrentAmount } from "@/lib/calculations"
+import { accountColor } from "@/lib/account-colors"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Wallet as WalletIcon, Plus, Target, TrendingUp, Search, ChevronDown, ChevronsDownUp, ChevronsUpDown, Building2, ChevronRight } from "@/components/icons"
 import { formatMoney, convertToEur } from "@/lib/currency"
@@ -191,7 +192,8 @@ export default function CuentasPage() {
                   {isOpen && <div className="border-t border-border/70 px-3 py-2 sm:px-4">
                     {group.accounts.map((account, accountIndex) => {
                       const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
-                      return <button key={account.id} type="button" onClick={() => router.push(`/cuentas/${account.id}`)} className={`group/row flex min-h-[68px] w-full min-w-0 items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${accountIndex > 0 ? "border-t border-border/40" : ""}`}>
+                      return <button key={account.id} type="button" onClick={() => router.push(`/cuentas/${account.id}`)} className={`group/row relative flex min-h-[68px] w-full min-w-0 items-center gap-3 rounded-xl py-2 pl-3.5 pr-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${accountIndex > 0 ? "border-t border-border/40" : ""}`}>
+                        <span aria-hidden="true" className="absolute inset-y-3 left-0 w-1 rounded-full" style={{ backgroundColor: accountColor(account) }} />
                         <AccountLogo account={account} className="h-10 w-10 shrink-0 rounded-xl" />
                         <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-foreground">{account.nombre}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{account.banco || cfg.label} · {cfg.label}</span></span>
                         <span className="shrink-0 text-right"><span className="block text-sm font-semibold tabular-nums text-foreground"><Sensitive>{formatMoney(accountValue(account), account.currency)}</Sensitive></span><span className="mt-0.5 block text-[10px] text-muted-foreground">{account.currency}</span></span>

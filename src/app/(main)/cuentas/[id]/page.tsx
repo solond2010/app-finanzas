@@ -13,6 +13,9 @@ import { formatMoney } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
 import { accountGoal, countsTowardCashFlow } from "@/lib/calculations"
+import { accountColor } from "@/lib/account-colors"
+import { monthlyLimitStatus } from "@/lib/monthly-limit"
+import { AccountDot } from "@/components/dashboard/account-dot"
 import { useToast } from "@/components/ui/toast"
 
 export default function AccountDetailPage() {
@@ -43,16 +46,7 @@ export default function AccountDetailPage() {
   const displaySaldo = account.saldo
   const goal = accountGoal(account, state.sinkingFunds)
   const progress = goal > 0 ? Math.min((displaySaldo / goal) * 100, 100) : null
-  const budgetUsed = account.limite_mensual && account.limite_mensual > 0
-    ? (() => {
-        const now = new Date()
-        const mes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
-        const gastado = state.transactions
-          .filter((t) => t.cuenta_id === account.id && t.fecha.startsWith(mes) && t.tipo === "gasto" && countsTowardCashFlow(t, state.transactions))
-          .reduce((s, t) => s + t.monto, 0)
-        return Math.min((gastado / account.limite_mensual) * 100, 100)
-      })()
-    : null
+  const limitStatus = monthlyLimitStatus(account, state.transactions)
 
   const accountCashFlow = state.transactions.filter(
     (t) => t.cuenta_id === account.id && countsTowardCashFlow(t, state.transactions)
@@ -69,7 +63,8 @@ export default function AccountDetailPage() {
       {/* hero-panel: misma tarjeta destacada que usa la cifra nº1 de cada
           página (patrimonio, evolución de cartera…) — el saldo es la cifra
           protagonista de esta vista. */}
-      <section className="hero-panel rounded-[16px] p-6 sm:p-8">
+      <section className="hero-panel relative overflow-hidden rounded-[16px] p-6 sm:p-8">
+        <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: accountColor(account) }} />
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
@@ -78,7 +73,7 @@ export default function AccountDetailPage() {
             </div>
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{account.banco || "Sin banco"} · {account.currency}</p>
-              <h1 className="max-w-3xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl">{account.nombre}</h1>
+              <h1 className="flex max-w-3xl items-center gap-2.5 text-2xl font-bold leading-tight tracking-tight sm:text-3xl"><AccountDot account={account} className="size-3" />{account.nombre}</h1>
             </div>
 
             <div>
@@ -162,15 +157,22 @@ export default function AccountDetailPage() {
           </Card>
         )}
 
-        {budgetUsed !== null && (
+        {limitStatus && (
           <Card>
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">Presupuesto del mes</p>
-                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${budgetUsed >= 80 ? "bg-red-500/10 text-red-500" : budgetUsed >= 50 ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"}`}>{Math.round(budgetUsed)}%</span>
+                <p className="text-xs text-muted-foreground">Límite mensual</p>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${limitStatus.level === "over" ? "bg-red-500/10 text-red-500" : limitStatus.level === "near" ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"}`}>{Math.round(limitStatus.pct)}%</span>
               </div>
-              <Progress value={budgetUsed} className="h-2" />
-              {(budgetUsed >= 80) && <p className="text-xs text-amber-500">Te estás acercando al límite mensual</p>}
+              <Progress value={Math.min(limitStatus.pct, 100)} className={`h-2 ${limitStatus.level === "over" ? "[&_[data-slot=progress-indicator]]:bg-red-500" : limitStatus.level === "near" ? "[&_[data-slot=progress-indicator]]:bg-amber-500" : ""}`} />
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground tabular-nums"><Sensitive as="strong">{formatMoney(limitStatus.spent, account.currency)}</Sensitive></strong> de <span className="tabular-nums"><Sensitive>{formatMoney(limitStatus.limit, account.currency)}</Sensitive></span> este mes
+              </p>
+              {limitStatus.level === "over" ? (
+                <p className="text-xs font-medium text-red-500">Te has pasado <Sensitive as="span">{formatMoney(limitStatus.over, account.currency)}</Sensitive> del límite este mes</p>
+              ) : limitStatus.level === "near" ? (
+                <p className="text-xs text-amber-500">Te estás acercando al límite: quedan <Sensitive as="span">{formatMoney(limitStatus.remaining, account.currency)}</Sensitive></p>
+              ) : null}
             </CardContent>
           </Card>
         )}

@@ -1001,7 +1001,7 @@ function isFinanceState(value: unknown): value is FinanceState {
 
 
 function formatAccount(a: AccountRow): Account {
-  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco ?? "", saldo: Number(a.saldo), currency: a.currency ?? "EUR", objetivo: a.objetivo ? Number(a.objetivo) : null, limite_mensual: a.limite_mensual ? Number(a.limite_mensual) : null, color: a.color ?? "#3b82f6", logoUrl: a.logo_url ?? undefined }
+  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco ?? "", saldo: Number(a.saldo), currency: a.currency ?? "EUR", objetivo: a.objetivo ? Number(a.objetivo) : null, limite_mensual: a.limite_mensual ? Number(a.limite_mensual) : null, color: a.color ?? "", logoUrl: a.logo_url ?? undefined }
 }
 
 function normalizeFinanceState(state: FinanceState): FinanceState {
@@ -1068,7 +1068,7 @@ function formatSinkingFund(s: SinkingFundRow): SinkingFund {
 }
 
 function unformatAccount(a: Account) {
-  const base: Record<string, unknown> = { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco, saldo: a.saldo, currency: a.currency, objetivo: a.objetivo, limite_mensual: a.limite_mensual, color: a.color }
+  const base: Record<string, unknown> = { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco, saldo: a.saldo, currency: a.currency, objetivo: a.objetivo, limite_mensual: a.limite_mensual, color: a.color || null }
   // Solo se envía si el valor viene de AccountDialog (que siempre manda un
   // string, "" incluido al quitar el logo): así las cuentas que nunca han
   // pasado por ahí siguen sincronizando aunque la migración SQL

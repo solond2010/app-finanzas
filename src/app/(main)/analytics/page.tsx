@@ -1,5 +1,6 @@
 "use client"
 
+import { AccountDot } from "@/components/dashboard/account-dot"
 import React from "react"
 import { useMemo, useState, memo, useEffect } from "react"
 import { BarChart, DonutChart } from "@tremor/react"
@@ -603,7 +604,7 @@ export default function AnalyticsPage() {
                         <div key={g.account.id} className="space-y-2">
                           <div className="flex items-center justify-between gap-2 text-xs">
                             <span className="flex min-w-0 items-center gap-2 font-medium text-muted-foreground">
-                              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: g.account.color }} />
+                              <AccountDot account={g.account} />
                               <span className="truncate">{g.account.nombre}</span>
                             </span>
                             <span className={cn("shrink-0 font-semibold tabular-nums", complete ? "text-emerald-500" : "text-foreground")}>
