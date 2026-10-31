@@ -305,6 +305,18 @@ export default function DashboardContent() {
       : `${monthName(start)} – ${monthName(end)}`
     return { start, end, startKey: key(start), endKey: key(end), label }
   }, [dashboardPeriod, selectedDate, monthOffset, today, customStartMonth, customEndMonth])
+  // Meses que abarca el periodo: Movimientos solo filtra por mes, así que en
+  // periodos largos se ofrece un acceso por cada mes.
+  const periodMonths = useMemo(() => {
+    const months: { key: string; label: string }[] = []
+    const cursor = new Date(periodBounds.start.getFullYear(), periodBounds.start.getMonth(), 1)
+    const last = new Date(periodBounds.end.getFullYear(), periodBounds.end.getMonth(), 1)
+    while (cursor <= last && months.length < 36) {
+      months.push({ key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`, label: cursor.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }) })
+      cursor.setMonth(cursor.getMonth() + 1)
+    }
+    return months
+  }, [periodBounds.start, periodBounds.end])
   const periodTransactions = useMemo(
     () => analysisTransactions.filter((transaction) => transaction.fecha >= periodBounds.startKey && transaction.fecha <= periodBounds.endKey && countsTowardCashFlow(transaction, analysisTransactions)).sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.created_at ?? "").localeCompare(a.created_at ?? "")),
     [analysisTransactions, periodBounds.startKey, periodBounds.endKey]
@@ -1470,6 +1482,7 @@ export default function DashboardContent() {
         <DialogContent className="sm:max-w-xl">
           {metricDetail && (
             <>
+              <SheetHandle />
               <DialogHeader>
                 <DialogTitle className="pr-8 text-lg">{metricTitles[metricDetail]}</DialogTitle>
                 <DialogDescription>
@@ -1505,10 +1518,21 @@ export default function DashboardContent() {
                         })}
                       </div>
                     ) : <p className="rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">Todavía no hay movimientos de este tipo en {periodBounds.label}.</p>}
-                    {(dashboardPeriod === "month" || dashboardPeriod === "previous") && (
-                      <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => { const type = metricDetail === "gastos" ? "gasto" : "ingreso"; setMetricDetail(null); router.push(`/transactions?tipo=${type}&mes=${selectedMonth}`) }}>
-                        Ver todos los movimientos
-                      </Button>
+                    {periodMonths.length === 1 ? (
+                      <Link href={`/transactions?tipo=${metricDetail === "gastos" ? "gasto" : "ingreso"}&mes=${periodMonths[0].key}`} onClick={() => setMetricDetail(null)} className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:bg-muted">
+                        Ver todos los movimientos <ChevronRight className="size-4" />
+                      </Link>
+                    ) : periodMonths.length > 1 && (
+                      <div>
+                        <p className="mb-2 text-xs font-medium text-muted-foreground">Ver todos los movimientos de:</p>
+                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                          {periodMonths.map((month) => (
+                            <Link key={month.key} href={`/transactions?tipo=${metricDetail === "gastos" ? "gasto" : "ingreso"}&mes=${month.key}`} onClick={() => setMetricDetail(null)} className="flex min-h-11 items-center justify-center rounded-xl border border-border text-sm font-medium capitalize text-foreground transition-colors hover:border-primary/40 hover:bg-muted">
+                              {month.label}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </>
                 )}
@@ -1519,6 +1543,10 @@ export default function DashboardContent() {
                     <div className="flex justify-between gap-3 text-sm"><span className="text-muted-foreground">Gastos</span><Sensitive className="font-medium tabular-nums text-red-500">−{formatMoney(periodTotals.gastos, "EUR")}</Sensitive></div>
                     <div className="flex justify-between gap-3 border-t border-border pt-3 text-sm"><span className="font-semibold">Tasa de ahorro</span><span className="font-semibold tabular-nums">{periodSavingsRate}%</span></div>
                     <p className="text-xs leading-5 text-muted-foreground">Ahorro neto = ingresos del periodo − gastos del periodo. Los traspasos entre tus cuentas no alteran este cálculo.</p>
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button type="button" onClick={() => setMetricDetail("ingresos")} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-muted"><ArrowUpRight className="size-4 text-emerald-500" /> Ver ingresos</button>
+                      <button type="button" onClick={() => setMetricDetail("gastos")} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-muted"><ArrowDownRight className="size-4 text-red-500" /> Ver gastos</button>
+                    </div>
                   </div>
                 )}
 
