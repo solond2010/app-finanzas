@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction, type Category, generateId } from "@/lib/store"
 import { dbDeleteEq } from "@/lib/db-client"
+import { openMovementDialog } from "@/components/layout/quick-actions"
 import { Filter, Plus, Pencil, Trash2, Search, Download, AlertCircle, X, ArrowLeftRight, Repeat, ChevronLeft, ChevronRight, CalendarDays, List, TrendingDown, TrendingUp, SlidersHorizontal, Copy } from "@/components/icons"
 import { parseAmount } from "@/lib/validation"
 import { cn } from "@/lib/utils"
@@ -380,7 +381,10 @@ export function TransactionsTable({
   const [page, setPage] = useState(0)
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null)
   const [editingCell, setEditingCell] = useState<{ id: string; field: EditField } | null>(null)
-  const [showNew, setShowNew] = useState(false)
+  // «Nuevo movimiento» abre siempre el mismo diálogo que Inicio, la barra
+  // lateral y el botón + del móvil (Gasto/Ingreso/Traspaso). Desde el detalle
+  // de una cuenta llega ya con esa cuenta elegida.
+  const openNew = () => openMovementDialog(cuentaId ? { cuentaId } : undefined)
   const [deleteConfirm, setDeleteConfirm] = useState<Transaction | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
@@ -692,23 +696,10 @@ export function TransactionsTable({
             <option value="oldest">Más antiguos</option>
           </select>
           {!hideNewButton && (
-            <Button size="sm" className="hidden gap-1 sm:inline-flex" onClick={() => setShowNew(true)}>
+            <Button size="sm" className="hidden gap-1 sm:inline-flex" onClick={openNew}>
               <Plus className="h-3.5 w-3.5" /> Nueva
             </Button>
           )}
-          <Dialog open={showNew} onOpenChange={setShowNew}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nuevo movimiento</DialogTitle>
-              </DialogHeader>
-              <TransactionForm
-                accounts={state.accounts}
-                categories={state.categories}
-                onSave={(t) => { dispatch({ type: "ADD_TRANSACTION", payload: t }); setShowNew(false); toast("Movimiento creado", "success") }}
-                onCancel={() => setShowNew(false)}
-              />
-            </DialogContent>
-          </Dialog>
         </div>
       </CardHeader>
       {mobileMode === "calendar" && (
@@ -861,7 +852,7 @@ export function TransactionsTable({
                       icon={Search}
                       title="No hay movimientos este mes"
                       description="Registra tu primer movimiento para verlo aquí."
-                      action={{ label: "Nuevo movimiento", icon: Plus, onClick: () => setShowNew(true) }}
+                      action={{ label: "Nuevo movimiento", icon: Plus, onClick: openNew }}
                     />
                   )}
                 </TableCell>
@@ -1023,7 +1014,7 @@ export function TransactionsTable({
               {hasActiveFilters ? (
                 <EmptyState icon={Filter} title="Ningún movimiento coincide" description="Cambia o limpia los filtros para ver otros movimientos." action={{ label: "Limpiar filtros", icon: X, onClick: clearFilters }} />
               ) : (
-                <EmptyState icon={Search} title="Sin movimientos este mes" description="Registra tu primer movimiento para verlo aquí." action={{ label: "Nuevo movimiento", icon: Plus, onClick: () => setShowNew(true) }} />
+                <EmptyState icon={Search} title="Sin movimientos este mes" description="Registra tu primer movimiento para verlo aquí." action={{ label: "Nuevo movimiento", icon: Plus, onClick: openNew }} />
               )}
             </div>
           ) : mobileGroups.map((group) => (
@@ -1105,7 +1096,7 @@ export function TransactionsTable({
                 {hasActiveFilters ? (
                   <EmptyState icon={Filter} title="Ningún movimiento coincide" description="Cambia o limpia los filtros para ver otros movimientos." action={{ label: "Limpiar filtros", icon: X, onClick: clearFilters }} />
                 ) : (
-                  <EmptyState icon={Search} title="Sin movimientos este mes" description="Registra tu primer movimiento para verlo aquí." action={{ label: "Nuevo movimiento", icon: Plus, onClick: () => setShowNew(true) }} />
+                  <EmptyState icon={Search} title="Sin movimientos este mes" description="Registra tu primer movimiento para verlo aquí." action={{ label: "Nuevo movimiento", icon: Plus, onClick: openNew }} />
                 )}
               </div>
             ) : mobileGroups.map((group) => (

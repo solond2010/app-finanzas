@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { AlertCircle } from "@/components/icons"
 import { ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, Repeat2, Send } from "@/components/icons"
 import { useToast } from "@/components/ui/toast"
@@ -35,6 +36,8 @@ type MovementType = "gasto" | "ingreso" | "traspaso"
 /** Prefill opcional para abrir el modal de movimiento ya relleno (p.ej. desde el dashboard). */
 export type MovementPrefill = {
   tipo?: MovementType
+  /** Cuenta preelegida (gasto/ingreso, y origen si se cambia a traspaso). */
+  cuentaId?: string
   origenId?: string
   destinoId?: string
   monto?: number
@@ -121,7 +124,11 @@ function UnifiedMovementForm({
   const initialTipo: MovementType = initial?.tipo ?? "gasto"
 
   const [tipo, setTipo] = useState<MovementType>(initialTipo)
-  const [cuentaId, setCuentaId] = useState(() => defaultAccountFor(initialTipo === "traspaso" ? "gasto" : initialTipo, accounts))
+  // Si se abre desde el detalle de una cuenta, esa cuenta manda sobre la
+  // elegida por defecto según el tipo.
+  const presetAccount = initial?.cuentaId && accounts.some((a) => a.id === initial.cuentaId) ? initial.cuentaId : null
+  const accountFor = (t: "gasto" | "ingreso") => presetAccount ?? defaultAccountFor(t, accounts)
+  const [cuentaId, setCuentaId] = useState(() => accountFor(initialTipo === "traspaso" ? "gasto" : initialTipo))
   const [monto, setMonto] = useState(initial?.monto != null && initial.monto > 0 ? String(initial.monto) : "")
   const [fecha, setFecha] = useState(today)
   const [categoria, setCategoria] = useState("")
@@ -129,11 +136,11 @@ function UnifiedMovementForm({
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "")
   const [recurrente, setRecurrente] = useState(Boolean(initial?.recurrente))
   const [frecuencia, setFrecuencia] = useState<RecurringFrequency>("mensual")
-  const [origenId, setOrigenId] = useState(initial?.origenId || accounts[0]?.id || "")
+  const [origenId, setOrigenId] = useState(initial?.origenId || initial?.cuentaId || accounts[0]?.id || "")
   const [montoDestino, setMontoDestino] = useState("")
   const [destinoId, setDestinoId] = useState(() => {
     if (initial?.destinoId) return initial.destinoId
-    const fallback = accounts.find((a) => a.id !== (initial?.origenId || accounts[0]?.id))
+    const fallback = accounts.find((a) => a.id !== (initial?.origenId || initial?.cuentaId || accounts[0]?.id))
     return fallback?.id ?? accounts[0]?.id ?? ""
   })
   const [error, setError] = useState("")
@@ -144,7 +151,7 @@ function UnifiedMovementForm({
   useEffect(() => {
     if (tipo === "traspaso") return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- recompute defaults for the new tipo
-    setCuentaId(defaultAccountFor(tipo, accounts))
+    setCuentaId(accountFor(tipo))
     setEsNecesidad(tipo === "gasto")
     setCategoria("")
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -506,9 +513,19 @@ export function QuickActionsFAB() {
             <DialogTitle className="text-lg">Nuevo movimiento</DialogTitle>
             <DialogDescription>Añade un gasto, ingreso o traspaso.</DialogDescription>
           </DialogHeader>
-          {dialogOpen && (
+          {dialogOpen && state.accounts.length === 0 && (
+            // Sin cuentas no hay dónde apuntar el movimiento: se guía a crear la primera.
+            <div className="space-y-4 py-2 text-sm">
+              <p className="text-muted-foreground">Para apuntar un movimiento primero necesitas una cuenta (por ejemplo, tu cuenta del banco o el efectivo).</p>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>Ahora no</Button>
+                <Button nativeButton={false} render={<Link href="/cuentas" onClick={() => setDialogOpen(false)} />}>Crear mi primera cuenta</Button>
+              </div>
+            </div>
+          )}
+          {dialogOpen && state.accounts.length > 0 && (
             <UnifiedMovementForm
-              key={prefill ? `prefill-${prefill.tipo}-${prefill.origenId}-${prefill.destinoId}-${prefill.monto}-${prefill.recurrente ? "recurrente" : ""}` : "blank"}
+              key={prefill ? `prefill-${prefill.cuentaId ?? ""}-${prefill.tipo}-${prefill.origenId}-${prefill.destinoId}-${prefill.monto}-${prefill.recurrente ? "recurrente" : ""}` : "blank"}
               accounts={state.accounts}
               categories={state.categories}
               transactions={state.transactions}
