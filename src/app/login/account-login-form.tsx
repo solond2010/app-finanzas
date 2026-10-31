@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react"
 import { useSearchParams } from "next/navigation"
 import { Loader2 } from "@/components/icons"
 import { GarraLogo } from "@/components/brand/garra-logo"
+import { loginNotice } from "@/lib/auth-links"
 
 type Mode = "login" | "signup" | "magic"
 
@@ -22,8 +23,9 @@ export function AccountLoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(searchParams.get("error") === "enlace" ? "El enlace no es válido o ha caducado. Pide otro." : "")
-  const [info, setInfo] = useState("")
+  const notice = loginNotice(searchParams)
+  const [error, setError] = useState(notice?.kind === "error" ? notice.text : "")
+  const [info, setInfo] = useState(notice?.kind === "info" ? notice.text : "")
 
   function switchMode(next: Mode) {
     setMode(next)
