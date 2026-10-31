@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { useFinance, type Account, type SinkingFund } from "@/lib/store"
 import { accountGoal, fundCurrentAmount } from "@/lib/calculations"
 import { AnimatedNumber } from "@/components/shared/animated-number"
-import { Wallet as WalletIcon, Plus, Target, TrendingUp, Search, ChevronDown, ChevronsDownUp, ChevronsUpDown, Building2, ArrowUpRight } from "@/components/icons"
+import { Wallet as WalletIcon, Plus, Target, TrendingUp, Search, ChevronDown, ChevronsDownUp, ChevronsUpDown, Building2, ChevronRight } from "@/components/icons"
 import { formatMoney, convertToEur } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
@@ -195,7 +195,7 @@ export default function CuentasPage() {
                         <AccountLogo account={account} className="h-10 w-10 shrink-0 rounded-xl" />
                         <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-foreground">{account.nombre}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{account.banco || cfg.label} · {cfg.label}</span></span>
                         <span className="shrink-0 text-right"><span className="block text-sm font-semibold tabular-nums text-foreground"><Sensitive>{formatMoney(accountValue(account), account.currency)}</Sensitive></span><span className="mt-0.5 block text-[10px] text-muted-foreground">{account.currency}</span></span>
-                        <ArrowUpRight className="ml-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover/row:text-primary" />
+                        <ChevronRight className="ml-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover/row:text-primary" />
                       </button>
                     })}
                     <p className="px-2 pb-1 pt-2 text-[10px] text-muted-foreground">Total aproximado convertido a euros</p>

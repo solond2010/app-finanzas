@@ -25,7 +25,7 @@ function formatDate(value: string | null) {
 }
 
 /** Cuenta, contraseña y claves de Atajos. Solo aparece con cuentas activadas. */
-export function AccountSettings() {
+export function AccountSettings({ part = "ambas" }: { part?: "cuenta" | "atajos" | "ambas" } = {}) {
   const { toast } = useToast()
   const [me, setMe] = useState<Me | null>(null)
   const [tokens, setTokens] = useState<TokenItem[]>([])
@@ -48,9 +48,9 @@ export function AccountSettings() {
       const res = await fetch("/api/auth/me", { cache: "no-store" }).catch(() => null)
       const body = res?.ok ? ((await res.json().catch(() => null)) as Me | null) : null
       setMe(body)
-      if (body?.mode === "accounts") await loadTokens()
+      if (body?.mode === "accounts" && part !== "cuenta") await loadTokens()
     })()
-  }, [loadTokens])
+  }, [loadTokens, part])
 
   if (!me || me.mode !== "accounts") return null
 
@@ -90,9 +90,10 @@ export function AccountSettings() {
     window.location.href = "/login"
   }
 
+  // Fragmento: las dos tarjetas se reparten en las columnas de Configuración.
   return (
-    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-      <Card className="border border-border">
+    <>
+      {part !== "atajos" && <Card className="border border-border">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base font-semibold"><UserRound className="h-4 w-4" />Tu cuenta</CardTitle>
         </CardHeader>
@@ -112,9 +113,9 @@ export function AccountSettings() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      <Card className="border border-border">
+      {part !== "cuenta" && <Card className="border border-border">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base font-semibold"><Smartphone className="h-4 w-4" />Claves para Atajos de iPhone</CardTitle>
         </CardHeader>
@@ -168,7 +169,7 @@ export function AccountSettings() {
             </ul>
           )}
         </CardContent>
-      </Card>
-    </div>
+      </Card>}
+    </>
   )
 }

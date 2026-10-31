@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { transferDescription } from "@/lib/transfer-description"
 import { supabaseServer } from "@/lib/supabase-server"
 import { resolveShortcutUser } from "@/lib/server/shortcut-auth"
 import { guessCategory } from "@/lib/guess-category"
@@ -119,7 +120,7 @@ export async function POST(request: Request) {
         tipo: "gasto",
         categoria: "Transferencia",
         es_necesidad: false,
-        descripcion: `${descripcion} → ${destino.nombre}`,
+        descripcion: transferDescription(descripcion, origen.nombre, destino.nombre),
         tags: ["traspaso", "atajo", pairTag],
         user_id: userId,
         created_at: new Date().toISOString(),
@@ -132,7 +133,7 @@ export async function POST(request: Request) {
         tipo: "ingreso",
         categoria: "Transferencia",
         es_necesidad: false,
-        descripcion: `${descripcion} ← ${origen.nombre}`,
+        descripcion: transferDescription(descripcion, origen.nombre, destino.nombre),
         tags: ["traspaso", "atajo", pairTag],
         user_id: userId,
         created_at: new Date().toISOString(),

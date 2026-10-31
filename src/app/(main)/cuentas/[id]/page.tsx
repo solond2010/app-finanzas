@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation"
 import { useFinance } from "@/lib/store"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
-import { ArrowLeft, Pencil, SearchX, Wallet, ArrowUpRight, ArrowDownRight, Copy } from "@/components/icons"
+import { ArrowLeft, Pencil, SearchX, Wallet, HandCoins, Receipt, Copy } from "@/components/icons"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -113,7 +113,7 @@ export default function AccountDetailPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Total ingresos</span>
-              <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+              <HandCoins className="app-icon-tint h-4 w-4 text-emerald-500" />
             </div>
               <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums text-emerald-500">
                 <Sensitive>+{formatMoney(totalIngresos, account.currency)}</Sensitive>
@@ -125,7 +125,7 @@ export default function AccountDetailPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Total gastos</span>
-              <ArrowDownRight className="h-4 w-4 text-red-500" />
+              <Receipt className="app-icon-tint h-4 w-4 text-red-500" />
             </div>
               <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums text-red-500">
                 <Sensitive>{totalGastos > 0 ? "-" : ""}{formatMoney(totalGastos, account.currency)}</Sensitive>

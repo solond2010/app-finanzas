@@ -28,6 +28,7 @@ import { recurringTag, type RecurringFrequency } from "@/lib/calculations"
 import { Sensitive } from "@/components/shared/sensitive"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { cn } from "@/lib/utils"
+import { transferDescription } from "@/lib/transfer-description"
 
 type MovementType = "gasto" | "ingreso" | "traspaso"
 
@@ -476,7 +477,7 @@ export function QuickActionsFAB() {
         tipo: "gasto",
         categoria: "Transferencia",
         es_necesidad: false,
-        descripcion: `${descripcion} → ${dest.nombre}`,
+        descripcion: transferDescription(descripcion, source.nombre, dest.nombre),
         tags: transferTags,
         },
         {
@@ -487,7 +488,7 @@ export function QuickActionsFAB() {
         tipo: "ingreso",
         categoria: "Transferencia",
         es_necesidad: false,
-        descripcion: `${descripcion} ← ${source.nombre}`,
+        descripcion: transferDescription(descripcion, source.nombre, dest.nombre),
         tags: transferTags,
         },
       ],

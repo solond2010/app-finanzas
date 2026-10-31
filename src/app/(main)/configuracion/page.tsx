@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,10 +13,14 @@ import { Plus, Trash2, Download, Tags, FileDown, Layers, Search, Pencil, Check, 
 import { Skeleton } from "@/components/shared/skeleton"
 import { auditFinanceState } from "@/lib/finance-integrity"
 import Link from "next/link"
+import { LEGACY_USER_ID, USER_ID_COOKIE } from "@/lib/auth-mode"
 import { AccountSettings } from "@/components/settings/account-settings"
 import { CategoryIcon } from "@/components/icons/category-icon"
 
 export default function ConfiguracionPage() {
+  // La nota de la copia automática del Mac solo tiene sentido para Moha
+  // (dueño histórico); los demás usuarios no tienen ese Mac.
+  const isOwnerDevice = useIsOwner()
   const { state, loading, dispatch } = useFinance()
   const { status: syncStatus, lastSyncedAt, retrySync, localBackupStatus, retryLocalBackup } = useSyncStatus()
   const { positions, contributions, loaded: investmentsLoaded, syncStatus: investmentSyncStatus, retrySync: retryInvestmentSync } = useInvestments()
@@ -163,9 +167,13 @@ export default function ConfiguracionPage() {
           <Skeleton className="h-64" /><Skeleton className="h-40" />
         </div>
       ) : (
-      // items-start: sin él, la tarjeta "Exportar datos" se estira hasta igualar
-      // la altura de "Categorías" (42 etiquetas) y queda con ~400px vacíos.
+      // Dos columnas independientes en escritorio: cada tarjeta ocupa su altura
+      // real, sin los huecos que dejaba la rejilla por filas (Categorías corta
+      // junto a Exportar datos larga, Tu cuenta corta junto a Claves para
+      // Atajos…). Se reparten para que ambas columnas midan parecido.
+      // En móvil es una sola columna, en este mismo orden.
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-6">
         <Card id="categorias" className="border border-border scroll-mt-6">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
@@ -223,6 +231,9 @@ export default function ConfiguracionPage() {
           </CardContent>
         </Card>
 
+          <AccountSettings part="atajos" />
+        </div>
+        <div className="flex min-w-0 flex-col gap-6">
         <Card className="border border-border">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
@@ -286,13 +297,13 @@ export default function ConfiguracionPage() {
                 </div>
               </div>
             </div>
-            <p className="px-1 text-xs text-muted-foreground">En este Mac se guarda al iniciar sesión si falta la copia del mes y los días 1 y 2 a las 09:15, en Documentos → Finanzas Backups.</p>
+            {isOwnerDevice && <p className="px-1 text-xs text-muted-foreground">En este Mac se guarda al iniciar sesión si falta la copia del mes y los días 1 y 2 a las 09:15, en Documentos → Finanzas Backups.</p>}
           </CardContent>
         </Card>
+          <AccountSettings part="cuenta" />
+        </div>
       </div>
       )}
-
-      {!loading && <AccountSettings />}
 
       {!loading && (
         <Card className="border border-red-500/30 bg-red-500/[0.03]">
@@ -327,4 +338,15 @@ export default function ConfiguracionPage() {
       </Dialog>
     </div>
   )
+}
+
+/** Moha: su id coincide con el del dueño histórico (o modo de contraseña única, sin cookie de usuario). */
+function useIsOwner(): boolean {
+  const [owner, setOwner] = useState(false)
+  useEffect(() => {
+    const match = document.cookie.split("; ").find((c) => c.startsWith(`${USER_ID_COOKIE}=`))
+    const uid = match ? decodeURIComponent(match.slice(USER_ID_COOKIE.length + 1)) : null
+    queueMicrotask(() => setOwner(!uid || uid === LEGACY_USER_ID))
+  }, [])
+  return owner
 }

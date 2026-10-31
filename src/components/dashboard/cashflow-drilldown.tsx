@@ -24,8 +24,9 @@ export type CashflowBucket = {
   prev: { label: string; ingresos: number; gastos: number } | null
 }
 
-// Mismos colores que las barras (ver .dashboard-cashflow-chart en globals.css).
-export const CASHFLOW_COLORS = { ingresos: "var(--chart-4)", gastos: "var(--gold)", ahorro: "var(--accent-green)" }
+// Ingresos en verde y gastos en rojo (como «Cambio de patrimonio» y Movimientos);
+// el ahorro neto en el dorado de marca para no confundirse con los ingresos.
+export const CASHFLOW_COLORS = { ingresos: "var(--accent-green)", gastos: "var(--accent-red)", ahorro: "var(--gold)" }
 
 function pctChange(current: number, previous: number) {
   if (Math.abs(previous) < 0.005) return null

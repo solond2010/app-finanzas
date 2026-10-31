@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { BarChart } from "@tremor/react"
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp, X } from "@/components/icons"
+import { AlertTriangle, CalendarClock, ChartLineUp, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, HandCoins, Landmark, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp, Wallet, X } from "@/components/icons"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -174,7 +174,7 @@ function AnnualStat({ label, year, value, accent, icon: Icon, children }: { labe
           <p className="mt-0.5 text-xs text-muted-foreground">Acumulado {year}</p>
         </div>
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `color-mix(in oklab, ${accent} 14%, transparent)`, color: accent }}>
-          <Icon className="h-4 w-4" />
+          <Icon className="app-icon-tint h-4 w-4" />
         </span>
       </div>
       <div className="mt-5">{children}</div>
@@ -1074,12 +1074,12 @@ export default function DashboardContent() {
         <div className="space-y-4 sm:space-y-5">
           {/* Seis cifras clave: flujo según el periodo elegido y saldos a su mes final. */}
           <section className="stagger-fade grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6" aria-label={`Resumen financiero: ${periodBounds.label}`}>
-            <TickerTile label="Gastos" value={<Sensitive>{formatMoney(periodTotals.gastos, "EUR")}</Sensitive>} detail={`${expenseTransactions.length} ${expenseTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-red)" onClick={() => setMetricDetail("gastos")} />
-            <TickerTile label="Ingresos" value={<Sensitive>{formatMoney(periodTotals.ingresos, "EUR")}</Sensitive>} detail={`${incomeTransactions.length} ${incomeTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-green)" onClick={() => setMetricDetail("ingresos")} />
-            <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(periodTotals.neto, "EUR")}</Sensitive>} detail={periodTotals.ingresos > 0 ? `${periodSavingsRate}% de los ingresos` : "Sin ingresos en el periodo"} detailTone={periodTotals.neto >= 0 ? "positive" : "negative"} valueColor={periodTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} onClick={() => setMetricDetail("neto")} />
-            <TickerTile label="Inversión" value={<Sensitive>{formatMoney(investmentDisplayTotal, "EUR")}</Sensitive>} detail={`${investmentAccounts.length} ${investmentAccounts.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--accent-violet)" onClick={() => setMetricDetail("inversion")} />
-            <TickerTile label="Dinero disponible" value={<Sensitive>{formatMoney(spendableTotal, "EUR")}</Sensitive>} detail={`${spendableAccountsWithBalance.length} ${spendableAccountsWithBalance.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--accent-blue)" onClick={() => setMetricDetail("cash")} />
-            <TickerTile label="Patrimonio total" value={<Sensitive>{formatMoney(netWorthDisplay, "EUR")}</Sensitive>} detail={`${displayAccounts.length} ${displayAccounts.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--foreground)" onClick={() => setMetricDetail("patrimonio")} />
+            <TickerTile label="Gastos" value={<Sensitive>{formatMoney(periodTotals.gastos, "EUR")}</Sensitive>} detail={`${expenseTransactions.length} ${expenseTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-red)" icon={Receipt} onClick={() => setMetricDetail("gastos")} />
+            <TickerTile label="Ingresos" value={<Sensitive>{formatMoney(periodTotals.ingresos, "EUR")}</Sensitive>} detail={`${incomeTransactions.length} ${incomeTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-green)" icon={HandCoins} onClick={() => setMetricDetail("ingresos")} />
+            <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(periodTotals.neto, "EUR")}</Sensitive>} detail={periodTotals.ingresos > 0 ? `${periodSavingsRate}% de los ingresos` : "Sin ingresos en el periodo"} detailTone={periodTotals.neto >= 0 ? "positive" : "negative"} valueColor={periodTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} icon={PiggyBank} onClick={() => setMetricDetail("neto")} />
+            <TickerTile label="Inversión" value={<Sensitive>{formatMoney(investmentDisplayTotal, "EUR")}</Sensitive>} detail={`${investmentAccounts.length} ${investmentAccounts.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--accent-violet)" icon={ChartLineUp} onClick={() => setMetricDetail("inversion")} />
+            <TickerTile label="Dinero disponible" value={<Sensitive>{formatMoney(spendableTotal, "EUR")}</Sensitive>} detail={`${spendableAccountsWithBalance.length} ${spendableAccountsWithBalance.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--accent-blue)" icon={Wallet} onClick={() => setMetricDetail("cash")} />
+            <TickerTile label="Patrimonio total" value={<Sensitive>{formatMoney(netWorthDisplay, "EUR")}</Sensitive>} detail={`${displayAccounts.length} ${displayAccounts.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--foreground)" icon={Landmark} iconColor="var(--gold)" onClick={() => setMetricDetail("patrimonio")} />
           </section>
 
           <section className={`${CARD} min-w-0`} aria-label="Ingresos y gastos del periodo">
@@ -1097,7 +1097,7 @@ export default function DashboardContent() {
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? periodCashflow.length === 1 ? (
               <SingleBucketCashflowChart bucket={periodCashflow[0]} includeSavings={cashflowGranularity === "month"} onOpen={() => setCashflowDrillKey(periodCashflow[0].key)} />
             ) : (
-              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["cyan", "orange", "emerald"] : ["cyan", "orange"]} valueFormatter={chartAxisFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={CashflowHoverTooltip} key={cashflowChartKey} onValueChange={(value) => { const key = value && typeof value.key === "string" ? value.key : null; if (key) setCashflowDrillKey(key) }} className="dashboard-cashflow-chart h-56 cursor-pointer sm:h-72" showAnimation={cashflowChartKey === 0} />
+              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["emerald", "red", "orange"] : ["emerald", "red"]} valueFormatter={chartAxisFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={CashflowHoverTooltip} key={cashflowChartKey} onValueChange={(value) => { const key = value && typeof value.key === "string" ? value.key : null; if (key) setCashflowDrillKey(key) }} className="dashboard-cashflow-chart h-56 cursor-pointer sm:h-72" showAnimation={cashflowChartKey === 0} />
             ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -1474,10 +1474,10 @@ export default function DashboardContent() {
               )}
               {showAnnual && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="var(--accent-green)" icon={ArrowUpRight}>
+                  <AnnualStat label="Ingresos totales" year={year} value={annualIngresos} accent="var(--accent-green)" icon={HandCoins}>
                     <MiniBars values={monthlyYear.map((m) => m.ingresos)} color="var(--accent-green)" />
                   </AnnualStat>
-                  <AnnualStat label="Gastos totales" year={year} value={annualGastos} accent="var(--accent-red)" icon={ArrowDownRight}>
+                  <AnnualStat label="Gastos totales" year={year} value={annualGastos} accent="var(--accent-red)" icon={Receipt}>
                     <MiniBars values={monthlyYear.map((m) => m.gastos)} color="var(--accent-red)" />
                   </AnnualStat>
                   <AnnualStat label="Ahorro neto anual" year={year} value={annualNeto} accent={annualNeto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} icon={PiggyBank}>
@@ -1498,10 +1498,8 @@ export default function DashboardContent() {
                   {recentTransactions.map((t) => (
                     <div key={t.id} className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
                       <div className="flex min-w-0 items-center gap-3">
-                        <span
-                          className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold", t.tipo === "ingreso" ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500")}
-                        >
-                          {accountName(t.cuenta_id).slice(0, 2).toUpperCase()}
+                        <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/80">
+                          <CategoryIcon name={t.categoria} color={catColor(t.categoria)} />
                         </span>
                         <div className="min-w-0">
                           <p title={t.descripcion || t.categoria} className="line-clamp-2 break-words text-sm font-medium text-foreground">{t.descripcion || t.categoria}</p>
@@ -1589,8 +1587,8 @@ export default function DashboardContent() {
                     <div className="flex justify-between gap-3 border-t border-border pt-3 text-sm"><span className="font-semibold">Tasa de ahorro</span><span className="font-semibold tabular-nums">{periodSavingsRate}%</span></div>
                     <p className="text-xs leading-5 text-muted-foreground">Ahorro neto = ingresos del periodo − gastos del periodo. Los traspasos entre tus cuentas no alteran este cálculo.</p>
                     <div className="grid grid-cols-2 gap-2 pt-1">
-                      <button type="button" onClick={() => setMetricDetail("ingresos")} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-muted"><ArrowUpRight className="size-4 text-emerald-500" /> Ver ingresos</button>
-                      <button type="button" onClick={() => setMetricDetail("gastos")} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-muted"><ArrowDownRight className="size-4 text-red-500" /> Ver gastos</button>
+                      <button type="button" onClick={() => setMetricDetail("ingresos")} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-muted"><HandCoins className="app-icon-tint size-4 text-emerald-500" /> Ver ingresos</button>
+                      <button type="button" onClick={() => setMetricDetail("gastos")} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-muted"><Receipt className="app-icon-tint size-4 text-red-500" /> Ver gastos</button>
                     </div>
                   </div>
                 )}

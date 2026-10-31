@@ -1016,10 +1016,10 @@ input[type="number"] {
   display: none;
 }
 
-/* Ingresos y gastos: tonos luminosos y barras suavizadas, inspirados en la
-   lectura limpia del dashboard de referencia sin cambiar la paleta general. */
-.dashboard-cashflow-chart .fill-cyan-500 { fill: var(--chart-4); }
+/* Ingresos (verde), gastos (rojo) y ahorro neto (dorado): mismos tonos que
+   «Cambio de patrimonio» y Movimientos. Barras suavizadas. */
 .dashboard-cashflow-chart .fill-orange-500 { fill: var(--gold); }
+.dashboard-cashflow-chart .text-orange-500 { color: var(--gold); fill: var(--gold); }
 .dashboard-cashflow-chart .recharts-bar-rectangle rect {
   rx: 5px;
   ry: 5px;
@@ -1050,3 +1050,6 @@ input[type="number"] {
 .app-icon-cat [opacity="0.2"] { fill: var(--cat-color, var(--icon-accent)); opacity: 0.75; }
 [aria-current="page"] .app-icon-duo [opacity="0.2"],
 .bg-primary .app-icon-duo [opacity="0.2"] { fill: currentColor; opacity: 0.25; }
+/* Icono dúo de un solo color (pastillas de cifras: Gastos, Ingresos…): la capa
+   suave toma el color del trazo en vez del naranja de marca. */
+.app-icon-duo.app-icon-tint [opacity="0.2"] { fill: currentColor; opacity: 0.35; }

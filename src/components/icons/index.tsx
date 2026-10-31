@@ -22,6 +22,7 @@ import {
   ArrowsLeftRight as PhArrowsLeftRight,
   ArrowsOut as PhArrowsOut,
   Bank as PhBank,
+  Bug as PhBug,
   Buildings as PhBuildings,
   Calendar as PhCalendar,
   CalendarBlank as PhCalendarBlank,
@@ -31,6 +32,7 @@ import {
   CaretRight as PhCaretRight,
   CaretUp as PhCaretUp,
   CaretUpDown as PhCaretUpDown,
+  ChatCircleText as PhChatCircleText,
   ChartLine as PhChartLine,
   ChartLineUp as PhChartLineUp,
   Check as PhCheck,
@@ -51,6 +53,7 @@ import {
   Flag as PhFlag,
   Funnel as PhFunnel,
   Gauge as PhGauge,
+  HandCoins as PhHandCoins,
   HardDrive as PhHardDrive,
   House as PhHouse,
   Info as PhInfo,
@@ -60,6 +63,7 @@ import {
   MagnifyingGlass as PhMagnifyingGlass,
   MagnifyingGlassMinus as PhMagnifyingGlassMinus,
   Minus as PhMinus,
+  Money as PhMoney,
   MoonStars as PhMoonStars,
   PaperPlaneTilt as PhPaperPlaneTilt,
   PencilLine as PhPencilLine,
@@ -74,6 +78,7 @@ import {
   ShieldWarning as PhShieldWarning,
   SignOut as PhSignOut,
   SlidersHorizontal as PhSlidersHorizontal,
+  Sparkle as PhSparkle,
   Stack as PhStack,
   Star as PhStar,
   Sun as PhSun,
@@ -120,11 +125,14 @@ export const ArrowRight = makeIcon(PhArrowRight, "regular", "ArrowRight")
 export const ArrowRightLeft = makeIcon(PhArrowsLeftRight, "regular", "ArrowRightLeft")
 export const ArrowUpCircle = makeIcon(PhArrowCircleUp, "duotone", "ArrowUpCircle")
 export const ArrowUpRight = makeIcon(PhArrowUpRight, "bold", "ArrowUpRight")
+export const Bug = makeIcon(PhBug, "duotone", "Bug")
 export const Building2 = makeIcon(PhBuildings, "duotone", "Building2")
 export const Calendar = makeIcon(PhCalendar, "regular", "Calendar")
 export const CalendarClock = makeIcon(PhCalendarDots, "duotone", "CalendarClock")
 export const CalendarDays = makeIcon(PhCalendarDots, "duotone", "CalendarDays")
 export const CalendarRange = makeIcon(PhCalendarBlank, "regular", "CalendarRange")
+export const ChartLineUp = makeIcon(PhChartLineUp, "duotone", "ChartLineUp")
+export const ChatText = makeIcon(PhChatCircleText, "duotone", "ChatText")
 export const ChartPie = makeIcon(PhChartLineUp, "duotone", "ChartPie")
 export const Check = makeIcon(PhCheck, "bold", "Check")
 export const CheckCircle = makeIcon(PhCheckCircle, "duotone", "CheckCircle")
@@ -151,6 +159,7 @@ export const Filter = makeIcon(PhFunnel, "regular", "Filter")
 export const Flag = makeIcon(PhFlag, "duotone", "Flag")
 export const Flame = makeIcon(PhFire, "duotone", "Flame")
 export const Gauge = makeIcon(PhGauge, "duotone", "Gauge")
+export const HandCoins = makeIcon(PhHandCoins, "duotone", "HandCoins")
 export const HardDrive = makeIcon(PhHardDrive, "duotone", "HardDrive")
 export const House = makeIcon(PhHouse, "duotone", "House")
 export const Info = makeIcon(PhInfo, "regular", "Info")
@@ -164,6 +173,7 @@ export const List = makeIcon(PhList, "regular", "List")
 export const Loader2 = makeIcon(PhCircleNotch, "bold", "Loader2")
 export const LogOut = makeIcon(PhSignOut, "regular", "LogOut")
 export const Maximize2 = makeIcon(PhArrowsOut, "regular", "Maximize2")
+export const Money = makeIcon(PhMoney, "duotone", "Money")
 export const Minus = makeIcon(PhMinus, "bold", "Minus")
 export const MoonStar = makeIcon(PhMoonStars, "regular", "MoonStar")
 export const Pencil = makeIcon(PhPencilSimple, "regular", "Pencil")
@@ -182,6 +192,7 @@ export const Send = makeIcon(PhPaperPlaneTilt, "regular", "Send")
 export const ShieldAlert = makeIcon(PhShieldWarning, "duotone", "ShieldAlert")
 export const ShieldCheck = makeIcon(PhShieldCheck, "duotone", "ShieldCheck")
 export const SlidersHorizontal = makeIcon(PhSlidersHorizontal, "duotone", "SlidersHorizontal")
+export const Sparkles = makeIcon(PhSparkle, "duotone", "Sparkles")
 export const Smartphone = makeIcon(PhDeviceMobile, "duotone", "Smartphone")
 export const Star = makeIcon(PhStar, "duotone", "Star")
 export const SunMedium = makeIcon(PhSun, "regular", "SunMedium")

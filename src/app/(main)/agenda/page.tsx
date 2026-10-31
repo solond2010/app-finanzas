@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import Link from "next/link"
-import { ArrowDownRight, ArrowUpRight, CalendarDays, Check, CircleAlert, Clock3, Repeat2, X } from "@/components/icons"
+import { CalendarDays, HandCoins, Receipt, Check, CircleAlert, Clock3, Repeat2, X } from "@/components/icons"
 import { useFinance, generateId } from "@/lib/store"
 import { getUpcomingRecurring, type UpcomingRecurring } from "@/lib/calculations"
 import { localDateKey, parseLocalDate } from "@/lib/date-utils"
@@ -75,7 +75,7 @@ export default function AgendaPage() {
     return (
       <article key={item.key} className="flex min-w-0 flex-col gap-3 rounded-xl border border-border/80 bg-background/45 p-3 sm:flex-row sm:items-center sm:p-4">
         <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${isOverdue ? "bg-red-500/10 text-red-500" : isIncome ? "bg-emerald-500/10 text-emerald-500" : "bg-primary/10 text-primary"}`}>
-          {isOverdue ? <CircleAlert className="size-5" /> : isIncome ? <ArrowDownRight className="size-5" /> : <ArrowUpRight className="size-5" />}
+          {isOverdue ? <CircleAlert className="size-5" /> : isIncome ? <HandCoins className="app-icon-tint size-5" /> : <Receipt className="app-icon-tint size-5" />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

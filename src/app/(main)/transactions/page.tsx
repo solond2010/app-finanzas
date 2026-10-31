@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { AreaChart } from "@tremor/react"
-import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp, X } from "@/components/icons"
+import { CalendarClock, HandCoins, Receipt, Check, ChevronDown, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp, X } from "@/components/icons"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { ImportCsvButton } from "@/components/dashboard/import-csv-button"
 import { getSetting, setSetting } from "@/lib/settings"
@@ -187,11 +187,11 @@ export default function IngresosGastosPage() {
         // Total del mes siempre visible y legible, justo encima de la tabla.
         <section aria-label={`Total de ${formatMonth(selectedDate)}`} className="grid grid-cols-3 gap-2 sm:gap-4">
           <div className={`${CARD} min-w-0 !p-3 sm:!p-5`}>
-            <p className="flex items-center gap-1 truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" /> Ingresos</p>
+            <p className="flex items-center gap-1 truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><HandCoins className="app-icon-tint h-3.5 w-3.5 text-emerald-500" /> Ingresos</p>
             <p className="mt-1 truncate text-base font-bold tabular-nums text-emerald-500 sm:text-2xl"><Sensitive>{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive></p>
           </div>
           <div className={`${CARD} min-w-0 !p-3 sm:!p-5`}>
-            <p className="flex items-center gap-1 truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><ArrowDownRight className="h-3.5 w-3.5 text-red-500" /> Gastos</p>
+            <p className="flex items-center gap-1 truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><Receipt className="app-icon-tint h-3.5 w-3.5 text-red-500" /> Gastos</p>
             <p className="mt-1 truncate text-base font-bold tabular-nums text-red-500 sm:text-2xl"><Sensitive>{formatMoney(monthTotals.gastos, "EUR")}</Sensitive></p>
           </div>
           <div className={`${CARD} min-w-0 !p-3 sm:!p-5`}>
@@ -354,14 +354,14 @@ export default function IngresosGastosPage() {
               <div className="rounded-2xl border border-border p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ingresos</span>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500"><ArrowUpRight className="h-4 w-4" /></span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500"><HandCoins className="app-icon-tint h-4 w-4" /></span>
                 </div>
                 <p className="mt-1 text-xl font-bold tabular-nums text-emerald-500"><Sensitive><AnimatedNumber value={monthTotals.ingresos} prefix={monthTotals.ingresos > 0 ? "+" : ""} /></Sensitive></p>
               </div>
               <div className="rounded-2xl border border-border p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Gastos</span>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10 text-red-500"><ArrowDownRight className="h-4 w-4" /></span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10 text-red-500"><Receipt className="app-icon-tint h-4 w-4" /></span>
                 </div>
                 <p className="mt-1 text-xl font-bold tabular-nums text-red-500"><Sensitive><AnimatedNumber value={monthTotals.gastos} prefix={monthTotals.gastos > 0 ? "-" : ""} /></Sensitive></p>
               </div>

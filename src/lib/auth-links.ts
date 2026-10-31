@@ -16,7 +16,7 @@ export type LinkNotice = { kind: "info" | "error"; text: string }
 export function loginNotice(params: { get(name: string): string | null }): LinkNotice | null {
   const aviso = params.get("aviso")
   if (aviso === "confirmado") {
-    return { kind: "info", text: "Tu email ya está confirmado ✅ Entra con tu email y tu contraseña." }
+    return { kind: "info", text: "Tu email ya está confirmado. Entra con tu email y tu contraseña." }
   }
   if (aviso === "enlace-usado") {
     return {
