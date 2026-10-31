@@ -121,6 +121,8 @@ export const ArrowDownCircle = makeIcon(PhArrowCircleDown, "duotone", "ArrowDown
 export const ArrowDownRight = makeIcon(PhArrowDownRight, "bold", "ArrowDownRight")
 export const ArrowLeft = makeIcon(PhArrowLeft, "regular", "ArrowLeft")
 export const ArrowLeftRight = makeIcon(PhArrowsLeftRight, "regular", "ArrowLeftRight")
+/** Traspaso en versión dúo (selector de tipo del diálogo de movimiento). */
+export const ArrowsLeftRight = makeIcon(PhArrowsLeftRight, "duotone", "ArrowsLeftRight")
 export const ArrowRight = makeIcon(PhArrowRight, "regular", "ArrowRight")
 export const ArrowRightLeft = makeIcon(PhArrowsLeftRight, "regular", "ArrowRightLeft")
 export const ArrowUpCircle = makeIcon(PhArrowCircleUp, "duotone", "ArrowUpCircle")

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { AlertCircle } from "@/components/icons"
-import { ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, Repeat2, Send } from "@/components/icons"
+import { AlertCircle, Check, Plus, X } from "@/components/icons"
+import { ArrowRightLeft, ArrowsLeftRight, HandCoins, Receipt, Repeat2 } from "@/components/icons"
 import { useToast } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,6 +30,7 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { cn } from "@/lib/utils"
 import { transferDescription } from "@/lib/transfer-description"
+import { MAX_CATEGORY_NAME, cleanCategoryName, findCategoryByName } from "@/lib/category-names"
 
 type MovementType = "gasto" | "ingreso" | "traspaso"
 
@@ -53,10 +54,12 @@ export function openMovementDialog(prefill?: MovementPrefill) {
   window.dispatchEvent(new CustomEvent<MovementPrefill>(OPEN_MOVEMENT_EVENT, { detail: prefill ?? {} }))
 }
 
-const TIPO_OPTIONS: { value: MovementType; label: string; icon: typeof ArrowDownCircle; color: string }[] = [
-  { value: "gasto", label: "Gasto", icon: ArrowDownCircle, color: "text-red-500" },
-  { value: "ingreso", label: "Ingreso", icon: ArrowUpCircle, color: "text-emerald-500" },
-  { value: "traspaso", label: "Traspaso", icon: Send, color: "text-blue-500" },
+// Opción A (aprobada por Moha): icono dúo grande en pastilla de su color.
+// --tipo: rojo/verde/naranja Garra, más oscuros en modo claro para contraste.
+const TIPO_OPTIONS: { value: MovementType; label: string; icon: typeof Receipt; tone: string }[] = [
+  { value: "gasto", label: "Gasto", icon: Receipt, tone: "[--tipo:#C8372A] dark:[--tipo:#FF6B5B]" },
+  { value: "ingreso", label: "Ingreso", icon: HandCoins, tone: "[--tipo:#0B7D59] dark:[--tipo:#2BD9A0]" },
+  { value: "traspaso", label: "Traspaso", icon: ArrowsLeftRight, tone: "[--tipo:#A35F00] dark:[--tipo:#F5A524]" },
 ]
 
 const typeBadge: Record<string, { label: string; color: string }> = {
@@ -106,6 +109,7 @@ function UnifiedMovementForm({
   transactions,
   onSaveTransaction,
   onSaveTransfer,
+  onCreateCategory,
   onCancel,
   initial,
 }: {
@@ -113,6 +117,8 @@ function UnifiedMovementForm({
   categories: Category[]
   transactions: Transaction[]
   onSaveTransaction: (t: Transaction) => void
+  /** Crea la categoría (mismo camino que Configuración). */
+  onCreateCategory: (name: string, kind: "gasto" | "ingreso") => void
   onSaveTransfer: (sourceId: string, destId: string, sourceAmount: number, destinationAmount: number, descripcion: string, fecha: string) => void
   onCancel: () => void
   initial?: MovementPrefill
@@ -132,6 +138,10 @@ function UnifiedMovementForm({
   const [monto, setMonto] = useState(initial?.monto != null && initial.monto > 0 ? String(initial.monto) : "")
   const [fecha, setFecha] = useState(today)
   const [categoria, setCategoria] = useState("")
+  // «+ Nueva»: crear una categoría sin salir del diálogo.
+  const [newCatOpen, setNewCatOpen] = useState(false)
+  const [newCatName, setNewCatName] = useState("")
+  const [newCatMsg, setNewCatMsg] = useState<{ tone: "info" | "error"; text: string } | null>(null)
   const [esNecesidad, setEsNecesidad] = useState(initialTipo !== "ingreso")
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "")
   const [recurrente, setRecurrente] = useState(Boolean(initial?.recurrente))
@@ -156,6 +166,27 @@ function UnifiedMovementForm({
     setCategoria("")
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo])
+
+  const createCategory = () => {
+    if (tipo === "traspaso") return
+    const name = cleanCategoryName(newCatName)
+    if (!name) { setNewCatMsg({ tone: "error", text: "Escribe un nombre." }); return }
+    const existing = findCategoryByName(categories, name)
+    if (existing) {
+      if (!existing.kind || existing.kind === tipo || existing.kind === "both") {
+        setCategoria(existing.name)
+        setNewCatOpen(false); setNewCatName("")
+        setNewCatMsg({ tone: "info", text: `Ya tenías «${existing.name}»; la he elegido.` })
+      } else {
+        setNewCatMsg({ tone: "error", text: `«${existing.name}» ya existe como categoría de ${existing.kind === "ingreso" ? "ingresos" : "gastos"}.` })
+      }
+      return
+    }
+    onCreateCategory(name, tipo)
+    setCategoria(name)
+    setNewCatOpen(false); setNewCatName("")
+    setNewCatMsg({ tone: "info", text: `Categoría «${name}» creada.` })
+  }
 
   const visibleCategories = categories
     .filter((c) => !c.kind || c.kind === tipo || c.kind === "both")
@@ -223,14 +254,21 @@ function UnifiedMovementForm({
                 key={t.value}
                 type="button"
                 onClick={() => setTipo(t.value)}
+                aria-pressed={active}
                 className={cn(
-                  "flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-xs font-semibold transition-all active:scale-[0.98]",
+                  "flex flex-col items-center gap-2 rounded-[14px] border-[1.5px] px-2 pb-3 pt-3.5 text-sm font-semibold transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tipo)]",
+                  t.tone,
                   active
-                    ? "border-primary/40 bg-primary/10 text-foreground shadow-sm"
+                    ? "border-[color-mix(in_oklab,var(--tipo)_55%,transparent)] bg-[color-mix(in_oklab,var(--tipo)_9%,var(--card))] text-foreground"
                     : "border-border bg-card text-muted-foreground hover:bg-muted/60"
                 )}
               >
-                <Icon className={cn("h-4 w-4", active ? t.color : "")} />
+                <span className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-xl",
+                  active ? "bg-[color-mix(in_oklab,var(--tipo)_22%,transparent)]" : "bg-[color-mix(in_oklab,var(--tipo)_12%,transparent)]"
+                )}>
+                  <Icon className={cn("h-[22px] w-[22px]", active ? "text-[var(--tipo)]" : "text-[color-mix(in_oklab,var(--tipo)_70%,var(--muted-foreground))]")} />
+                </span>
                 {t.label}
               </button>
             )
@@ -351,11 +389,33 @@ function UnifiedMovementForm({
                   ))}
                 </SelectContent>
               </Select>
-              {frequentCategories.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1" aria-label="Categorías frecuentes">
-                  {frequentCategories.map((name) => <button key={name} type="button" onClick={() => setCategoria(name)} aria-pressed={categoria === name} className={cn("min-h-9 rounded-full border px-3 text-xs font-medium transition-colors", categoria === name ? "border-primary/45 bg-primary/10 text-primary" : "border-border bg-background/50 text-muted-foreground hover:text-foreground")}>{name}</button>)}
+              <div className="flex flex-wrap gap-1.5 pt-1" aria-label="Categorías frecuentes">
+                {frequentCategories.map((name) => <button key={name} type="button" onClick={() => setCategoria(name)} aria-pressed={categoria === name} className={cn("min-h-9 rounded-full border px-3 text-xs font-medium transition-colors", categoria === name ? "border-primary/45 bg-primary/10 text-primary" : "border-border bg-background/50 text-muted-foreground hover:text-foreground")}>{name}</button>)}
+                {!newCatOpen && (
+                  <button type="button" onClick={() => { setNewCatOpen(true); setNewCatMsg(null) }} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-primary/45 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/10">
+                    <Plus className="h-3 w-3" /> Nueva
+                  </button>
+                )}
+              </div>
+              {newCatOpen && (
+                <div className="flex items-center gap-1.5 pt-1">
+                  <Input
+                    autoFocus
+                    value={newCatName}
+                    onChange={(e) => { setNewCatName(e.target.value.slice(0, MAX_CATEGORY_NAME)); setNewCatMsg(null) }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); createCategory() }
+                      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setNewCatOpen(false); setNewCatName("") }
+                    }}
+                    placeholder={tipo === "ingreso" ? "Nueva categoría de ingreso" : "Nueva categoría de gasto"}
+                    aria-label="Nombre de la nueva categoría"
+                    className="h-10 min-w-0 flex-1 text-base sm:text-sm"
+                  />
+                  <Button type="button" size="icon" onClick={createCategory} aria-label="Crear categoría" className="h-10 w-10 shrink-0"><Check className="h-4 w-4" /></Button>
+                  <Button type="button" size="icon" variant="ghost" onClick={() => { setNewCatOpen(false); setNewCatName(""); setNewCatMsg(null) }} aria-label="Cancelar nueva categoría" className="h-10 w-10 shrink-0 text-muted-foreground"><X className="h-4 w-4" /></Button>
                 </div>
               )}
+              {newCatMsg && <p role={newCatMsg.tone === "error" ? "alert" : "status"} className={cn("text-xs", newCatMsg.tone === "error" ? "text-red-500" : "text-muted-foreground")}>{newCatMsg.text}</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -531,6 +591,7 @@ export function QuickActionsFAB() {
               transactions={state.transactions}
               initial={prefill}
               onSaveTransaction={handleAddTransaction}
+              onCreateCategory={(name, kind) => dispatch({ type: "ADD_CATEGORY", payload: { name, color: "#64748b", kind } })}
               onSaveTransfer={handleTransfer}
               onCancel={() => setDialogOpen(false)}
             />

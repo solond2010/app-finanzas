@@ -1,5 +1,6 @@
 "use client"
 
+import { cleanCategoryName, findCategoryByName } from "@/lib/category-names"
 import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -65,12 +66,12 @@ export default function ConfiguracionPage() {
   const closeReset = (open: boolean) => { setResetOpen(open); if (!open) setResetText("") }
 
   const addCategory = () => {
-    const name = newCat.trim()
+    const name = cleanCategoryName(newCat)
     if (!name) return
     // Comparación sin distinguir mayúsculas/tildes de caja: "Suscripciones" y
     // "suscripciones" son la misma categoría para quien la usa, y antes de
     // este fix el check exacto dejaba pasar duplicados con distinta capitalización.
-    if (state.categories.some((c) => c.name.trim().toLowerCase() === name.toLowerCase())) {
+    if (findCategoryByName(state.categories, name)) {
       toast("Esa categoría ya existe", "error")
       return
     }

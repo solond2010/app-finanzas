@@ -1,5 +1,6 @@
 "use client"
 
+import { findCategoryByName } from "./category-names"
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
 import { type CurrencyCode, refreshExchangeRates } from "./currency"
@@ -371,10 +372,10 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
     case "DELETE_SINKING_FUND":
       return { ...state, sinkingFunds: state.sinkingFunds.filter((s) => s.id !== action.payload) }
     case "ADD_CATEGORY":
-      // Comparación sin distinguir mayúsculas ni espacios sobrantes: mismo
+      // Comparación sin distinguir mayúsculas, tildes ni espacios: mismo
       // criterio que el formulario de Configuración, aquí también por si
       // ADD_CATEGORY llega a dispararse alguna vez desde otro punto de la app.
-      return state.categories.some((c) => c.name.trim().toLowerCase() === action.payload.name.trim().toLowerCase())
+      return findCategoryByName(state.categories, action.payload.name)
         ? state
         : { ...state, categories: [...state.categories, { id: action.payload.id ?? generateId(), ...action.payload }] }
     case "UPDATE_CATEGORY": {
