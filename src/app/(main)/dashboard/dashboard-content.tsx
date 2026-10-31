@@ -51,13 +51,13 @@ const RANGES = [
 
 type DashboardMetric = "gastos" | "ingresos" | "neto" | "inversion" | "cash" | "patrimonio"
 type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYear" | "custom"
-const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["cyan", "orange"])
-const MonthlyCashflowTooltip = createChartTooltip(["Ingresos", "Gastos", "Ahorro neto"], ["cyan", "orange", "emerald"])
+const CashflowTooltip = createChartTooltip(["Ingresos", "Gastos"], ["emerald", "red"])
+const MonthlyCashflowTooltip = createChartTooltip(["Ingresos", "Gastos", "Ahorro neto"], ["emerald", "red", "amber"])
 const MONTHS_SHORT = Array.from({ length: 12 }, (_, month) => new Date(2026, month, 1).toLocaleDateString("es-ES", { month: "short" }).replace(".", ""))
 const MONTHLY_CASHFLOW_SERIES = [
-  { key: "Ingresos", label: "Ingresos", color: "#06b6d4" },
-  { key: "Gastos", label: "Gastos", color: "#f97316" },
-  { key: "Ahorro neto", label: "Ahorro neto", color: "#10b981" },
+  { key: "Ingresos", label: "Ingresos", color: "var(--accent-green)" },
+  { key: "Gastos", label: "Gastos", color: "var(--accent-red)" },
+  { key: "Ahorro neto", label: "Ahorro neto", color: "var(--gold)" },
 ] as const
 
 function SingleBucketCashflowChart({ bucket, includeSavings }: {
@@ -170,7 +170,7 @@ function AnnualStat({ label, year, value, accent, icon: Icon, children }: { labe
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">Acumulado {year}</p>
         </div>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `color-mix(in oklch, ${accent} 14%, transparent)`, color: accent }}>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `color-mix(in oklab, ${accent} 14%, transparent)`, color: accent }}>
           <Icon className="h-4 w-4" />
         </span>
       </div>
@@ -898,7 +898,7 @@ export default function DashboardContent() {
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="page-section-label hidden sm:block">Resumen general</p>
-            <h1 className="truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Finanzas</h1>
+            <h1 className="truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Resumen</h1>
           </div>
           <button
             type="button"

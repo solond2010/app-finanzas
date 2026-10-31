@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { GarraMark } from "@/components/brand/garra-logo"
 import { useSyncStatus } from "@/lib/store"
 import { useInvestmentSyncStatus } from "@/lib/investments"
 import { usePrivacy } from "@/lib/privacy"
@@ -21,7 +22,6 @@ import {
   ChevronLeft,
   Eye,
   EyeOff,
-  CircleDollarSign,
   Plus,
 } from "lucide-react"
 import { useEffect } from "react"
@@ -126,9 +126,7 @@ export function Sidebar() {
       {!sidebarOpen && (
         <aside className="app-sidebar fixed left-0 top-0 z-40 hidden h-full w-16 flex-col items-center border-r bg-sidebar py-5 shadow-xl shadow-sidebar-border/50 lg:flex">
           <div className="mb-6">
-            <div className="gold-badge flex size-9 items-center justify-center rounded-xl">
-              <CircleDollarSign className="h-4 w-4" />
-            </div>
+            <GarraMark title="Garra" />
           </div>
           <Tooltip label="Nuevo movimiento">
             <button
@@ -212,12 +210,10 @@ export function Sidebar() {
         )}
       >
         <div className="flex items-center gap-3 mb-8 px-4">
-          <div className="gold-badge flex size-9 items-center justify-center rounded-xl">
-            <CircleDollarSign className="h-4 w-4" />
-          </div>
+          <GarraMark />
           <div>
-            <h1 className="text-base font-bold tracking-tight text-sidebar-foreground">Finanzas</h1>
-            <p className="text-[10px] font-medium text-muted-foreground tracking-wider uppercase">Panel de Control</p>
+            <p className="font-heading text-lg font-bold leading-none tracking-tight text-sidebar-foreground">Garra</p>
+            <p className="mt-1 text-[10px] font-medium text-muted-foreground tracking-wider uppercase">Tus finanzas</p>
           </div>
         </div>
 

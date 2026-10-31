@@ -11,16 +11,6 @@ export default function LoginPage() {
   const accounts = isSupabaseAuthEnabled()
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full opacity-40 blur-[100px]"
-        style={{ background: "var(--primary)" }}
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-32 -right-32 h-80 w-80 rounded-full opacity-25 blur-[100px]"
-        style={{ background: "var(--gold)" }}
-      />
       <div className="relative hero-panel w-full max-w-sm rounded-[16px] p-8">
         <Suspense fallback={<div className="text-sm text-muted-foreground text-center py-8">Cargando...</div>}>
           {accounts ? <AccountLoginForm /> : <PasswordLoginForm />}

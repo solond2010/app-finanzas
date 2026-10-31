@@ -1,10 +1,16 @@
 import type { Metadata, Viewport } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Bricolage_Grotesque, Geist_Mono, Inter } from "next/font/google"
 import { cookies } from "next/headers"
 import "./globals.css"
 
-const geistSans = Geist({
+const inter = Inter({
   variable: "--font-sans",
+  subsets: ["latin"],
+})
+
+// Tipografía de titulares de la marca Garra.
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-display",
   subsets: ["latin"],
 })
 
@@ -14,12 +20,13 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Finanzas - Panel de Control",
-  description: "Dashboard financiero personal",
+  title: { default: "Garra · Tus finanzas, con garra", template: "%s · Garra" },
+  description: "Garra: tus cuentas, gastos e inversiones en un solo lugar.",
+  applicationName: "Garra",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Finanzas",
+    title: "Garra",
   },
 }
 
@@ -29,7 +36,7 @@ export const viewport: Viewport = {
   // Sin esto, env(safe-area-inset-*) vale 0 siempre: el padding de seguridad
   // que ya usa la barra inferior móvil (mobile-bottom-nav.tsx) no hacía nada.
   viewportFit: "cover",
-  themeColor: "#000001",
+  themeColor: "#0B0F14",
 }
 
 export default async function RootLayout({
@@ -48,7 +55,7 @@ export default async function RootLayout({
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable}${isDark ? " dark" : ""}`}
+      className={`${inter.variable} ${bricolage.variable} ${geistMono.variable}${isDark ? " dark" : ""}`}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
