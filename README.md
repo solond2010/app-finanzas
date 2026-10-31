@@ -20,7 +20,8 @@ Crea `.env.local` (local) y configura las mismas claves en Vercel (Production/Pr
 |---|---|---|
 | `APP_PASSWORD` | Sí | Contraseña de acceso a la app. Sin ella el proxy responde **503** (fail-closed). El login verifica esta contraseña y guarda en la cookie `app-auth` un **token HMAC opaco**, no la contraseña en claro. |
 | `SUPABASE_URL` | Sí | URL del proyecto Supabase. |
-| `SUPABASE_ANON_KEY` | Sí | Anon key de Supabase. |
+| `SUPABASE_ANON_KEY` | Sí | Anon key de Supabase (respaldo si no hay clave secreta). |
+| `SUPABASE_SERVICE_ROLE_KEY` | Recomendada | Clave secreta de Supabase (`sb_secret_...`). Solo servidor, nunca `NEXT_PUBLIC_`. Necesaria cuando RLS está activado. |
 | `SHORTCUTS_SECRET` | Para Atajos iOS | Protege `/api/shortcuts/*` (independiente de `APP_PASSWORD` / cookie). Header: `x-shortcuts-secret`. |
 
 Tras cambiar `APP_PASSWORD` hay que volver a iniciar sesión (las cookies antiguas dejan de valer).

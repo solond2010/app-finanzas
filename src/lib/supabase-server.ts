@@ -9,10 +9,19 @@ import { createClient } from "@supabase/supabase-js"
 // desactivado en todas las tablas). Ahora el navegador solo habla con
 // nuestras propias rutas /api/data y /api/storage, protegidas por la misma
 // cookie de sesión que ya usa el middleware.
+//
+// Clave: se usa SUPABASE_SERVICE_ROLE_KEY (clave secreta, solo servidor) si
+// existe; si no, se recurre a SUPABASE_ANON_KEY. Con RLS activado y sin
+// políticas para "anon", solo la clave secreta puede leer/escribir, así que
+// la clave pública deja de dar acceso directo a la base de datos.
+// NUNCA importes este archivo desde un componente de cliente ni uses el
+// prefijo NEXT_PUBLIC_ con estas variables ("server-only" lo impide).
 const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!
+const supabaseServerKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!
 
-export const supabaseServer = createClient(supabaseUrl, supabaseAnonKey)
+export const supabaseServer = createClient(supabaseUrl, supabaseServerKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+})
 
 const PRIMARY_KEYS: Record<string, string> = {
   accounts: "id",
