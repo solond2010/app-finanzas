@@ -115,7 +115,7 @@ export function MountainChart<T extends object>({
   return (
     <div
       ref={containerRef}
-      className={`relative select-none outline-none focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-primary ${className ?? ""}`}
+      className={`relative flex select-none flex-col outline-none focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-primary ${className ?? ""}`}
       onPointerMove={handlePointer}
       onPointerDown={(e) => { if (e.pointerType === "touch") handlePointer(e) }}
       onPointerUp={handlePointerUp}
@@ -128,7 +128,7 @@ export function MountainChart<T extends object>({
       tabIndex={points.length ? 0 : -1}
       style={{ touchAction: "pan-y", cursor: onPin ? "pointer" : undefined }}
     >
-      <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="h-full w-full overflow-visible" aria-hidden="true">
+      <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="min-h-0 w-full flex-1 overflow-visible" aria-hidden="true">
         <defs>
 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
              <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.22" />
@@ -180,7 +180,7 @@ export function MountainChart<T extends object>({
         {hovered ? `${hovered.label}: ${valueFormatter(hovered.v)}` : ""}
       </span>
 
-      <div className={`mt-2 grid ${points.length > 2 ? "grid-cols-3" : "grid-cols-2"} items-center text-[10px] leading-4 text-muted-foreground sm:text-[11px]`}>
+      <div className={`mt-2 grid shrink-0 ${points.length > 2 ? "grid-cols-3" : "grid-cols-2"} items-center text-[10px] leading-4 text-muted-foreground sm:text-[11px]`}>
         <span className="min-w-0 truncate text-left">{points[0]?.label}</span>
         {points.length > 2 && <span className="min-w-0 truncate px-1 text-center">{points[Math.floor((points.length - 1) / 2)]?.label}</span>}
         <span className="min-w-0 truncate text-right">{points.at(-1)?.label}</span>

@@ -63,7 +63,7 @@ export function auditFinanceState(state: FinanceState, positions: Position[] = [
   const mismatchedAccounts = state.accounts.filter((account) => Number.isFinite(account.saldo) && Math.abs(account.saldo - (ledgerByAccount.get(account.id) ?? 0)) > 0.02)
   add("balance-mismatch", "Cuentas cuyo saldo no cuadra con su historial", mismatchedAccounts.length, mismatchedAccounts.map((account) => {
     const ledger = ledgerByAccount.get(account.id) ?? 0
-    const money = (value: number) => `${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${account.currency ?? "€"}`
+    const money = (value: number) => `${value.toLocaleString("es-ES", { useGrouping: "always", minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${account.currency ?? "€"}`
     return `${account.nombre}: saldo ${money(account.saldo)} · suma de movimientos ${money(ledger)}`
   }), mismatchedAccounts.map((account) => account.id))
   const normalizedNames = state.categories.map((row) => row.name.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES"))

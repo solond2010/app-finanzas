@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { milestoneStepFor, upcomingMilestones } from "@/lib/wealth-milestones"
 
 const EUR = (amount: number) => formatMoney(amount, "EUR")
-const milestoneLabel = (amount: number) => `${amount.toLocaleString("es-ES", { maximumFractionDigits: 0 })} €`
+const milestoneLabel = (amount: number) => `${amount.toLocaleString("es-ES", { useGrouping: "always", maximumFractionDigits: 0 })} €`
 
 function milestoneTrail(value: number, count: number) {
   const safeValue = Math.max(Number.isFinite(value) ? value : 0, 0)
@@ -104,7 +104,7 @@ export function PatrimonioHitos({ value }: { value: number }) {
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-foreground">Siguiente hito</h2>
               <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums text-foreground sm:text-4xl">
-                <Sensitive>{EUR(target)}</Sensitive>
+                <Sensitive>{milestoneLabel(target)}</Sensitive>
               </p>
             </div>
             <p className="max-w-full break-words text-sm text-muted-foreground">
@@ -112,10 +112,10 @@ export function PatrimonioHitos({ value }: { value: number }) {
             </p>
           </div>
           <div className="mt-5 space-y-2">
-            <Progress value={progress} aria-label={`Progreso hacia el hito de ${EUR(target)}`} className="h-2.5 [&_[data-slot=progress-indicator]]:bg-[var(--gold)]" />
+            <Progress value={progress} aria-label={`Progreso hacia el hito de ${milestoneLabel(target)}`} className="h-2.5 [&_[data-slot=progress-indicator]]:bg-[var(--gold)]" />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Patrimonio actual: <Sensitive>{EUR(safeValue)}</Sensitive></span>
-              <span className="shrink-0">{Math.round(progress)} %</span>
+              <span className="shrink-0">{Math.round(progress)}%</span>
             </div>
           </div>
           </div>
@@ -129,8 +129,8 @@ export function PatrimonioHitos({ value }: { value: number }) {
             {[target, next, afterNext].map((milestone, index) => (
               <div key={milestone} className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
                 <div className="min-w-0 flex-1 rounded-xl bg-muted/40 px-1.5 py-3 text-center ring-1 ring-border/30 sm:px-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{index === 0 ? "Ahora" : `Hito ${index + 1}`}</p>
-                  <p className="mt-1 whitespace-nowrap text-[clamp(0.62rem,1vw,0.8rem)] font-semibold tabular-nums text-foreground"><Sensitive>{EUR(milestone)}</Sensitive></p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{index === 0 ? "Siguiente" : `Hito ${index + 1}`}</p>
+                  <p className="mt-1 whitespace-nowrap text-[clamp(0.62rem,1vw,0.8rem)] font-semibold tabular-nums text-foreground"><Sensitive>{milestoneLabel(milestone)}</Sensitive></p>
                 </div>
                 {index < 2 && <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />}
               </div>

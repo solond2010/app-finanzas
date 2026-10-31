@@ -129,15 +129,15 @@ export function SinkingFundsGrid() {
       <CardHeader className="flex flex-col gap-3 space-y-0 pb-2 lg:flex-row lg:items-center lg:justify-between">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <PiggyBank className="h-5 w-5 text-amber-500" />
-          Metas de Ahorro
+          Metas de ahorro
         </CardTitle>
         <Button size="sm" className="gap-1" onClick={() => setShowNew(true)}>
-          <Plus className="h-3.5 w-3.5" /> Nueva Meta
+          <Plus className="h-3.5 w-3.5" /> Nueva meta
         </Button>
         <Dialog open={showNew} onOpenChange={setShowNew}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Nueva Meta de Ahorro</DialogTitle>
+              <DialogTitle>Nueva meta de ahorro</DialogTitle>
             </DialogHeader>
             <SinkingFundForm
               accounts={displayAccounts}
@@ -202,10 +202,10 @@ export function SinkingFundsGrid() {
                       <p className="text-sm font-semibold tabular-nums text-foreground">
                         {/* max 2 decimales: el valor de mercado trae decimales largos y
                             "511,647 €" se lee como seiscientos mil, no como 511,65 */}
-                        <Sensitive>{ahorradoActual.toLocaleString("es-ES", { maximumFractionDigits: 2 })} {symbol}</Sensitive>
+                        <Sensitive>{ahorradoActual.toLocaleString("es-ES", { useGrouping: "always", maximumFractionDigits: 2 })} {symbol}</Sensitive>
                       </p>
                       <p className="text-[11px] text-muted-foreground">
-                        de <Sensitive>{fund.cantidad_objetivo.toLocaleString("es-ES")} {symbol}</Sensitive>
+                        de <Sensitive>{fund.cantidad_objetivo.toLocaleString("es-ES", { useGrouping: "always" })} {symbol}</Sensitive>
                       </p>
                     </div>
                   </div>
@@ -220,7 +220,7 @@ export function SinkingFundsGrid() {
                     {account && <p>Cuenta: {account.nombre}</p>}
                     {monthly > 0 && (
                       <p className="font-medium text-foreground">
-                        <span className="mr-1 text-muted-foreground">Aportación necesaria:</span><Sensitive as="span" className="tabular-nums">{monthly.toLocaleString("es-ES")} {symbol}/mes</Sensitive>
+                        <span className="mr-1 text-muted-foreground">Aportación necesaria:</span><Sensitive as="span" className="tabular-nums">{monthly.toLocaleString("es-ES", { useGrouping: "always" })} {symbol}/mes</Sensitive>
                       </p>
                     )}
 
@@ -235,7 +235,7 @@ export function SinkingFundsGrid() {
       <Dialog open={editingFund !== null} onOpenChange={(open) => { if (!open) setEditingFund(null) }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Meta</DialogTitle>
+            <DialogTitle>Editar meta</DialogTitle>
           </DialogHeader>
           {editingFund && (
             <SinkingFundForm

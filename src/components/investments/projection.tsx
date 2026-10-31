@@ -149,13 +149,13 @@ export function ProjectionSimulator({ ahorros0, inversiones0 }: { ahorros0: numb
                     {rows.map((r) => (
                       <tr key={r.year} className="border-b border-border/60 last:border-0">
                         <td className="px-3 py-1.5 text-left font-medium text-foreground">{r.year}</td>
-                        <td className="px-3 py-1.5 text-muted-foreground">{r.Ahorros.toLocaleString("es-ES")}</td>
-                        <td className="px-3 py-1.5 text-muted-foreground">{r.Inversiones.toLocaleString("es-ES")}</td>
-                        <td className="px-3 py-1.5 text-muted-foreground">{r.aportInv.toLocaleString("es-ES")}</td>
-                        <td className="px-3 py-1.5 text-muted-foreground">{r.aportAh.toLocaleString("es-ES")}</td>
-                        <td className="px-3 py-1.5 text-emerald-500">{r.intAh.toLocaleString("es-ES")}</td>
-                        <td className="px-3 py-1.5 text-emerald-500">{r.intInv.toLocaleString("es-ES")}</td>
-                        <td className="px-3 py-1.5 font-bold text-foreground">{r.total.toLocaleString("es-ES")}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{r.Ahorros.toLocaleString("es-ES", { useGrouping: "always" })}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{r.Inversiones.toLocaleString("es-ES", { useGrouping: "always" })}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{r.aportInv.toLocaleString("es-ES", { useGrouping: "always" })}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{r.aportAh.toLocaleString("es-ES", { useGrouping: "always" })}</td>
+                        <td className="px-3 py-1.5 text-emerald-500">{r.intAh.toLocaleString("es-ES", { useGrouping: "always" })}</td>
+                        <td className="px-3 py-1.5 text-emerald-500">{r.intInv.toLocaleString("es-ES", { useGrouping: "always" })}</td>
+                        <td className="px-3 py-1.5 font-bold text-foreground">{r.total.toLocaleString("es-ES", { useGrouping: "always" })}</td>
                       </tr>
                     ))}
                   </tbody>

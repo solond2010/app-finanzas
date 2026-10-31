@@ -178,7 +178,7 @@ export default function AccountDetailPage() {
 
       <div className="space-y-1">
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Movimientos</p>
-        <h2 className="text-xl font-bold tracking-tight">Historial de transacciones</h2>
+        <h2 className="text-xl font-bold tracking-tight">Historial de movimientos</h2>
       </div>
 
       <TransactionsTable cuentaId={account.id} />

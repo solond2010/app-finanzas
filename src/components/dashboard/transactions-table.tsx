@@ -408,7 +408,7 @@ export function TransactionsTable({
       dispatch({ type: "DELETE_TRANSACTION", payload: id })
       dbDeleteEq("transactions", "id", id).then(() => {}, () => {})
     }
-    toast(`${deletableIds.length} transacciones eliminadas`, "success")
+    toast(`${deletableIds.length} movimientos eliminados`, "success")
     clearSelection()
     setBulkDeleteConfirm(false)
   }
@@ -416,7 +416,7 @@ export function TransactionsTable({
     for (const t of state.transactions) {
       if (selectedIds.has(t.id)) dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, categoria } })
     }
-    toast(`${selectedIds.size} transacciones recategorizadas`, "success")
+    toast(`${selectedIds.size} movimientos recategorizados`, "success")
     clearSelection()
   }
 
@@ -499,7 +499,7 @@ export function TransactionsTable({
       if (!monto) { toast("Importe no válido: debe ser mayor que 0", "error"); return }
       dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, monto } })
     }
-    toast("Transacción actualizada", "success")
+    toast("Movimiento actualizado", "success")
   }
 
   const sorted = useMemo(
@@ -597,7 +597,7 @@ export function TransactionsTable({
     <Card className="col-span-full">
       <CardHeader className="flex flex-col gap-4 space-y-0 pb-2 lg:flex-row lg:items-center lg:justify-between">
         <div className="w-full space-y-3 lg:w-auto lg:space-y-0">
-          <CardTitle className="text-lg font-semibold">Transacciones</CardTitle>
+          <CardTitle className="text-lg font-semibold">Movimientos</CardTitle>
           {selectedMonth && !cuentaId && (
             <div className="grid grid-cols-2 rounded-full bg-muted/70 p-1 md:hidden" role="group" aria-label="Vista de movimientos">
               <button type="button" aria-pressed={mobileView === "list"} onClick={() => setMobileView("list")} className={cn("flex min-h-10 items-center justify-center gap-2 rounded-full text-sm font-semibold transition-all", mobileView === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}><List className="size-4" />Lista</button>
@@ -618,14 +618,14 @@ export function TransactionsTable({
             <Button type="button" variant="outline" size="sm" className="h-10 w-full gap-1.5 px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm" onClick={exportCSV}>
               <Download className="h-3.5 w-3.5" /> Exportar CSV
             </Button>
-            <label className="inline-flex min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-border px-2 py-2 text-[11px] text-muted-foreground sm:px-2.5 sm:text-xs">
+            <label className="inline-flex h-10 min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-border px-2 text-[11px] text-muted-foreground sm:h-9 sm:px-2.5 sm:text-xs">
               <input type="checkbox" checked={showAdjustments} onChange={(e) => { setShowAdjustments(e.target.checked); setPage(0) }} />
               <span className="truncate">Ver ajustes de saldo</span>
             </label>
             <Filter className="hidden h-4 w-4 text-muted-foreground sm:block" />
             {!cuentaId && (
               <Select value={filterAccount} onValueChange={handleAccountFilter} items={{ all: "Todas las cuentas", ...Object.fromEntries(state.accounts.map((a) => [a.id, a.nombre])) }}>
-                <SelectTrigger className="h-10 w-full min-w-0 text-xs sm:h-9 sm:w-40 sm:text-sm" aria-label="Filtrar por cuenta">
+                <SelectTrigger className="h-10 w-full min-w-0 text-xs sm:h-9 sm:w-52 sm:text-sm" aria-label="Filtrar por cuenta">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent className="p-2">
@@ -637,7 +637,7 @@ export function TransactionsTable({
               </Select>
             )}
             <Select value={filterCategory} onValueChange={handleCategoryFilter} items={{ all: "Todas las categorías", ...Object.fromEntries(categoryFilterOptions.map((c) => [c.name, c.name])) }}>
-              <SelectTrigger className="h-10 w-full min-w-0 text-xs sm:h-9 sm:w-40 sm:text-sm" aria-label="Filtrar por categoría">
+              <SelectTrigger className="h-10 w-full min-w-0 text-xs sm:h-9 sm:w-52 sm:text-sm" aria-label="Filtrar por categoría">
                 <SelectValue placeholder="Categoría" />
               </SelectTrigger>
               <SelectContent className="p-2">
@@ -672,13 +672,13 @@ export function TransactionsTable({
               </Button>
             )}
             <div className="relative col-span-2 min-w-0 sm:col-span-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0) }}
-              placeholder="Buscar..."
-              className="h-10 w-full rounded-xl pl-8 sm:h-9 sm:w-40 sm:pl-7"
+              placeholder="Buscar movimiento…"
+              className="h-10 w-full rounded-lg pl-9 sm:h-9 sm:w-52"
             />
           </div>
           <label className="sr-only" htmlFor="transaction-sort">Ordenar movimientos</label>
@@ -686,7 +686,7 @@ export function TransactionsTable({
             id="transaction-sort"
             value={sortOrder}
             onChange={(e) => { setSortOrder(e.target.value as "newest" | "oldest"); setPage(0) }}
-            className="col-span-2 h-10 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-xs font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary sm:col-span-1 sm:h-9 sm:w-auto sm:min-w-36"
+            className="col-span-2 h-10 w-full min-w-0 rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary sm:col-span-1 sm:h-9 sm:w-auto sm:min-w-36"
           >
             <option value="newest">Más recientes</option>
             <option value="oldest">Más antiguos</option>
@@ -699,12 +699,12 @@ export function TransactionsTable({
           <Dialog open={showNew} onOpenChange={setShowNew}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nueva Transacción</DialogTitle>
+                <DialogTitle>Nuevo movimiento</DialogTitle>
               </DialogHeader>
               <TransactionForm
                 accounts={state.accounts}
                 categories={state.categories}
-                onSave={(t) => { dispatch({ type: "ADD_TRANSACTION", payload: t }); setShowNew(false); toast("Transacción creada", "success") }}
+                onSave={(t) => { dispatch({ type: "ADD_TRANSACTION", payload: t }); setShowNew(false); toast("Movimiento creado", "success") }}
                 onCancel={() => setShowNew(false)}
               />
             </DialogContent>
@@ -812,7 +812,7 @@ export function TransactionsTable({
                 <input
                   type="checkbox"
                   className="rounded border-muted-foreground"
-                  aria-label="Seleccionar todas las transacciones visibles"
+                  aria-label="Seleccionar todos los movimientos visibles"
                   checked={currentPageIds.length > 0 && currentPageIds.every((id) => selectedIds.has(id))}
                   onChange={(e) => {
                     setSelectedIds((prev) => {
@@ -859,9 +859,9 @@ export function TransactionsTable({
                   ) : (
                     <EmptyState
                       icon={Search}
-                      title="No hay transacciones este mes"
+                      title="No hay movimientos este mes"
                       description="Registra tu primer movimiento para verlo aquí."
-                      action={{ label: "Nueva transacción", icon: Plus, onClick: () => setShowNew(true) }}
+                      action={{ label: "Nuevo movimiento", icon: Plus, onClick: () => setShowNew(true) }}
                     />
                   )}
                 </TableCell>
@@ -902,7 +902,7 @@ export function TransactionsTable({
                           <input
                             type="checkbox"
                             className="rounded border-muted-foreground opacity-30 transition-opacity group-hover:opacity-100 checked:opacity-100 focus-visible:opacity-100"
-                            aria-label="Seleccionar transacción"
+                            aria-label="Seleccionar movimiento"
                             checked={selectedIds.has(t.id)}
                             disabled={systemAdjustment}
                             title={systemAdjustment ? "Los ajustes de saldo son de solo lectura" : undefined}
@@ -979,7 +979,7 @@ export function TransactionsTable({
                               <InlineEditInput type="number" defaultValue={String(t.monto)} onDone={(ok, v) => handleInlineDone(t, "monto", ok, v)} />
                             ) : (
                               <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setEditingCell({ id: t.id, field: "monto" })} className="rounded px-1 py-0.5 -mx-1 hover:bg-muted/60" aria-label="Editar monto">
-                                <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(t.monto), account?.currency ?? "EUR")}</Sensitive>
+                                <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "−"}{formatMoney(Math.abs(t.monto), account?.currency ?? "EUR")}</Sensitive>
                               </button>
                             )}
                           </div>
@@ -996,10 +996,10 @@ export function TransactionsTable({
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                            <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setEditingTxn(t)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90" aria-label="Editar transacción">
+                            <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setEditingTxn(t)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90" aria-label="Editar movimiento">
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
-                            <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setDeleteConfirm(t)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-90" aria-label="Eliminar transacción">
+                            <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setDeleteConfirm(t)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-90" aria-label="Eliminar movimiento">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
@@ -1023,7 +1023,7 @@ export function TransactionsTable({
               {hasActiveFilters ? (
                 <EmptyState icon={Filter} title="Ningún movimiento coincide" description="Cambia o limpia los filtros para ver otros movimientos." action={{ label: "Limpiar filtros", icon: X, onClick: clearFilters }} />
               ) : (
-                <EmptyState icon={Search} title="Sin movimientos este mes" description="Registra tu primer movimiento para verlo aquí." action={{ label: "Nueva transacción", icon: Plus, onClick: () => setShowNew(true) }} />
+                <EmptyState icon={Search} title="Sin movimientos este mes" description="Registra tu primer movimiento para verlo aquí." action={{ label: "Nuevo movimiento", icon: Plus, onClick: () => setShowNew(true) }} />
               )}
             </div>
           ) : mobileGroups.map((group) => (
@@ -1105,7 +1105,7 @@ export function TransactionsTable({
                 {hasActiveFilters ? (
                   <EmptyState icon={Filter} title="Ningún movimiento coincide" description="Cambia o limpia los filtros para ver otros movimientos." action={{ label: "Limpiar filtros", icon: X, onClick: clearFilters }} />
                 ) : (
-                  <EmptyState icon={Search} title="Sin movimientos este mes" description="Registra tu primer movimiento para verlo aquí." action={{ label: "Nueva transacción", icon: Plus, onClick: () => setShowNew(true) }} />
+                  <EmptyState icon={Search} title="Sin movimientos este mes" description="Registra tu primer movimiento para verlo aquí." action={{ label: "Nuevo movimiento", icon: Plus, onClick: () => setShowNew(true) }} />
                 )}
               </div>
             ) : mobileGroups.map((group) => (
@@ -1192,14 +1192,14 @@ export function TransactionsTable({
       <Dialog open={editingTxn !== null} onOpenChange={(open) => { if (!open) setEditingTxn(null) }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Transacción</DialogTitle>
+            <DialogTitle>Editar movimiento</DialogTitle>
           </DialogHeader>
           {editingTxn && (
             <TransactionForm
               transaction={editingTxn}
               accounts={state.accounts}
               categories={state.categories}
-              onSave={(tx) => { dispatch({ type: "UPDATE_TRANSACTION", payload: tx }); setEditingTxn(null); toast("Transacción actualizada", "success") }}
+              onSave={(tx) => { dispatch({ type: "UPDATE_TRANSACTION", payload: tx }); setEditingTxn(null); toast("Movimiento actualizado", "success") }}
               onCancel={() => setEditingTxn(null)}
             />
           )}
@@ -1218,10 +1218,10 @@ export function TransactionsTable({
           // sincronización con estado local desactualizado; sin esta llamada
           // directa, esas transacciones nunca se borrarían de Supabase.
           dbDeleteEq("transactions", "id", deleteConfirm.id).then(() => {}, () => {})
-          toast("Transacción eliminada", "success")
+          toast("Movimiento eliminado", "success")
         }}
-        title="¿Eliminar transacción?"
-        description={<>Se eliminará la transacción &ldquo;{deleteConfirm?.descripcion || deleteConfirm?.categoria || ""}&rdquo; de <Sensitive>{deleteConfirm?.monto?.toLocaleString("es-ES")} €</Sensitive>. No se puede deshacer.</>}
+        title="¿Eliminar movimiento?"
+        description={<>Se eliminará el movimiento &ldquo;{deleteConfirm?.descripcion || deleteConfirm?.categoria || ""}&rdquo; de <Sensitive>{deleteConfirm?.monto?.toLocaleString("es-ES", { useGrouping: "always" })} €</Sensitive>. No se puede deshacer.</>}
         confirmLabel="Eliminar"
         destructive
       />
@@ -1229,8 +1229,8 @@ export function TransactionsTable({
         open={bulkDeleteConfirm}
         onOpenChange={setBulkDeleteConfirm}
         onConfirm={bulkDelete}
-        title="¿Eliminar transacciones seleccionadas?"
-        description={<>Se eliminarán <strong>{selectedIds.size}</strong> transacciones. No se puede deshacer.</>}
+        title="¿Eliminar los movimientos seleccionados?"
+        description={<>Se eliminarán <strong>{selectedIds.size}</strong> movimientos. No se puede deshacer.</>}
         confirmLabel="Eliminar"
         destructive
       />

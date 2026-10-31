@@ -5,7 +5,7 @@ export const AUTO_CATEGORY = "Automática"
 
 function money(amount: number, currency: string) {
   try {
-    return new Intl.NumberFormat("es-ES", { style: "currency", currency }).format(amount)
+    return new Intl.NumberFormat("es-ES", { useGrouping: "always", style: "currency", currency }).format(amount)
   } catch {
     return `${amount} ${currency}`
   }

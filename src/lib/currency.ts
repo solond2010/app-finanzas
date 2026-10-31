@@ -56,5 +56,5 @@ export function convertFromEur(amount: number, currency: CurrencyCode) {
 export function formatMoney(amount: number, currency: CurrencyCode) {
   // Espacio fino inseparable, como en money() (lib/format.ts): misma
   // tipografía de importes en toda la app.
-  return `${amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${NNBSP}${currencySymbol(currency)}`
+  return `${amount.toLocaleString("es-ES", { useGrouping: "always", minimumFractionDigits: 2, maximumFractionDigits: 2 })}${NNBSP}${currencySymbol(currency)}`
 }

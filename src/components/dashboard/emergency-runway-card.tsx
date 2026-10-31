@@ -119,12 +119,12 @@ export function EmergencyRunwayCard({ balanceEur }: { balanceEur: number }) {
         <>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className="text-xl font-bold tracking-tight tabular-nums text-primary sm:text-2xl">
-              {coveredMonths.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+              {coveredMonths.toLocaleString("es-ES", { useGrouping: "always", minimumFractionDigits: 1, maximumFractionDigits: 1 })}
             </span>
             <span className="text-xs font-medium text-foreground">meses</span>
             <span className="ml-auto text-[10px] tabular-nums text-muted-foreground">de 6</span>
           </div>
-          <div className="mt-2 grid grid-cols-6 gap-1" role="img" aria-label={`${coveredMonths.toLocaleString("es-ES", { maximumFractionDigits: 1 })} meses cubiertos de un objetivo visual de 6`}>
+          <div className="mt-2 grid grid-cols-6 gap-1" role="img" aria-label={`${coveredMonths.toLocaleString("es-ES", { useGrouping: "always", maximumFractionDigits: 1 })} meses cubiertos de un objetivo visual de 6`}>
             {Array.from({ length: MAX_COVERAGE_MONTHS }, (_, index) => {
               const segment = Math.max(0, Math.min(1, visibleMonths - index))
               return (

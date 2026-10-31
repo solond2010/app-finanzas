@@ -9,7 +9,7 @@ import { useFinance, useSyncStatus, type CategoryKind } from "@/lib/store"
 import { useInvestments } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
-import { Plus, Trash2, Download, SlidersHorizontal, Tags, FileDown, Layers, Search, Pencil, Check, X, Cloud, CloudOff, Loader2, HardDrive, ShieldCheck, ShieldAlert, AlertTriangle } from "@/components/icons"
+import { Plus, Trash2, Download, Tags, FileDown, Layers, Search, Pencil, Check, X, Cloud, CloudOff, Loader2, HardDrive, ShieldCheck, ShieldAlert, AlertTriangle } from "@/components/icons"
 import { Skeleton } from "@/components/shared/skeleton"
 import { auditFinanceState } from "@/lib/finance-integrity"
 import Link from "next/link"
@@ -90,7 +90,7 @@ export default function ConfiguracionPage() {
     // copias se bloqueaban mutuamente para siempre.
     const isLastWithName = state.categories.filter((c) => c.name === name).length <= 1
     if (inUse && isLastWithName) {
-      toast("No puedes eliminar una categoría con transacciones", "error")
+      toast("No puedes eliminar una categoría con movimientos", "error")
       return
     }
     dispatch({ type: "DELETE_CATEGORY", payload: id })
@@ -151,19 +151,12 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="content-fade space-y-6 sm:space-y-7">
-      <section className="rounded-[16px] border border-border bg-card p-6 sm:p-8">
-        <div className="space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/25">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-            Configuración
-          </div>
-          <div className="space-y-2">
-            <p className="page-section-label">Ajustes</p>
-            <h1 className="max-w-3xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl">Personaliza tu espacio financiero.</h1>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Gestiona categorías, exporta tus datos y mantén el control de toda tu información.</p>
-          </div>
-        </div>
-      </section>
+      {/* Misma cabecera que el resto de páginas (etiqueta + título + subtítulo). */}
+      <header>
+        <p className="page-section-label">Ajustes</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Configuración</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Gestiona categorías, exporta tus datos y mantén el control de toda tu información.</p>
+      </header>
 
       {loading ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -194,7 +187,7 @@ export default function ConfiguracionPage() {
                     value={newCat}
                     onChange={(e) => setNewCat(e.target.value)}
                     placeholder={`Nueva categoría de ${newCatKind}`}
-                    className="pl-8"
+                    className="pl-9"
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory() } }}
                   />
                 </div>
@@ -236,13 +229,13 @@ export default function ConfiguracionPage() {
               <FileDown className="h-4 w-4 text-blue-500" />
               Exportar datos
             </CardTitle>
-            <p className="text-sm text-muted-foreground font-normal">{state.transactions.length} transacciones registradas</p>
+            <p className="text-sm text-muted-foreground font-normal">{state.transactions.length} movimientos registrados</p>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between rounded-2xl bg-muted/30 p-4 ring-1 ring-border/20">
               <div className="space-y-1">
                 <p className="text-sm font-medium">Descarga tu histórico</p>
-                <p className="text-xs text-muted-foreground">Todas tus transacciones en formato CSV listas para analizar en Excel o Google Sheets.</p>
+                <p className="text-xs text-muted-foreground">Todos tus movimientos en formato CSV, listos para analizar en Excel o Google Sheets.</p>
               </div>
               <Button variant="outline" size="sm" className="gap-1.5 shrink-0 ml-4" onClick={exportCSV}>
                 <Download className="h-3.5 w-3.5" /> CSV
@@ -260,7 +253,7 @@ export default function ConfiguracionPage() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium">{syncLabel}</span>
-                <span className="block truncate text-xs text-muted-foreground">Último guardado confirmado: {lastSyncLabel}</span>
+                <span className="block text-xs text-muted-foreground">Último guardado confirmado: {lastSyncLabel}</span>
               </span>
               {syncFailed && <Button variant="outline" size="sm" className="shrink-0" onClick={() => { retrySync(); retryInvestmentSync() }}>Reintentar</Button>}
             </div>
@@ -323,7 +316,7 @@ export default function ConfiguracionPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>¿Borrar todos los datos?</DialogTitle>
-            <DialogDescription>Esta acción eliminará todas tus cuentas, transacciones y metas. No se puede deshacer. Escribe <strong>BORRAR</strong> para confirmar.</DialogDescription>
+            <DialogDescription>Esta acción eliminará todas tus cuentas, movimientos y metas. No se puede deshacer. Escribe <strong>BORRAR</strong> para confirmar.</DialogDescription>
           </DialogHeader>
           <Input value={resetText} onChange={(e) => setResetText(e.target.value)} placeholder="BORRAR" aria-label="Escribe BORRAR para confirmar" autoComplete="off" />
           <DialogFooter className="gap-2 sm:gap-0">

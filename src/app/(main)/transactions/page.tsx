@@ -173,7 +173,7 @@ export default function IngresosGastosPage() {
           <ImportCsvButton />
           <div className="hidden items-center gap-1 rounded-full border border-border bg-card p-1 md:flex">
             <button onClick={() => setMonthOffset((p) => p + 1)} aria-label="Mes anterior" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="w-28 text-center text-sm font-medium text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
+            <span className="min-w-[9.5rem] whitespace-nowrap px-1 text-center text-sm font-medium text-foreground">{formatMonth(selectedDate)}</span>
             <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} aria-label="Mes siguiente" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"><ChevronRight className="h-4 w-4" /></button>
           </div>
         </div>
@@ -294,7 +294,7 @@ export default function IngresosGastosPage() {
             <div className={`${CARD} flex min-w-0 flex-col`}>
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><CalendarClock className="h-4 w-4 text-primary" /> Próximos pagos</p>
               {upcomingRecurring.length === 0 ? (
-                <EmptyState className="flex-1 py-8" icon={CalendarClock} title="Sin pagos programados" description="Marca transacciones como recurrentes para verlas aquí." />
+                <EmptyState className="flex-1 py-8" icon={CalendarClock} title="Sin pagos programados" description="Marca movimientos como recurrentes para verlas aquí." />
               ) : (
                 <div className="mt-3 flex-1 space-y-2">
                   {upcomingRecurring.map((item) => (
@@ -307,7 +307,7 @@ export default function IngresosGastosPage() {
                         </p>
                       </div>
                       <span className={cn("shrink-0 text-xs font-bold tabular-nums", (item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "text-emerald-500" : "text-foreground")}>
-                        <Sensitive>{(item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(item.monto), "EUR")}</Sensitive>
+                        <Sensitive>{(item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "+" : "−"}{formatMoney(Math.abs(item.monto), "EUR")}</Sensitive>
                       </span>
                       <button onClick={() => stopRecurring(item)} aria-label="Dejar de repetir" title="Dejar de repetir" className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500">
                         <X className="h-4 w-4" />

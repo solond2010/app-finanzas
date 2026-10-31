@@ -19,7 +19,7 @@ const TREMOR_HEX: Record<string, string> = {
 }
 
 function defaultFormatter(v: number) {
-  return `${Math.round(v).toLocaleString("es-ES")} €`
+  return `${Math.round(v).toLocaleString("es-ES", { useGrouping: "always" })} €`
 }
 
 /**

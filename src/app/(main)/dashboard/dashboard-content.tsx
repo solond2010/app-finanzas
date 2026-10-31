@@ -21,7 +21,7 @@ import { convertToEur, formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { usePrivacy } from "@/lib/privacy"
 import { typeConfig } from "@/lib/account-types"
-import { formatMonth, isInitialBalanceTransaction, chartFormatter, moneyAxisWidth, formatCappedPct, PCT_CHANGE_CAP } from "@/lib/format"
+import { formatMonth, isInitialBalanceTransaction, money, chartFormatter, chartAxisFormatter, moneyAxisWidth, formatCappedPct, PCT_CHANGE_CAP } from "@/lib/format"
 import { AnimatedNumber } from "@/components/shared/animated-number"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
@@ -69,14 +69,16 @@ function SingleBucketCashflowChart({ bucket, includeSavings, onOpen }: {
   const values = series.map(({ key }) => bucket[key])
   const maxValue = Math.max(...values, 0)
   const minValue = Math.min(...values, 0)
-  const domainMax = maxValue > 0 ? maxValue * 1.12 : 1
-  const domainMin = minValue < 0 ? minValue * 1.12 : 0
+  // Escala redonda (500, 1.000, 2.500…): el eje mostraba "2.833,60 €".
+  const rawStep = ((maxValue - minValue) * 1.08) / 4 || 1
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep))
+  const step = ([1, 2, 2.5, 5, 10].find((f) => f * magnitude >= rawStep) ?? 10) * magnitude
+  const domainMax = Math.max(step, Math.ceil((maxValue * 1.04) / step) * step)
+  const domainMin = Math.floor(minValue / step) * step
   const domain = domainMax - domainMin || 1
   const zeroY = (domainMax / domain) * 100
-  const ticks = Array.from({ length: 5 }, (_, index) => {
-    const ratio = index / 4
-    return { y: ratio * 100, value: domainMax - domain * ratio }
-  })
+  const ticks: { y: number; value: number }[] = []
+  for (let value = domainMax; value >= domainMin - step / 2; value -= step) ticks.push({ y: ((domainMax - value) / domain) * 100, value: Math.round(value) })
   const axisWidth = moneyAxisWidth(ticks.map((tick) => tick.value), 48, 120)
 
   return (
@@ -91,13 +93,13 @@ function SingleBucketCashflowChart({ bucket, includeSavings, onOpen }: {
       <div className="grid gap-x-3" style={{ gridTemplateColumns: `${axisWidth}px minmax(0, 1fr)` }}>
         <div className="relative h-32 text-right text-[10px] tabular-nums text-muted-foreground sm:h-40 sm:text-xs" aria-hidden="true">
           {ticks.map((tick, index) => (
-            <span key={index} className="absolute right-0 -translate-y-1/2 whitespace-nowrap" style={{ top: `${tick.y}%` }}>{chartFormatter(tick.value)}</span>
+            <span key={index} className="absolute right-0 -translate-y-1/2 whitespace-nowrap" style={{ top: `${tick.y}%` }}>{chartAxisFormatter(tick.value)}</span>
           ))}
         </div>
         <div className="min-w-0">
           <div className="relative h-32 sm:h-40">
             {ticks.map((tick, index) => (
-              <span key={index} aria-hidden="true" className={cn("absolute inset-x-0 border-t", index === 4 ? "border-foreground/20" : "border-border/60")} style={{ top: `${tick.y}%` }} />
+              <span key={index} aria-hidden="true" className={cn("absolute inset-x-0 border-t", tick.value === 0 ? "border-foreground/20" : "border-border/60")} style={{ top: `${tick.y}%` }} />
             ))}
             <span aria-hidden="true" className="absolute inset-x-0 border-t border-foreground/25" style={{ top: `${zeroY}%` }} />
             <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${series.length}, minmax(0, 1fr))` }}>
@@ -800,9 +802,9 @@ export default function DashboardContent() {
     : monthTotals.neto < 0
       ? { title: "Recupera el balance del mes", detail: "El flujo seleccionado está en negativo" }
       : nextGoal
-        ? { title: `Avanza en ${nextGoal.nombre}`, detail: `Meta de ahorro al ${Math.round(nextGoal.pct)} %` }
+        ? { title: `Avanza en ${nextGoal.nombre}`, detail: `Meta de ahorro al ${Math.round(nextGoal.pct)}%` }
         : savingsRate >= 20
-          ? { title: "Mantén este ritmo", detail: `Tasa de ahorro actual: ${savingsRate} %` }
+          ? { title: "Mantén este ritmo", detail: `Tasa de ahorro actual: ${savingsRate}%` }
           : { title: "Construye el siguiente hito", detail: "Un paso cada vez, según tu patrimonio" }
 
   const recentTransactions = useMemo(
@@ -933,7 +935,7 @@ export default function DashboardContent() {
 
   const metricTitles: Record<DashboardMetric, string> = {
     gastos: "Gastos del periodo", ingresos: "Ingresos del periodo", neto: "Ahorro neto",
-    inversion: "Saldo en inversión", cash: "Cash disponible", patrimonio: "Patrimonio total",
+    inversion: "Saldo en inversión", cash: "Dinero disponible", patrimonio: "Patrimonio total",
   }
   const metricAmount = metricDetail === "gastos" ? periodTotals.gastos
     : metricDetail === "ingresos" ? periodTotals.ingresos
@@ -1075,9 +1077,9 @@ export default function DashboardContent() {
             <TickerTile label="Gastos" value={<Sensitive>{formatMoney(periodTotals.gastos, "EUR")}</Sensitive>} detail={`${expenseTransactions.length} ${expenseTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-red)" onClick={() => setMetricDetail("gastos")} />
             <TickerTile label="Ingresos" value={<Sensitive>{formatMoney(periodTotals.ingresos, "EUR")}</Sensitive>} detail={`${incomeTransactions.length} ${incomeTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-green)" onClick={() => setMetricDetail("ingresos")} />
             <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(periodTotals.neto, "EUR")}</Sensitive>} detail={periodTotals.ingresos > 0 ? `${periodSavingsRate}% de los ingresos` : "Sin ingresos en el periodo"} detailTone={periodTotals.neto >= 0 ? "positive" : "negative"} valueColor={periodTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} onClick={() => setMetricDetail("neto")} />
-            <TickerTile label="Inversión" value={<Sensitive>{formatMoney(investmentDisplayTotal, "EUR")}</Sensitive>} detail={`${investmentAccounts.length} ${investmentAccounts.length === 1 ? "cuenta" : "cuentas"} · a ${formatMonth(selectedDate)}`} valueColor="var(--accent-violet)" onClick={() => setMetricDetail("inversion")} />
-            <TickerTile label="Cash disponible" value={<Sensitive>{formatMoney(spendableTotal, "EUR")}</Sensitive>} detail={`${spendableAccountsWithBalance.length} ${spendableAccountsWithBalance.length === 1 ? "cuenta" : "cuentas"} · a ${formatMonth(selectedDate)}`} valueColor="var(--accent-blue)" onClick={() => setMetricDetail("cash")} />
-            <TickerTile label="Patrimonio total" value={<Sensitive>{formatMoney(netWorthDisplay, "EUR")}</Sensitive>} detail={`${displayAccounts.length} cuentas · ${formatMonth(selectedDate)}`} valueColor="var(--foreground)" onClick={() => setMetricDetail("patrimonio")} />
+            <TickerTile label="Inversión" value={<Sensitive>{formatMoney(investmentDisplayTotal, "EUR")}</Sensitive>} detail={`${investmentAccounts.length} ${investmentAccounts.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--accent-violet)" onClick={() => setMetricDetail("inversion")} />
+            <TickerTile label="Dinero disponible" value={<Sensitive>{formatMoney(spendableTotal, "EUR")}</Sensitive>} detail={`${spendableAccountsWithBalance.length} ${spendableAccountsWithBalance.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--accent-blue)" onClick={() => setMetricDetail("cash")} />
+            <TickerTile label="Patrimonio total" value={<Sensitive>{formatMoney(netWorthDisplay, "EUR")}</Sensitive>} detail={`${displayAccounts.length} ${displayAccounts.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--foreground)" onClick={() => setMetricDetail("patrimonio")} />
           </section>
 
           <section className={`${CARD} min-w-0`} aria-label="Ingresos y gastos del periodo">
@@ -1095,7 +1097,7 @@ export default function DashboardContent() {
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? periodCashflow.length === 1 ? (
               <SingleBucketCashflowChart bucket={periodCashflow[0]} includeSavings={cashflowGranularity === "month"} onOpen={() => setCashflowDrillKey(periodCashflow[0].key)} />
             ) : (
-              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["cyan", "orange", "emerald"] : ["cyan", "orange"]} valueFormatter={chartFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={CashflowHoverTooltip} key={cashflowChartKey} onValueChange={(value) => { const key = value && typeof value.key === "string" ? value.key : null; if (key) setCashflowDrillKey(key) }} className="dashboard-cashflow-chart h-56 cursor-pointer sm:h-72" showAnimation={cashflowChartKey === 0} />
+              <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["cyan", "orange", "emerald"] : ["cyan", "orange"]} valueFormatter={chartAxisFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={CashflowHoverTooltip} key={cashflowChartKey} onValueChange={(value) => { const key = value && typeof value.key === "string" ? value.key : null; if (key) setCashflowDrillKey(key) }} className="dashboard-cashflow-chart h-56 cursor-pointer sm:h-72" showAnimation={cashflowChartKey === 0} />
             ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -1325,7 +1327,7 @@ export default function DashboardContent() {
               </div>
             </div>
 
-            <div className={`${CARD} min-w-0 p-4 sm:p-4`}>
+            <div className={`${CARD} @container min-w-0 p-4 sm:p-4`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Target className="h-4 w-4" /></span>
@@ -1333,17 +1335,19 @@ export default function DashboardContent() {
                     <p className="text-sm font-semibold text-foreground">Tu camino financiero</p>
                   </div>
                 </div>
-                <span className="rounded-full border border-border/70 px-2 py-1 text-[10px] font-medium text-muted-foreground">3 hitos</span>
+                <span className="shrink-0 whitespace-nowrap rounded-full border border-border/70 px-2 py-1 text-[10px] font-medium text-muted-foreground">3 hitos</span>
               </div>
 
               <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.06] p-3">
-                <div className="flex items-start justify-between gap-3">
+                {/* En columnas estrechas (escritorio 4 columnas) el importe baja
+                    debajo del título en vez de cortar «Avanza en Vi…». */}
+                <div className="flex flex-col gap-1 @[20rem]:flex-row @[20rem]:items-start @[20rem]:justify-between @[20rem]:gap-3">
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Siguiente paso</p>
-                    <p className="mt-1 truncate text-sm font-semibold text-foreground">{goalGuidance.title}</p>
-                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{goalGuidance.detail}</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground @[20rem]:truncate">{goalGuidance.title}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground @[20rem]:truncate">{goalGuidance.detail}</p>
                   </div>
-                  <p className="shrink-0 text-right text-sm font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(wealthMilestones[0], "EUR")}</Sensitive></p>
+                  <p className="shrink-0 text-sm font-bold tabular-nums text-foreground @[20rem]:text-right"><Sensitive>{money(wealthMilestones[0])}</Sensitive></p>
                 </div>
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted/80">
                   <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${milestoneProgress}%` }} />
@@ -1354,8 +1358,8 @@ export default function DashboardContent() {
               <div className="mt-3 grid grid-cols-3 gap-2" aria-label="Próximos hitos de patrimonio">
                 {wealthMilestones.map((milestone, index) => (
                   <div key={milestone} className={cn("min-w-0 rounded-xl border px-1.5 py-2.5 sm:px-2", index === 0 ? "border-primary/30 bg-primary/[0.07]" : "border-border/70 bg-background/35")}>
-                    <p className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">{index === 0 ? "Ahora" : `Hito ${index + 1}`}</p>
-                    <p className={cn("mt-1 truncate text-[11px] font-semibold tabular-nums sm:text-xs", index === 0 ? "text-primary" : "text-foreground")}><Sensitive>{formatMoney(milestone, "EUR")}</Sensitive></p>
+                    <p className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">{index === 0 ? "Siguiente" : `Hito ${index + 1}`}</p>
+                    <p className={cn("mt-1 truncate text-[11px] font-semibold tabular-nums sm:text-xs", index === 0 ? "text-primary" : "text-foreground")}><Sensitive>{money(milestone)}</Sensitive></p>
                   </div>
                 ))}
               </div>
@@ -1505,7 +1509,7 @@ export default function DashboardContent() {
                         </div>
                       </div>
                       <span className={cn("shrink-0 text-sm font-semibold tabular-nums", (t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "text-emerald-500" : "text-red-500")}>
-                        <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(t.monto), state.accounts.find((a) => a.id === t.cuenta_id)?.currency ?? "EUR")}</Sensitive>
+                        <Sensitive>{(t.tipo === "ingreso" ? t.monto : -t.monto) >= 0 ? "+" : "−"}{formatMoney(Math.abs(t.monto), state.accounts.find((a) => a.id === t.cuenta_id)?.currency ?? "EUR")}</Sensitive>
                       </span>
                     </div>
                   ))}

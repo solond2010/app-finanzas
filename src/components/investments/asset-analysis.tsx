@@ -28,7 +28,7 @@ const RANGES = [
 
 function fmtPrice(v: number, currency: string) {
   try {
-    return new Intl.NumberFormat("es-ES", { style: "currency", currency, maximumFractionDigits: 2 }).format(v)
+    return new Intl.NumberFormat("es-ES", { useGrouping: "always", style: "currency", currency, maximumFractionDigits: 2 }).format(v)
   } catch {
     return `${v.toFixed(2)} ${currency}`
   }

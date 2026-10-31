@@ -8,7 +8,10 @@ export function money(value: number) {
   // max 2 decimales: toLocaleString deja hasta 3 por defecto y "908,238 €"
   // se lee como novecientos ocho mil (mismo problema documentado en
   // sinking-funds.tsx con los valores de mercado).
-  return `${value.toLocaleString("es-ES", { maximumFractionDigits: 2 })}${NNBSP}€`
+  // useGrouping "always": en es-ES el separador de miles se omite con 4 cifras
+  // ("1525 €" junto a "25.000 €"). Con decimales, siempre dos ("22.067,20 €").
+  const hasCents = Math.round(Math.abs(value) * 100) % 100 !== 0
+  return `${value.toLocaleString("es-ES", { useGrouping: "always", minimumFractionDigits: hasCents ? 2 : 0, maximumFractionDigits: 2 })}${NNBSP}€`
 }
 
 export function signedMoney(value: number) {
@@ -17,6 +20,11 @@ export function signedMoney(value: number) {
 
 export function chartFormatter(value: number) {
   return money(value)
+}
+
+// Para ejes: sin céntimos ("2.834 €", no "2833,6 €").
+export function chartAxisFormatter(value: number) {
+  return money(Math.round(value))
 }
 
 // Reserva espacio suficiente para las etiquetas monetarias de los ejes Y.

@@ -99,8 +99,10 @@ const RuleCard = memo(function RuleCard({ label, target, actual, value, tone, de
   )
 })
 
-const HEATMAP_BG = ["bg-muted/40", "bg-red-500/20", "bg-red-500/40", "bg-red-500/65", "bg-red-500/90"]
-const HEATMAP_TEXT = ["text-muted-foreground", "text-red-700 dark:text-red-300", "text-white", "text-white", "text-white"]
+// Escala en el dorado de Garra: el gasto diario no es "malo" por sí mismo,
+// así que no se pinta en rojo (el rojo queda para pérdidas y excesos).
+const HEATMAP_BG = ["bg-muted/40", "bg-gold/20", "bg-gold/45", "bg-gold/70", "bg-gold"]
+const HEATMAP_TEXT = ["text-muted-foreground", "text-foreground", "text-foreground", "text-gold-foreground", "text-gold-foreground"]
 const WEEKDAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"]
 
 // Cuadrícula tipo "contribution graph": un cuadro por día del mes, intensidad
@@ -140,7 +142,7 @@ const DayHeatmap = memo(function DayHeatmap({ dailyTotals, firstWeekday }: { dai
             </div>
             <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-1.5 text-xs opacity-0 shadow-lg transition-all duration-150 group-hover:scale-100 group-hover:opacity-100">
               <p className="font-semibold text-foreground">Día {i + 1}</p>
-              <p className={total > 0 ? "text-red-500" : "text-muted-foreground"}>{total > 0 ? <Sensitive>{money(total)}</Sensitive> : "Sin gasto"}</p>
+              <p className={total > 0 ? "font-medium text-foreground" : "text-muted-foreground"}>{total > 0 ? <Sensitive>{money(total)}</Sensitive> : "Sin gasto"}</p>
               <div className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1 rotate-45 border-b border-r border-border bg-popover" />
             </div>
           </div>
@@ -396,14 +398,14 @@ export default function AnalyticsPage() {
             <button onClick={() => setMonthOffset((p) => p + 1)} className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90" aria-label="Mes anterior">
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="w-28 text-center text-sm font-medium text-foreground sm:w-32">{formatMonth(selectedDate)}</span>
+            <span className="min-w-[9.5rem] whitespace-nowrap px-1 text-center text-sm font-medium text-foreground">{formatMonth(selectedDate)}</span>
             <button onClick={() => setMonthOffset((p) => Math.max(0, p - 1))} disabled={monthOffset === 0} className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 active:scale-90" aria-label="Mes siguiente">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
           {monthOffset > 0 && <Button type="button" variant="ghost" className="min-h-11 rounded-full px-3 text-xs font-semibold" onClick={() => setMonthOffset(0)}>Este mes</Button>}
           {hasData && (
-            <Button variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={handleExportPdf} disabled={exportingPdf}>
+            <Button variant="outline" className="h-11 gap-1.5 rounded-full px-4" onClick={handleExportPdf} disabled={exportingPdf}>
               <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Descargar PDF"}
             </Button>
           )}
@@ -440,7 +442,7 @@ export default function AnalyticsPage() {
             />
             <div className="col-span-2 min-w-0 sm:col-span-1">
               <MetricCard
-                label="Cash flow medio"
+                label="Balance mensual medio"
                 value={<Sensitive>{signedMoney(averageMonthlyNet)}</Sensitive>}
                 subtitle={activeCashFlow.length > 0 ? `Media ${activeCashFlow.length} meses con actividad · ${positiveMonths}/${activeCashFlow.length} positivos` : "Sin histórico todavía"}
                 icon={PiggyBank}
@@ -464,7 +466,7 @@ export default function AnalyticsPage() {
                 <CardContent>
                   {categoryBreakdown.length === 0 ? <EmptyState icon={Layers3} title="Sin gasto categorizado" description="Cuando registres gastos, aquí verás las categorías que más pesan." bordered className="h-full" /> : (
                     <div role="img" aria-label={`Gráfico de barras: gasto por categoría${topCategory ? `, encabezado por ${topCategory.categoria}` : ""}`} className="min-w-0" style={{ height: categoryBreakdown.slice(0, 8).length * 52 + 48 }}>
-                      <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["amber"]} valueFormatter={chartFormatter} yAxisWidth={categoryAxisWidth(categoryBreakdown.slice(0, 8).map((item) => item.categoria), 184)} customTooltip={CategoryTooltip} className="h-full min-w-0" showAnimation layout="vertical" />
+                      <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["amber"]} valueFormatter={chartFormatter} yAxisWidth={categoryAxisWidth(categoryBreakdown.slice(0, 8).map((item) => item.categoria), 184)} customTooltip={CategoryTooltip} className="h-full min-w-0" showAnimation showLegend={false} layout="vertical" />
                     </div>
                   )}
                 </CardContent>
@@ -478,7 +480,7 @@ export default function AnalyticsPage() {
                   </CardHeader>
                   <CardContent>
                     <div role="img" aria-label={`Gráfico de barras: gasto por cuenta, encabezado por ${spendByAccount[0].cuenta}`} className="min-w-0" style={{ height: spendByAccount.slice(0, 8).length * 52 + 48 }}>
-                      <BarChart data={spendByAccount.slice(0, 8)} index="cuenta" categories={["monto"]} colors={["amber"]} valueFormatter={chartFormatter} yAxisWidth={categoryAxisWidth(spendByAccount.slice(0, 8).map((item) => item.cuenta), 208)} customTooltip={AccountTooltip} className="h-full min-w-0" showAnimation layout="vertical" />
+                      <BarChart data={spendByAccount.slice(0, 8)} index="cuenta" categories={["monto"]} colors={["amber"]} valueFormatter={chartFormatter} yAxisWidth={categoryAxisWidth(spendByAccount.slice(0, 8).map((item) => item.cuenta), 208)} customTooltip={AccountTooltip} className="h-full min-w-0" showAnimation showLegend={false} layout="vertical" />
                     </div>
                   </CardContent>
                 </Card>
@@ -507,7 +509,7 @@ export default function AnalyticsPage() {
                           </div>
                           <Progress value={b.percentage} className={cn(
                             "[&_[data-slot=progress-track]]:h-2",
-                            over ? "[&_[data-slot=progress-indicator]]:bg-red-500" : warning ? "[&_[data-slot=progress-indicator]]:bg-amber-500" : "[&_[data-slot=progress-indicator]]:bg-foreground"
+                            over ? "[&_[data-slot=progress-indicator]]:bg-red-500" : warning ? "[&_[data-slot=progress-indicator]]:bg-amber-500" : "[&_[data-slot=progress-indicator]]:bg-[var(--accent-green)]"
                           )} />
                         </div>
                       )
@@ -538,7 +540,7 @@ export default function AnalyticsPage() {
                             </p>
                           </div>
                           <span className={cn("shrink-0 text-xs font-bold tabular-nums", (item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "text-emerald-500" : "text-foreground")}>
-                            <Sensitive>{(item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "+" : "-"}{formatMoney(Math.abs(item.monto), "EUR")}</Sensitive>
+                            <Sensitive>{(item.tipo === "ingreso" ? item.monto : -item.monto) >= 0 ? "+" : "−"}{formatMoney(Math.abs(item.monto), "EUR")}</Sensitive>
                           </span>
                         </div>
                       ))}
@@ -551,7 +553,7 @@ export default function AnalyticsPage() {
             {monthTotals.gastos > 0 && (
               <Card className="stagger-fade">
                 <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><Calendar className="h-4 w-4 text-red-500" />Gasto por día</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold"><Calendar className="h-4 w-4 text-primary" />Gasto por día</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="mx-auto max-w-md">

@@ -219,7 +219,7 @@ export default function CuentasPage() {
               style={{ animationDelay: `${state.accounts.length * 60}ms` }}
             >
               <Plus className="h-5 w-5" />
-              <span className="text-sm font-medium">Nueva Cuenta</span>
+              <span className="text-sm font-medium">Nueva cuenta</span>
             </button>
           </div>
         </>

@@ -125,7 +125,7 @@ export function AccountDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{account ? "Editar Cuenta" : "Nueva Cuenta"}</DialogTitle>
+          <DialogTitle>{account ? "Editar cuenta" : "Nueva cuenta"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
