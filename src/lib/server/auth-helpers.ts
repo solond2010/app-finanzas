@@ -48,11 +48,14 @@ export function countFailure(request: Request) {
 
 /** Traduce los errores de Supabase Auth más comunes a mensajes claros. */
 export function friendlyAuthError(message: string | undefined): string {
+  // Sin datos del usuario: solo el texto de Supabase, para poder diagnosticar.
+  if (message) console.warn("[auth]", message)
   const m = (message ?? "").toLowerCase()
   if (m.includes("invalid login credentials")) return "Email o contraseña incorrectos"
   if (m.includes("email not confirmed")) return "Confirma tu email: te enviamos un enlace al registrarte"
   if (m.includes("already registered") || m.includes("already been registered")) return "Ya existe una cuenta con ese email"
   if (m.includes("password") && (m.includes("short") || m.includes("least") || m.includes("weak"))) return "La contraseña es demasiado débil (mínimo 8 caracteres)"
   if (m.includes("rate limit") || m.includes("too many")) return "Demasiados intentos. Espera unos minutos."
+  if (m.includes("email") && m.includes("invalid")) return "Ese email no es válido"
   return "No se pudo completar. Inténtalo de nuevo."
 }
