@@ -75,7 +75,8 @@ export interface Budget {
   category_id: string
   amount: number
   month: string
-  user_id: string
+  /** Lo rellena el servidor con el usuario conectado; el navegador no lo envía. */
+  user_id?: string
 }
 
 export interface FinanceState {
@@ -869,7 +870,8 @@ async function loadFromSupabase(): Promise<FinanceState | null> {
   }
 }
 
-export const USER_ID = '8c449806-d8b4-498a-98d7-28809bb7c95a'
+// Ya no hay un USER_ID fijo en el navegador: el servidor asigna user_id con el
+// usuario de la sesión (ver /api/data y src/lib/user-scope.ts).
 
 type PendingDeletes = {
   accounts: Set<string>
@@ -942,13 +944,13 @@ export function collectDeletesFromAction(state: FinanceState, action: Action, pe
 }
 
 async function syncToSupabase(state: FinanceState, pending: PendingDeletes) {
-  await dbUpsert("accounts", state.accounts.map(a => ({ ...unformatAccount(a), user_id: USER_ID })))
-  await dbUpsert("transactions", state.transactions.map(t => ({ ...unformatTransaction(t), user_id: USER_ID })))
-  await dbUpsert("sinking_funds", state.sinkingFunds.map(sf => ({ ...unformatSinkingFund(sf), user_id: USER_ID })))
-  await dbUpsert("categories", state.categories.map(c => ({ ...c, user_id: USER_ID })))
+  await dbUpsert("accounts", state.accounts.map(a => unformatAccount(a)))
+  await dbUpsert("transactions", state.transactions.map(t => unformatTransaction(t)))
+  await dbUpsert("sinking_funds", state.sinkingFunds.map(sf => unformatSinkingFund(sf)))
+  await dbUpsert("categories", state.categories)
   // Los presupuestos deben subirse DESPUÉS de las categorías: budgets.category_id
   // tiene una FK a categories.id, así que la categoría referenciada ya debe existir.
-  await dbUpsert("budgets", state.budgets.map(b => ({ id: b.id, category_id: b.category_id, amount: b.amount, month: b.month, user_id: USER_ID })))
+  await dbUpsert("budgets", state.budgets.map(b => ({ id: b.id, category_id: b.category_id, amount: b.amount, month: b.month })))
 
   // Solo se borran IDs marcados por acciones explícitas del usuario (ver
   // collectDeletesFromAction). Orden: presupuestos antes que categorías (FK).

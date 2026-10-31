@@ -1,24 +1,20 @@
 import { NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase-server"
-import { timingSafeEqualString } from "@/lib/auth"
+import { resolveShortcutUser } from "@/lib/server/shortcut-auth"
 
 // Lista de cuentas para que el Atajo de iOS construya su selector "Elegir de
 // la lista" en el momento, en vez de tener nombres/IDs pegados a mano — así
 // nunca hace falta editar el Atajo cuando se crea o borra una cuenta.
 export async function GET(request: Request) {
-  const secret = process.env.SHORTCUTS_SECRET
-  if (!secret) return NextResponse.json({ error: "SHORTCUTS_SECRET no configurado" }, { status: 503 })
-
-  const provided = request.headers.get("x-shortcuts-secret")
-  if (!provided || !timingSafeEqualString(provided, secret)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+  const auth = await resolveShortcutUser(request)
+  if (auth instanceof NextResponse) return auth
 
   // El Atajo pide esta lista cada vez que se abre. Deja explícito que tanto
   // Vercel como los clientes intermedios no deben conservar cuentas antiguas.
   const { data, error } = await supabaseServer
     .from("accounts")
     .select("id, nombre, banco, tipo, currency")
+    .eq("user_id", auth.userId)
     .order("nombre", { ascending: true })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

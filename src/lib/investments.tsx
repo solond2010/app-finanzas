@@ -3,7 +3,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
 import { addMonths, addWeeks, format, parseISO } from "date-fns"
 import { dbSelect, dbUpsert, dbDeleteEq } from "./db-client"
-import { USER_ID } from "./store"
 
 export type AssetKind = "stock" | "fund" | "crypto" | "custom"
 
@@ -126,7 +125,7 @@ function overlayPendingRows<T>(rows: T[], table: InvestmentTable, keyField: "id"
 }
 
 function contributionToRow(c: Contribution): Record<string, unknown> {
-  return { id: c.id, position_id: c.positionId, amount: c.amount, date: c.date, user_id: USER_ID }
+  return { id: c.id, position_id: c.positionId, amount: c.amount, date: c.date }
 }
 
 function contributionFromRow(r: ContributionRow): Contribution {
@@ -220,7 +219,6 @@ function toRow(p: Position): Record<string, unknown> {
     id: p.id, kind: p.kind, symbol: p.symbol, name: p.name, isin: p.isin ?? null,
     date: p.date, units: p.units, buy_price: p.buyPrice, currency: p.currency,
     account_id: p.accountId ?? null, dca: p.dca ?? false,
-    user_id: USER_ID,
   }
   // Las columnas DCA solo se envían cuando hay plan, para que las posiciones
   // normales sigan sincronizando aunque la migración SQL (supabase-dca.sql) no
@@ -358,7 +356,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
           let remote = data.map((w) => ({ symbol: w.symbol, name: w.name }))
           if (data.length === 0 && localWatch.length > 0 && !pendingRef.current.some((item) => item.table === "watchlist")) {
             remote = localWatch
-            localWatch.forEach((w) => enqueue({ table: "watchlist", keyField: "symbol", key: w.symbol, operation: "upsert", row: { ...w, user_id: USER_ID } }))
+            localWatch.forEach((w) => enqueue({ table: "watchlist", keyField: "symbol", key: w.symbol, operation: "upsert", row: { symbol: w.symbol, name: w.name } }))
           }
           remote = overlayPendingRows(remote, "watchlist", "symbol", pendingRef.current, (row) => ({ symbol: String(row.symbol), name: String(row.name) }))
           setWatchlist(remote)
@@ -473,7 +471,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
   }
   const addWatch = (w: WatchItem) => {
     if (watchlist.some((x) => x.symbol === w.symbol)) return
-    if (!enqueue({ table: "watchlist", keyField: "symbol", key: w.symbol, operation: "upsert", row: { symbol: w.symbol, name: w.name, user_id: USER_ID } })) return
+    if (!enqueue({ table: "watchlist", keyField: "symbol", key: w.symbol, operation: "upsert", row: { symbol: w.symbol, name: w.name } })) return
     persistWatch([...watchlist, w])
   }
   const removeWatch = (symbol: string) => {

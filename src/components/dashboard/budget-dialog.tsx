@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { useFinance, USER_ID } from "@/lib/store"
+import { useFinance } from "@/lib/store"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -60,7 +60,7 @@ export function BudgetDialog({ open, onOpenChange, selectedMonth }: BudgetDialog
       if (existing) {
         if (existing.amount !== value) dispatch({ type: "UPDATE_BUDGET", payload: { ...existing, amount: value } })
       } else {
-        dispatch({ type: "ADD_BUDGET", payload: { category_id: cat.id, amount: value, month: selectedMonth, user_id: USER_ID } })
+        dispatch({ type: "ADD_BUDGET", payload: { category_id: cat.id, amount: value, month: selectedMonth } })
       }
     }
     toast("Presupuestos actualizados", "success")
