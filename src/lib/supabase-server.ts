@@ -16,15 +16,34 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 // la clave pública deja de dar acceso directo a la base de datos.
 // NUNCA importes este archivo desde un componente de cliente ni uses el
 // prefijo NEXT_PUBLIC_ con estas variables ("server-only" lo impide).
-const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseServerKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!
 
 // Cliente "administrador" (clave secreta, se salta RLS). Úsalo SOLO donde no
 // hay sesión de navegador (Atajos con clave, copia de seguridad) y SIEMPRE
 // con filtro explícito por user_id. Las rutas con sesión usan el cliente del
 // usuario (ver server/request-context.ts), que respeta RLS.
-export const supabaseServer = createClient(supabaseUrl, supabaseServerKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
+//
+// Se crea al primer uso (no al importar): así el build no falla en entornos
+// sin variables de Supabase (p. ej. las previews de Vercel), y esas rutas solo
+// darían error si alguien las llama.
+let adminClient: SupabaseClient | null = null
+function getAdminClient(): SupabaseClient {
+  if (!adminClient) {
+    const supabaseUrl = process.env.SUPABASE_URL
+    const supabaseServerKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
+    if (!supabaseUrl || !supabaseServerKey) throw new Error("Falta SUPABASE_URL o la clave de Supabase en el servidor")
+    adminClient = createClient(supabaseUrl, supabaseServerKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  }
+  return adminClient
+}
+
+export const supabaseServer: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    const client = getAdminClient()
+    const value = Reflect.get(client, prop, client)
+    return typeof value === "function" ? value.bind(client) : value
+  },
 })
 
 export type DbScope = { db: SupabaseClient; userId: string }
