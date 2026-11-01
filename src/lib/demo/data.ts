@@ -131,7 +131,14 @@ export function buildDemoDatabase(now: Date = new Date()): DemoDatabase {
     const y = monthStart.getFullYear()
     const mo = monthStart.getMonth()
     const lastDay = new Date(y, mo + 1, 0).getDate()
-    const day = (d: number) => localDateKey(new Date(y, mo, Math.min(d, lastDay)))
+    // Mes en curso: el mes entero se «comprime» hasta hoy, para que Inicio
+    // (que abre en este mes) se vea completo también a primeros de mes.
+    const isCurrent = m === DEMO_MONTHS - 1
+    const day = (d: number) => {
+      const clamped = Math.min(d, lastDay)
+      const target = isCurrent ? 1 + Math.floor(((clamped - 1) * now.getDate()) / lastDay) : clamped
+      return localDateKey(new Date(y, mo, target))
+    }
     const summer = mo === 6 || mo === 7
     const december = mo === 11
 
