@@ -49,6 +49,7 @@ export function NetWorthChart({
   const [box, setBox] = useState({ w: 0, h: 0 })
   const [hover, setHover] = useState<number | null>(null)
   const down = useRef<{ x: number; y: number; moved: boolean } | null>(null)
+  const dragged = useRef(false)
   const uid = useId().replace(/:/g, "")
 
   useEffect(() => {
@@ -156,8 +157,15 @@ export function NetWorthChart({
       onPointerUp={(e) => {
         const d = down.current
         down.current = null
-        if (onActivate && d && !d.moved) { setHover(null); onActivate(); return }
+        dragged.current = !!d?.moved
         if (e.pointerType !== "mouse" && onActivate) setHover(null)
+      }}
+      onClick={() => {
+        // El clic (ratón o toque) amplía, salvo si se ha arrastrado para explorar.
+        if (!onActivate) return
+        if (dragged.current) { dragged.current = false; return }
+        setHover(null)
+        onActivate()
       }}
       onPointerCancel={() => { down.current = null; setHover(null) }}
       onPointerLeave={(e) => { if (e.pointerType === "mouse") setHover(null) }}
