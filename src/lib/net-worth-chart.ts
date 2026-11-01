@@ -62,7 +62,11 @@ export function monthlyCloses(points: SeriesPoint[]): SeriesPoint[] {
 export function chartSeries(points: SeriesPoint[], todayKey: string): { points: SeriesPoint[]; monthly: boolean } {
   const normalized = points.map((p) => ({ ...p, date: normalizeDateKey(p.date, todayKey) }))
   if (!hasTimeScale(dedupeSameDay(normalized))) return { points: normalized, monthly: false }
-  const clean = dedupeSameDay(normalized)
+  // Antes del primer dato real el patrimonio sale a 0: no se dibuja ese tramo.
+  const deduped = dedupeSameDay(normalized)
+  const firstReal = deduped.findIndex((p) => Math.abs(p.value) >= 0.5)
+  const clean = firstReal > 0 ? deduped.slice(firstReal) : deduped
+  if (clean.length < 2) return { points: deduped.slice(-2), monthly: false }
   if (spanDays(clean) <= 45) return { points: clean, monthly: false }
   return { points: monthlyCloses(clean), monthly: true }
 }

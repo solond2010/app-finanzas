@@ -17,7 +17,7 @@ describe("gráfico de patrimonio", () => {
   })
 
   it("en 7D/30D conserva los puntos diarios", () => {
-    const days = Array.from({ length: 30 }, (_, i) => p(`2026-10-${String(i + 1).padStart(2, "0")}`, i))
+    const days = Array.from({ length: 30 }, (_, i) => p(`2026-10-${String(i + 1).padStart(2, "0")}`, 100 + i))
     const series = chartSeries(days, "2026-10-30")
     expect(series.monthly).toBe(false)
     expect(series.points).toHaveLength(30)
@@ -39,5 +39,17 @@ describe("gráfico de patrimonio", () => {
   it("una etiqueta por mes en el eje", () => {
     const ticks = axisTicks([p("2026-05-31", 1), p("2026-08-31", 2), p("2026-11-01", 3)])
     expect(ticks.map((t) => t.label)).toEqual(["jun", "jul", "ago", "sep", "oct", "nov"])
+  })
+
+  it("no dibuja el tramo a 0 anterior al primer dato", () => {
+    const pts = [
+      { date: "2026-01-31", value: 0, label: "ene" },
+      { date: "2026-02-28", value: 0, label: "feb" },
+      { date: "2026-03-01", value: 1000, label: "1 mar" },
+      { date: "2026-04-30", value: 1500, label: "abr" },
+      { date: "2026-05-31", value: 1800, label: "may" },
+    ]
+    const r = chartSeries(pts, "2026-06-01")
+    expect(r.points[0].value).toBe(1000)
   })
 })
