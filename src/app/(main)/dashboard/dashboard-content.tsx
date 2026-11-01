@@ -8,12 +8,14 @@ import { accountColor, distinctAccountColors } from "@/lib/account-colors"
 import { AccountDot } from "@/components/dashboard/account-dot"
 import Link from "next/link"
 import { BarChart } from "@tremor/react"
-import { AlertTriangle, CalendarClock, ChartLineUp, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, HandCoins, Landmark, Layers3, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp, Wallet, X } from "@/components/icons"
+import { AlertTriangle, CalendarClock, ChartLineUp, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, HandCoins, Landmark, Layers3, Maximize2, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp, Wallet } from "@/components/icons"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
-import { MountainChart } from "@/components/shared/mountain-chart"
+import { NetWorthChart } from "@/components/dashboard/net-worth-chart"
+import { NetWorthExpanded } from "@/components/dashboard/net-worth-expanded"
+import { chartSeries, dateKeyOf, monthlyChangeBars } from "@/lib/net-worth-chart"
 import { EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { TickerTile } from "@/components/shared/ticker-tile"
@@ -220,9 +222,8 @@ function DashboardInner() {
   const [showAnnual, setShowAnnual] = useState(true)
   const [showSpendBreakdown, setShowSpendBreakdown] = useState(false)
   const [metricDetail, setMetricDetail] = useState<DashboardMetric | null>(null)
-  // Punto fijado en «Evolución del patrimonio» (por fecha+etiqueta, así se
-  // suelta solo si cambia el rango y el punto deja de existir).
-  const [pinnedNetWorth, setPinnedNetWorth] = useState<{ date: string; mes: string } | null>(null)
+  // Vista ampliada de «Evolución del patrimonio» (clic/toque en el gráfico).
+  const [netWorthExpanded, setNetWorthExpanded] = useState(false)
   const [compositionTipo, setCompositionTipo] = useState<Account["tipo"] | null>(null)
   const [storedNetWorthPeak, setStoredNetWorthPeak] = useState<StoredNetWorthPeak | null>(() => {
     if (typeof window === "undefined") return null
@@ -608,9 +609,13 @@ function DashboardInner() {
     return points
   }, [netWorthTrend, activeRange, currentMonthDailyPeak, monthOffset, netWorthDisplay, today])
 
-  const pinnedNetWorthIndex = pinnedNetWorth ? chartTrend.findIndex((point) => point.date === pinnedNetWorth.date && point.mes === pinnedNetWorth.mes) : -1
-  const pinnedNetWorthPoint = pinnedNetWorthIndex >= 0 ? chartTrend[pinnedNetWorthIndex] : null
-  const pinnedNetWorthPrev = pinnedNetWorthIndex > 0 ? chartTrend[pinnedNetWorthIndex - 1] : null
+  // Serie que se pinta: cierres de mes en rangos largos (sin picos
+  // intercalados, que dibujaban zigzag) y puntos diarios en 7D/30D.
+  const netWorthSeries = useMemo(
+    () => chartSeries(chartTrend.map((p) => ({ date: p.date, value: p.patrimonio, label: p.mes })), dateKeyOf(today)),
+    [chartTrend, today]
+  )
+  const netWorthBars = useMemo(() => (netWorthSeries.monthly ? monthlyChangeBars(netWorthSeries.points, today) : []), [netWorthSeries, today])
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
   const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
   const rangeDelta = netWorthDisplay - rangeStart
@@ -1177,6 +1182,11 @@ function DashboardInner() {
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                     <p className="page-section-label">Evolución del patrimonio</p>
                     {isAllTimeHigh && <span className="gold-badge shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">Máximo histórico</span>}
+                    {netWorthHasData && (
+                      <button type="button" onClick={() => setNetWorthExpanded(true)} aria-label="Ampliar el gráfico de patrimonio" className="ml-auto flex size-9 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-foreground/[0.03] text-foreground transition-colors hover:border-primary/40 hover:bg-foreground/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:hidden">
+                        <Maximize2 className="size-4" weight="bold" />
+                      </button>
+                    )}
                   </div>
                   <p className="hero-figure mt-2 text-[clamp(1.8rem,7vw,2.5rem)] font-bold tracking-tight tabular-nums">
                     <AnimatedNumber value={netWorthDisplay} />
@@ -1205,54 +1215,54 @@ function DashboardInner() {
                     </p>
                   )}
                 </div>
-                <div className="range-tabs w-full justify-between sm:w-auto sm:justify-start">
-                  {RANGES.map((r) => (
-                    <button key={r.id} onClick={() => setRangeId(r.id)} data-active={rangeId === r.id} className="range-tab tabular-nums">
-                      {r.id}
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                  <div className="range-tabs w-full justify-between sm:w-auto sm:justify-start">
+                    {RANGES.map((r) => (
+                      <button key={r.id} onClick={() => setRangeId(r.id)} data-active={rangeId === r.id} className="range-tab tabular-nums">
+                        {r.id}
+                      </button>
+                    ))}
+                  </div>
+                  {netWorthHasData && (
+                    <button type="button" onClick={() => setNetWorthExpanded(true)} aria-label="Ampliar el gráfico de patrimonio" className="hidden size-9 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-foreground/[0.03] text-foreground transition-colors hover:border-primary/40 hover:bg-foreground/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex">
+                      <Maximize2 className="size-4" weight="bold" />
                     </button>
-                  ))}
+                  )}
                 </div>
               </div>
+              <NetWorthExpanded
+                open={netWorthExpanded}
+                onOpenChange={setNetWorthExpanded}
+                points={netWorthSeries.points}
+                monthly={netWorthSeries.monthly}
+                bars={netWorthBars}
+                ranges={RANGES}
+                rangeId={rangeId}
+                onRange={setRangeId}
+                netWorth={netWorthDisplay}
+                peak={rangeMaxPoint ? { value: rangeMaxPoint.patrimonio, label: rangeMaxPoint.mes === "hoy" ? "hoy" : rangeMaxPoint.mes.replace(" · pico", "") } : null}
+                privacy={privacy}
+                formatValue={chartFormatter}
+                formatAxis={chartAxisFormatter}
+              />
               {activeRange.unit === "today" && netWorthTrend.length <= 1 ? (
                 <EmptyPlaceholder text="Sin movimientos registrados hoy todavía" className="mt-4 h-52 sm:h-64" />
               ) : netWorthHasData ? (
                 <div className="mt-4">
-                  <MountainChart
-                    data={chartTrend}
-                    index="mes"
-                    category="patrimonio"
-                    valueFormatter={chartFormatter}
-                    className="h-36 sm:h-52 2xl:h-60"
-                    pinnedIndex={pinnedNetWorthIndex >= 0 ? pinnedNetWorthIndex : null}
-                    onPin={(index) => { const point = index === null ? null : chartTrend[index]; setPinnedNetWorth(point ? { date: point.date, mes: point.mes } : null) }}
+                  <NetWorthChart
+                    points={netWorthSeries.points}
+                    monthly={netWorthSeries.monthly}
+                    formatValue={chartFormatter}
+                    formatAxis={chartAxisFormatter}
+                    hideValues={privacy}
+                    onActivate={() => setNetWorthExpanded(true)}
+                    activateLabel="Pulsa para ver el gráfico ampliado."
+                    className="h-40 w-full sm:h-52 2xl:h-60"
                   />
-                  {pinnedNetWorthPoint ? (() => {
-                    const monthKey = /^\d{4}-\d{2}/.test(pinnedNetWorthPoint.date) ? pinnedNetWorthPoint.date.slice(0, 7) : selectedMonth
-                    const monthLabel = parseLocalDate(`${monthKey}-01`).toLocaleDateString("es-ES", { month: "short", year: "numeric" }).replace(".", "")
-                    const change = pinnedNetWorthPrev ? pinnedNetWorthPoint.patrimonio - pinnedNetWorthPrev.patrimonio : null
-                    const changePct = change !== null && pinnedNetWorthPrev && Math.abs(pinnedNetWorthPrev.patrimonio) >= 100 ? (change / Math.abs(pinnedNetWorthPrev.patrimonio)) * 100 : null
-                    return (
-                      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/[0.06] p-3 sm:flex-row sm:items-center" role="status">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">{pinnedNetWorthPoint.mes === "hoy" ? "Hoy" : pinnedNetWorthPoint.mes}</p>
-                          <p className="mt-0.5 text-lg font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(pinnedNetWorthPoint.patrimonio, "EUR")}</Sensitive></p>
-                          {change !== null && pinnedNetWorthPrev && (
-                            <p className={cn("text-xs font-medium tabular-nums", change >= 0 ? "text-emerald-500" : "text-red-500")}>
-                              <Sensitive>{change >= 0 ? "+" : "−"}{formatMoney(Math.abs(change), "EUR")}</Sensitive>{changePct !== null && Math.abs(changePct) <= PCT_CHANGE_CAP ? ` · ${formatCappedPct(changePct)}` : ""} <span className="text-muted-foreground">vs. {pinnedNetWorthPrev.mes}</span>
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Link href={`/transactions?mes=${monthKey}`} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:flex-none">
-                            Movimientos de {monthLabel} <ChevronRight className="size-4" />
-                          </Link>
-                          <button type="button" onClick={() => setPinnedNetWorth(null)} aria-label="Soltar punto" className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><X className="size-4" /></button>
-                        </div>
-                      </div>
-                    )
-                  })() : (
-                    <p className="mt-3 text-center text-[11px] text-muted-foreground"><span className="sm:hidden">Desliza el dedo por la curva y suelta para fijar un punto.</span><span className="hidden sm:inline">Haz clic en la curva para fijar un punto y ver su cambio.</span></p>
-                  )}
+                  <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Maximize2 className="size-3" weight="bold" />
+                    <span className="sm:hidden">Toca el gráfico para ampliarlo</span><span className="hidden sm:inline">Haz clic en el gráfico para ampliarlo</span>
+                  </p>
                   <p className="mx-auto mt-4 max-w-[62ch] border-t border-border/60 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
                     El histórico se reconstruye desde los saldos actuales y los movimientos guardados; no equivale a una captura bancaria de cada fecha.
                   </p>

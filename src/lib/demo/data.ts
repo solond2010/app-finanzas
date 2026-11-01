@@ -35,6 +35,7 @@ const CATEGORIES: { name: string; kind: "ingreso" | "gasto" | "both"; color: str
   { name: "Intereses", kind: "ingreso", color: "#84CC16", icon: "PiggyBank" },
   { name: "Reembolso", kind: "ingreso", color: "#38BDF8", icon: "HandCoins" },
   { name: "Venta", kind: "ingreso", color: "#FACC15", icon: "Storefront" },
+  { name: "Rentabilidad", kind: "ingreso", color: "#8B5CF6", icon: "ChartLineUp" },
   { name: "Supermercado", kind: "gasto", color: "#F5A524", icon: "ShoppingCart" },
   { name: "Restaurantes", kind: "gasto", color: "#FF6B5B", icon: "ForkKnife" },
   { name: "Café", kind: "gasto", color: "#B08968", icon: "Coffee" },
@@ -142,21 +143,25 @@ export function buildDemoDatabase(now: Date = new Date()): DemoDatabase {
     const summer = mo === 6 || mo === 7
     const december = mo === 11
 
-    // Ingresos
-    add(nomina, "ingreso", december ? 4350 : 2350, day(1), "Salario", december ? "Nómina + paga extra · Acme Software S.L." : "Nómina · Acme Software S.L.")
-    if (m % 2 === 1) add(nomina, "ingreso", between(280, 640), day(18), "Freelance", pick(["Diseño web cliente", "Consultoría", "Landing page"] as const))
-    add(ahorro, "ingreso", between(7, 12), day(28), "Intereses", "Intereses cuenta remunerada")
+    // Ingresos: la nómina llega a final de mes (día 27 o 28), como en la
+    // mayoría de empresas en España; junio y diciembre con paga extra.
+    const extra = mo === 5 || mo === 11
+    add(nomina, "ingreso", extra ? 4350 : 2350, day(27 + (m % 2)), "Salario", extra ? "Nómina + paga extra · Acme Software S.L." : "Nómina · Acme Software S.L.")
+    if (m % 2 === 1) add(nomina, "ingreso", between(280, 640), day(16), "Freelance", pick(["Diseño web cliente", "Consultoría", "Landing page"] as const))
+    add(ahorro, "ingreso", between(7, 12), day(30), "Intereses", "Intereses cuenta remunerada")
+    // Los indexados se revalorizan poco a poco (algún mes, menos).
+    add(inversion, "ingreso", between(20, 140), day(24), "Rentabilidad", "Revalorización fondos indexados")
     if (m === 3) add(nomina, "ingreso", 64.9, day(21), "Reembolso", "Devolución Zalando")
     if (m === 5) add(nomina, "ingreso", 180, day(14), "Venta", "Venta bici en Wallapop")
 
-    // Traspasos de cada mes
-    transfer(nomina, ahorro, 300, day(2), "Ahorro del mes")
-    transfer(nomina, inversion, 250, day(2), "Aportación indexados")
-    if (m % 2 === 0) transfer(nomina, emergencia, 150, day(3))
+    // Traspasos justo después de cobrar
+    transfer(nomina, ahorro, 300, day(28 + (m % 2)), "Ahorro del mes")
+    transfer(nomina, inversion, 250, day(28 + (m % 2)), "Aportación indexados")
+    if (m % 2 === 0) transfer(nomina, emergencia, 150, day(29))
     if (m % 2 === 1) transfer(nomina, efectivo, 100, day(9), "Retirada cajero")
 
     // Gastos fijos
-    add(nomina, "gasto", 850, day(3), "Alquiler", "Alquiler piso", { necesidad: true })
+    add(nomina, "gasto", 850, day(1), "Alquiler", "Alquiler piso", { necesidad: true })
     add(nomina, "gasto", between(48, 92), day(8), "Suministros", "Iberdrola luz y gas", { necesidad: true })
     add(nomina, "gasto", 30, day(10), "Internet", "Digi fibra", { necesidad: true })
     add(nomina, "gasto", 15, day(12), "Móvil", "Tarifa móvil", { necesidad: true })
