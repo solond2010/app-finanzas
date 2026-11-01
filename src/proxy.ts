@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { AUTH_COOKIE_NAME, isValidSessionToken } from "@/lib/auth"
 import { isPublicAuthPath, isSupabaseAuthEnabled, USER_ID_COOKIE } from "@/lib/auth-mode"
+import { DEMO_COOKIE, isDemoCookieValue, isDemoEntryPath } from "@/lib/demo/constants"
 
 // Puerta de entrada de la app. Dos modos (ver src/lib/auth-mode.ts):
 //  - AUTH_MODE=supabase: cuentas reales con Supabase Auth. Aquí se refresca la
@@ -11,7 +12,31 @@ import { isPublicAuthPath, isSupabaseAuthEnabled, USER_ID_COOKIE } from "@/lib/a
 //    cookie app-auth con un token HMAC opaco, como hasta ahora.
 // Ambos son fail-closed: si falta configuración la app no se abre (503).
 export async function proxy(request: NextRequest) {
-  return isSupabaseAuthEnabled() ? supabaseProxy(request) : passwordProxy(request)
+  const demo = demoGate(request)
+  if (demo) return demo
+  const response = await (isSupabaseAuthEnabled() ? supabaseProxy(request) : passwordProxy(request))
+  // Ir a entrar o crear cuenta saca de la demo (si alguien llega sin pasar
+  // por /demo/salir, p. ej. escribiendo /login a mano).
+  if (leavesDemo(request)) response.cookies.delete(DEMO_COOKIE)
+  return response
+}
+
+// Modo demo (ver src/lib/demo/constants.ts): las páginas de la app se abren
+// sin sesión, pero las rutas /api siguen exigiendo sesión como siempre (el
+// navegador en demo ni siquiera las llama: las contesta en memoria). Las
+// páginas no traen datos del servidor, así que la cookie no da acceso a nada.
+function demoGate(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl
+  if (isDemoEntryPath(pathname)) return NextResponse.next()
+  if (!isDemoCookieValue(request.cookies.get(DEMO_COOKIE)?.value)) return null
+  if (pathname.startsWith("/api/") || pathname === "/login" || pathname.startsWith("/auth/")) return null
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return NextResponse.redirect(new URL("/dashboard", request.url))
+  return NextResponse.next()
+}
+
+function leavesDemo(request: NextRequest): boolean {
+  const { pathname } = request.nextUrl
+  return (pathname === "/login" || pathname.startsWith("/auth/")) && request.cookies.has(DEMO_COOKIE)
 }
 
 function unavailable(message: string) {

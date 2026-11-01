@@ -7,6 +7,10 @@ export const onRequestError: Instrumentation.onRequestError = async (err, reques
   if (process.env.NEXT_RUNTIME !== "nodejs") return
   // El propio endpoint de avisos no se vigila a sí mismo (evita bucles).
   if (request.path.startsWith("/api/errors")) return
+  // La demo no escribe nada en la base de datos, tampoco avisos de error.
+  const cookie = request.headers.cookie
+  const { hasDemoCookie } = await import("@/lib/demo/constants")
+  if (hasDemoCookie(Array.isArray(cookie) ? cookie.join("; ") : cookie)) return
   try {
     const { logServerError } = await import("@/lib/server/error-log")
     const ua = request.headers["user-agent"]

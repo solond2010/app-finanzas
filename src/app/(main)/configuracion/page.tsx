@@ -19,12 +19,15 @@ import { AccountSettings } from "@/components/settings/account-settings"
 import { FeedbackCard } from "@/components/settings/feedback-card"
 import { CategoryIcon } from "@/components/icons/category-icon"
 import { CategoryIconPicker } from "@/components/categories/category-icon-picker"
+import { DemoLockedCard } from "@/components/demo/demo-locked-card"
+import { useDemo } from "@/lib/demo/context"
 
 export default function ConfiguracionPage() {
   // La nota de la copia automática del Mac solo tiene sentido para Moha
   // (dueño histórico); los demás usuarios no tienen ese Mac.
   const isOwnerDevice = useIsOwner()
   const { state, loading, dispatch } = useFinance()
+  const demo = useDemo()
   const { status: syncStatus, lastSyncedAt, retrySync, localBackupStatus, retryLocalBackup } = useSyncStatus()
   const { positions, contributions, loaded: investmentsLoaded, syncStatus: investmentSyncStatus, retrySync: retryInvestmentSync } = useInvestments()
   const backupBlocked = ["syncing", "error", "offline"].includes(syncStatus) || ["syncing", "error", "offline"].includes(investmentSyncStatus)
@@ -275,10 +278,13 @@ export default function ConfiguracionPage() {
           </DialogContent>
         </Dialog>
 
-          <AccountSettings part="atajos" />
+          {demo
+            ? <DemoLockedCard title="Atajo de iPhone" text="Con tu cuenta puedes apuntar un gasto desde el iPhone en dos toques, sin abrir la app." />
+            : <AccountSettings part="atajos" />}
         </div>
         <div className="flex min-w-0 flex-col gap-6">
-        <Card className="border border-border">
+        {demo && <DemoLockedCard title="Exportar datos y copias" text="Con tu cuenta puedes descargar todos tus movimientos (CSV) y una copia completa de tus datos, guardados en la nube." />}
+        {!demo && <Card className="border border-border">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <FileDown className="h-4 w-4 text-blue-500" />
@@ -343,9 +349,9 @@ export default function ConfiguracionPage() {
             </div>
             {isOwnerDevice && <p className="px-1 text-xs text-muted-foreground">En este Mac se guarda al iniciar sesión si falta la copia del mes y los días 1 y 2 a las 09:15, en Documentos → Finanzas Backups.</p>}
           </CardContent>
-        </Card>
-          <AccountSettings part="cuenta" />
-          <FeedbackCard />
+        </Card>}
+          {!demo && <AccountSettings part="cuenta" />}
+          {!demo && <FeedbackCard />}
         </div>
       </div>
       )}

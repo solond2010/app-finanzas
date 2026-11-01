@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import DashboardLoading from "./loading"
 import { useRouter } from "next/navigation"
 import { MonthGrid, PeriodDivider, PeriodOption, PeriodPopover } from "@/components/ui/period-popover"
 import { accountColor, distinctAccountColors } from "@/lib/account-colors"
@@ -187,7 +188,7 @@ function AnnualStat({ label, year, value, accent, icon: Icon, children }: { labe
   )
 }
 
-export default function DashboardContent() {
+function DashboardInner() {
   const { state, loading, dispatch } = useFinance()
   const { privacy, toggle: togglePrivacy } = usePrivacy()
   const currencyByAccount = useMemo(() => getCurrencyByAccount(state.accounts), [state.accounts])
@@ -1742,4 +1743,16 @@ export default function DashboardContent() {
       <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={handleCreateAccount} />
     </div>
   )
+}
+
+// Inicio depende de la fecha y la hora de este dispositivo (mes actual, «hoy»,
+// copia local del pico de patrimonio) y de datos que solo existen en el
+// navegador. El servidor (en UTC) y el móvil (en hora de Madrid) no siempre
+// están en el mismo día o mes (p. ej. de 00:00 a 01:00), y eso provocaba el
+// error de hidratación de React (#418). Se pinta el esqueleto en el servidor
+// y en el primer render del navegador, y el contenido real justo después.
+const noopSubscribe = () => () => {}
+export default function DashboardContent() {
+  const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false)
+  return hydrated ? <DashboardInner /> : <DashboardLoading />
 }

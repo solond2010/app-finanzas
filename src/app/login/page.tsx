@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { isSupabaseAuthEnabled } from "@/lib/auth-mode"
 import { PasswordLoginForm } from "./password-login-form"
 import { AccountLoginForm } from "./account-login-form"
+import { DemoEntryButton } from "@/components/demo/demo-entry-button"
 
 // El modo (contraseña única o cuentas) se decide en el servidor en cada
 // petición, según AUTH_MODE. Ver src/lib/auth-mode.ts.
@@ -15,6 +16,7 @@ export default function LoginPage() {
         <Suspense fallback={<div className="text-sm text-muted-foreground text-center py-8">Cargando...</div>}>
           {accounts ? <AccountLoginForm /> : <PasswordLoginForm />}
         </Suspense>
+        {!accounts && <DemoEntryButton className="mt-6 w-full" label="Ver demo sin cuenta" />}
       </div>
     </div>
   )

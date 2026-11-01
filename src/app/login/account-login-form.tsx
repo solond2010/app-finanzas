@@ -6,6 +6,7 @@ import { Loader2 } from "@/components/icons"
 import { GarraLogo } from "@/components/brand/garra-logo"
 import { loginNotice } from "@/lib/auth-links"
 import { PasswordInput } from "@/components/ui/password-input"
+import { DemoEntryButton } from "@/components/demo/demo-entry-button"
 
 type Mode = "login" | "signup" | "magic"
 
@@ -115,9 +116,31 @@ export function AccountLoginForm() {
           {t.button}
         </button>
       </form>
+      {/* Primera visita: crear cuenta y ver la demo al mismo nivel. */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="h-px flex-1 bg-border" />
+          {mode === "signup" ? "¿Prefieres verla antes?" : "¿Primera vez en Garra?"}
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        {mode === "signup" ? (
+          <DemoEntryButton label="Ver demo sin registrarme" />
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => switchMode("signup")}
+              className="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-background/60 px-3 text-sm font-semibold transition-all hover:bg-muted/60 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              Crear cuenta
+            </button>
+            <DemoEntryButton />
+          </div>
+        )}
+        <p className="text-center text-xs text-muted-foreground">La demo tiene datos ficticios y no necesita email.</p>
+      </div>
       <div className="flex flex-col items-center gap-2 text-sm">
         {mode !== "login" && <button type="button" className="text-primary hover:underline" onClick={() => switchMode("login")}>Ya tengo cuenta: entrar</button>}
-        {mode !== "signup" && <button type="button" className="text-primary hover:underline" onClick={() => switchMode("signup")}>¿No tienes cuenta? Crear una</button>}
         {mode !== "magic" && <button type="button" className="text-muted-foreground hover:underline" onClick={() => switchMode("magic")}>¿Olvidaste la contraseña? Entra con un enlace por email</button>}
       </div>
     </div>
