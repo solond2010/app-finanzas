@@ -1459,7 +1459,7 @@ function DashboardInner() {
           </section>
 
           <section
-            className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.85fr)] lg:gap-5"
+            className={cn("grid grid-cols-1 items-start gap-4 lg:gap-5", topSpending.length > 0 && "lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.85fr)]")}
             aria-label="Gastos y colchón de emergencia"
           >
             {topSpending.length > 0 && (
@@ -1523,7 +1523,8 @@ function DashboardInner() {
               )}
               </div>
             )}
-            <div className={topSpending.length === 0 ? "w-full max-w-sm lg:justify-self-end" : "w-full"}>
+            {/* Sin gastos este mes, el colchón ocupa todo el ancho (nunca flota solo en medio). */}
+            <div className="w-full min-w-0">
               <EmergencyRunwayCard balanceEur={emergencyBalanceEur} />
             </div>
           </section>
