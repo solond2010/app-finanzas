@@ -18,11 +18,11 @@ export function FeedbackCard() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">¿Algo no funciona o echas algo en falta? Cuéntanoslo en dos toques. Lo leemos todo.</p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Button variant="outline" className="h-11 justify-start gap-2" onClick={() => openFeedbackDialog("fallo")}>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="h-auto min-h-11 min-w-[11rem] flex-1 justify-start gap-2 whitespace-normal py-2 text-left" onClick={() => openFeedbackDialog("fallo")}>
               <Bug className="size-4 text-red-500" />Avisar de un fallo
             </Button>
-            <Button variant="outline" className="h-11 justify-start gap-2" onClick={() => openFeedbackDialog("idea")}>
+            <Button variant="outline" className="h-auto min-h-11 min-w-[11rem] flex-1 justify-start gap-2 whitespace-normal py-2 text-left" onClick={() => openFeedbackDialog("idea")}>
               <Lightbulb className="size-4 text-[var(--gold)]" />Proponer una idea
             </Button>
           </div>
