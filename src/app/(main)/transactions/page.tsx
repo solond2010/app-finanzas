@@ -184,15 +184,15 @@ export default function IngresosGastosPage() {
         // Total del mes siempre visible y legible, justo encima de la tabla.
         <section aria-label={`Total de ${formatMonth(selectedDate)}`} className="grid grid-cols-3 gap-2 sm:gap-4">
           <div className={`${CARD} min-w-0 !p-3 sm:!p-5`}>
-            <p className="flex items-center gap-1 truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><HandCoins className="app-icon-tint h-3.5 w-3.5 text-emerald-500" /> Ingresos</p>
+            <p className="flex items-center gap-1 truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:tracking-wider"><HandCoins className="app-icon-tint h-3.5 w-3.5 text-emerald-500" /> Ingresos</p>
             <p className="mt-1 truncate text-base font-bold tabular-nums text-emerald-500 sm:text-2xl"><Sensitive>{formatMoney(monthTotals.ingresos, "EUR")}</Sensitive></p>
           </div>
           <div className={`${CARD} min-w-0 !p-3 sm:!p-5`}>
-            <p className="flex items-center gap-1 truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><Receipt className="app-icon-tint h-3.5 w-3.5 text-red-500" /> Gastos</p>
+            <p className="flex items-center gap-1 truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:tracking-wider"><Receipt className="app-icon-tint h-3.5 w-3.5 text-red-500" /> Gastos</p>
             <p className="mt-1 truncate text-base font-bold tabular-nums text-red-500 sm:text-2xl"><Sensitive>{formatMoney(monthTotals.gastos, "EUR")}</Sensitive></p>
           </div>
           <div className={`${CARD} min-w-0 !p-3 sm:!p-5`}>
-            <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Neto del mes</p>
+            <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:tracking-wider"><span className="sm:hidden">Neto</span><span className="hidden sm:inline">Neto del mes</span></p>
             <p className={cn("mt-1 truncate text-base font-bold tabular-nums sm:text-2xl", monthTotals.neto >= 0 ? "text-foreground" : "text-red-500")}><Sensitive>{monthTotals.neto > 0 ? "+" : ""}{formatMoney(monthTotals.neto, "EUR")}</Sensitive></p>
           </div>
         </section>

@@ -920,6 +920,14 @@ export function collectDeletesFromAction(state: FinanceState, action: Action, pe
     case "DELETE_TRANSACTION":
       pending.transactions.add(action.payload)
       break
+    // «Deshacer» tras borrar: si el borrado aún no se había sincronizado, se
+    // cancela (si no, la sincronización lo volvería a borrar tras subirlo).
+    case "ADD_TRANSACTION":
+      pending.transactions.delete(action.payload.id)
+      break
+    case "ADD_TRANSACTIONS":
+      for (const t of action.payload) pending.transactions.delete(t.id)
+      break
     case "DELETE_SINKING_FUND":
       pending.sinking_funds.add(action.payload)
       break

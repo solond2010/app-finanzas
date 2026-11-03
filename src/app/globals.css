@@ -535,11 +535,9 @@
   background: linear-gradient(145deg, color-mix(in oklab, var(--primary), transparent 98%), transparent 62%), var(--hero-bg);
 }
 
-/* Tablas y tarjetas comparten una jerarquía más nítida y menos ruido de borde. */
-.rounded-\[14px\].border-border.bg-card,
-.rounded-\[16px\].border-border.bg-card {
-  backdrop-filter: saturate(1.04);
-}
+/* (Antes las tarjetas llevaban backdrop-filter: cada una creaba una capa de
+   composición y en iPhone, al hacer scroll rápido, se veían pantallazos
+   negros mientras se pintaban. Se quita: visualmente no aportaba.) */
 
 @media (min-width: 1024px) {
   main > .content-fade,
@@ -1053,3 +1051,14 @@ input[type="number"] {
 /* Icono dúo de un solo color (pastillas de cifras: Gastos, Ingresos…): la capa
    suave toma el color del trazo en vez del naranja de marca. */
 .app-icon-duo.app-icon-tint [opacity="0.2"] { fill: currentColor; opacity: 0.35; }
+
+/* Scroll rápido en móvil: sin desenfoques de fondo bajo contenido que se
+   mueve (en iOS provocan zonas negras mientras se repinta). */
+@media (max-width: 1023px) {
+  .mobile-bottom-navigation {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: color-mix(in oklab, var(--background), transparent 2%);
+    background-image: none;
+  }
+}

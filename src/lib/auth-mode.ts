@@ -27,7 +27,10 @@ export function isPublicAuthPath(pathname: string): boolean {
     pathname.startsWith("/api/auth/") ||
     // Avisos de error: también desde /login (sin sesión). Solo admite INSERT,
     // con límite por IP y sin datos financieros (ver api/errors/route.ts).
-    pathname === "/api/errors"
+    pathname === "/api/errors" ||
+    // Comentarios: la propia ruta exige sesión, salvo a quien está en la
+    // demo (cookie garra-demo), que los envía de forma anónima y con límite.
+    pathname === "/api/feedback"
   )
 }
 

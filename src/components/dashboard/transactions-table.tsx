@@ -412,11 +412,14 @@ export function TransactionsTable({
   const clearSelection = () => setSelectedIds(new Set())
   const bulkDelete = () => {
     const deletableIds = [...selectedIds].filter((id) => !isInitialBalanceTransaction(id))
+    const removed = state.transactions.filter((t) => deletableIds.includes(t.id))
     for (const id of deletableIds) {
       dispatch({ type: "DELETE_TRANSACTION", payload: id })
       dbDeleteEq("transactions", "id", id).then(() => {}, () => {})
     }
-    toast(`${deletableIds.length} movimientos eliminados`, "success")
+    toast(`${deletableIds.length} movimientos eliminados`, "success", {
+      action: { label: "Deshacer", onClick: () => { dispatch({ type: "ADD_TRANSACTIONS", payload: removed }); toast("Movimientos recuperados", "success") } },
+    })
     clearSelection()
     setBulkDeleteConfirm(false)
   }
@@ -1241,10 +1244,13 @@ export function TransactionsTable({
           // sincronización con estado local desactualizado; sin esta llamada
           // directa, esas transacciones nunca se borrarían de Supabase.
           dbDeleteEq("transactions", "id", deleteConfirm.id).then(() => {}, () => {})
-          toast("Movimiento eliminado", "success")
+          const removed = deleteConfirm
+          toast("Movimiento eliminado", "success", {
+            action: { label: "Deshacer", onClick: () => { dispatch({ type: "ADD_TRANSACTION", payload: removed }); toast("Movimiento recuperado", "success") } },
+          })
         }}
         title="¿Eliminar movimiento?"
-        description={<>Se eliminará el movimiento &ldquo;{deleteConfirm?.descripcion || deleteConfirm?.categoria || ""}&rdquo; de <Sensitive>{deleteConfirm?.monto?.toLocaleString("es-ES", { useGrouping: "always" })} €</Sensitive>. No se puede deshacer.</>}
+        description={<>Se eliminará el movimiento &ldquo;{deleteConfirm?.descripcion || deleteConfirm?.categoria || ""}&rdquo; de <Sensitive>{deleteConfirm?.monto?.toLocaleString("es-ES", { useGrouping: "always" })} €</Sensitive>. Podrás deshacerlo durante unos segundos.</>}
         confirmLabel="Eliminar"
         destructive
       />
@@ -1253,7 +1259,7 @@ export function TransactionsTable({
         onOpenChange={setBulkDeleteConfirm}
         onConfirm={bulkDelete}
         title="¿Eliminar los movimientos seleccionados?"
-        description={<>Se eliminarán <strong>{selectedIds.size}</strong> movimientos. No se puede deshacer.</>}
+        description={<>Se eliminarán <strong>{selectedIds.size}</strong> movimientos. Podrás deshacerlo durante unos segundos.</>}
         confirmLabel="Eliminar"
         destructive
       />

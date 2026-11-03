@@ -3,23 +3,26 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react"
 import { X, CheckCircle, AlertCircle, Info } from "@/components/icons"
 
+interface ToastAction { label: string; onClick: () => void }
+interface ToastOptions { action?: ToastAction; duration?: number }
 interface Toast {
   id: number
   message: string
   type: "success" | "error" | "info"
+  action?: ToastAction
 }
 
-const ToastContext = createContext<{ toast: (msg: string, type?: Toast["type"]) => void } | null>(null)
+const ToastContext = createContext<{ toast: (msg: string, type?: Toast["type"], options?: ToastOptions) => void } | null>(null)
 
 let toastId = 0
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
-  const addToast = useCallback((message: string, type: Toast["type"] = "info") => {
+  const addToast = useCallback((message: string, type: Toast["type"] = "info", options?: ToastOptions) => {
     const id = ++toastId
-    setToasts((prev) => [...prev, { id, message, type }])
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500)
+    setToasts((prev) => [...prev, { id, message, type, action: options?.action }])
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), options?.duration ?? (options?.action ? 6000 : 3500))
   }, [])
 
   return (
@@ -53,6 +56,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 : <span className="flex h-6 w-6 items-center justify-center rounded-full" style={{ backgroundColor: "color-mix(in oklab, var(--gold), transparent 80%)" }}><Info className="h-3.5 w-3.5" style={{ color: "var(--gold)" }} /></span>
             }
             <span className="flex-1 font-medium">{t.message}</span>
+            {t.action && (
+              <button
+                type="button"
+                onClick={() => { t.action?.onClick(); setToasts((prev) => prev.filter((x) => x.id !== t.id)) }}
+                className="shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-bold text-[var(--gold)] underline-offset-2 hover:bg-black/30 hover:underline"
+              >
+                {t.action.label}
+              </button>
+            )}
             <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} aria-label="Cerrar aviso" className="shrink-0 rounded-xl p-1.5 opacity-50 hover:opacity-100 hover:bg-black/30 transition-all"><X className="h-3 w-3" /></button>
           </div>
         ))}

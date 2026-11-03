@@ -148,7 +148,7 @@ export function buildDemoDatabase(now: Date = new Date()): DemoDatabase {
     // Ingresos: la nómina llega a final de mes (día 27 o 28), como en la
     // mayoría de empresas en España; junio y diciembre con paga extra.
     const extra = mo === 5 || mo === 11
-    add(nomina, "ingreso", extra ? 4350 : 2350, day(27 + (m % 2)), "Salario", extra ? "Nómina + paga extra · Acme Software S.L." : "Nómina · Acme Software S.L.")
+    add(nomina, "ingreso", extra ? 4350 : 2350, day(27 + (m % 2)), "Salario", extra ? "Nómina + paga extra · Acme Software S.L." : "Nómina · Acme Software S.L.", extra ? {} : { tags: ["recurrente", "recurrente-dia:27"] })
     if (m % 2 === 1) add(nomina, "ingreso", between(280, 640), day(16), "Freelance", pick(["Diseño web cliente", "Consultoría", "Landing page"] as const))
     add(ahorro, "ingreso", between(7, 12), day(30), "Intereses", "Intereses cuenta remunerada")
     // Los indexados se revalorizan poco a poco (algún mes, menos).
@@ -163,14 +163,14 @@ export function buildDemoDatabase(now: Date = new Date()): DemoDatabase {
     if (m % 2 === 1) transfer(nomina, efectivo, 100, day(9), "Retirada cajero")
 
     // Gastos fijos
-    add(nomina, "gasto", 850, day(1), "Alquiler", "Alquiler piso", { necesidad: true })
-    add(nomina, "gasto", between(48, 92), day(8), "Suministros", "Iberdrola luz y gas", { necesidad: true })
-    add(nomina, "gasto", 30, day(10), "Internet", "Digi fibra", { necesidad: true })
-    add(nomina, "gasto", 15, day(12), "Móvil", "Tarifa móvil", { necesidad: true })
-    add(nomina, "gasto", 11.99, day(15), "Suscripciones", "Spotify")
-    add(nomina, "gasto", 13.99, day(16), "Suscripciones", "Netflix")
-    add(nomina, "gasto", 39.9, day(5), "Gym", "Cuota gimnasio")
-    add(nomina, "gasto", 20, day(4), "Transporte", "Abono transporte", { necesidad: true })
+    add(nomina, "gasto", 850, day(1), "Alquiler", "Alquiler piso", { necesidad: true, tags: ["recurrente"] })
+    add(nomina, "gasto", between(48, 92), day(8), "Suministros", "Iberdrola luz y gas", { necesidad: true, tags: ["recurrente"] })
+    add(nomina, "gasto", 30, day(10), "Internet", "Digi fibra", { necesidad: true, tags: ["recurrente"] })
+    add(nomina, "gasto", 15, day(12), "Móvil", "Tarifa móvil", { necesidad: true, tags: ["recurrente"] })
+    add(nomina, "gasto", 11.99, day(15), "Suscripciones", "Spotify", { tags: ["recurrente"] })
+    add(nomina, "gasto", 13.99, day(16), "Suscripciones", "Netflix", { tags: ["recurrente"] })
+    add(nomina, "gasto", 39.9, day(5), "Gym", "Cuota gimnasio", { tags: ["recurrente"] })
+    add(nomina, "gasto", 20, day(4), "Transporte", "Abono transporte", { necesidad: true, tags: ["recurrente"] })
 
     // Gastos variables
     const shops = 4 + Math.floor(rand() * 3)

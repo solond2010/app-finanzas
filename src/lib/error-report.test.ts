@@ -21,6 +21,9 @@ describe("avisos de error sin datos personales", () => {
   it("ignora ruido del navegador", () => {
     expect(isIgnorableClientError("ResizeObserver loop limit exceeded")).toBe(true)
     expect(isIgnorableClientError("Cannot read properties of undefined")).toBe(false)
+    expect(isIgnorableClientError("undefined is not an object (evaluating 'window.ethereum.selectedAddress = undefined')")).toBe(true)
+    expect(isIgnorableClientError("Can't find variable: __firefox__")).toBe(true)
+    expect(isIgnorableClientError("undefined is not an object (evaluating 'window.__firefox__.reader')")).toBe(true)
   })
   it("limita la frecuencia", () => {
     const allow = createRateLimiter(2, 1000)

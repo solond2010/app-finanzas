@@ -123,21 +123,16 @@ export function AccountLoginForm() {
           {mode === "signup" ? "¿Prefieres verla antes?" : "¿Primera vez en Garra?"}
           <span className="h-px flex-1 bg-border" />
         </div>
-        {mode === "signup" ? (
-          <DemoEntryButton label="Ver demo sin registrarme" />
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => switchMode("signup")}
-              className="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-background/60 px-3 text-sm font-semibold transition-all hover:bg-muted/60 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-            >
-              Crear cuenta
-            </button>
-            <DemoEntryButton />
-          </div>
+        <DemoEntryButton label={mode === "signup" ? "Ver la demo antes" : "Ver la demo"} />
+        {mode !== "signup" && (
+          <button
+            type="button"
+            onClick={() => switchMode("signup")}
+            className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-border bg-background/60 px-3 text-sm font-semibold transition-all hover:bg-muted/60 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            Crear cuenta gratis
+          </button>
         )}
-        <p className="text-center text-xs text-muted-foreground">La demo tiene datos ficticios y no necesita email.</p>
       </div>
       <div className="flex flex-col items-center gap-2 text-sm">
         {mode !== "login" && <button type="button" className="text-primary hover:underline" onClick={() => switchMode("login")}>Ya tengo cuenta: entrar</button>}

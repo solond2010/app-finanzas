@@ -14,6 +14,7 @@ import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-car
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { NetWorthChart } from "@/components/dashboard/net-worth-chart"
+import { InfoPopover } from "@/components/ui/info-popover"
 import { NetWorthExpanded } from "@/components/dashboard/net-worth-expanded"
 import { chartSeries, dateKeyOf, monthlyChangeBars } from "@/lib/net-worth-chart"
 import { EmptyPlaceholder } from "@/components/shared/empty-state"
@@ -1288,6 +1289,16 @@ function DashboardInner() {
               <div className="flex items-center gap-2">
                 <Gauge className="h-4 w-4 text-primary" />
                 <p className="text-sm font-semibold text-foreground">Puntuación financiera</p>
+                <InfoPopover label="Cómo se calcula la puntuación financiera" title="¿Cómo se calcula?" className="-my-1.5 ml-auto">
+                  <p>Una nota de 0 a 100 con cuatro partes, según el mes que estás viendo:</p>
+                  <ul className="space-y-1.5">
+                    <li><strong className="text-foreground">Ahorro · hasta 40 puntos.</strong> Lo que ahorras de lo que ingresas: 0&nbsp;% da 0 puntos y un 30&nbsp;% o más da los 40.</li>
+                    <li><strong className="text-foreground">Balance del mes · hasta 20.</strong> Ingresos menos gastos: con −100&nbsp;€ o menos, 0 puntos; con +100&nbsp;€ o más, los 20.</li>
+                    <li><strong className="text-foreground">Patrimonio · hasta 20.</strong> Cuánto ha cambiado desde el final del mes anterior: −2&nbsp;% o peor, 0 puntos; +2&nbsp;% o mejor, los 20.</li>
+                    <li><strong className="text-foreground">Fondo de emergencia · 20.</strong> Si tienes una cuenta de emergencia con saldo.</li>
+                  </ul>
+                  <p>80 o más: Excelente · 60–79: Sólido · 40–59: Mejorable · menos de 40: Frágil.</p>
+                </InfoPopover>
               </div>
               <div className="relative mx-auto my-4 flex items-center justify-center">
                 <CircularProgress value={score} size={136} strokeWidth={10} color={scoreColor} />
@@ -1337,7 +1348,7 @@ function DashboardInner() {
                     {composicionLeyenda.map((c) => (
                       <button key={c.key} type="button" onClick={() => openCompositionItem(c)} aria-label={`${c.label}, ${Math.round(c.pct)}%: ver ${c.accountId ? "cuenta" : "cuentas"}`} className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 text-left text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-9">
                         <span className="h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/15" style={{ backgroundColor: c.color }} />
-                        <span className="min-w-0 truncate text-foreground sm:max-w-[9rem]">{c.label}</span>
+                        <span className="line-clamp-2 min-w-0 break-words leading-tight text-foreground sm:line-clamp-1 sm:max-w-[9rem]">{c.label}</span>
                         <span className="tabular-nums text-muted-foreground">{Math.round(c.pct)}%</span>
                         <ChevronRight className="ml-auto size-3.5 shrink-0 text-muted-foreground sm:ml-0" />
                       </button>
@@ -1437,7 +1448,7 @@ function DashboardInner() {
                 <div className={cn("mt-3 grid gap-2", goalsView.upcoming.length === 1 ? "grid-cols-1" : goalsView.upcoming.length === 2 ? "grid-cols-2" : "grid-cols-3")} aria-label="Próximos objetivos de patrimonio">
                   {goalsView.upcoming.map((goal, index) => (
                     <div key={goal.id} className={cn("min-w-0 rounded-xl border px-1.5 py-2.5 sm:px-2", index === 0 ? "border-primary/30 bg-primary/[0.07]" : "border-border/70 bg-background/35")}>
-                      <p className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">{goalLabel(goal, index)}</p>
+                      <p className="line-clamp-2 break-words text-[9px] uppercase leading-tight tracking-wide text-muted-foreground">{goalLabel(goal, index)}</p>
                       <p className={cn("mt-1 truncate text-[11px] font-semibold tabular-nums sm:text-xs", index === 0 ? "text-primary" : "text-foreground")}><Sensitive>{money(goal.amount)}</Sensitive></p>
                     </div>
                   ))}

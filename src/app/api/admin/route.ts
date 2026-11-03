@@ -1,6 +1,7 @@
 import { getDataContext } from "@/lib/server/request-context"
 import { json, readJson } from "@/lib/server/auth-helpers"
 import { isAdminUserId } from "@/lib/auth-mode"
+import { isIgnorableClientError } from "@/lib/error-report"
 
 // Sección oculta de administración: comentarios y errores recientes. Solo
 // para Moha (isAdminUserId). A cualquier otro usuario le responde 404, como
@@ -17,7 +18,12 @@ export async function GET() {
     ctx.db.from("app_errors").select("id", { count: "exact", head: true }).gte("created_at", since),
   ])
   if (feedback.error || errors.error) return json({ error: "Las tablas de la beta aún no están activadas" }, 503)
-  return json({ feedback: feedback.data ?? [], errors: errors.data ?? [], errors24h: errors24h.count ?? 0 })
+  // Fuera el ruido de extensiones que ya estuviera guardado de antes.
+  const noise = (e: { message?: string | null; stack?: string | null }) => isIgnorableClientError(e.message ?? "") || isIgnorableClientError(e.stack ?? "")
+  const allErrors = errors.data ?? []
+  const realErrors = allErrors.filter((e) => !noise(e))
+  const recentNoise = allErrors.filter((e) => e.created_at >= since && noise(e)).length
+  return json({ feedback: feedback.data ?? [], errors: realErrors, errors24h: Math.max(0, (errors24h.count ?? 0) - recentNoise), hiddenNoise: allErrors.length - realErrors.length })
 }
 
 export async function PATCH(request: Request) {

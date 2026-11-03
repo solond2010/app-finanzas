@@ -119,7 +119,6 @@ export default function CuentasPage() {
     <div className="content-fade space-y-6 sm:space-y-7">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="page-section-label">Patrimonio</p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Cuentas</h1>
           <p className="mt-1 text-sm text-muted-foreground">Saldos por banco y metas de ahorro.</p>
         </div>
@@ -172,7 +171,7 @@ export default function CuentasPage() {
             </select>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-            <p className="text-xs text-muted-foreground">{visibleAccounts.length} {visibleAccounts.length === 1 ? "cuenta" : "cuentas"}{filtersActive ? " encontradas" : ` · ${accountGroups.length} grupos`}</p>
+            <p className="text-xs text-muted-foreground">{filtersActive ? `${visibleAccounts.length} ${visibleAccounts.length === 1 ? "cuenta encontrada" : "cuentas encontradas"}` : `${accountGroups.length} ${accountGroups.length === 1 ? "grupo" : "grupos"}`}</p>
             {accountGroups.length > 1 && <button type="button" onClick={toggleAllGroups} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">{allGroupsExpanded ? <><ChevronsDownUp className="h-3.5 w-3.5" /> Contraer grupos</> : <><ChevronsUpDown className="h-3.5 w-3.5" /> Expandir grupos</>}</button>}
           </div>
           <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3 sm:gap-4">
@@ -180,6 +179,8 @@ export default function CuentasPage() {
               const isOpen = groupOpenState[group.key] ?? true
               const groupValue = group.accounts.reduce((sum, account) => sum + accountValueEur(account), 0)
               const kinds = [...new Set(group.accounts.map((account) => typeConfig[account.tipo]?.label ?? "Cuenta"))]
+              // Solo se habla de «aproximado» si hay que convertir otra divisa.
+              const mixedCurrency = group.accounts.some((account) => (account.currency ?? "EUR") !== "EUR")
               return (
                 <section key={group.key} className="account-group-card stagger-fade min-w-0 overflow-hidden rounded-[18px] border border-border bg-card/90 shadow-sm transition-colors" style={{ animationDelay: `${index * 45}ms` }}>
                   <button type="button" aria-expanded={isOpen} onClick={() => setGroupOpenState((current) => ({ ...current, [group.key]: !isOpen }))} className="flex min-h-[96px] w-full min-w-0 items-center gap-3 p-4 text-left transition-colors hover:bg-muted/25 sm:min-h-[104px] sm:p-5">
@@ -189,7 +190,7 @@ export default function CuentasPage() {
                       <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground"><span>{group.accounts.length} {group.accounts.length === 1 ? "cuenta" : "cuentas"}</span>{kinds.map((kind) => <span key={kind} className="rounded-full bg-background/70 px-1.5 py-0.5">{kind}</span>)}</span>
                     </span>
                     <span className="shrink-0 text-right">
-                      <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Total aprox.</span>
+                      <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">{mixedCurrency ? "Total aprox." : "Total"}</span>
                       <span className="mt-0.5 block text-sm font-bold tabular-nums text-foreground sm:text-base"><Sensitive>{formatMoney(groupValue, "EUR")}</Sensitive></span>
                     </span>
                     <ChevronDown className={`ml-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -200,12 +201,12 @@ export default function CuentasPage() {
                       return <button key={account.id} type="button" onClick={() => router.push(`/cuentas/${account.id}`)} className={`group/row relative flex min-h-[68px] w-full min-w-0 items-center gap-3 rounded-xl py-2 pl-3.5 pr-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${accountIndex > 0 ? "border-t border-border/40" : ""}`}>
                         <span aria-hidden="true" className="absolute inset-y-3 left-0 w-1 rounded-full" style={{ backgroundColor: accountColor(account) }} />
                         <AccountLogo account={account} className="h-10 w-10 shrink-0 rounded-xl" />
-                        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-foreground">{account.nombre}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{account.banco || cfg.label} · {cfg.label}</span></span>
-                        <span className="shrink-0 text-right"><span className="block text-sm font-semibold tabular-nums text-foreground"><Sensitive>{formatMoney(accountValue(account), account.currency)}</Sensitive></span><span className="mt-0.5 block text-[10px] text-muted-foreground">{account.currency}</span></span>
+                        <span className="min-w-0 flex-1"><span className="line-clamp-2 break-words text-sm font-medium leading-tight text-foreground">{account.nombre}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{cfg.label}</span></span>
+                        <span className="shrink-0 text-right"><span className="block text-sm font-semibold tabular-nums text-foreground"><Sensitive>{formatMoney(accountValue(account), account.currency)}</Sensitive></span>{(account.currency ?? "EUR") !== "EUR" && <span className="mt-0.5 block text-[10px] text-muted-foreground">{account.currency}</span>}</span>
                         <ChevronRight className="ml-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover/row:text-primary" />
                       </button>
                     })}
-                    <p className="px-2 pb-1 pt-2 text-[10px] text-muted-foreground">Total aproximado convertido a euros</p>
+                    {mixedCurrency && <p className="px-2 pb-1 pt-2 text-[10px] text-muted-foreground">Total aproximado convertido a euros</p>}
                   </div>}
                 </section>
               )

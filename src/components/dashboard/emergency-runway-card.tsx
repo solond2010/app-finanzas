@@ -10,7 +10,15 @@ import { formatMoney } from "@/lib/currency"
 import { getSetting, setSetting } from "@/lib/settings"
 
 const SETTING_KEY = "emergency-monthly-living-cost-eur"
-const MAX_COVERAGE_MONTHS = 6
+const MONTHS_KEY = "emergency-target-months"
+const DEFAULT_MONTHS = 6
+const MIN_MONTHS = 1
+const MAX_MONTHS = 24
+
+function parseMonths(value: string | null | undefined) {
+  const n = Math.round(Number(value))
+  return Number.isFinite(n) && n >= MIN_MONTHS && n <= MAX_MONTHS ? n : 0
+}
 
 function parseAmount(value: string | null | undefined) {
   if (!value) return 0
@@ -26,6 +34,8 @@ export function EmergencyRunwayCard({ balanceEur }: { balanceEur: number }) {
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [validationError, setValidationError] = useState("")
+  const [targetMonths, setTargetMonths] = useState(DEFAULT_MONTHS)
+  const [monthsDraft, setMonthsDraft] = useState(String(DEFAULT_MONTHS))
 
   useEffect(() => {
     let cancelled = false
@@ -36,6 +46,16 @@ export function EmergencyRunwayCard({ balanceEur }: { balanceEur: number }) {
         setMonthlyCost(local)
         setDraft(String(local))
       }
+      let localMonths = 0
+      try { localMonths = parseMonths(localStorage.getItem(MONTHS_KEY)) } catch {}
+      if (!cancelled && localMonths) { setTargetMonths(localMonths); setMonthsDraft(String(localMonths)) }
+      void getSetting(MONTHS_KEY).then((remote) => {
+        const months = parseMonths(remote)
+        if (cancelled || !months) return
+        setTargetMonths(months)
+        setMonthsDraft(String(months))
+        try { localStorage.setItem(MONTHS_KEY, String(months)) } catch {}
+      }).catch(() => {})
       void getSetting(SETTING_KEY).then(async (remote) => {
         if (cancelled) return
         const cloudValue = parseAmount(remote)
@@ -54,7 +74,7 @@ export function EmergencyRunwayCard({ balanceEur }: { balanceEur: number }) {
   }, [])
 
   const coveredMonths = monthlyCost > 0 ? Math.max(0, balanceEur / monthlyCost) : 0
-  const visibleMonths = Math.min(coveredMonths, MAX_COVERAGE_MONTHS)
+  const visibleMonths = Math.min(coveredMonths, targetMonths)
 
   async function saveMonthlyCost(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -63,6 +83,14 @@ export function EmergencyRunwayCard({ balanceEur }: { balanceEur: number }) {
       setValidationError("Introduce un gasto mensual mayor que 0 €.")
       return
     }
+    const months = parseMonths(monthsDraft)
+    if (!months) {
+      setValidationError(`El objetivo debe estar entre ${MIN_MONTHS} y ${MAX_MONTHS} meses.`)
+      return
+    }
+    setTargetMonths(months)
+    try { localStorage.setItem(MONTHS_KEY, String(months)) } catch {}
+    void setSetting(MONTHS_KEY, String(months)).catch(() => {})
 
     setSaving(true)
     setValidationError("")
@@ -101,6 +129,7 @@ export function EmergencyRunwayCard({ balanceEur }: { balanceEur: number }) {
 
   function startEditing() {
     setDraft(monthlyCost > 0 ? String(monthlyCost) : "")
+    setMonthsDraft(String(targetMonths))
     setValidationError("")
     setEditing((current) => !current)
   }
@@ -122,26 +151,35 @@ export function EmergencyRunwayCard({ balanceEur }: { balanceEur: number }) {
               {coveredMonths.toLocaleString("es-ES", { useGrouping: "always", minimumFractionDigits: 1, maximumFractionDigits: 1 })}
             </span>
             <span className="text-xs font-medium text-foreground">meses</span>
-            <span className="ml-auto text-[10px] tabular-nums text-muted-foreground">de 6</span>
+            <span className="ml-auto text-[10px] tabular-nums text-muted-foreground">de {targetMonths}</span>
           </div>
-          <div className="mt-2 grid grid-cols-6 gap-1" role="img" aria-label={`${coveredMonths.toLocaleString("es-ES", { useGrouping: "always", maximumFractionDigits: 1 })} meses cubiertos de un objetivo visual de 6`}>
-            {Array.from({ length: MAX_COVERAGE_MONTHS }, (_, index) => {
-              const segment = Math.max(0, Math.min(1, visibleMonths - index))
-              return (
-                <div key={index} className="space-y-1">
-                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${segment * 100}%` }} />
+          {targetMonths <= 12 ? (
+            <div className="mt-2 grid gap-1" style={{ gridTemplateColumns: `repeat(${targetMonths}, minmax(0, 1fr))` }} role="img" aria-label={`${coveredMonths.toLocaleString("es-ES", { useGrouping: "always", maximumFractionDigits: 1 })} meses cubiertos de un objetivo de ${targetMonths}`}>
+              {Array.from({ length: targetMonths }, (_, index) => {
+                const segment = Math.max(0, Math.min(1, visibleMonths - index))
+                return (
+                  <div key={index} className="space-y-1">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${segment * 100}%` }} />
+                    </div>
+                    {(targetMonths <= 6 || (index + 1) % 3 === 0) && <p className="text-center text-[9px] leading-none tabular-nums text-muted-foreground">{index + 1}m</p>}
                   </div>
-                  <p className="text-center text-[9px] leading-none tabular-nums text-muted-foreground">{index + 1}m</p>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="mt-2 space-y-1" role="img" aria-label={`${coveredMonths.toLocaleString("es-ES", { useGrouping: "always", maximumFractionDigits: 1 })} meses cubiertos de un objetivo de ${targetMonths}`}>
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${(visibleMonths / targetMonths) * 100}%` }} />
+              </div>
+              <div className="flex justify-between text-[9px] leading-none tabular-nums text-muted-foreground"><span>0</span><span>{Math.round(targetMonths / 2)}m</span><span>{targetMonths}m</span></div>
+            </div>
+          )}
           <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
             <span className="truncate">Saldo: <Sensitive>{formatMoney(balanceEur, "EUR")}</Sensitive></span>
             <span className="shrink-0">Coste: <Sensitive>{formatMoney(monthlyCost, "EUR")}</Sensitive>/mes</span>
           </div>
-          {coveredMonths >= MAX_COVERAGE_MONTHS && <p className="mt-1 text-[10px] font-medium text-emerald-500">Objetivo de seis meses cubierto</p>}
+          {coveredMonths >= targetMonths && <p className="mt-1 text-[10px] font-medium text-emerald-500">Objetivo de {targetMonths} {targetMonths === 1 ? "mes" : "meses"} cubierto</p>}
         </>
       ) : (
         <div className="mt-1 flex items-end justify-between gap-2">
@@ -177,6 +215,24 @@ export function EmergencyRunwayCard({ balanceEur }: { balanceEur: number }) {
             <Button type="submit" size="sm" disabled={saving || !loaded} className="shrink-0">
               <Check /> Guardar
             </Button>
+          </div>
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <label htmlFor="emergency-target-months" className="text-xs font-medium text-foreground">¿Cuántos meses quieres cubrir?</label>
+            <div className="flex items-center gap-1">
+              <Button type="button" variant="outline" size="icon-sm" aria-label="Un mes menos" onClick={() => setMonthsDraft((v) => String(Math.max(MIN_MONTHS, (parseMonths(v) || DEFAULT_MONTHS) - 1)))}>−</Button>
+              <Input
+                id="emergency-target-months"
+                type="number"
+                min={MIN_MONTHS}
+                max={MAX_MONTHS}
+                step={1}
+                inputMode="numeric"
+                value={monthsDraft}
+                onChange={(event) => { setMonthsDraft(event.target.value); setValidationError("") }}
+                className="h-8 w-14 text-center tabular-nums"
+              />
+              <Button type="button" variant="outline" size="icon-sm" aria-label="Un mes más" onClick={() => setMonthsDraft((v) => String(Math.min(MAX_MONTHS, (parseMonths(v) || DEFAULT_MONTHS) + 1)))}>+</Button>
+            </div>
           </div>
           {validationError ? <p id="emergency-monthly-living-cost-error" role="alert" className="text-xs text-destructive">{validationError}</p> : (
             <p className="text-[10px] text-muted-foreground">El importe se guarda en tu cuenta y sirve para calcular los meses cubiertos.</p>

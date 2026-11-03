@@ -73,6 +73,28 @@ const typeBadge: Record<string, { label: string; color: string }> = {
   gastos: { label: "Gastos", color: "text-red-500" },
 }
 
+type ErrorField = "monto" | "montoDestino" | "origen" | "destino" | "cuenta" | "categoria" | "resuelto" | null
+
+/** Aviso de error pegado al campo que hay que corregir. */
+function FieldError({ show, message }: { show: boolean; message: string }) {
+  if (!show || !message) return null
+  return (
+    <p role="alert" className="flex items-center gap-1.5 text-xs font-medium text-red-500">
+      <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {message}
+    </p>
+  )
+}
+
+/** Saldo de la cuenta elegida, dentro del selector cerrado. */
+function SelectedBalance({ account }: { account?: Account }) {
+  if (!account) return null
+  return (
+    <span className="ml-auto shrink-0 pl-2 text-xs font-semibold tabular-nums text-muted-foreground">
+      <Sensitive>{formatMoney(account.saldo, account.currency)}</Sensitive>
+    </span>
+  )
+}
+
 function AccountSelectItem({ account, showBalance = true }: { account: Account; showBalance?: boolean }) {
   const badge = typeBadge[account.tipo]
   return (
@@ -159,6 +181,8 @@ function UnifiedMovementForm({
     return fallback?.id ?? accounts[0]?.id ?? ""
   })
   const [error, setError] = useState("")
+  // Campo al que se refiere el error: el aviso sale justo debajo de ese campo.
+  const [errorField, setErrorField] = useState<ErrorField>(null)
 
   // Al cambiar de tipo, recalcula la cuenta por defecto (gasto → cuenta de
   // gastos/efectivo, ingreso → efectivo/ahorro) y limpia la categoría, que no
@@ -203,25 +227,28 @@ function UnifiedMovementForm({
     .slice(0, 4)
     .map(([name]) => name)
 
+  const fail = (field: ErrorField, message: string) => { setErrorField(field); setError(message) }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setErrorField(null)
     const amount = parseAmount(monto)
-    if (!amount) { setError("Indica un importe válido mayor que 0."); return }
+    if (!amount) { fail("monto", "Indica un importe válido mayor que 0."); return }
 
     if (tipo === "traspaso") {
-      if (!origenId || !destinoId) { setError("Selecciona cuenta de origen y destino."); return }
-      if (origenId === destinoId) { setError("El origen y el destino no pueden ser la misma cuenta."); return }
+      if (!origenId) { fail("origen", "Selecciona la cuenta de origen."); return }
+      if (!destinoId) { fail("destino", "Selecciona la cuenta de destino."); return }
+      if (origenId === destinoId) { fail("destino", "El origen y el destino no pueden ser la misma cuenta."); return }
       const source = accounts.find((account) => account.id === origenId)
       const destination = accounts.find((account) => account.id === destinoId)
-      if (!source || !destination) { setError("No se encontraron las cuentas seleccionadas."); return }
+      if (!source || !destination) { fail(null, "No se encontraron las cuentas seleccionadas."); return }
       const receivedAmount = source.currency === destination.currency ? amount : parseAmount(montoDestino)
-      if (receivedAmount == null) { setError(`Indica el importe que llegó a la cuenta destino (${currencySymbol(destination.currency)}).`); return }
+      if (receivedAmount == null) { fail("montoDestino", `Indica el importe que llegó a la cuenta destino (${currencySymbol(destination.currency)}).`); return }
       onSaveTransfer(origenId, destinoId, amount, receivedAmount, descripcion || "Traspaso", fecha)
       return
     }
-    if (!cuentaId) { setError("Selecciona una cuenta."); return }
-    if (!categoria) { setError("Selecciona una categoría."); return }
+    if (!cuentaId) { fail("cuenta", "Selecciona una cuenta."); return }
+    if (!categoria) { fail("categoria", "Selecciona una categoría."); return }
     onSaveTransaction({
       id: generateId(),
       cuenta_id: cuentaId,
@@ -287,7 +314,7 @@ function UnifiedMovementForm({
             <label className="text-sm font-medium text-foreground">Desde (origen)</label>
             <Select value={origenId} onValueChange={(v) => { if (v) { setOrigenId(v); setMontoDestino("") } }} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
               <SelectTrigger className="h-12 w-full text-sm">
-                <span className="flex min-w-0 items-center gap-2">{accounts.find((a) => a.id === origenId) && <AccountDot account={accounts.find((a) => a.id === origenId)!} />}<SelectValue /></span>
+                <span className="flex min-w-0 flex-1 items-center gap-2">{accounts.find((a) => a.id === origenId) && <AccountDot account={accounts.find((a) => a.id === origenId)!} />}<span className="min-w-0 truncate"><SelectValue /></span><SelectedBalance account={accounts.find((a) => a.id === origenId)} /></span>
               </SelectTrigger>
               <SelectContent className="w-[min(28rem,calc(100vw-2rem))] p-1.5 sm:p-2">
                 {accounts.map((a) => (
@@ -297,6 +324,7 @@ function UnifiedMovementForm({
                 ))}
               </SelectContent>
             </Select>
+            <FieldError show={errorField === "origen"} message={error} />
           </div>
 
           <div className="flex justify-center py-1">
@@ -309,7 +337,7 @@ function UnifiedMovementForm({
             <label className="text-sm font-medium text-foreground">Hacia (destino)</label>
             <Select value={destinoId} onValueChange={(v) => { if (v) { setDestinoId(v); setMontoDestino("") } }} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
               <SelectTrigger className="h-12 w-full text-sm">
-                <span className="flex min-w-0 items-center gap-2">{accounts.find((a) => a.id === destinoId) && <AccountDot account={accounts.find((a) => a.id === destinoId)!} />}<SelectValue /></span>
+                <span className="flex min-w-0 flex-1 items-center gap-2">{accounts.find((a) => a.id === destinoId) && <AccountDot account={accounts.find((a) => a.id === destinoId)!} />}<span className="min-w-0 truncate"><SelectValue /></span><SelectedBalance account={accounts.find((a) => a.id === destinoId)} /></span>
               </SelectTrigger>
               <SelectContent className="w-[min(28rem,calc(100vw-2rem))] p-1.5 sm:p-2">
                 {accounts.filter((a) => a.id !== origenId).map((a) => (
@@ -319,12 +347,14 @@ function UnifiedMovementForm({
                 ))}
               </SelectContent>
             </Select>
+            <FieldError show={errorField === "destino"} message={error} />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">{montoLabel}</label>
-              <Input type="text" inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0,00" required className="h-12 text-lg font-semibold tabular-nums" />
+              <Input type="text" inputMode="decimal" value={monto} onChange={(e) => { setMonto(e.target.value); if (errorField === "monto") setErrorField("resuelto") }} placeholder="0,00" required aria-invalid={errorField === "monto" || undefined} className="h-12 text-lg font-semibold tabular-nums" />
+              <FieldError show={errorField === "monto"} message={error} />
               <div className="flex flex-wrap gap-1.5 pt-1" aria-label="Importes frecuentes">
                 {[10, 20, 50, 100].map((amount) => <button key={amount} type="button" onClick={() => setMonto(String(amount))} className="min-h-9 rounded-full border border-border bg-background/60 px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">{amount} €</button>)}
               </div>
@@ -332,7 +362,8 @@ function UnifiedMovementForm({
             {(accounts.find((account) => account.id === origenId)?.currency ?? "EUR") !== (accounts.find((account) => account.id === destinoId)?.currency ?? "EUR") && (
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground">Importe recibido ({currencySymbol((accounts.find((account) => account.id === destinoId)?.currency ?? "EUR") as CurrencyCode)})</label>
-                <Input type="text" inputMode="decimal" value={montoDestino} onChange={(e) => setMontoDestino(e.target.value)} placeholder="0,00" required className="h-12 text-base tabular-nums" />
+                <Input type="text" inputMode="decimal" value={montoDestino} onChange={(e) => setMontoDestino(e.target.value)} placeholder="0,00" required aria-invalid={errorField === "montoDestino" || undefined} className="h-12 text-base tabular-nums" />
+                <FieldError show={errorField === "montoDestino"} message={error} />
                 <p className="text-xs text-muted-foreground">Introduce lo que realmente llegó, después del cambio y las comisiones.</p>
               </div>
             )}
@@ -352,9 +383,9 @@ function UnifiedMovementForm({
         <>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Cuenta</label>
-            <Select value={cuentaId} onValueChange={(v) => v && setCuentaId(v)} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
+            <Select value={cuentaId} onValueChange={(v) => { if (v) { setCuentaId(v); if (errorField === "cuenta") setErrorField("resuelto") } }} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
               <SelectTrigger className="h-12 w-full text-sm">
-                <span className="flex min-w-0 items-center gap-2">{accounts.find((a) => a.id === cuentaId) && <AccountDot account={accounts.find((a) => a.id === cuentaId)!} />}<SelectValue /></span>
+                <span className="flex min-w-0 flex-1 items-center gap-2">{accounts.find((a) => a.id === cuentaId) && <AccountDot account={accounts.find((a) => a.id === cuentaId)!} />}<span className="min-w-0 truncate"><SelectValue /></span><SelectedBalance account={accounts.find((a) => a.id === cuentaId)} /></span>
               </SelectTrigger>
               <SelectContent className="w-[min(28rem,calc(100vw-2rem))] p-1.5 sm:p-2">
                 {accounts.map((a) => (
@@ -364,12 +395,14 @@ function UnifiedMovementForm({
                 ))}
               </SelectContent>
             </Select>
+            <FieldError show={errorField === "cuenta"} message={error} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">{montoLabel}</label>
-              <Input type="text" inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0,00" required className="h-12 text-lg font-semibold tabular-nums" />
+              <Input type="text" inputMode="decimal" value={monto} onChange={(e) => { setMonto(e.target.value); if (errorField === "monto") setErrorField("resuelto") }} placeholder="0,00" required aria-invalid={errorField === "monto" || undefined} className="h-12 text-lg font-semibold tabular-nums" />
+              <FieldError show={errorField === "monto"} message={error} />
               <div className="flex flex-wrap gap-1.5 pt-1" aria-label="Importes frecuentes">
                 {[10, 20, 50, 100].map((amount) => <button key={amount} type="button" onClick={() => setMonto(String(amount))} className="min-h-9 rounded-full border border-border bg-background/60 px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">{amount} €</button>)}
               </div>
@@ -384,7 +417,7 @@ function UnifiedMovementForm({
 
             <div className={cn("space-y-1.5", newCatOpen && "sm:col-span-2")}>
               <label className="text-sm font-medium text-foreground">Categoría</label>
-              <Select value={categoria} onValueChange={(v) => v && setCategoria(v)}>
+              <Select value={categoria} onValueChange={(v) => { if (v) { setCategoria(v); if (errorField === "categoria") setErrorField("resuelto") } }}>
                 <SelectTrigger className="h-12 w-full text-sm">
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
@@ -394,8 +427,9 @@ function UnifiedMovementForm({
                   ))}
                 </SelectContent>
               </Select>
+              <FieldError show={errorField === "categoria"} message={error} />
               <div className="flex flex-wrap gap-1.5 pt-1" aria-label="Categorías frecuentes">
-                {frequentCategories.map((name) => <button key={name} type="button" onClick={() => setCategoria(name)} aria-pressed={categoria === name} className={cn("min-h-9 rounded-full border px-3 text-xs font-medium transition-colors", categoria === name ? "border-primary/45 bg-primary/10 text-primary" : "border-border bg-background/50 text-muted-foreground hover:text-foreground")}>{name}</button>)}
+                {frequentCategories.map((name) => <button key={name} type="button" onClick={() => { setCategoria(name); if (errorField === "categoria") setErrorField("resuelto") }} aria-pressed={categoria === name} className={cn("min-h-9 rounded-full border px-3 text-xs font-medium transition-colors", categoria === name ? "border-primary/45 bg-primary/10 text-primary" : "border-border bg-background/50 text-muted-foreground hover:text-foreground")}>{name}</button>)}
                 {!newCatOpen && (
                   <button type="button" onClick={() => { setNewCatOpen(true); setNewCatMsg(null) }} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-primary/45 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/10">
                     <Plus className="h-3 w-3" /> Nueva
@@ -436,7 +470,7 @@ function UnifiedMovementForm({
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Descripción</label>
-              <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: Nómina junio" className="h-12 text-base" />
+              <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder={tipo === "ingreso" ? "Ej: Nómina de junio" : "Ej: Compra en Mercadona"} className="h-12 text-base" />
             </div>
           </div>
 
@@ -502,8 +536,8 @@ function UnifiedMovementForm({
         </>
       )}
 
-      {error && (
-        <p className="flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-500">
+      {error && errorField === null && (
+        <p role="alert" className="flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-500">
           <AlertCircle className="h-4 w-4 shrink-0" /> {error}
         </p>
       )}

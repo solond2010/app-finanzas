@@ -61,7 +61,7 @@ function GoalTrail({ value, view }: { value: number; view: GoalProgress }) {
                 )}>
                   <Sensitive>{goalAmount(goal.amount)}</Sensitive>
                 </span>
-                <span className="truncate text-[11px] text-muted-foreground">
+                <span className="line-clamp-2 break-words text-[11px] leading-tight text-muted-foreground">
                   {goal.name ? `${goal.name} · ` : ""}{achieved ? "Conseguido" : active ? "Siguiente objetivo" : "En el camino"}
                 </span>
                 {active && (
@@ -89,7 +89,7 @@ export function PatrimonioObjetivos({ value }: { value: number }) {
     <div>
       <Card className="relative isolate overflow-hidden border-[var(--gold)]/20 bg-gradient-to-br from-card via-card to-[var(--gold)]/[0.06]">
         <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-[var(--gold)]/[0.07] blur-3xl" />
-        <CardContent className="relative grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)] lg:items-center">
+        <CardContent className="relative grid grid-cols-1 gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)] lg:items-center">
           <div>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-[var(--gold)]">
@@ -142,7 +142,7 @@ export function PatrimonioObjetivos({ value }: { value: number }) {
                   {view.upcoming.map((goal, index) => (
                     <div key={goal.id} className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
                       <div className="min-w-0 flex-1 rounded-xl bg-muted/40 px-1.5 py-3 text-center ring-1 ring-border/30 sm:px-2">
-                        <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">{goalLabel(goal, index)}</p>
+                        <p className="line-clamp-2 break-words text-[10px] uppercase leading-tight tracking-wide text-muted-foreground">{goalLabel(goal, index)}</p>
                         <p className="mt-1 whitespace-nowrap text-[clamp(0.62rem,1vw,0.8rem)] font-semibold tabular-nums text-foreground"><Sensitive>{goalAmount(goal.amount)}</Sensitive></p>
                       </div>
                       {index < view.upcoming.length - 1 && <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />}

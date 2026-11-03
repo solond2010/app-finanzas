@@ -16,7 +16,7 @@ export default function LoginPage() {
         <Suspense fallback={<div className="text-sm text-muted-foreground text-center py-8">Cargando...</div>}>
           {accounts ? <AccountLoginForm /> : <PasswordLoginForm />}
         </Suspense>
-        {!accounts && <DemoEntryButton className="mt-6 w-full" label="Ver demo sin cuenta" />}
+        {!accounts && <DemoEntryButton className="mt-6" />}
       </div>
     </div>
   )

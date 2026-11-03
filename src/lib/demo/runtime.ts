@@ -57,6 +57,9 @@ export function enableDemoMode() {
     if (!sameOrigin || !url.pathname.startsWith("/api/")) return realFetch(input as RequestInfo, init)
     // Única ruta que sí sale: la versión publicada (pública, sin datos).
     if (url.pathname === "/api/version") return realFetch(input as RequestInfo, init)
+    // Y los comentarios: quien prueba la demo también puede enviarnos uno
+    // (se guarda de forma anónima, sin datos de la demo).
+    if (url.pathname === "/api/feedback") return realFetch(input as RequestInfo, init)
     const method = (init?.method ?? request?.method ?? "GET").toUpperCase()
     let body: string | null = null
     if (typeof init?.body === "string") body = init.body

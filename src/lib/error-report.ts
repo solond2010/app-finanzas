@@ -56,7 +56,14 @@ export function sanitizeErrorReport(input: Partial<Record<keyof ErrorReport, unk
 
 /** Errores de navegador que no son fallos de Garra (extensiones, red, etc.). */
 export function isIgnorableClientError(message: string): boolean {
-  return /ResizeObserver loop|Script error\.?$|chrome-extension:|moz-extension:|safari-extension:|Load failed|Failed to fetch|NetworkError|AbortError|The operation was aborted|NEXT_REDIRECT|NEXT_NOT_FOUND/i.test(message)
+  return /ResizeObserver loop|Script error\.?$|chrome-extension:|moz-extension:|safari-extension:|safari-web-extension:|webkit-masked-url:|Load failed|Failed to fetch|NetworkError|AbortError|The operation was aborted|NEXT_REDIRECT|NEXT_NOT_FOUND/i.test(message) || isExtensionNoise(message)
+}
+
+/** Ruido de extensiones y navegadores dentro de apps (carteras cripto,
+ * Firefox/Edge/Chrome en iOS, traductores, gestores de contraseñas…): no son
+ * fallos de Garra. */
+export function isExtensionNoise(message: string): boolean {
+  return /window\.ethereum|ethereum\.|\bweb3\b|solana|phantom|__firefox__|__gCrWeb|__edgeTranslate|webkit\.messageHandlers|_AutofillCallbackHandler|instantSearchSDKJSBridge|zaloJSV2|feedly|grammarly|bitwarden|onepassword|1password|lastpass|dashlane|translate\.googleapis|Can't find variable: (?:__firefox__|gCrWeb|ethereum|_AutofillCallbackHandler|zaloJSV2)/i.test(message)
 }
 
 /** Límite simple en memoria: máximo `max` eventos por clave cada `windowMs`. */

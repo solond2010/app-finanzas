@@ -10,7 +10,7 @@ export function DemoBanner({ sidebarOpen }: { sidebarOpen: boolean }) {
       role="region"
       aria-label="Modo demo"
       className={cn(
-        "fixed inset-x-0 top-0 z-[45] border-b border-[color-mix(in_oklch,var(--gold),transparent_72%)] bg-[#0B0F14]/95 pt-[env(safe-area-inset-top)] text-white shadow-lg shadow-black/20 backdrop-blur-md transition-[left] duration-300",
+        "fixed inset-x-0 top-0 z-[45] border-b border-[color-mix(in_oklch,var(--gold),transparent_72%)] bg-[#0B0F14]/95 pt-[env(safe-area-inset-top)] text-white shadow-lg shadow-black/20 transition-[left] duration-300",
         sidebarOpen ? "lg:left-52" : "lg:left-16",
       )}
     >
