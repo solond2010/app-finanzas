@@ -101,6 +101,10 @@ type Action =
   | { type: "ADD_TRANSACTION"; payload: Transaction }
   | { type: "ADD_TRANSFER"; payload: [Transaction, Transaction] }
   | { type: "ADD_TRANSACTIONS"; payload: Transaction[] }
+  // Importación de un extracto: keepBalance = el saldo actual ya incluye esos
+  // movimientos (se ajusta el saldo inicial hacia atrás en vez del saldo).
+  | { type: "IMPORT_TRANSACTIONS"; payload: Transaction[]; accountId: string; keepBalance: boolean }
+  | { type: "UNDO_IMPORT"; ids: string[]; accountId: string; keepBalance: boolean; initialBefore: Transaction | null }
   | { type: "UPDATE_TRANSACTION"; payload: Transaction }
   | { type: "DELETE_TRANSACTION"; payload: string }
   | { type: "ADD_SINKING_FUND"; payload: SinkingFund }
@@ -370,6 +374,37 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
     }
     case "ADD_TRANSACTIONS":
       return action.payload.reduce((next, transaction) => reducer(next, { type: "ADD_TRANSACTION", payload: transaction }), state)
+    case "IMPORT_TRANSACTIONS": {
+      if (!action.keepBalance) return reducer(state, { type: "ADD_TRANSACTIONS", payload: action.payload })
+      const now = new Date().toISOString()
+      const imported = action.payload.map((t) => ({ ...t, created_at: t.created_at ?? now }))
+      const sum = imported.reduce((acc, t) => acc + signedAmount(t), 0)
+      const earliest = imported.reduce((min, t) => (t.fecha < min ? t.fecha : min), localDateKey())
+      const initial = state.transactions.find((t) => t.cuenta_id === action.accountId && isInitialTx(t))
+      const initialSigned = (initial ? signedAmount(initial) : 0) - sum
+      const dayBefore = (() => { const d = parseLocalDate(earliest); d.setDate(d.getDate() - 1); return localDateKey(d) })()
+      const account = state.accounts.find((a) => a.id === action.accountId)
+      const nextInitial: Transaction = {
+        ...(initial ?? { id: `init_${action.accountId}`, cuenta_id: action.accountId, categoria: "Saldo inicial", es_necesidad: false, descripcion: `Saldo inicial de ${account?.nombre ?? "la cuenta"}`, tags: [], created_at: now }),
+        monto: Math.round(Math.abs(initialSigned) * 100) / 100,
+        tipo: initialSigned < 0 ? "gasto" : "ingreso",
+        fecha: initial && initial.fecha < dayBefore ? initial.fecha : dayBefore,
+      }
+      const others = state.transactions.filter((t) => t !== initial)
+      return { ...state, transactions: [...others, nextInitial, ...imported] }
+    }
+    case "UNDO_IMPORT": {
+      const ids = new Set(action.ids)
+      const removed = state.transactions.filter((t) => ids.has(t.id))
+      let transactions = state.transactions.filter((t) => !ids.has(t.id))
+      if (!action.keepBalance) {
+        const delta = removed.reduce((acc, t) => acc + signedAmount(t), 0)
+        return { ...state, transactions, accounts: state.accounts.map((a) => (a.id === action.accountId ? { ...a, saldo: a.saldo - delta } : a)) }
+      }
+      transactions = transactions.filter((t) => !(t.cuenta_id === action.accountId && isInitialTx(t)))
+      if (action.initialBefore) transactions.push(action.initialBefore)
+      return { ...state, transactions }
+    }
     case "UPDATE_TRANSACTION":
       return updateTransactionWithBalance(state, action.payload)
     case "DELETE_TRANSACTION":
@@ -927,6 +962,10 @@ export function collectDeletesFromAction(state: FinanceState, action: Action, pe
       break
     case "ADD_TRANSACTIONS":
       for (const t of action.payload) pending.transactions.delete(t.id)
+      break
+    case "UNDO_IMPORT":
+      for (const id of action.ids) pending.transactions.add(id)
+      if (action.keepBalance && !action.initialBefore) pending.transactions.add(`init_${action.accountId}`)
       break
     case "DELETE_SINKING_FUND":
       pending.sinking_funds.add(action.payload)

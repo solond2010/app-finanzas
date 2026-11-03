@@ -642,3 +642,17 @@ describe("getNetWorthChartDomain", () => {
     expect(large).toBeLessThan(0.5)
   })
 })
+
+describe("fixedVsVariable", () => {
+  it("separa fijos (equivalente mensual) de variables (media 3 meses)", async () => {
+    const { fixedVsVariable } = await import("./calculations")
+    const tx = (fecha: string, monto: number, tags: string[] = []) => ({ id: fecha + monto, cuenta_id: "c", monto, fecha, tipo: "gasto" as const, categoria: "X", es_necesidad: false, descripcion: "", tags })
+    const res = fixedVsVariable(
+      [tx("2026-08-10", 90), tx("2026-09-10", 60), tx("2026-10-01", 850, ["recurrente"]), tx("2026-10-12", 150), tx("2026-11-02", 999)],
+      [{ monto: 850, tipo: "gasto", frequency: "mensual", cuenta_id: "c" }, { monto: 120, tipo: "gasto", frequency: "anual", cuenta_id: "c" }, { monto: 2000, tipo: "ingreso", frequency: "mensual", cuenta_id: "c" }],
+      (n) => n,
+      new Date(2026, 10, 3),
+    )
+    expect(res).toEqual({ fixedExpenses: 860, fixedIncome: 2000, variableExpenses: 100 })
+  })
+})

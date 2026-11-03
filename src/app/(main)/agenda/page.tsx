@@ -4,7 +4,7 @@ import { useMemo } from "react"
 import Link from "next/link"
 import { CalendarDays, HandCoins, Receipt, Check, CircleAlert, Clock3, Repeat2, X } from "@/components/icons"
 import { useFinance, generateId } from "@/lib/store"
-import { getUpcomingRecurring, type UpcomingRecurring } from "@/lib/calculations"
+import { fixedVsVariable, getUpcomingRecurring, type UpcomingRecurring } from "@/lib/calculations"
 import { localDateKey, parseLocalDate } from "@/lib/date-utils"
 import { convertToEur, formatMoney } from "@/lib/currency"
 import { Button } from "@/components/ui/button"
@@ -36,6 +36,9 @@ export default function AgendaPage() {
   const overdue = useMemo(() => recurring.filter((item) => item.nextDate < today).sort((a, b) => a.nextDate.localeCompare(b.nextDate)), [recurring, today])
   const upcoming = useMemo(() => recurring.filter((item) => item.nextDate >= today && item.nextDate <= endDate).sort((a, b) => a.nextDate.localeCompare(b.nextDate)), [recurring, today, endDate])
   const accountById = useMemo(() => new Map(state.accounts.map((account) => [account.id, account])), [state.accounts])
+  const fixed = useMemo(() => fixedVsVariable(state.transactions, recurring, (amount, cuentaId) => convertToEur(amount, accountById.get(cuentaId)?.currency ?? "EUR")), [state.transactions, recurring, accountById])
+  const fixedList = useMemo(() => [...recurring].sort((a, b) => (a.tipo === b.tipo ? parseLocalDate(a.nextDate).getDate() - parseLocalDate(b.nextDate).getDate() : a.tipo === "gasto" ? -1 : 1)), [recurring])
+  const fixedShare = fixed.fixedExpenses + fixed.variableExpenses > 0 ? Math.round((fixed.fixedExpenses / (fixed.fixedExpenses + fixed.variableExpenses)) * 100) : 0
   const totals = useMemo(() => upcoming.reduce((sum, item) => {
     const amount = convertToEur(item.monto, accountById.get(item.cuenta_id)?.currency ?? "EUR")
     if (item.tipo === "ingreso") sum.income += amount
@@ -110,14 +113,50 @@ export default function AgendaPage() {
     <div className="content-fade mx-auto w-full max-w-6xl space-y-5 sm:space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="page-section-label">Planificación</p>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Agenda</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Previsión de pagos e ingresos recurrentes; no crea movimientos ni cambia saldos hasta que confirmes que ya ocurrieron.</p>
+          <p className="page-section-label">Agenda</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Gastos fijos</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Lo que pagas o cobras cada mes (alquiler, nómina, suscripciones…). Cuando llega el día te avisamos y lo confirmas con un toque; no cambia tus saldos hasta entonces.</p>
         </div>
-        <Link href="/transactions" className="inline-flex min-h-10 items-center gap-2 self-start rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:self-auto">
-          <CalendarDays className="size-4 text-primary" /> Gestionar movimientos
-        </Link>
+        <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+          <Button type="button" className="min-h-10 gap-2 rounded-xl" onClick={() => openMovementDialog({ recurrente: true })}><Repeat2 className="size-4" /> Añadir gasto fijo</Button>
+          <Link href="/transactions" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+            <CalendarDays className="size-4 text-primary" /> Movimientos
+          </Link>
+        </div>
       </header>
+
+      {!loading && (
+        <section className={`${CARD} space-y-4`} aria-labelledby="fixed-title">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div><p className="text-xs font-medium text-muted-foreground">Gastos fijos al mes</p><p className="mt-1 text-2xl font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(fixed.fixedExpenses, "EUR")}</Sensitive></p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">Gastos variables al mes <span className="font-normal">(media 3 meses)</span></p><p className="mt-1 text-2xl font-bold tabular-nums text-foreground"><Sensitive>{formatMoney(fixed.variableExpenses, "EUR")}</Sensitive></p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">Ingresos fijos al mes</p><p className="mt-1 text-2xl font-bold tabular-nums text-emerald-500"><Sensitive>{formatMoney(fixed.fixedIncome, "EUR")}</Sensitive></p></div>
+          </div>
+          {fixed.fixedExpenses + fixed.variableExpenses > 0 && (
+            <div>
+              <div className="flex h-2.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={`${fixedShare} % de tus gastos son fijos`}>
+                <div className="h-full bg-primary" style={{ width: `${fixedShare}%` }} />
+              </div>
+              <p className="mt-1.5 text-xs text-muted-foreground">{fixedShare} % de tus gastos son fijos · {100 - fixedShare} % variables</p>
+            </div>
+          )}
+          <div>
+            <h2 id="fixed-title" className="mb-2 text-sm font-semibold">Tus gastos e ingresos fijos <span className="font-normal text-muted-foreground">· {fixedList.length}</span></h2>
+            {fixedList.length ? (
+              <ul className="divide-y divide-border/70">
+                {fixedList.map((item) => (
+                  <li key={item.key} className="flex items-center gap-3 py-2 text-sm">
+                    <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${item.tipo === "ingreso" ? "bg-emerald-500/10 text-emerald-500" : "bg-primary/10 text-primary"}`}>{item.tipo === "ingreso" ? <HandCoins className="size-4" /> : <Receipt className="size-4" />}</span>
+                    <span className="min-w-0 flex-1"><span className="line-clamp-1 font-medium">{item.descripcion || item.categoria}</span><span className="block text-xs text-muted-foreground">{item.frequency === "mensual" ? `Día ${parseLocalDate(item.nextDate).getDate()} de cada mes` : frequencyLabel(item.frequency)} · {accountById.get(item.cuenta_id)?.nombre ?? "Cuenta no disponible"}</span></span>
+                    <Sensitive className={`shrink-0 font-semibold tabular-nums ${item.tipo === "ingreso" ? "text-emerald-500" : ""}`}>{item.tipo === "ingreso" ? "+" : "−"}{formatMoney(item.monto, accountById.get(item.cuenta_id)?.currency ?? "EUR")}</Sensitive>
+                    <Button type="button" size="icon" variant="ghost" className="size-8 shrink-0 rounded-lg text-muted-foreground hover:text-red-500" onClick={() => stop(item)} aria-label={`Dejar de repetir ${item.descripcion || item.categoria}`} title="Dejar de repetir"><X className="size-4" /></Button>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="text-sm text-muted-foreground">Aún no tienes gastos fijos. Pulsa «Añadir gasto fijo» o marca «Repetir este movimiento» al apuntar un gasto.</p>}
+          </div>
+        </section>
+      )}
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Resumen de agenda">
         <div className={CARD}><p className="text-xs font-medium text-muted-foreground">Vencidos</p><p className={`mt-2 text-2xl font-bold tabular-nums ${overdue.length ? "text-red-500" : "text-foreground"}`}>{loading ? "—" : overdue.length}</p><p className="mt-1 text-xs text-muted-foreground">Requieren revisión</p></div>

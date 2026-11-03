@@ -35,7 +35,7 @@ import { ADMIN_HREF, useAdminNav } from "@/lib/use-admin-nav"
 const navItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
   { href: "/transactions", label: "Movimientos", icon: ReceiptText },
-  { href: "/agenda", label: "Agenda", icon: CalendarDays },
+  { href: "/agenda", label: "Gastos fijos", icon: CalendarDays },
   { href: "/cuentas", label: "Cuentas", icon: Landmark },
   { href: "/analytics", label: "Analíticas", icon: ChartPie },
   { href: "/configuracion", label: "Configuración", icon: SlidersHorizontal },

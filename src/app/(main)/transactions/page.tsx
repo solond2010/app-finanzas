@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { AreaChart } from "@tremor/react"
 import { CalendarClock, HandCoins, Receipt, Check, ChevronDown, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp, X } from "@/components/icons"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
-import { ImportCsvButton } from "@/components/dashboard/import-csv-button"
+import { BankImportButton } from "@/components/dashboard/bank-import-dialog"
 import { getSetting, setSetting } from "@/lib/settings"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
@@ -171,7 +171,7 @@ export default function IngresosGastosPage() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Movimientos</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          <ImportCsvButton />
+          <BankImportButton />
           <MonthPeriodPicker className="hidden md:flex" buttonClassName="size-9" monthOffset={monthOffset} onMonthOffsetChange={setMonthOffset} label={formatMonth(selectedDate)} />
         </div>
       </header>

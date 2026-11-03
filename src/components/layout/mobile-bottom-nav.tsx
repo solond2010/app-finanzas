@@ -17,7 +17,7 @@ const primaryItems = [
 ]
 
 const moreItems = [
-  { href: "/agenda", label: "Agenda", description: "Pagos e ingresos recurrentes", icon: CalendarDays },
+  { href: "/agenda", label: "Gastos fijos", description: "Alquiler, nómina, suscripciones…", icon: CalendarDays },
   { href: "/analytics", label: "Analíticas", description: "Tu evolución financiera", icon: ChartPie },
   { href: "/configuracion", label: "Configuración", description: "Preferencias y datos", icon: SlidersHorizontal },
 ]

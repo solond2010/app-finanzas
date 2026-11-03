@@ -949,3 +949,36 @@ export function getPatrimonioMensualKpis(rows: PatrimonioMensualRow[]) {
 
   return { actual: ultimo.patrimonio, deltaEur, deltaPct, vsPrimeroEur, vsPrimeroPct, primero, ultimo }
 }
+
+// ============================================================
+// GASTOS FIJOS vs VARIABLES (sección «Gastos fijos» de la Agenda)
+// Fijos: recurrencias activas pasadas a su equivalente mensual. Variables:
+// media de los gastos de los 3 últimos meses completos que no son
+// recurrentes, traspasos ni saldos iniciales.
+export function fixedVsVariable(
+  transactions: Transaction[],
+  recurring: Pick<UpcomingRecurring, "monto" | "tipo" | "frequency" | "cuenta_id">[],
+  toEur: (amount: number, cuentaId: string) => number,
+  today = new Date(),
+): { fixedExpenses: number; fixedIncome: number; variableExpenses: number } {
+  const factor = (f: RecurringFrequency) => (f === "semanal" ? 52 / 12 : f === "anual" ? 1 / 12 : 1)
+  let fixedExpenses = 0
+  let fixedIncome = 0
+  for (const r of recurring) {
+    const monthly = toEur(r.monto, r.cuenta_id) * factor(r.frequency)
+    if (r.tipo === "gasto") fixedExpenses += monthly
+    else fixedIncome += monthly
+  }
+  const start = new Date(today.getFullYear(), today.getMonth() - 3, 1)
+  const end = new Date(today.getFullYear(), today.getMonth(), 1)
+  const startKey = toDateKey(start)
+  const endKey = toDateKey(end)
+  let variable = 0
+  for (const t of transactions) {
+    if (t.tipo !== "gasto" || t.fecha < startKey || t.fecha >= endKey) continue
+    if (isTransfer(t) || isRecurringTransaction(t) || t.categoria === "Saldo inicial") continue
+    variable += toEur(t.monto, t.cuenta_id)
+  }
+  const round = (n: number) => Math.round(n * 100) / 100
+  return { fixedExpenses: round(fixedExpenses), fixedIncome: round(fixedIncome), variableExpenses: round(variable / 3) }
+}
