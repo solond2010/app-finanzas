@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { selectAllRows } from "@/lib/supabase-server"
 import { getDataContext, unauthorizedResponse } from "@/lib/server/request-context"
 import { withUserId } from "@/lib/user-scope"
+import { canHaveAccounts, FREE_MAX_ACCOUNTS } from "@/lib/billing/plans"
+import { getUserPlan, paymentsEnabled } from "@/lib/server/billing"
 
 // Únicas tablas a las que esta ruta puede dar acceso — evita que un valor de
 // [table] arbitrario llegue a supabase.from(). El navegador ya no tiene la
@@ -51,6 +53,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ tab
   if (!Array.isArray(rows)) return NextResponse.json({ error: "rows debe ser un array" }, { status: 400 })
   if (rows.length === 0) return NextResponse.json({ ok: true })
   if (!rows.every((row) => !!row && typeof row === "object" && !Array.isArray(row))) return NextResponse.json({ error: "Cada fila debe ser un objeto" }, { status: 400 })
+
+  // Plan gratis (solo con los pagos activados): máximo de cuentas.
+  if (table === "accounts" && paymentsEnabled()) {
+    const plan = await getUserPlan(ctx.userId).catch(() => "pro" as const)
+    if (plan === "free") {
+      const { data: existing } = await ctx.db.from("accounts").select("id").eq("user_id", ctx.userId)
+      const ids = new Set((existing ?? []).map((r: { id: string }) => r.id))
+      for (const row of rows as Record<string, unknown>[]) if (typeof row.id === "string") ids.add(row.id)
+      if (!canHaveAccounts(plan, true, ids.size)) return NextResponse.json({ error: `El plan gratis permite hasta ${FREE_MAX_ACCOUNTS} cuentas. Pásate a Pro para tener más.`, code: "plan_limit" }, { status: 402 })
+    }
+  }
 
   // user_id lo pone SIEMPRE el servidor: el navegador no puede escribir a
   // nombre de otro usuario (y RLS lo rechazaría igualmente).

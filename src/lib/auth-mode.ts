@@ -31,6 +31,8 @@ export function isPublicAuthPath(pathname: string): boolean {
     // Comentarios: la propia ruta exige sesión, salvo a quien está en la
     // demo (cookie garra-demo), que los envía de forma anónima y con límite.
     pathname === "/api/feedback" ||
+    // Avisos de Stripe: llegan sin sesión y se validan por firma.
+    pathname === "/api/billing/webhook" ||
     // Páginas legales: públicas (se enlazan desde la pantalla de entrada).
     pathname === "/privacidad" ||
     pathname === "/terminos"

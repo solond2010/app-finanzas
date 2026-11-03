@@ -17,6 +17,7 @@ import Link from "next/link"
 import { LEGACY_USER_ID, USER_ID_COOKIE } from "@/lib/auth-mode"
 import { AccountSettings } from "@/components/settings/account-settings"
 import { FeedbackCard } from "@/components/settings/feedback-card"
+import { PlanCard } from "@/components/settings/plan-card"
 import { CategoryIcon } from "@/components/icons/category-icon"
 import { CategoryIconPicker } from "@/components/categories/category-icon-picker"
 import { DemoLockedCard } from "@/components/demo/demo-locked-card"
@@ -350,6 +351,7 @@ export default function ConfiguracionPage() {
             {isOwnerDevice && <p className="px-1 text-xs text-muted-foreground">En este Mac se guarda al iniciar sesión si falta la copia del mes y los días 1 y 2 a las 09:15, en Documentos → Finanzas Backups.</p>}
           </CardContent>
         </Card>}
+          {!demo && <PlanCard />}
           {!demo && <AccountSettings part="cuenta" />}
           {!demo && <FeedbackCard />}
           <p className="px-1 text-xs text-muted-foreground">
