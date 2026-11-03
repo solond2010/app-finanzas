@@ -581,6 +581,8 @@ export function TransactionsTable({
   const leadingDays = (new Date(calendarYear, calendarMonthNumber - 1, 1).getDay() + 6) % 7
   const calendarCellCount = Math.ceil((leadingDays + daysInMonth) / 7) * 7
   const calendarMonthLabel = new Date(calendarYear, calendarMonthNumber - 1, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" }).replace(/^./, (letter) => letter.toLocaleUpperCase("es-ES"))
+  // En la píldora del móvil, sin «de» («Noviembre 2026»): cabe sin cortarse.
+  const calendarMonthShort = calendarMonthLabel.replace(" de ", " ")
   const selectedDayLabel = (() => {
     const [year, month, day] = selectedDay.split("-").map(Number)
     return new Date(year, month - 1, day).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })
@@ -623,7 +625,7 @@ export function TransactionsTable({
                 onOpenChange={setMonthSheetOpen}
                 title="Elegir mes"
                 className="min-w-0 flex-1"
-                trigger={<button type="button" data-period-trigger disabled={!onMonthChange} onClick={() => { setMonthSheetYear(Number(selectedMonth.slice(0, 4))); setMonthSheetOpen((v) => !v) }} aria-expanded={monthSheetOpen} aria-haspopup="dialog" aria-label={`Mes: ${calendarMonthLabel}. Cambiar`} className="flex min-h-11 w-full min-w-0 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted"><span className="truncate">{calendarMonthLabel}</span><ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /></button>}
+                trigger={<button type="button" data-period-trigger disabled={!onMonthChange} onClick={() => { setMonthSheetYear(Number(selectedMonth.slice(0, 4))); setMonthSheetOpen((v) => !v) }} aria-expanded={monthSheetOpen} aria-haspopup="dialog" aria-label={`Mes: ${calendarMonthLabel}. Cambiar`} className="flex min-h-11 w-full min-w-0 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted"><span className="truncate">{calendarMonthShort}</span><ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /></button>}
               >
                 {(() => {
                   const current = localDateKey().slice(0, 7)

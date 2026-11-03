@@ -79,7 +79,7 @@ type ErrorField = "monto" | "montoDestino" | "origen" | "destino" | "cuenta" | "
 function FieldError({ show, message }: { show: boolean; message: string }) {
   if (!show || !message) return null
   return (
-    <p role="alert" className="flex items-center gap-1.5 text-xs font-medium text-red-500">
+    <p role="alert" data-field-error className="flex items-center gap-1.5 text-xs font-medium text-red-500">
       <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {message}
     </p>
   )
@@ -227,7 +227,12 @@ function UnifiedMovementForm({
     .slice(0, 4)
     .map(([name]) => name)
 
-  const fail = (field: ErrorField, message: string) => { setErrorField(field); setError(message) }
+  const fail = (field: ErrorField, message: string) => {
+    setErrorField(field)
+    setError(message)
+    // Lleva la vista al aviso (en móvil el botón queda abajo y el campo arriba).
+    requestAnimationFrame(() => document.querySelector("[data-field-error]")?.scrollIntoView({ block: "center", behavior: "smooth" }))
+  }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
