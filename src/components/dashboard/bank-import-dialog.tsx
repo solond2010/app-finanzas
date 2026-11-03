@@ -201,7 +201,7 @@ export function BankImportDialog({ open, onOpenChange }: { open: boolean; onOpen
                 <input type="checkbox" className="size-4 accent-[var(--gold)]" checked={allSelected} onChange={(e) => setSelected(e.target.checked ? new Set(movements.map((m) => m.row)) : new Set())} />
                 {chosen.length} de {movements.length} seleccionados
               </label>
-              <span className="text-xs text-muted-foreground">{duplicates.size > 0 ? `${duplicates.size} ya estaban en Garra (desmarcados)` : "Sin duplicados"}{parsed && parsed.skipped > 0 ? ` · ${parsed.skipped} filas sin fecha o importe ignoradas` : ""}</span>
+              <span className="text-xs text-muted-foreground">{duplicates.size > 0 ? (duplicates.size === 1 ? "1 ya estaba en Garra (desmarcado)" : `${duplicates.size} ya estaban en Garra (desmarcados)`) : "Sin duplicados"}{parsed && parsed.skipped > 0 ? ` · ${parsed.skipped} filas sin fecha o importe ignoradas` : ""}</span>
             </div>
 
             <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
