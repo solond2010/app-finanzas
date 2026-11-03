@@ -30,7 +30,10 @@ export function isPublicAuthPath(pathname: string): boolean {
     pathname === "/api/errors" ||
     // Comentarios: la propia ruta exige sesión, salvo a quien está en la
     // demo (cookie garra-demo), que los envía de forma anónima y con límite.
-    pathname === "/api/feedback"
+    pathname === "/api/feedback" ||
+    // Páginas legales: públicas (se enlazan desde la pantalla de entrada).
+    pathname === "/privacidad" ||
+    pathname === "/terminos"
   )
 }
 

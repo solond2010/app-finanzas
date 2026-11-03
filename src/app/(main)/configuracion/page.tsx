@@ -352,6 +352,9 @@ export default function ConfiguracionPage() {
         </Card>}
           {!demo && <AccountSettings part="cuenta" />}
           {!demo && <FeedbackCard />}
+          <p className="px-1 text-xs text-muted-foreground">
+            <a href="/privacidad" className="underline underline-offset-2 hover:text-foreground">Política de privacidad</a> · <a href="/terminos" className="underline underline-offset-2 hover:text-foreground">Condiciones de uso</a>
+          </p>
         </div>
       </div>
       )}

@@ -115,6 +115,11 @@ export function AccountLoginForm() {
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           {t.button}
         </button>
+        {mode === "signup" && (
+          <p className="text-center text-xs leading-5 text-muted-foreground">
+            Al crear tu cuenta aceptas las <a href="/terminos" className="font-medium text-foreground underline underline-offset-2">Condiciones de uso</a> y la <a href="/privacidad" className="font-medium text-foreground underline underline-offset-2">Política de privacidad</a>.
+          </p>
+        )}
       </form>
       {/* Primera visita: crear cuenta y ver la demo al mismo nivel. */}
       <div className="flex flex-col gap-3">

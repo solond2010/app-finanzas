@@ -76,6 +76,8 @@ describe("rutas públicas", () => {
     expect(isPublicAuthPath("/auth/confirm/verify")).toBe(true)
     expect(isPublicAuthPath("/auth/confirmx")).toBe(false)
     expect(isPublicAuthPath("/api/auth/login")).toBe(true)
+    expect(isPublicAuthPath("/privacidad")).toBe(true)
+    expect(isPublicAuthPath("/terminos")).toBe(true)
     expect(isPublicAuthPath("/dashboard")).toBe(false)
     expect(isPublicAuthPath("/api/data/accounts")).toBe(false)
   })
