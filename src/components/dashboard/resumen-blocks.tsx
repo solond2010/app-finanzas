@@ -32,17 +32,22 @@ export function MoneyHero(props: {
   const { net, income, expenses, comparable } = props
   const diffPct = comparable && comparable > 0 ? Math.round((1 - expenses / comparable) * 100) : null
   const other = props.netWorth - props.available - props.invested
-  const title = props.isCurrentMonth ? (net >= 0 ? "Te quedan este mes" : "Este mes vas en negativo") : net >= 0 ? `Te sobró en ${props.periodLabel}` : `Gastaste de más en ${props.periodLabel}`
+  // A principio de mes, antes de cobrar, «vas en negativo» asusta sin motivo:
+  // se enseña lo gastado hasta ahora.
+  const waitingIncome = props.isCurrentMonth && income === 0 && expenses > 0
+  const title = waitingIncome ? "Llevas gastado este mes" : props.isCurrentMonth ? (net >= 0 ? "Te quedan este mes" : "Este mes vas en negativo") : net >= 0 ? `Te sobró en ${props.periodLabel}` : `Gastaste de más en ${props.periodLabel}`
   const spentPct = income > 0 ? Math.min(100, (expenses / income) * 100) : expenses > 0 ? 100 : 0
   const tickPct = income > 0 && comparable ? Math.min(100, (comparable / income) * 100) : null
   return (
     <section aria-label="Tu dinero" className="hero-panel grid overflow-hidden rounded-[22px] border border-[color-mix(in_oklch,var(--gold),transparent_70%)] lg:grid-cols-[1.25fr_1fr]">
       <div className="p-5 sm:p-7">
         <p className="page-section-label">{title}</p>
-        <p className={cn("mt-2 text-[2.6rem] font-bold leading-none tracking-tight tabular-nums sm:text-6xl", net < 0 && "text-red-500")}><Sensitive>{eur(net)}</Sensitive></p>
+        <p className={cn("mt-2 text-[2.6rem] font-bold leading-none tracking-tight tabular-nums sm:text-6xl", (waitingIncome || net < 0) && "text-red-500")}><Sensitive>{eur(waitingIncome ? expenses : net)}</Sensitive></p>
         <p className="mt-3 max-w-xl text-sm text-foreground/85 sm:text-[15px]">
           {diffPct === null
             ? income === 0 && expenses === 0 ? "Todavía no hay movimientos en este periodo. Apunta el primero y verás aquí cómo vas." : `Has ingresado ${eur(income)} y gastado ${eur(expenses)}.`
+            : waitingIncome
+              ? <>Aún no han entrado ingresos este mes. {diffPct >= 0 ? <>Llevas un <b className="font-semibold text-emerald-500">{diffPct} % menos de gasto</b> que {props.comparableLabel}.</> : <>Llevas un <b className="font-semibold text-red-500">{-diffPct} % más de gasto</b> que {props.comparableLabel}.</>}</>
             : diffPct >= 0
               ? <>Vas bien: llevas un <b className="font-semibold text-emerald-500">{diffPct} % menos de gasto</b> que {props.comparableLabel}.</>
               : <>Ojo: llevas un <b className="font-semibold text-red-500">{-diffPct} % más de gasto</b> que {props.comparableLabel}.</>}
@@ -216,7 +221,7 @@ export function CashflowComboChart({ data, activeKey, onSelect, showSavings }: {
           const dim = (activeKey && activeKey !== b.key) || (hover !== null && hover !== i)
           return (
             <g key={b.key} className="cursor-pointer" onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onClick={() => onSelect(b.key)}>
-              <rect x={x - gw / 2 + 3} y={0} width={gw - 6} height={H - bottom + 4} rx={10} fill={hover === i || activeKey === b.key ? "color-mix(in oklch, var(--gold), transparent 92%)" : "transparent"} />
+              <rect x={x - gw / 2 + 3} y={0} width={gw - 6} height={H - bottom + 4} rx={10} fill={hover === i ? "color-mix(in oklch, var(--gold), transparent 90%)" : activeKey === b.key ? "color-mix(in oklch, var(--gold), transparent 95%)" : "transparent"} />
               <rect x={x - bw - 2} y={y(b.Ingresos)} width={bw} height={Math.max(0, y(0) - y(b.Ingresos))} rx={5} fill="var(--accent-green)" opacity={dim ? 0.35 : 0.9} />
               <rect x={x + 2} y={y(b.Gastos)} width={bw} height={Math.max(0, y(0) - y(b.Gastos))} rx={5} fill="var(--accent-red)" opacity={dim ? 0.35 : 0.9} />
             </g>

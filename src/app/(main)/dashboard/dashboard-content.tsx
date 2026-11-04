@@ -1299,7 +1299,7 @@ function DashboardInner() {
                   <p>80 o más: Excelente · 60–79: Sólido · 40–59: Mejorable · menos de 40: Frágil.</p>
                 </InfoPopover>
               </div>
-              <div className="mt-3 flex items-center gap-4">
+              <div className="mt-3 flex items-center gap-4 xl:flex-col xl:items-center xl:text-center 2xl:flex-row 2xl:text-left">
                 <div className="relative flex shrink-0 items-center justify-center">
                   <CircularProgress value={score} size={92} strokeWidth={8} color={scoreColor} />
                   <span className="absolute text-2xl font-bold tabular-nums text-foreground">{score}</span>
