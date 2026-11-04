@@ -2,9 +2,9 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react"
 import { getUpcomingRecurring, type UpcomingRecurring } from "./calculations"
-import type { Transaction } from "./store"
+import { useFinance, type Transaction } from "./store"
 import { dbDeleteIn, dbSelect, dbUpsert } from "./db-client"
-import { debtRecurring, parseAssets, parseDebts, type Asset, type Debt } from "./assets-debts"
+import { applyDebtPayments, debtRecurring, parseAssets, parseDebts, type Asset, type Debt } from "./assets-debts"
 
 // Almacén compartido (Inicio + Patrimonio) para las tablas assets y debts.
 type Snapshot = { assets: Asset[]; debts: Debt[]; loaded: boolean }
@@ -25,6 +25,8 @@ const now = () => new Date().toISOString()
 
 export function useAssetsDebts() {
   const snap = useSyncExternalStore(subscribe, () => snapshot, () => SERVER)
+  const { state } = useFinance()
+  const debts = useMemo(() => applyDebtPayments(snap.debts, state.transactions), [snap.debts, state.transactions])
   const saveAsset = useCallback(async (a: Asset) => {
     await dbUpsert("assets", [{ ...a, updated_at: now() }])
     emit({ ...snapshot, assets: parseAssets([...snapshot.assets.filter((x) => x.id !== a.id), a]) })
@@ -35,15 +37,18 @@ export function useAssetsDebts() {
     if (linked.length) await dbUpsert("debts", linked)
     emit({ ...snapshot, assets: snapshot.assets.filter((x) => x.id !== id), debts: parseDebts(snapshot.debts.map((d) => (d.asset_id === id ? { ...d, asset_id: null } : d))) })
   }, [])
-  const saveDebt = useCallback(async (d: Debt) => {
-    await dbUpsert("debts", [{ ...d, updated_at: now() }])
+  // El formulario guarda el pendiente real (ya con las cuotas pagadas), así
+  // que pendiente_at pasa a ahora y solo cuentan las cuotas posteriores.
+  const saveDebt = useCallback(async (input: Debt) => {
+    const d = { ...input, pendiente_at: now() }
+    await dbUpsert("debts", [{ ...d, updated_at: d.pendiente_at }])
     emit({ ...snapshot, debts: parseDebts([...snapshot.debts.filter((x) => x.id !== d.id), d]) })
   }, [])
   const deleteDebt = useCallback(async (id: string) => {
     await dbDeleteIn("debts", [id])
     emit({ ...snapshot, debts: snapshot.debts.filter((x) => x.id !== id) })
   }, [])
-  return { ...snap, saveAsset, deleteAsset, saveDebt, deleteDebt }
+  return { ...snap, debts, saveAsset, deleteAsset, saveDebt, deleteDebt }
 }
 
 /** Gastos fijos de siempre + las cuotas de deudas marcadas como gasto fijo. */

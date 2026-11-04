@@ -15,7 +15,7 @@ export const ASSET_LABEL: Record<AssetType, string> = { vivienda: "Vivienda", co
 export const DEBT_LABEL: Record<DebtType, string> = { hipoteca: "Hipoteca", prestamo_coche: "Préstamo coche", personal: "Personal", tarjeta: "Tarjeta", otra: "Otra" }
 
 export type Asset = { id: string; nombre: string; tipo: AssetType; valor: number; valor_fecha: string | null; notas: string | null }
-export type Debt = { id: string; nombre: string; tipo: DebtType; pendiente: number; principal_inicial: number | null; cuota_mensual: number | null; tin: number | null; fecha_fin: string | null; asset_id: string | null; notas: string | null; cuota_gasto_fijo: boolean; cuota_dia: number | null; cuota_cuenta_id: string | null }
+export type Debt = { id: string; nombre: string; tipo: DebtType; pendiente: number; principal_inicial: number | null; cuota_mensual: number | null; tin: number | null; fecha_fin: string | null; asset_id: string | null; notas: string | null; cuota_gasto_fijo: boolean; cuota_dia: number | null; cuota_cuenta_id: string | null; pendiente_at: string | null }
 
 const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
 const optNum = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number.isFinite(Number(v)) ? Number(v) : null)
@@ -47,6 +47,7 @@ export function parseDebts(rows: Record<string, unknown>[]): Debt[] {
     cuota_gasto_fijo: r.cuota_gasto_fijo === true,
     cuota_dia: optNum(r.cuota_dia),
     cuota_cuenta_id: optStr(r.cuota_cuenta_id),
+    pendiente_at: optStr(r.pendiente_at) ?? optStr(r.created_at),
   })).sort((a, b) => b.pendiente - a.pendiente)
 }
 
@@ -99,5 +100,22 @@ export function debtRecurring(debts: Debt[], transactions: Transaction[], today 
       nextDate: localDateKey(next),
       overdueDays: Math.round((t0.getTime() - next.getTime()) / 86400000),
     }
+  })
+}
+
+// Momento de referencia para deudas sin pendiente_at (p. ej. la demo): el
+// arranque de la sesión, para que solo cuenten las cuotas marcadas después.
+const SESSION_START = new Date().toISOString()
+
+/** Pendiente real: el guardado menos las cuotas («Ya se realizó») creadas
+ * después de guardarlo. Se calcula, no se escribe: deshacer o borrar el
+ * movimiento lo devuelve solo y nunca se aplica dos veces. */
+export function applyDebtPayments(debts: Debt[], transactions: Transaction[]): Debt[] {
+  if (!debts.length) return debts
+  return debts.map((d) => {
+    const tag = debtTag(d.id)
+    const since = d.pendiente_at ?? SESSION_START
+    const paid = transactions.reduce((sum, t) => (t.tipo === "gasto" && t.tags?.includes(tag) && (t.created_at ?? `${t.fecha}T23:59:59Z`) > since ? sum + Math.abs(t.monto) : sum), 0)
+    return paid > 0 ? { ...d, pendiente: Math.max(0, Math.round((d.pendiente - paid) * 100) / 100) } : d
   })
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { debtRecurring, paidPct, parseAssets, parseDebts, totals } from "./assets-debts"
+import { applyDebtPayments, debtRecurring, paidPct, parseAssets, parseDebts, totals } from "./assets-debts"
 
 describe("bienes y deudas", () => {
   it("parsea, normaliza tipos y suma", () => {
@@ -21,5 +21,14 @@ describe("bienes y deudas", () => {
     const paid = debtRecurring([d], [{ id: "t", cuenta_id: "c", monto: 760, fecha: "2026-11-01", tipo: "gasto", categoria: "Hipoteca", es_necesidad: true, descripcion: "", tags: ["deuda:h"] } as never], today)
     expect(paid[0].nextDate).toBe("2026-12-01")
     expect(debtRecurring([{ ...d, cuota_gasto_fijo: false }], [], today)).toHaveLength(0)
+  })
+  it("descuenta las cuotas pagadas después de guardar el pendiente, sin duplicar", () => {
+    const [d] = parseDebts([{ id: "h", nombre: "Piso", tipo: "hipoteca", pendiente: 1000, principal_inicial: 2000, pendiente_at: "2026-11-01T10:00:00Z" }])
+    const tx = (id: string, created_at: string) => ({ id, cuenta_id: "c", monto: 100, fecha: created_at.slice(0, 10), tipo: "gasto" as const, categoria: "Hipoteca", es_necesidad: true, descripcion: "", tags: ["deuda:h"], created_at })
+    expect(applyDebtPayments([d], [tx("old", "2026-10-30T10:00:00Z")])[0].pendiente).toBe(1000)
+    const after = applyDebtPayments([d], [tx("a", "2026-11-02T10:00:00Z"), tx("b", "2026-12-01T10:00:00Z")])[0]
+    expect(after.pendiente).toBe(800)
+    expect(paidPct(after)).toBe(60)
+    expect(applyDebtPayments([d], [])[0].pendiente).toBe(1000)
   })
 })

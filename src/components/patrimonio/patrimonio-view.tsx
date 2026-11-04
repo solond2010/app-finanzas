@@ -93,7 +93,7 @@ function DebtForm({ initial, assets, accounts, onSave, onCancel }: { initial: De
     if (useFijo && !cuentaId) return setErr("Elige la cuenta desde la que pagas la cuota.")
     const d = Math.round(Number(dia))
     setBusy(true)
-    try { await onSave({ id: initial?.id ?? newId("debt"), nombre: nombre.trim(), tipo, pendiente: p, principal_inicial: i, cuota_mensual: c, tin: t, fecha_fin: initial?.fecha_fin ?? null, asset_id: assetId || null, notas: initial?.notas ?? null, cuota_gasto_fijo: useFijo, cuota_dia: useFijo ? Math.min(31, Math.max(1, d || 1)) : initial?.cuota_dia ?? null, cuota_cuenta_id: useFijo ? cuentaId : initial?.cuota_cuenta_id ?? null }) } catch { setErr("No se pudo guardar. Inténtalo de nuevo.") } finally { setBusy(false) }
+    try { await onSave({ id: initial?.id ?? newId("debt"), nombre: nombre.trim(), tipo, pendiente: p, principal_inicial: i, cuota_mensual: c, tin: t, fecha_fin: initial?.fecha_fin ?? null, asset_id: assetId || null, notas: initial?.notas ?? null, cuota_gasto_fijo: useFijo, cuota_dia: useFijo ? Math.min(31, Math.max(1, d || 1)) : initial?.cuota_dia ?? null, cuota_cuenta_id: useFijo ? cuentaId : initial?.cuota_cuenta_id ?? null, pendiente_at: initial?.pendiente_at ?? null }) } catch { setErr("No se pudo guardar. Inténtalo de nuevo.") } finally { setBusy(false) }
   }
   return (
     <form onSubmit={submit} className="mt-3 min-w-0 space-y-3 rounded-xl border border-border bg-background/40 p-3 sm:p-4">
