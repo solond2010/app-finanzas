@@ -1,10 +1,11 @@
 "use client"
 
+import { useRecurringWithDebts } from "@/lib/use-assets-debts"
 import { useMemo } from "react"
 import Link from "next/link"
 import { CalendarDays, HandCoins, Receipt, Check, CircleAlert, Clock3, Repeat2, X } from "@/components/icons"
 import { useFinance, generateId } from "@/lib/store"
-import { fixedVsVariable, getUpcomingRecurring, type UpcomingRecurring } from "@/lib/calculations"
+import { fixedVsVariable, type UpcomingRecurring } from "@/lib/calculations"
 import { localDateKey, parseLocalDate } from "@/lib/date-utils"
 import { convertToEur, formatMoney } from "@/lib/currency"
 import { Button } from "@/components/ui/button"
@@ -32,7 +33,7 @@ export default function AgendaPage() {
     date.setDate(date.getDate() + 30)
     return localDateKey(date)
   }, [today])
-  const recurring = useMemo(() => getUpcomingRecurring(state.transactions), [state.transactions])
+  const recurring = useRecurringWithDebts(state.transactions)
   const overdue = useMemo(() => recurring.filter((item) => item.nextDate < today).sort((a, b) => a.nextDate.localeCompare(b.nextDate)), [recurring, today])
   const upcoming = useMemo(() => recurring.filter((item) => item.nextDate >= today && item.nextDate <= endDate).sort((a, b) => a.nextDate.localeCompare(b.nextDate)), [recurring, today, endDate])
   const accountById = useMemo(() => new Map(state.accounts.map((account) => [account.id, account])), [state.accounts])
@@ -66,6 +67,7 @@ export default function AgendaPage() {
   }
 
   const stop = (item: UpcomingRecurring) => {
+    if (item.key.startsWith("deuda:")) { toast("Esta cuota sale de una deuda: cámbiala o desactívala en Patrimonio.", "info"); return }
     const source = state.transactions.find((transaction) => transaction.id === item.sourceTransactionId)
     if (!source || !window.confirm(`¿Dejar de repetir «${item.descripcion || item.categoria}»? El historial se conservará.`)) return
     dispatch({ type: "UPDATE_TRANSACTION", payload: { ...source, tags: source.tags.filter((tag) => tag !== "recurrente" && !tag.startsWith("recurrente:") && !tag.startsWith("recurrente-dia:")) } })

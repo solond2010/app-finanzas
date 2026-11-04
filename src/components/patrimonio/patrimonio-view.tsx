@@ -68,7 +68,7 @@ function AssetForm({ initial, onSave, onCancel }: { initial: Asset | null; onSav
   )
 }
 
-function DebtForm({ initial, assets, onSave, onCancel }: { initial: Debt | null; assets: Asset[]; onSave: (d: Debt) => Promise<void>; onCancel: () => void }) {
+function DebtForm({ initial, assets, accounts, onSave, onCancel }: { initial: Debt | null; assets: Asset[]; accounts: { id: string; nombre: string; tipo: string }[]; onSave: (d: Debt) => Promise<void>; onCancel: () => void }) {
   const [tipo, setTipo] = useState<DebtType>(initial?.tipo ?? "hipoteca")
   const [nombre, setNombre] = useState(initial?.nombre ?? "")
   const [pendiente, setPendiente] = useState(initial ? show(initial.pendiente) : "")
@@ -76,6 +76,11 @@ function DebtForm({ initial, assets, onSave, onCancel }: { initial: Debt | null;
   const [cuota, setCuota] = useState(show(initial?.cuota_mensual ?? null))
   const [tin, setTin] = useState(show(initial?.tin ?? null))
   const [assetId, setAssetId] = useState(initial?.asset_id ?? "")
+  const [fijo, setFijo] = useState(initial?.cuota_gasto_fijo ?? false)
+  const [dia, setDia] = useState(String(initial?.cuota_dia ?? 1))
+  const [cuentaId, setCuentaId] = useState(initial?.cuota_cuenta_id ?? (accounts.find((a) => a.tipo === "gastos") ?? accounts[0])?.id ?? "")
+  const cuotaNum = toNum(cuota)
+  const canFijo = cuotaNum !== null && !Number.isNaN(cuotaNum) && cuotaNum > 0
   const [err, setErr] = useState("")
   const [busy, setBusy] = useState(false)
   async function submit(e: FormEvent) {
@@ -84,8 +89,11 @@ function DebtForm({ initial, assets, onSave, onCancel }: { initial: Debt | null;
     if (!nombre.trim()) return setErr("Ponle un nombre.")
     if (p === null || Number.isNaN(p) || p < 0) return setErr("Introduce el importe pendiente.")
     if ([i, c, t].some((x) => x !== null && (Number.isNaN(x) || x < 0)) || (t !== null && t > 100)) return setErr("Revisa los campos opcionales.")
+    const useFijo = fijo && canFijo
+    if (useFijo && !cuentaId) return setErr("Elige la cuenta desde la que pagas la cuota.")
+    const d = Math.round(Number(dia))
     setBusy(true)
-    try { await onSave({ id: initial?.id ?? newId("debt"), nombre: nombre.trim(), tipo, pendiente: p, principal_inicial: i, cuota_mensual: c, tin: t, fecha_fin: initial?.fecha_fin ?? null, asset_id: assetId || null, notas: initial?.notas ?? null }) } catch { setErr("No se pudo guardar. Inténtalo de nuevo.") } finally { setBusy(false) }
+    try { await onSave({ id: initial?.id ?? newId("debt"), nombre: nombre.trim(), tipo, pendiente: p, principal_inicial: i, cuota_mensual: c, tin: t, fecha_fin: initial?.fecha_fin ?? null, asset_id: assetId || null, notas: initial?.notas ?? null, cuota_gasto_fijo: useFijo, cuota_dia: useFijo ? Math.min(31, Math.max(1, d || 1)) : initial?.cuota_dia ?? null, cuota_cuenta_id: useFijo ? cuentaId : initial?.cuota_cuenta_id ?? null }) } catch { setErr("No se pudo guardar. Inténtalo de nuevo.") } finally { setBusy(false) }
   }
   return (
     <form onSubmit={submit} className="mt-3 min-w-0 space-y-3 rounded-xl border border-border bg-background/40 p-3 sm:p-4">
@@ -103,6 +111,29 @@ function DebtForm({ initial, assets, onSave, onCancel }: { initial: Debt | null;
           </select>
         </Field>
       </div>
+      {canFijo && (
+        <div className="space-y-3 rounded-lg border border-border/70 p-3">
+          <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+            <input type="checkbox" checked={fijo} onChange={(e) => setFijo(e.target.checked)} className="mt-0.5 size-4 accent-[var(--primary)]" />
+            <span><span className="font-medium">Añadir la cuota a Gastos fijos</span><span className="block text-xs text-muted-foreground">Aparecerá cada mes en tu agenda para registrarla; no se crea ningún movimiento ahora.</span></span>
+          </label>
+          {fijo && (
+            <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[8rem_1fr]">
+              <Field label="Día del mes">
+                <select value={dia} onChange={(e) => setDia(e.target.value)} className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm">
+                  {Array.from({ length: 31 }, (_, k) => <option key={k + 1} value={k + 1}>{k + 1}</option>)}
+                </select>
+              </Field>
+              <Field label="Se paga desde">
+                <select value={cuentaId} onChange={(e) => setCuentaId(e.target.value)} className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm">
+                  {accounts.length === 0 && <option value="">Crea primero una cuenta</option>}
+                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                </select>
+              </Field>
+            </div>
+          )}
+        </div>
+      )}
       {err && <p role="alert" className="text-xs text-destructive">{err}</p>}
       <div className="flex justify-end gap-2"><Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button><Button type="submit" size="sm" disabled={busy}>Guardar</Button></div>
     </form>
@@ -141,7 +172,7 @@ export function PatrimonioView() {
   const segTotal = segs.reduce((s, x) => s + Math.max(0, x.v), 0) || 1
 
   const wrap = async (fn: () => Promise<void>, ok: string) => { try { await fn(); toast(ok, "success") } catch { toast("No se pudo guardar. Inténtalo de nuevo.", "error"); throw new Error("save") } }
-  const askDelete = async (label: string, fn: () => Promise<void>) => { if (window.confirm(`¿Borrar «${label}»?`)) await wrap(fn, "Borrado.").catch(() => {}) }
+  const askDelete = async (label: string, fn: () => Promise<void>, extra = "") => { if (window.confirm(`¿Borrar «${label}»?${extra}`)) await wrap(fn, "Borrado.").catch(() => {}) }
 
   return (
     <div className="min-w-0 space-y-5 sm:space-y-6">
@@ -214,14 +245,14 @@ export function PatrimonioView() {
             <h2 className="flex items-center gap-2 text-base font-semibold"><Landmark className="size-5 text-red-500" />Deudas</h2>
             {debtEdit === null && <Button size="sm" onClick={() => setDebtEdit("new")}><Plus />Añadir deuda</Button>}
           </div>
-          {debtEdit === "new" && <DebtForm initial={null} assets={assets} onCancel={() => setDebtEdit(null)} onSave={(d) => wrap(() => saveDebt(d), "Deuda guardada.").then(() => setDebtEdit(null))} />}
+          {debtEdit === "new" && <DebtForm initial={null} assets={assets} accounts={state.accounts} onCancel={() => setDebtEdit(null)} onSave={(d) => wrap(() => saveDebt(d), d.cuota_gasto_fijo ? "Deuda guardada; la cuota ya está en Gastos fijos." : "Deuda guardada.").then(() => setDebtEdit(null))} />}
           {loaded && debts.length === 0 && debtEdit === null && <p className="mt-4 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">Hipoteca, préstamos o tarjetas: apunta lo que te queda por pagar y se restará de tu patrimonio.</p>}
           <ul className="mt-2 divide-y divide-border/70">
             {debts.map((d) => {
               const I = DEBT_ICON[d.tipo]
               const pct = paidPct(d)
               const linked = assets.find((a) => a.id === d.asset_id)
-              const meta = [DEBT_LABEL[d.tipo], d.cuota_mensual ? `${eur(d.cuota_mensual)}/mes` : null, d.tin !== null ? `${String(d.tin).replace(".", ",")} % TIN` : null, linked ? linked.nombre : null].filter(Boolean).join(" · ")
+              const meta = [DEBT_LABEL[d.tipo], d.cuota_gasto_fijo && d.cuota_mensual ? `gasto fijo día ${d.cuota_dia ?? 1}` : null, d.cuota_mensual ? `${eur(d.cuota_mensual)}/mes` : null, d.tin !== null ? `${String(d.tin).replace(".", ",")} % TIN` : null, linked ? linked.nombre : null].filter(Boolean).join(" · ")
               return (
                 <li key={d.id} className="py-3">
                   <div className="flex items-center gap-3">
@@ -238,9 +269,9 @@ export function PatrimonioView() {
                       )}
                     </div>
                     <Sensitive className="hidden shrink-0 text-sm font-bold tabular-nums text-red-500 sm:inline">−{eur(d.pendiente)}</Sensitive>
-                    <RowActions label={d.nombre} onEdit={() => setDebtEdit(d)} onDelete={() => askDelete(d.nombre, () => deleteDebt(d.id))} />
+                    <RowActions label={d.nombre} onEdit={() => setDebtEdit(d)} onDelete={() => askDelete(d.nombre, () => deleteDebt(d.id), d.cuota_gasto_fijo ? " Su cuota dejará de aparecer en Gastos fijos; los pagos ya registrados se conservan." : "")} />
                   </div>
-                  {debtEdit !== null && debtEdit !== "new" && debtEdit.id === d.id && <DebtForm initial={d} assets={assets} onCancel={() => setDebtEdit(null)} onSave={(x) => wrap(() => saveDebt(x), "Deuda guardada.").then(() => setDebtEdit(null))} />}
+                  {debtEdit !== null && debtEdit !== "new" && debtEdit.id === d.id && <DebtForm initial={d} assets={assets} accounts={state.accounts} onCancel={() => setDebtEdit(null)} onSave={(x) => { if (d.cuota_gasto_fijo && !x.cuota_gasto_fijo && !window.confirm("¿Quitar la cuota de Gastos fijos? Los pagos ya registrados se conservan.")) return Promise.resolve(); return wrap(() => saveDebt(x), "Deuda guardada.").then(() => setDebtEdit(null)) }} />}
                 </li>
               )
             })}

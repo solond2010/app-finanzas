@@ -1,8 +1,10 @@
 "use client"
 
-import { useCallback, useSyncExternalStore } from "react"
+import { useCallback, useMemo, useSyncExternalStore } from "react"
+import { getUpcomingRecurring, type UpcomingRecurring } from "./calculations"
+import type { Transaction } from "./store"
 import { dbDeleteIn, dbSelect, dbUpsert } from "./db-client"
-import { parseAssets, parseDebts, type Asset, type Debt } from "./assets-debts"
+import { debtRecurring, parseAssets, parseDebts, type Asset, type Debt } from "./assets-debts"
 
 // Almacén compartido (Inicio + Patrimonio) para las tablas assets y debts.
 type Snapshot = { assets: Asset[]; debts: Debt[]; loaded: boolean }
@@ -42,4 +44,10 @@ export function useAssetsDebts() {
     emit({ ...snapshot, debts: snapshot.debts.filter((x) => x.id !== id) })
   }, [])
   return { ...snap, saveAsset, deleteAsset, saveDebt, deleteDebt }
+}
+
+/** Gastos fijos de siempre + las cuotas de deudas marcadas como gasto fijo. */
+export function useRecurringWithDebts(transactions: Transaction[]): UpcomingRecurring[] {
+  const snap = useSyncExternalStore(subscribe, () => snapshot, () => SERVER)
+  return useMemo(() => [...getUpcomingRecurring(transactions), ...debtRecurring(snap.debts, transactions)], [transactions, snap.debts])
 }

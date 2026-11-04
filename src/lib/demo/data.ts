@@ -245,8 +245,8 @@ export function buildDemoDatabase(now: Date = new Date()): DemoDatabase {
         { id: "demo_asset_coche", nombre: "Seat León", tipo: "coche", valor: 14500, valor_fecha: invStart, notas: null },
       ],
       debts: [
-        { id: "demo_debt_hipoteca", nombre: "Hipoteca del piso", tipo: "hipoteca", pendiente: 168400, principal_inicial: 200000, cuota_mensual: 760, tin: 2.1, fecha_fin: "2051-06-01", asset_id: "demo_asset_piso", notas: null },
-        { id: "demo_debt_coche", nombre: "Préstamo coche", tipo: "prestamo_coche", pendiente: 7800, principal_inicial: 16000, cuota_mensual: 240, tin: 6.9, fecha_fin: null, asset_id: "demo_asset_coche", notas: null },
+        { id: "demo_debt_hipoteca", nombre: "Hipoteca del piso", tipo: "hipoteca", pendiente: 168400, principal_inicial: 200000, cuota_mensual: 760, tin: 2.1, fecha_fin: "2051-06-01", asset_id: "demo_asset_piso", notas: null, cuota_gasto_fijo: true, cuota_dia: 1, cuota_cuenta_id: DEMO_ACCOUNT_IDS.nomina },
+        { id: "demo_debt_coche", nombre: "Préstamo coche", tipo: "prestamo_coche", pendiente: 7800, principal_inicial: 16000, cuota_mensual: 240, tin: 6.9, fecha_fin: null, asset_id: "demo_asset_coche", notas: null, cuota_gasto_fijo: false, cuota_dia: null, cuota_cuenta_id: null },
       ],
       investments,
       investment_contributions: contributions,

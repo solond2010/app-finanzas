@@ -1,5 +1,6 @@
 "use client"
 
+import { useRecurringWithDebts } from "@/lib/use-assets-debts"
 import { MonthPeriodPicker } from "@/components/ui/month-period-picker"
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
@@ -15,7 +16,7 @@ import { EmptyState, EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { useFinance, generateId } from "@/lib/store"
 import { parseLocalDate } from "@/lib/date-utils"
-import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, getUpcomingRecurring, isTransfer, getCurrencyByAccount } from "@/lib/calculations"
+import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, isTransfer, getCurrencyByAccount } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
 import { formatMonth, isInitialBalanceTransaction, chartFormatter, moneyAxisWidth } from "@/lib/format"
 import { formatMoney, convertToEur } from "@/lib/currency"
@@ -93,7 +94,8 @@ export default function IngresosGastosPage() {
   // Próximos pagos: se calculan a partir de transacciones marcadas como
   // recurrentes (tag "recurrente"), no dependen del mes seleccionado en el
   // resto de la página — siempre miran hacia el próximo vencimiento real.
-  const upcomingRecurring = useMemo(() => getUpcomingRecurring(state.transactions).slice(0, 4), [state.transactions])
+  const allRecurring = useRecurringWithDebts(state.transactions)
+  const upcomingRecurring = useMemo(() => [...allRecurring].sort((a, b) => a.nextDate.localeCompare(b.nextDate)).slice(0, 4), [allRecurring])
   const registerRecurring = (item: ReturnType<typeof getUpcomingRecurring>[number]) => {
     dispatch({
       type: "ADD_TRANSACTION",

@@ -1,5 +1,6 @@
 "use client"
 
+import { useRecurringWithDebts } from "@/lib/use-assets-debts"
 import React, { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import DashboardLoading from "./loading"
 import { useRouter } from "next/navigation"
@@ -22,7 +23,7 @@ import { Skeleton } from "@/components/shared/skeleton"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getSavingsRate, getUpcomingRecurring, getCurrencyByAccount, reportingAmount, buildNetWorthHistoryToday, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow, hasSyntheticOpeningBalanceResidual, isSyntheticOpeningBalanceResidual } from "@/lib/calculations"
+import { filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getSavingsRate, getCurrencyByAccount, reportingAmount, buildNetWorthHistoryToday, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow, hasSyntheticOpeningBalanceResidual, isSyntheticOpeningBalanceResidual } from "@/lib/calculations"
 import { convertToEur, formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { usePrivacy } from "@/lib/privacy"
@@ -219,7 +220,7 @@ function DashboardInner() {
     return years
   }, [analysisTransactions, today])
   const hasAnyData = state.accounts.length > 0 || analysisTransactions.length > 0 || state.sinkingFunds.length > 0
-  const recurringPayments = useMemo(() => getUpcomingRecurring(state.transactions), [state.transactions])
+  const recurringPayments = useRecurringWithDebts(state.transactions)
   const overduePayments = useMemo(() => recurringPayments.filter((p) => p.overdueDays > 0), [recurringPayments])
   const dueSoonPayments = useMemo(
     () => recurringPayments.filter((p) => p.overdueDays <= 0 && p.overdueDays >= -7).sort((a, b) => b.overdueDays - a.overdueDays).slice(0, 3),

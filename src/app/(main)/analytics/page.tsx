@@ -1,5 +1,6 @@
 "use client"
 
+import { useRecurringWithDebts } from "@/lib/use-assets-debts"
 import { TrendPill } from "@/components/shared/trend-pill"
 import { MonthPeriodPicker } from "@/components/ui/month-period-picker"
 import { AccountDot } from "@/components/dashboard/account-dot"
@@ -16,7 +17,7 @@ import { MetricCard } from "@/components/dashboard/metric-card"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
-import { accountGoal, buildMonthlyCashFlow, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getMonthTotalsByString, getNeedsVsWantsForMonth, getUpcomingRecurring, countsTowardCashFlow, buildPreciseNetWorthHistory, getCurrencyByAccount, reportingAmount } from "@/lib/calculations"
+import { accountGoal, buildMonthlyCashFlow, buildNetWorthHistory, getCategoryBreakdown, getCategoryInsights, getMonthTotalsByString, getNeedsVsWantsForMonth, countsTowardCashFlow, buildPreciseNetWorthHistory, getCurrencyByAccount, reportingAmount } from "@/lib/calculations"
 import { useFinance } from "@/lib/store"
 import { formatMoney } from "@/lib/currency"
 import { money, signedMoney, chartFormatter, formatMonth, isInitialBalanceTransaction } from "@/lib/format"
@@ -260,7 +261,7 @@ export default function AnalyticsPage() {
   // Previsión de recurrentes: siempre mira hacia el próximo vencimiento real
   // (no depende del mes que se esté navegando en el resto de la página), como
   // ya hace la misma tarjeta en Movimientos.
-  const upcomingRecurring = useMemo(() => getUpcomingRecurring(state.transactions), [state.transactions])
+  const upcomingRecurring = useRecurringWithDebts(state.transactions)
   const upcomingRecurringMonthTotal = useMemo(() => {
     const now = new Date()
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
