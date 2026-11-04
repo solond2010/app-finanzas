@@ -11,6 +11,8 @@ import { useInvestments, defaultAssetClass, ASSET_CLASS_LABELS, type AssetClass,
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/date-utils"
+import { convertToEur, type CurrencyCode } from "@/lib/currency"
+import { money } from "@/lib/format"
 
 interface SearchResult { symbol: string; name: string; type: string }
 interface Selected { symbol: string; name: string; isin?: string; currency: string }
@@ -24,7 +26,7 @@ const TABS: { kind: AssetKind; label: string; types: string[] }[] = [
 
 const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/
 
-export function PositionDialog({ open, onOpenChange, editing, defaultAccountId }: { open: boolean; onOpenChange: (o: boolean) => void; editing?: Position | null; defaultAccountId?: string }) {
+export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, unassignedByAccount }: { open: boolean; onOpenChange: (o: boolean) => void; editing?: Position | null; defaultAccountId?: string; unassignedByAccount?: Record<string, number> }) {
   const { state } = useFinance()
   const { add, update } = useInvestments()
   const { toast } = useToast()
@@ -43,6 +45,7 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId }
   const [dcaAmount, setDcaAmount] = useState("")
   const [dcaFreq, setDcaFreq] = useState<DcaFreq>("monthly")
   const [accountId, setAccountId] = useState("")
+  const [warned, setWarned] = useState(false)
   const [assetClass, setAssetClass] = useState<AssetClass>("acciones")
 
   const investAccounts = useMemo(() => {
@@ -73,6 +76,7 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId }
         setDca(false); setDcaAmount(""); setDcaFreq("monthly"); setAccountId(defaultAccountId ?? investAccounts[0]?.id ?? "")
         setAssetClass(defaultAssetClass("stock"))
       }
+      setWarned(false)
     })
   }, [open, editing, investAccounts, defaultAccountId])
 
@@ -117,10 +121,16 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId }
     }
   }
 
+  // Comprar usa el dinero «sin asignar» de la cuenta: no cambia su saldo.
+  const available = !editing && unassignedByAccount ? unassignedByAccount[accountId] : undefined
+  const costEur = Number(units) > 0 && Number(buyPrice) > 0 ? convertToEur(Number(units) * Number(buyPrice), (selected?.currency ?? currency) as CurrencyCode) : 0
+  const exceeds = available !== undefined && Number.isFinite(costEur) && costEur > available + 0.5
+
   const handleConfirm = () => {
     const u = Number(units)
     const p = Number(buyPrice)
     if (!u || u <= 0 || !p || p <= 0) { toast("Indica cantidad y precio de compra", "error"); return }
+    if (exceeds && !warned) { setWarned(true); return }
 
     const dcaFields = dca && Number(dcaAmount) > 0
       ? { dca: true, dcaAmount: Number(dcaAmount), dcaFreq, dcaLast: editing?.dcaLast ?? date }
@@ -278,9 +288,16 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId }
           </Select>
         </div>
 
+        {available !== undefined && costEur > 0 && (
+          <p className={cn("rounded-xl px-3 py-2 text-xs", exceeds ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" : "bg-muted/40 text-muted-foreground")} role={exceeds ? "alert" : undefined}>
+            {exceeds
+              ? `Cuesta ${money(costEur)} y en esta cuenta solo quedan ${money(Math.max(0, available))} sin asignar. Si has metido dinero nuevo, actualiza antes el saldo en Cuentas.`
+              : `Usa ${money(costEur)} del dinero sin asignar de la cuenta (quedan ${money(Math.max(0, available - costEur))}). El saldo no cambia.`}
+          </p>
+        )}
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="button" size="sm" onClick={handleConfirm}>{editing ? "Guardar" : "Confirmar inversión"}</Button>
+          <Button type="button" size="sm" onClick={handleConfirm}>{editing ? "Guardar" : exceeds && warned ? "Añadir igualmente" : "Confirmar inversión"}</Button>
         </div>
       </DialogContent>
     </Dialog>

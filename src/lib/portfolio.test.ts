@@ -69,3 +69,20 @@ describe("computeInvestments", () => {
     expect(v.allocation.reduce((s, x) => s + x.value, 0)).toBeCloseTo(100, 2)
   })
 })
+
+import { computeSale } from "./portfolio"
+
+describe("computeSale", () => {
+  const p = { units: 10, buyPrice: 20, currency: "EUR" }
+  it("venta total con ganancia: la ganancia es venta − coste", () => {
+    expect(computeSale(p, 10, 260)).toEqual({ unitsSold: 10, remainingUnits: 0, full: true, costBasis: 200, gain: 60 })
+  })
+  it("venta parcial con pérdida", () => {
+    expect(computeSale(p, 4, 70)).toEqual({ unitsSold: 4, remainingUnits: 6, full: false, costBasis: 80, gain: -10 })
+  })
+  it("rechaza vender más de lo que hay o importes no válidos", () => {
+    expect(computeSale(p, 11, 100)).toBeNull()
+    expect(computeSale(p, 0, 100)).toBeNull()
+    expect(computeSale(p, 5, -1)).toBeNull()
+  })
+})

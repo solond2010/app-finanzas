@@ -34,7 +34,7 @@ export type Portfolio = {
   months: { key: string; amount: number }[]
 }
 
-function toEur(amount: number, currency: string): number {
+export function toEur(amount: number, currency: string): number {
   const eur = convertToEur(amount, currency as CurrencyCode)
   return Number.isFinite(eur) ? eur : amount
 }
@@ -165,4 +165,19 @@ export function computeInvestments(accounts: Account[], positions: Position[], q
     total, assigned: round2(total - unassigned), unassigned, gain, gainPct: quotedInvested > 0 ? (gain / quotedInvested) * 100 : null,
     allocation, monthlyPlan: all.monthlyPlan, months: all.months,
   }
+}
+
+// ── Venta de una posición ─────────────────────────────────────────────────
+// El dinero invertido ya está dentro del saldo de la cuenta; al vender solo
+// cambia el saldo en la ganancia (o pérdida): venta − coste de lo vendido.
+
+export type SaleResult = { unitsSold: number; remainingUnits: number; full: boolean; costBasis: number; gain: number }
+
+export function computeSale(position: Pick<Position, "units" | "buyPrice" | "currency">, unitsToSell: number, saleAmountEur: number): SaleResult | null {
+  if (!Number.isFinite(unitsToSell) || !Number.isFinite(saleAmountEur) || unitsToSell <= 0 || saleAmountEur < 0) return null
+  if (unitsToSell > position.units + 1e-9) return null
+  const full = position.units - unitsToSell < 1e-9
+  const unitsSold = full ? position.units : unitsToSell
+  const costBasis = round2(toEur(unitsSold * position.buyPrice, position.currency))
+  return { unitsSold, remainingUnits: full ? 0 : Math.round((position.units - unitsSold) * 1e8) / 1e8, full, costBasis, gain: round2(saleAmountEur - costBasis) }
 }

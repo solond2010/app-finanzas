@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/shared/skeleton"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { PositionDialog } from "@/components/investments/position-dialog"
+import { PositionActionsDialog } from "@/components/investments/position-actions-dialog"
 import { AlertTriangle, ChartLineUp, PiggyBank, Plus, Repeat } from "@/components/icons"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 
@@ -56,10 +57,12 @@ export default function InversionesPage() {
   const year12 = view.months.reduce((s, m) => s + m.amount, 0)
 
   const openNew = (accountId?: string) => setDialog({ open: true, editing: null, accountId })
-  const openEdit = (id: string, orphan = false) => {
-    const p = positions.find((x) => x.id === id)
-    if (p) setDialog({ open: true, editing: orphan ? { ...p, accountId: undefined } : p })
-  }
+  const [acting, setActing] = useState<{ id: string; orphan: boolean } | null>(null)
+  const actingPosition = acting ? positions.find((x) => x.id === acting.id) ?? null : null
+  const actingRow = acting ? [...view.accounts.flatMap((a) => a.rows), ...view.orphans].find((r) => r.id === acting.id) ?? null : null
+  const openEdit = (id: string, orphan = false) => setActing({ id, orphan })
+  const unassignedByAccount = Object.fromEntries(view.accounts.map((a) => [a.id, a.unassigned]))
+  const hasPositions = view.accounts.some((a) => a.rows.length > 0)
   const header = (
     <header className="flex flex-wrap items-end justify-between gap-3">
       <div>
@@ -69,7 +72,12 @@ export default function InversionesPage() {
       {view.accounts.length > 0 && <Button variant="outline" onClick={() => openNew()}><Plus className="size-4 text-primary" />Añadir posición</Button>}
     </header>
   )
-  const dialogEl = <PositionDialog open={dialog.open} onOpenChange={(open) => setDialog((d) => ({ ...d, open }))} editing={dialog.editing} defaultAccountId={dialog.accountId} />
+  const dialogEl = (
+    <>
+      <PositionDialog open={dialog.open} onOpenChange={(open) => setDialog((d) => ({ ...d, open }))} editing={dialog.editing} defaultAccountId={dialog.accountId} unassignedByAccount={unassignedByAccount} />
+      <PositionActionsDialog position={actingPosition} row={actingRow} onClose={() => setActing(null)} onEdit={(p) => setDialog({ open: true, editing: acting?.orphan ? { ...p, accountId: undefined } : p })} />
+    </>
+  )
 
   if (loading || !loaded || (positions.length > 0 && !ready)) {
     return <div className="space-y-5">{header}<div className="grid gap-4 lg:grid-cols-[2fr_1fr]"><Skeleton className="h-56" /><Skeleton className="h-56" /></div><Skeleton className="h-72" /></div>
@@ -84,7 +92,6 @@ export default function InversionesPage() {
     )
   }
 
-  const assignedPct = view.total > 0 ? Math.min(100, (view.assigned / view.total) * 100) : 0
   // Anillo de reparto: segmentos sobre una circunferencia de 100 unidades.
   const ring = view.allocation.map((a, i) => ({ ...a, offset: 25 - view.allocation.slice(0, i).reduce((s, x) => s + x.pct, 0) }))
   const positionRow = (r: PortfolioRow, orphan = false) => (
@@ -107,23 +114,15 @@ export default function InversionesPage() {
     <div className="space-y-4 sm:space-y-5">
       {header}
 
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <section className={cn("grid gap-4", hasPositions && "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]")}>
         <div className="min-w-0 rounded-2xl hero-panel p-4 sm:p-6">
           <p className="page-section-label">Total invertido en tus cuentas</p>
           <p className="hero-figure mt-1 text-[34px] font-bold leading-none tracking-tight tabular-nums sm:text-[42px]"><Sensitive>{money(view.total)}</Sensitive></p>
           <p className="mt-2 text-sm text-muted-foreground">{view.accounts.length === 1 ? "1 cuenta de inversión" : `${view.accounts.length} cuentas de inversión`} · mismo saldo que en Cuentas</p>
-          <div className="mt-5">
-            <div className="flex h-2.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-              <div className="h-full bg-primary transition-all duration-700" style={{ width: `${assignedPct}%` }} />
-            </div>
-            <div className="mt-2 flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs">
-              <span className="text-muted-foreground"><span className="mr-1.5 inline-block size-2 rounded-full bg-primary" />En posiciones <Sensitive className="tabular-nums text-foreground">{money(view.assigned)}</Sensitive></span>
-              <span className="text-muted-foreground"><span className="mr-1.5 inline-block size-2 rounded-full bg-muted-foreground/50" />Sin asignar <Sensitive className="tabular-nums text-foreground">{money(view.unassigned)}</Sensitive></span>
-            </div>
-          </div>
+          {hasPositions && <p className="mt-3 text-xs text-muted-foreground"><Sensitive className="tabular-nums">{money(view.assigned)}</Sensitive> en posiciones · el resto, sin detallar</p>}
         </div>
 
-        <div className="grid min-w-0 grid-cols-2 gap-4 lg:grid-cols-1">
+        {hasPositions && <div className="grid min-w-0 grid-cols-2 gap-4 lg:grid-cols-1">
           <div className={CARD}>
             <p className="page-section-label flex items-center gap-1.5"><PiggyBank className="size-4 text-primary" />Ganancia</p>
             <p className={cn("mt-1 text-xl font-bold tabular-nums sm:text-2xl", tone(view.gain))}><Sensitive>{signed(view.gain)}</Sensitive></p>
@@ -134,11 +133,11 @@ export default function InversionesPage() {
             <p className="mt-1 text-xl font-bold tabular-nums text-primary sm:text-2xl"><Sensitive>{money(view.monthlyPlan)}</Sensitive></p>
             <p className="mt-0.5 text-xs text-muted-foreground">{view.monthlyPlan > 0 ? "Con tus aportaciones periódicas" : "Sin aportación periódica"}</p>
           </div>
-        </div>
+        </div>}
       </section>
 
-      <section className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="grid min-w-0 gap-4">
+      <section className={cn("grid items-start gap-4", hasPositions && "lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]")}>
+        <div className={cn("grid min-w-0 gap-4", !hasPositions && "md:grid-cols-2")}>
           {view.accounts.map((a) => {
             const share = a.balance > 0 ? Math.min(100, (a.positionsValue / a.balance) * 100) : 0
             return (
@@ -154,15 +153,17 @@ export default function InversionesPage() {
                     <span className="text-[11px] text-muted-foreground">saldo</span>
                   </div>
                 </div>
+                {a.rows.length > 0 && <>
                 <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden><div className="h-full bg-primary" style={{ width: `${share}%` }} /></div>
-                {a.rows.length > 0 && <ul className="mt-2 divide-y divide-border/60">{a.rows.map((r) => positionRow(r))}</ul>}
+                <ul className="mt-2 divide-y divide-border/60">{a.rows.map((r) => positionRow(r))}</ul>
                 <div className="mt-1 flex items-center gap-3 border-t border-border/60 px-1 pt-2.5">
                   <span className="size-2.5 shrink-0 rounded-full bg-muted-foreground/40" aria-hidden />
                   <span className="min-w-0 flex-1 text-sm text-muted-foreground">Sin asignar <span className="text-xs">(efectivo o sin detallar)</span></span>
                   <Sensitive className="shrink-0 text-sm font-semibold tabular-nums text-foreground">{money(a.unassigned)}</Sensitive>
                 </div>
+                </>}
                 {a.over && <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" />Las posiciones valen {money(a.positionsValue)}, más que el saldo. Actualiza el saldo en Cuentas o revisa las posiciones.</p>}
-                <Button variant="ghost" size="sm" className="mt-2 text-primary" onClick={() => openNew(a.id)}><Plus className="size-4" />Añadir posición aquí</Button>
+                <Button variant="ghost" size="sm" className="mt-2 text-primary" onClick={() => openNew(a.id)}><Plus className="size-4" />{a.rows.length > 0 ? "Añadir posición aquí" : "Detallar en qué está invertido"}</Button>
               </div>
             )
           })}
@@ -175,7 +176,7 @@ export default function InversionesPage() {
           )}
         </div>
 
-        <div className="grid min-w-0 gap-4">
+        {hasPositions && <div className="grid min-w-0 gap-4">
           <div className={CARD}>
             <p className="text-sm font-semibold text-foreground">Reparto por tipo</p>
             <div className="mt-3 flex items-center gap-5">
@@ -210,7 +211,7 @@ export default function InversionesPage() {
               {view.months.filter((_, i) => i % 3 === 0 || i === 11).map((m) => <span key={m.key}>{MONTHS[Number(m.key.slice(5)) - 1]}</span>)}
             </div>
           </div>
-        </div>
+        </div>}
       </section>
       {dialogEl}
     </div>
