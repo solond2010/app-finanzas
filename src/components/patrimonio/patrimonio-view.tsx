@@ -17,7 +17,7 @@ type IconC = typeof House
 const ASSET_ICON: Record<AssetType, IconC> = { vivienda: House, coche: CarProfile, relojes: Watch, joyas: Diamond, arte: PaintBrush, otro: Package }
 const DEBT_ICON: Record<DebtType, IconC> = { hipoteca: House, prestamo_coche: CarProfile, personal: HandCoins, tarjeta: CreditCard, otra: Package }
 const eur = (v: number) => formatMoney(v, "EUR")
-const CARD = "rounded-2xl border border-border/80 bg-card p-4 sm:p-6"
+const CARD = "min-w-0 rounded-2xl border border-border/80 bg-card p-4 sm:p-6"
 const newId = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 const toNum = (s: string) => { const n = Number(s.replace(/\./g, "").replace(",", ".")); return s.trim() === "" ? null : Number.isFinite(n) ? n : NaN }
 const show = (v: number | null) => (v === null ? "" : String(v).replace(".", ","))
@@ -56,9 +56,9 @@ function AssetForm({ initial, onSave, onCancel }: { initial: Asset | null; onSav
     try { await onSave({ id: initial?.id ?? newId("asset"), nombre: nombre.trim(), tipo, valor: v, valor_fecha: new Date().toISOString().slice(0, 10), notas: initial?.notas ?? null }) } catch { setErr("No se pudo guardar. Inténtalo de nuevo.") } finally { setBusy(false) }
   }
   return (
-    <form onSubmit={submit} className="mt-3 space-y-3 rounded-xl border border-border bg-background/40 p-3 sm:p-4">
+    <form onSubmit={submit} className="mt-3 min-w-0 space-y-3 rounded-xl border border-border bg-background/40 p-3 sm:p-4">
       <TypeChips types={ASSET_TYPES} labels={ASSET_LABEL} icons={ASSET_ICON} value={tipo} onChange={setTipo} />
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Nombre"><Input value={nombre} onChange={(e) => { setNombre(e.target.value); setErr("") }} placeholder="Ej. Piso en Valencia" autoFocus /></Field>
         <Field label="Valor actual (€)"><Input value={valor} onChange={(e) => { setValor(e.target.value); setErr("") }} inputMode="decimal" placeholder="Ej. 240000" className="tabular-nums" /></Field>
       </div>
@@ -88,9 +88,9 @@ function DebtForm({ initial, assets, onSave, onCancel }: { initial: Debt | null;
     try { await onSave({ id: initial?.id ?? newId("debt"), nombre: nombre.trim(), tipo, pendiente: p, principal_inicial: i, cuota_mensual: c, tin: t, fecha_fin: initial?.fecha_fin ?? null, asset_id: assetId || null, notas: initial?.notas ?? null }) } catch { setErr("No se pudo guardar. Inténtalo de nuevo.") } finally { setBusy(false) }
   }
   return (
-    <form onSubmit={submit} className="mt-3 space-y-3 rounded-xl border border-border bg-background/40 p-3 sm:p-4">
+    <form onSubmit={submit} className="mt-3 min-w-0 space-y-3 rounded-xl border border-border bg-background/40 p-3 sm:p-4">
       <TypeChips types={DEBT_TYPES} labels={DEBT_LABEL} icons={DEBT_ICON} value={tipo} onChange={setTipo} />
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Nombre"><Input value={nombre} onChange={(e) => { setNombre(e.target.value); setErr("") }} placeholder="Ej. Hipoteca del piso" autoFocus /></Field>
         <Field label="Pendiente (€)"><Input value={pendiente} onChange={(e) => { setPendiente(e.target.value); setErr("") }} inputMode="decimal" placeholder="Ej. 150000" className="tabular-nums" /></Field>
         <Field label="Importe inicial (opcional)"><Input value={inicial} onChange={(e) => setInicial(e.target.value)} inputMode="decimal" placeholder="Para ver el % pagado" className="tabular-nums" /></Field>
@@ -144,7 +144,7 @@ export function PatrimonioView() {
   const askDelete = async (label: string, fn: () => Promise<void>) => { if (window.confirm(`¿Borrar «${label}»?`)) await wrap(fn, "Borrado.").catch(() => {}) }
 
   return (
-    <div className="space-y-5 sm:space-y-6">
+    <div className="min-w-0 space-y-5 sm:space-y-6">
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Patrimonio</h1>
         <p className="mt-1 text-sm text-muted-foreground">Tus cuentas, inversiones, bienes y deudas en una sola cifra.</p>
@@ -166,7 +166,7 @@ export function PatrimonioView() {
           <div className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-muted">
             {segs.filter((s) => s.v > 0).map((s) => <span key={s.k} className="h-full min-w-[3px]" style={{ width: `${(s.v / segTotal) * 100}%`, backgroundColor: s.c }} title={s.k} />)}
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
             {segs.map((s) => (
               <div key={s.k} className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-border bg-background/40 px-3 py-2 text-xs">
                 <span className="flex min-w-0 items-center gap-1.5 truncate text-muted-foreground"><span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: s.c }} />{s.k}</span>
@@ -195,9 +195,10 @@ export function PatrimonioView() {
                     <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><I className="size-5" /></span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{a.nombre}</p>
-                      <p className="text-xs text-muted-foreground">{ASSET_LABEL[a.tipo]}{a.valor_fecha ? ` · valor de ${new Date(a.valor_fecha).toLocaleDateString("es-ES", { month: "short", year: "numeric" })}` : ""}</p>
+                      <Sensitive as="p" className="text-sm font-bold tabular-nums sm:hidden">{eur(a.valor)}</Sensitive>
+                      <p className="truncate text-xs text-muted-foreground">{ASSET_LABEL[a.tipo]}{a.valor_fecha ? ` · valor de ${new Date(a.valor_fecha).toLocaleDateString("es-ES", { month: "short", year: "numeric" })}` : ""}</p>
                     </div>
-                    <Sensitive className="shrink-0 text-sm font-bold tabular-nums">{eur(a.valor)}</Sensitive>
+                    <Sensitive className="hidden shrink-0 text-sm font-bold tabular-nums sm:inline">{eur(a.valor)}</Sensitive>
                     <RowActions label={a.nombre} onEdit={() => setAssetEdit(a)} onDelete={() => askDelete(a.nombre, () => deleteAsset(a.id))} />
                   </div>
                   {assetEdit !== null && assetEdit !== "new" && assetEdit.id === a.id && <AssetForm initial={a} onCancel={() => setAssetEdit(null)} onSave={(x) => wrap(() => saveAsset(x), "Bien guardado.").then(() => setAssetEdit(null))} />}
@@ -227,6 +228,7 @@ export function PatrimonioView() {
                     <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-red-500/10 text-red-500"><I className="size-5" /></span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{d.nombre}</p>
+                      <Sensitive as="p" className="text-sm font-bold tabular-nums text-red-500 sm:hidden">−{eur(d.pendiente)}</Sensitive>
                       <Sensitive as="p" className="truncate text-xs text-muted-foreground">{meta}</Sensitive>
                       {pct !== null && (
                         <div className="mt-1.5 flex items-center gap-2">
@@ -235,7 +237,7 @@ export function PatrimonioView() {
                         </div>
                       )}
                     </div>
-                    <Sensitive className="shrink-0 text-sm font-bold tabular-nums text-red-500">−{eur(d.pendiente)}</Sensitive>
+                    <Sensitive className="hidden shrink-0 text-sm font-bold tabular-nums text-red-500 sm:inline">−{eur(d.pendiente)}</Sensitive>
                     <RowActions label={d.nombre} onEdit={() => setDebtEdit(d)} onDelete={() => askDelete(d.nombre, () => deleteDebt(d.id))} />
                   </div>
                   {debtEdit !== null && debtEdit !== "new" && debtEdit.id === d.id && <DebtForm initial={d} assets={assets} onCancel={() => setDebtEdit(null)} onSave={(x) => wrap(() => saveDebt(x), "Deuda guardada.").then(() => setDebtEdit(null))} />}
