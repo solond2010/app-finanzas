@@ -20,6 +20,7 @@ const ALLOWED_TABLES = new Set([
   "investment_contributions",
   "wealth_goals",
   "assets",
+  "asset_values",
   "debts",
 ])
 

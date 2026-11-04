@@ -60,6 +60,7 @@ const PRIMARY_KEYS: Record<string, string> = {
   settings: "key",
   wealth_goals: "id",
   assets: "id",
+  asset_values: "id",
   debts: "id",
 }
 

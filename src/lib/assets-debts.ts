@@ -119,3 +119,59 @@ export function applyDebtPayments(debts: Debt[], transactions: Transaction[]): D
     return paid > 0 ? { ...d, pendiente: Math.max(0, Math.round((d.pendiente - paid) * 100) / 100) } : d
   })
 }
+
+// ── Historial de valor de los bienes ───────────────────────────────────────
+export type AssetValue = { id: string; asset_id: string; valor: number; fecha: string }
+
+export function parseAssetValues(rows: Record<string, unknown>[]): AssetValue[] {
+  return rows
+    .filter((r) => typeof r.id === "string" && typeof r.asset_id === "string" && typeof r.fecha === "string")
+    .map((r) => ({ id: r.id as string, asset_id: r.asset_id as string, valor: Math.max(0, num(r.valor)), fecha: (r.fecha as string).slice(0, 10) }))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.id.localeCompare(b.id))
+}
+
+/** Convierte la clave de un punto de la gráfica ("2026-07" o "2026-07-15") en
+ * el último día que representa. */
+function pointDay(key: string, todayKey: string): string {
+  if (/^\d{4}-\d{2}$/.test(key)) {
+    const [y, m] = key.split("-").map(Number)
+    const end = `${key}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`
+    return end > todayKey ? todayKey : end
+  }
+  return key.slice(0, 10)
+}
+
+/** Valor de un bien en una fecha: el último registro de historial hasta ese
+ * día. Antes del primer registro el bien no cuenta (0). Sin historial, se usa
+ * su valor actual desde valor_fecha (o siempre, si no tiene fecha). */
+export function assetValueAt(asset: Asset, values: AssetValue[], day: string): number {
+  const own = values.filter((v) => v.asset_id === asset.id)
+  if (!own.length) return !asset.valor_fecha || asset.valor_fecha <= day ? asset.valor : 0
+  let val = 0
+  for (const v of own) { if (v.fecha <= day) val = v.valor; else break }
+  return val
+}
+
+function assetStart(asset: Asset, values: AssetValue[]): string | null {
+  return values.find((v) => v.asset_id === asset.id)?.fecha ?? asset.valor_fecha
+}
+
+/** Pendiente de una deuda en una fecha: el actual más las cuotas pagadas
+ * después de ese día. Si está ligada a un bien, no cuenta antes del primer
+ * valor de ese bien (no había deuda sin el bien). */
+export function debtPendingAt(debt: Debt, transactions: Transaction[], day: string, assets: Asset[], values: AssetValue[]): number {
+  const linked = debt.asset_id ? assets.find((a) => a.id === debt.asset_id) : null
+  const start = linked ? assetStart(linked, values) : null
+  if (start && day < start) return 0
+  const tag = debtTag(debt.id)
+  const later = transactions.reduce((s, t) => (t.tipo === "gasto" && t.fecha > day && t.tags?.includes(tag) ? s + Math.abs(t.monto) : s), 0)
+  return debt.pendiente + later
+}
+
+/** Bienes − deudas en la fecha de un punto de la gráfica. */
+export function assetDebtNetAt(key: string, assets: Asset[], values: AssetValue[], debts: Debt[], transactions: Transaction[], todayKey: string): number {
+  const day = pointDay(key, todayKey)
+  const bienes = assets.reduce((s, a) => s + assetValueAt(a, values, day), 0)
+  const deudas = debts.reduce((s, d) => s + debtPendingAt(d, transactions, day, assets, values), 0)
+  return bienes - deudas
+}

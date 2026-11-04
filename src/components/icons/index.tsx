@@ -40,6 +40,7 @@ import {
   CheckCircle as PhCheckCircle,
   CircleNotch as PhCircleNotch,
   Clock as PhClock,
+  ClockCounterClockwise as PhClockCounterClockwise,
   Cloud as PhCloud,
   CloudSlash as PhCloudSlash,
   Copy as PhCopy,
@@ -174,6 +175,7 @@ export const HardDrive = makeIcon(PhHardDrive, "duotone", "HardDrive")
 export const House = makeIcon(PhHouse, "duotone", "House")
 export const CarProfile = makeIcon(PhCarProfile, "duotone", "CarProfile")
 export const Watch = makeIcon(PhWatch, "duotone", "Watch")
+export const ClockCounterClockwise = makeIcon(PhClockCounterClockwise, "duotone", "ClockCounterClockwise")
 export const Diamond = makeIcon(PhDiamond, "duotone", "Diamond")
 export const PaintBrush = makeIcon(PhPaintBrush, "duotone", "PaintBrush")
 export const Package = makeIcon(PhPackage, "duotone", "Package")

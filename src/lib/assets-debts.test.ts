@@ -32,3 +32,19 @@ describe("bienes y deudas", () => {
     expect(applyDebtPayments([d], [])[0].pendiente).toBe(1000)
   })
 })
+
+import { assetDebtNetAt, assetValueAt, parseAssetValues } from "./assets-debts"
+describe("historial de bienes", () => {
+  it("usa el valor vigente en cada fecha y no cuenta antes del primero", () => {
+    const [a] = parseAssets([{ id: "p", nombre: "Piso", tipo: "vivienda", valor: 240000 }])
+    const vals = parseAssetValues([{ id: "2", asset_id: "p", valor: 240000, fecha: "2026-09-01" }, { id: "1", asset_id: "p", valor: 230000, fecha: "2026-06-15" }])
+    expect(assetValueAt(a, vals, "2026-06-01")).toBe(0)
+    expect(assetValueAt(a, vals, "2026-07-31")).toBe(230000)
+    expect(assetValueAt(a, vals, "2026-10-01")).toBe(240000)
+    const [d] = parseDebts([{ id: "h", nombre: "Hipo", tipo: "hipoteca", pendiente: 100000, asset_id: "p" }])
+    const pay = { id: "t", cuenta_id: "c", monto: 500, fecha: "2026-10-01", tipo: "gasto" as const, categoria: "", es_necesidad: true, descripcion: "", tags: ["deuda:h"] }
+    expect(assetDebtNetAt("2026-05", [a], vals, [d], [pay], "2026-11-04")).toBe(0)
+    expect(assetDebtNetAt("2026-09", [a], vals, [d], [pay], "2026-11-04")).toBe(240000 - 100500)
+    expect(assetDebtNetAt("2026-11", [a], vals, [d], [pay], "2026-11-04")).toBe(140000)
+  })
+})

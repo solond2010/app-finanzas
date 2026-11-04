@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
 import { useAssetsDebts } from "@/lib/use-assets-debts"
-import { ASSET_LABEL, ASSET_TYPES, DEBT_LABEL, DEBT_TYPES, paidPct, totals, type Asset, type AssetType, type Debt, type DebtType } from "@/lib/assets-debts"
-import { CarProfile, CreditCard, Diamond, HandCoins, House, Landmark, Package, PaintBrush, PencilLine, Plus, Scales, Trash2, Watch } from "@/components/icons"
+import { localDateKey, parseLocalDate } from "@/lib/date-utils"
+import { ASSET_LABEL, ASSET_TYPES, DEBT_LABEL, DEBT_TYPES, paidPct, totals, type Asset, type AssetType, type AssetValue, type Debt, type DebtType } from "@/lib/assets-debts"
+import { CarProfile, CreditCard, Diamond, HandCoins, House, Landmark, Package, PaintBrush, PencilLine, Plus, Scales, Trash2, Watch, ClockCounterClockwise, X } from "@/components/icons"
 
 type IconC = typeof House
 const ASSET_ICON: Record<AssetType, IconC> = { vivienda: House, coche: CarProfile, relojes: Watch, joyas: Diamond, arte: PaintBrush, otro: Package }
@@ -45,6 +46,7 @@ function AssetForm({ initial, onSave, onCancel }: { initial: Asset | null; onSav
   const [tipo, setTipo] = useState<AssetType>(initial?.tipo ?? "vivienda")
   const [nombre, setNombre] = useState(initial?.nombre ?? "")
   const [valor, setValor] = useState(initial ? show(initial.valor) : "")
+  const [fecha, setFecha] = useState(todayKey())
   const [err, setErr] = useState("")
   const [busy, setBusy] = useState(false)
   async function submit(e: FormEvent) {
@@ -53,18 +55,74 @@ function AssetForm({ initial, onSave, onCancel }: { initial: Asset | null; onSav
     if (!nombre.trim()) return setErr("Ponle un nombre.")
     if (v === null || Number.isNaN(v) || v < 0) return setErr("Introduce un valor válido.")
     setBusy(true)
-    try { await onSave({ id: initial?.id ?? newId("asset"), nombre: nombre.trim(), tipo, valor: v, valor_fecha: new Date().toISOString().slice(0, 10), notas: initial?.notas ?? null }) } catch { setErr("No se pudo guardar. Inténtalo de nuevo.") } finally { setBusy(false) }
+    try { await onSave({ id: initial?.id ?? newId("asset"), nombre: nombre.trim(), tipo, valor: v, valor_fecha: fecha || todayKey(), notas: initial?.notas ?? null }) } catch { setErr("No se pudo guardar. Inténtalo de nuevo.") } finally { setBusy(false) }
   }
   return (
     <form onSubmit={submit} className="mt-3 min-w-0 space-y-3 rounded-xl border border-border bg-background/40 p-3 sm:p-4">
       <TypeChips types={ASSET_TYPES} labels={ASSET_LABEL} icons={ASSET_ICON} value={tipo} onChange={setTipo} />
-      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3">
         <Field label="Nombre"><Input value={nombre} onChange={(e) => { setNombre(e.target.value); setErr("") }} placeholder="Ej. Piso en Valencia" autoFocus /></Field>
         <Field label="Valor actual (€)"><Input value={valor} onChange={(e) => { setValor(e.target.value); setErr("") }} inputMode="decimal" placeholder="Ej. 240000" className="tabular-nums" /></Field>
+        <Field label={initial ? "Fecha del valor (si cambia)" : "Valor a fecha de"}><Input type="date" value={fecha} max={todayKey()} onChange={(e) => setFecha(e.target.value)} /></Field>
       </div>
       {err && <p role="alert" className="text-xs text-destructive">{err}</p>}
       <div className="flex justify-end gap-2"><Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button><Button type="submit" size="sm" disabled={busy}>Guardar</Button></div>
     </form>
+  )
+}
+
+const todayKey = () => localDateKey(new Date())
+const shortDate = (k: string) => parseLocalDate(k).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
+
+/** Historial de valor de un bien: lista breve + «Actualizar valor» con fecha. */
+function AssetHistory({ asset, values, onAdd, onDelete }: { asset: Asset; values: AssetValue[]; onAdd: (valor: number, fecha: string) => Promise<void>; onDelete: (id: string) => Promise<void> }) {
+  const own = values.filter((v) => v.asset_id === asset.id)
+  const [open, setOpen] = useState(false)
+  const [valor, setValor] = useState("")
+  const [fecha, setFecha] = useState(todayKey())
+  const [err, setErr] = useState("")
+  const [busy, setBusy] = useState(false)
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    const v = toNum(valor)
+    if (v === null || Number.isNaN(v) || v < 0) return setErr("Introduce un valor válido.")
+    if (!fecha) return setErr("Elige la fecha.")
+    setBusy(true)
+    try { await onAdd(v, fecha); setValor(""); setErr("") } catch { setErr("No se pudo guardar.") } finally { setBusy(false) }
+  }
+  return (
+    <div className="mt-1.5 pl-[52px]">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="inline-flex min-h-8 items-center gap-1 text-xs font-semibold text-primary hover:underline">
+        <ClockCounterClockwise className="size-3.5" />{open ? "Ocultar historial" : `Historial de valor${own.length > 1 ? ` (${own.length})` : ""}`}
+      </button>
+      {open && (
+        <div className="mt-1 min-w-0 space-y-2 rounded-xl border border-border bg-background/40 p-3">
+          {own.length > 0 ? (
+            <ul className="space-y-1 text-xs">
+              {[...own].reverse().slice(0, 6).map((v, i, arr) => {
+                const prev = arr[i + 1]
+                const d = prev ? v.valor - prev.valor : 0
+                return (
+                  <li key={v.id} className="flex items-center gap-2">
+                    <span className="w-24 shrink-0 text-muted-foreground">{shortDate(v.fecha)}</span>
+                    <Sensitive className="font-semibold tabular-nums">{eur(v.valor)}</Sensitive>
+                    {prev && Math.abs(d) >= 1 && <Sensitive className={cn("tabular-nums", d > 0 ? "text-emerald-500" : "text-red-500")}>{d > 0 ? "+" : "−"}{eur(Math.abs(d))}</Sensitive>}
+                    {own.length > 1 && <button type="button" onClick={() => onDelete(v.id)} aria-label={`Borrar valor del ${shortDate(v.fecha)}`} className="ml-auto grid size-7 place-items-center rounded-lg text-muted-foreground hover:bg-red-500/10 hover:text-red-500"><X className="size-3.5" /></button>}
+                  </li>
+                )
+              })}
+            </ul>
+          ) : <p className="text-xs text-muted-foreground">Aún no hay valores anteriores.</p>}
+          <form onSubmit={submit} className="flex min-w-0 flex-wrap items-end gap-2">
+            <label className="min-w-0 flex-1 basis-28 text-[11px] text-muted-foreground">Nuevo valor (€)<Input value={valor} onChange={(e) => { setValor(e.target.value); setErr("") }} inputMode="decimal" placeholder={show(asset.valor)} className="mt-1 h-9 tabular-nums" /></label>
+            <label className="min-w-0 flex-1 basis-32 text-[11px] text-muted-foreground">Fecha<Input type="date" value={fecha} max={todayKey()} onChange={(e) => setFecha(e.target.value)} className="mt-1 h-9" /></label>
+            <Button type="submit" size="sm" disabled={busy}>Actualizar valor</Button>
+          </form>
+          {err && <p role="alert" className="text-xs text-destructive">{err}</p>}
+          <p className="text-[11px] text-muted-foreground">La evolución del patrimonio usa el valor vigente en cada fecha; antes del primer valor, el bien no cuenta.</p>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -152,7 +210,7 @@ function RowActions({ label, onEdit, onDelete }: { label: string; onEdit: () => 
 export function PatrimonioView() {
   const { state } = useFinance()
   const { toast } = useToast()
-  const { assets, debts, loaded, saveAsset, deleteAsset, saveDebt, deleteDebt } = useAssetsDebts()
+  const { assets, debts, values, loaded, saveAsset, deleteAsset, saveDebt, deleteDebt, addAssetValue, deleteAssetValue } = useAssetsDebts()
   const [assetEdit, setAssetEdit] = useState<Asset | "new" | null>(null)
   const [debtEdit, setDebtEdit] = useState<Debt | "new" | null>(null)
 
@@ -232,6 +290,7 @@ export function PatrimonioView() {
                     <Sensitive className="hidden shrink-0 text-sm font-bold tabular-nums sm:inline">{eur(a.valor)}</Sensitive>
                     <RowActions label={a.nombre} onEdit={() => setAssetEdit(a)} onDelete={() => askDelete(a.nombre, () => deleteAsset(a.id))} />
                   </div>
+                  <AssetHistory asset={a} values={values} onAdd={(v, f) => wrap(() => addAssetValue(a.id, v, f), "Valor actualizado.")} onDelete={(id) => wrap(() => deleteAssetValue(id), "Valor borrado.").catch(() => {})} />
                   {assetEdit !== null && assetEdit !== "new" && assetEdit.id === a.id && <AssetForm initial={a} onCancel={() => setAssetEdit(null)} onSave={(x) => wrap(() => saveAsset(x), "Bien guardado.").then(() => setAssetEdit(null))} />}
                 </li>
               )

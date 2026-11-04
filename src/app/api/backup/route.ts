@@ -16,6 +16,7 @@ const BACKUP_TABLES = [
   "settings",
   "wealth_goals",
   "assets",
+  "asset_values",
   "debts",
 ] as const
 

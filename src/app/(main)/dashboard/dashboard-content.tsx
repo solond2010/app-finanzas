@@ -36,7 +36,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { goalLabel, goalProgress } from "@/lib/wealth-goals"
 import { openGoalsEditor, useWealthGoals } from "@/lib/use-wealth-goals"
 import { useAssetsDebts } from "@/lib/use-assets-debts"
-import { totals as assetDebtTotals } from "@/lib/assets-debts"
+import { assetDebtNetAt, totals as assetDebtTotals } from "@/lib/assets-debts"
+import { localDateKey } from "@/lib/date-utils"
 import { GoalsEmpty } from "@/components/goals/goals-empty"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
@@ -360,7 +361,7 @@ function DashboardInner() {
   const incomeTransactions = periodIncomeTransactions
   const expenseTransactions = periodExpenseTransactions
   // Bienes y deudas apuntados en /patrimonio: suman/restan al patrimonio total.
-  const { assets: ownAssets, debts: ownDebts } = useAssetsDebts()
+  const { assets: ownAssets, debts: ownDebts, values: ownAssetValues } = useAssetsDebts()
   const assetDebt = useMemo(() => assetDebtTotals(ownAssets, ownDebts), [ownAssets, ownDebts])
   const netWorthDisplay = netWorth + assetDebt.neto
 
@@ -491,7 +492,19 @@ function DashboardInner() {
   }, [activeRange, selectedDate, monthOffset, today, selectedMonth, state.accounts, state.transactions])
   // Bienes y deudas no tienen histórico: se suman como un nivel constante para
   // que la curva acabe en la misma cifra que el resumen, sin un salto «hoy».
-  const netWorthTrend = useMemo(() => (assetDebt.neto === 0 ? netWorthTrendAccounts : netWorthTrendAccounts.map((p) => ({ ...p, patrimonio: p.patrimonio + assetDebt.neto }))), [netWorthTrendAccounts, assetDebt.neto])
+  // Bienes y deudas con su valor en cada fecha (historial de valores y cuotas
+  // pagadas); el último punto coincide con el valor de hoy.
+  const todayKeyForAssets = localDateKey(today)
+  const netWorthTrend = useMemo(() => {
+    if (!ownAssets.length && !ownDebts.length) return netWorthTrendAccounts
+    const last = netWorthTrendAccounts.length - 1
+    return netWorthTrendAccounts.map((p, i) => ({ ...p, patrimonio: p.patrimonio + (i === last ? assetDebt.neto : assetDebtNetAt(p.date, ownAssets, ownAssetValues, ownDebts, state.transactions, todayKeyForAssets)) }))
+  }, [netWorthTrendAccounts, ownAssets, ownAssetValues, ownDebts, state.transactions, todayKeyForAssets, assetDebt.neto])
+  // Bienes − deudas a final del mes pasado, para el «vs mes anterior».
+  const assetDebtPrevMonth = useMemo(() => {
+    const d = new Date(today.getFullYear(), today.getMonth(), 0)
+    return assetDebtNetAt(localDateKey(d), ownAssets, ownAssetValues, ownDebts, state.transactions, todayKeyForAssets)
+  }, [today, ownAssets, ownAssetValues, ownDebts, state.transactions, todayKeyForAssets])
 
   // En los rangos por mes (6M/12M/24M) el mes en curso solo aporta UN punto a
   // netWorthTrend: el valor de HOY. Si dentro de ese mismo mes hubo un pico
@@ -1142,7 +1155,7 @@ function DashboardInner() {
             accountsTotal={displayAccounts.length}
             accountsWithBalance={accountsWithBalance}
             sparkline={netWorthTrend.map((p) => p.patrimonio)}
-            netWorthDelta={netWorth - scoreBaseline}
+            netWorthDelta={netWorth - scoreBaseline + assetDebt.neto - assetDebtPrevMonth}
             assetsValue={assetDebt.bienes}
             debtsValue={assetDebt.deudas}
             netWorthDeltaLabel="vs mes anterior"

@@ -244,6 +244,15 @@ export function buildDemoDatabase(now: Date = new Date()): DemoDatabase {
         { id: "demo_asset_piso", nombre: "Piso en Valencia", tipo: "vivienda", valor: 240000, valor_fecha: invStart, notas: null },
         { id: "demo_asset_coche", nombre: "Seat León", tipo: "coche", valor: 14500, valor_fecha: invStart, notas: null },
       ],
+      asset_values: (() => {
+        const ago = (m: number) => { const d = new Date(now); d.setDate(1); d.setMonth(d.getMonth() - m); return localDateKey(d) }
+        return [
+          { id: "demo_av_piso_1", asset_id: "demo_asset_piso", valor: 232000, fecha: invStart },
+          { id: "demo_av_piso_2", asset_id: "demo_asset_piso", valor: 240000, fecha: ago(2) },
+          { id: "demo_av_coche_1", asset_id: "demo_asset_coche", valor: 15500, fecha: invStart },
+          { id: "demo_av_coche_2", asset_id: "demo_asset_coche", valor: 14500, fecha: ago(1) },
+        ].filter((v, i, all) => i === 0 || v.fecha >= all[0].fecha)
+      })(),
       debts: [
         { id: "demo_debt_hipoteca", nombre: "Hipoteca del piso", tipo: "hipoteca", pendiente: 168400, principal_inicial: 200000, cuota_mensual: 760, tin: 2.1, fecha_fin: "2051-06-01", asset_id: "demo_asset_piso", notas: null, cuota_gasto_fijo: true, cuota_dia: 1, cuota_cuenta_id: DEMO_ACCOUNT_IDS.nomina },
         { id: "demo_debt_coche", nombre: "Préstamo coche", tipo: "prestamo_coche", pendiente: 7800, principal_inicial: 16000, cuota_mensual: 240, tin: 6.9, fecha_fin: null, asset_id: "demo_asset_coche", notas: null, cuota_gasto_fijo: false, cuota_dia: null, cuota_cuenta_id: null },
