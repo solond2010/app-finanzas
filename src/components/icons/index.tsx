@@ -110,6 +110,7 @@ import {
   Mountains as PhMountainsIcon,
   ChartBar as PhChartBarIcon,
   Footprints as PhFootprintsIcon,
+  Vault as PhVaultIcon,
 } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "@/lib/utils"
 
@@ -244,3 +245,5 @@ export const Trophy = makeIcon(PhTrophyIcon, "duotone", "Trophy")
 export const Mountains = makeIcon(PhMountainsIcon, "duotone", "Mountains")
 export const ChartBar = makeIcon(PhChartBarIcon, "duotone", "ChartBar")
 export const Footprints = makeIcon(PhFootprintsIcon, "duotone", "Footprints")
+
+export const Vault = makeIcon(PhVaultIcon, "duotone", "Vault")

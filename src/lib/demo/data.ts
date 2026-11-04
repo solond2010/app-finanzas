@@ -19,13 +19,15 @@ export const DEMO_ACCOUNT_IDS = {
   emergencia: "demo_acc_emergencia",
   inversion: "demo_acc_inversion",
   efectivo: "demo_acc_efectivo",
+  deposito: "demo_acc_deposito",
 } as const
 
 const ACCOUNTS = [
   { id: DEMO_ACCOUNT_IDS.nomina, nombre: "Cuenta nómina", tipo: "gastos", banco: "BBVA", currency: "EUR", objetivo: null, limite_mensual: 1500, color: "#3B82F6", start: 1840 },
-  { id: DEMO_ACCOUNT_IDS.ahorro, nombre: "Ahorro", tipo: "ahorro", banco: "ING", currency: "EUR", objetivo: 15000, limite_mensual: null, color: "#2BD9A0", start: 6200 },
+  { id: DEMO_ACCOUNT_IDS.ahorro, nombre: "Cuenta remunerada", tipo: "remunerada", banco: "ING", currency: "EUR", objetivo: 15000, limite_mensual: null, color: "#2BD9A0", start: 6200 },
   { id: DEMO_ACCOUNT_IDS.emergencia, nombre: "Fondo de emergencia", tipo: "emergencia", banco: "Openbank", currency: "EUR", objetivo: 9000, limite_mensual: null, color: "#F5A524", start: 5400 },
   { id: DEMO_ACCOUNT_IDS.inversion, nombre: "Fondos indexados", tipo: "inversion", banco: "MyInvestor", currency: "EUR", objetivo: null, limite_mensual: null, color: "#8B5CF6", start: 7300 },
+  { id: DEMO_ACCOUNT_IDS.deposito, nombre: "Depósito 12 meses", tipo: "deposito", banco: "Openbank", currency: "EUR", objetivo: null, limite_mensual: null, color: "#B07CFF", start: 3000 },
   { id: DEMO_ACCOUNT_IDS.efectivo, nombre: "Efectivo", tipo: "efectivo", banco: "", currency: "EUR", objetivo: null, limite_mensual: null, color: "#B08968", start: 120 },
 ] as const
 

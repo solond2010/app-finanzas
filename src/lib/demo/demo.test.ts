@@ -12,7 +12,7 @@ describe("datos de la demo", () => {
   const txs = db.tables.transactions as unknown as Transaction[]
 
   it("tiene cuentas con color y varios meses de movimientos", () => {
-    expect(db.tables.accounts.length).toBe(5)
+    expect(db.tables.accounts.length).toBe(6)
     for (const a of db.tables.accounts) expect(a.color).toMatch(/^#[0-9A-F]{6}$/i)
     const months = new Set(txs.map((t) => t.fecha.slice(0, 7)))
     expect(months.size).toBe(8)

@@ -11,7 +11,7 @@ import { localDateKey, parseLocalDate } from "./date-utils"
 export interface Account {
   id: string
   nombre: string
-  tipo: "emergencia" | "ahorro" | "inversion" | "efectivo" | "gastos"
+  tipo: "emergencia" | "ahorro" | "inversion" | "efectivo" | "gastos" | "remunerada" | "deposito"
   banco: string
   saldo: number
   currency: CurrencyCode

@@ -145,6 +145,8 @@ export function AccountDialog({
                   <SelectItem value="inversion">Inversión</SelectItem>
                   <SelectItem value="efectivo">Efectivo</SelectItem>
                   <SelectItem value="gastos">Gastos Mensuales</SelectItem>
+                  <SelectItem value="remunerada">Cuenta remunerada</SelectItem>
+                  <SelectItem value="deposito">Depósito a plazo</SelectItem>
                 </SelectContent>
               </Select>
             </div>
