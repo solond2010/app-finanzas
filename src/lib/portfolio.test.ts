@@ -36,3 +36,36 @@ describe("computePortfolio", () => {
     expect(p.monthlyPlan).toBe(100)
   })
 })
+
+import { computeInvestments } from "./portfolio"
+import type { Account } from "./store"
+
+const acc = (o: Partial<Account>): Account => ({ id: "a1", nombre: "Broker", tipo: "inversion", banco: "", saldo: 1000, currency: "EUR", objetivo: null, limite_mensual: null, color: "#000", ...o })
+
+describe("computeInvestments", () => {
+  it("el total es la suma de saldos de las cuentas de inversión; lo no asignado es su propia porción", () => {
+    const v = computeInvestments(
+      [acc({ id: "a1", saldo: 1000 }), acc({ id: "a2", saldo: 500 }), acc({ id: "g", tipo: "gastos", saldo: 9999 })],
+      [pos({ id: "p1", symbol: "A", accountId: "a1" }), pos({ id: "p2", symbol: "Z", accountId: "borrada" })],
+      { A: { price: 30, currency: "EUR" } }, [],
+    )
+    expect(v.total).toBe(1500)
+    expect(v.accounts.map((a) => a.id)).toEqual(["a1", "a2"])
+    expect(v.accounts[0].positionsValue).toBe(300)
+    expect(v.accounts[0].unassigned).toBe(700)
+    expect(v.unassigned).toBe(1200)
+    expect(v.assigned).toBe(300)
+    expect(v.gain).toBe(200)
+    expect(v.orphans.map((r) => r.id)).toEqual(["p2"])
+    const sum = v.allocation.reduce((s, x) => s + x.value, 0)
+    expect(sum).toBeCloseTo(1500, 2)
+    expect(v.allocation[0]).toMatchObject({ key: "sin_asignar", value: 1200 })
+  })
+  it("si las posiciones superan el saldo, el reparto no pasa del saldo", () => {
+    const v = computeInvestments([acc({ saldo: 100 })], [pos({ id: "p", symbol: "A", accountId: "a1" })], { A: { price: 20, currency: "EUR" } }, [])
+    expect(v.total).toBe(100)
+    expect(v.accounts[0].over).toBe(true)
+    expect(v.accounts[0].unassigned).toBe(0)
+    expect(v.allocation.reduce((s, x) => s + x.value, 0)).toBeCloseTo(100, 2)
+  })
+})
