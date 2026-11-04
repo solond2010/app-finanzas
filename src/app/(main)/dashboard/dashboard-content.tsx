@@ -1107,7 +1107,6 @@ function DashboardInner() {
       ) : (
         <div className="space-y-4 sm:space-y-5">
           <MoneyHero
-            onAddMovement={() => openMovementDialog()}
             periodLabel={periodBounds.label}
             isCurrentMonth={isCurrentMonth}
             net={periodTotals.neto}

@@ -28,71 +28,31 @@ export function MoneyHero(props: {
   sparkline: number[]
   netWorthDelta: number
   netWorthDeltaLabel: string
-  onAddMovement?: () => void
 }) {
-  const { net, income, expenses, comparable } = props
-  const noMovements = income === 0 && expenses === 0
-  // Solo se compara si hay gasto en ambos periodos (evita «100 % menos» desde 0).
-  const diffPct = expenses > 0 && comparable && comparable > 0 ? Math.round((1 - expenses / comparable) * 100) : null
   const other = props.netWorth - props.available - props.invested
-  // A principio de mes, antes de cobrar, «vas en negativo» asusta sin motivo:
-  // se enseña lo gastado hasta ahora.
-  const waitingIncome = props.isCurrentMonth && income === 0 && expenses > 0
-  const title = waitingIncome ? "Llevas gastado este mes" : props.isCurrentMonth ? (net >= 0 ? "Te quedan este mes" : "Este mes vas en negativo") : net >= 0 ? `Te sobró en ${props.periodLabel}` : `Gastaste de más en ${props.periodLabel}`
-  const spentPct = income > 0 ? Math.min(100, (expenses / income) * 100) : expenses > 0 ? 100 : 0
-  const tickPct = income > 0 && comparable ? Math.min(100, (comparable / income) * 100) : null
+  const delta = props.netWorthDelta
+  const base = props.netWorth - delta
+  const pct = Math.abs(base) >= 1 ? (delta / Math.abs(base)) * 100 : null
+  // Cambios mínimos o sin datos: gris neutro, sin alarmar.
+  const tone = delta === 0 || Math.abs(delta) < 1 || (pct !== null && Math.abs(pct) < 0.1) ? "neutral" : delta > 0 ? "up" : "down"
   return (
     <section aria-label="Tu dinero" className="hero-panel grid overflow-hidden rounded-[22px] border border-[color-mix(in_oklch,var(--gold),transparent_70%)] lg:grid-cols-[1.25fr_1fr]">
-      <div className="p-5 sm:p-7">
-        {noMovements ? (
-          <>
-            <p className="page-section-label">{props.isCurrentMonth ? "Este mes" : props.periodLabel}</p>
-            <p className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Aún no hay movimientos en {props.periodLabel}</p>
-            <p className="mt-2 max-w-xl text-sm text-muted-foreground">Apunta el primero y verás aquí cuánto te queda y cómo vas.</p>
-            {props.onAddMovement && <button type="button" onClick={props.onAddMovement} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">Añadir primer movimiento<ArrowRight className="size-4" /></button>}
-          </>
-        ) : (<>
-        <p className="page-section-label">{title}</p>
-        <p className={cn("mt-2 text-[2.6rem] font-bold leading-none tracking-tight tabular-nums sm:text-6xl", (waitingIncome || net < 0) && "text-red-500")}><Sensitive>{eur(waitingIncome ? expenses : net)}</Sensitive></p>
-        <p className="mt-3 max-w-xl text-sm text-foreground/85 sm:text-[15px]">
-          {diffPct === null
-            ? income === 0 && expenses === 0 ? "Todavía no hay movimientos en este periodo. Apunta el primero y verás aquí cómo vas." : `Has ingresado ${eur(income)} y gastado ${eur(expenses)}.`
-            : waitingIncome
-              ? <>Aún no han entrado ingresos este mes. {diffPct >= 0 ? <>Llevas un <b className="font-semibold text-emerald-500">{diffPct} % menos de gasto</b> que {props.comparableLabel}.</> : <>Llevas un <b className="font-semibold text-red-500">{-diffPct} % más de gasto</b> que {props.comparableLabel}.</>}</>
-            : diffPct >= 0
-              ? <>Vas bien: llevas un <b className="font-semibold text-emerald-500">{diffPct} % menos de gasto</b> que {props.comparableLabel}.</>
-              : <>Ojo: llevas un <b className="font-semibold text-red-500">{-diffPct} % más de gasto</b> que {props.comparableLabel}.</>}
-          {props.isCurrentMonth && net > 0 && props.daysLeft > 0 && <> Puedes gastar unos <b className="font-semibold"><Sensitive>{eur(net / props.daysLeft)}</Sensitive> al día</b> hasta fin de mes.</>}
-        </p>
-        </>)}
-        {(income > 0 || expenses > 0) && (
-          <div className="mt-5">
-            <div className="relative h-2.5 rounded-full bg-muted">
-              <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[var(--gold)] to-[color-mix(in_oklch,var(--gold),white_25%)] transition-[width] duration-500" style={{ width: `${spentPct}%` }} />
-              {tickPct !== null && <div className="absolute -top-1.5 h-[22px] w-0.5 rounded bg-foreground/70" style={{ left: `${tickPct}%` }} title={`Lo gastado ${props.comparableLabel}`} />}
-            </div>
-            <div className="mt-2 flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <span><Sensitive>{eur(expenses)}</Sensitive> gastados de <Sensitive>{eur(income)}</Sensitive> ingresados</span>
-              {comparable !== null && <span>│ {props.comparableLabel}: <Sensitive>{eur(comparable)}</Sensitive></span>}
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="flex flex-col gap-3 border-t border-border/70 bg-background/30 p-5 sm:p-6 lg:border-l lg:border-t-0">
-        <div className="flex items-start justify-between gap-3">
-          <Link href="/cuentas" className="min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-            <p className="page-section-label">Tu dinero · patrimonio</p>
-            <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums"><Sensitive>{eur(props.netWorth)}</Sensitive></p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{props.accountsTotal} {props.accountsTotal === 1 ? "cuenta" : "cuentas"} ({props.accountsWithBalance} con saldo)</p>
-          </Link>
-          {props.netWorthDelta !== 0 && (
-            <span className={cn("inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold", props.netWorthDelta > 0 ? "bg-emerald-500/12 text-emerald-500" : "bg-red-500/12 text-red-500")}>
-              {props.netWorthDelta > 0 ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
-              <Sensitive>{props.netWorthDelta > 0 ? "+" : "−"}{eur(Math.abs(props.netWorthDelta))}</Sensitive> {props.netWorthDeltaLabel}
-            </span>
-          )}
+      <div className="flex flex-col p-5 sm:p-7">
+        <p className="page-section-label">Patrimonio total</p>
+        <Link href="/cuentas" className="mt-2 w-fit rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          <p className="text-[2.6rem] font-bold leading-none tracking-tight tabular-nums sm:text-6xl"><Sensitive>{eur(props.netWorth)}</Sensitive></p>
+        </Link>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold", tone === "up" ? "bg-emerald-500/12 text-emerald-500" : tone === "down" ? "bg-red-500/12 text-red-500" : "bg-muted text-muted-foreground")}>
+            {tone === "up" ? <TrendingUp className="size-3.5" /> : tone === "down" ? <TrendingDown className="size-3.5" /> : null}
+            {delta === 0 ? "Sin cambios" : <Sensitive>{delta > 0 ? "+" : "−"}{eur(Math.abs(delta))}{pct !== null && Math.abs(pct) >= 0.1 ? ` (${delta > 0 ? "+" : "−"}${Math.abs(pct).toLocaleString("es-ES", { maximumFractionDigits: 1 })} %)` : ""}</Sensitive>}
+          </span>
+          <span className="text-xs text-muted-foreground">{props.netWorthDeltaLabel}</span>
         </div>
-        {props.sparkline.length > 1 && <Sparkline values={props.sparkline} />}
+        <Link href="/cuentas" className="mt-2 w-fit text-xs text-muted-foreground hover:text-foreground">{props.accountsTotal} {props.accountsTotal === 1 ? "cuenta" : "cuentas"} ({props.accountsWithBalance} con saldo)</Link>
+        {props.sparkline.length > 1 && <div className="mt-auto pt-4"><Sparkline values={props.sparkline} /></div>}
+      </div>
+      <div className="flex flex-col justify-center gap-3 border-t border-border/70 bg-background/30 p-5 sm:p-6 lg:border-l lg:border-t-0">
         <div className="grid grid-cols-2 gap-2">
           <Link href="/cuentas" className={cn(TILE, "bg-background/40 p-3")}>
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Wallet className="size-3.5 text-[var(--accent-blue)]" />Disponible</span>
