@@ -67,7 +67,7 @@ const RANGES = [
 type DashboardMetric = "gastos" | "ingresos" | "neto" | "inversion" | "cash" | "patrimonio"
 type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYear" | "custom"
 
-function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
+function MiniBars({ values, color, signed = false, className = "h-12 w-full" }: { values: number[]; color: string; signed?: boolean; className?: string }) {
   const min = Math.min(...values, 0)
   const rawMax = Math.max(...values, 0)
   const max = rawMax === min ? min + 1 : rawMax
@@ -84,7 +84,7 @@ function MiniBars({ values, color, signed = false }: { values: number[]; color: 
   const area = lastPoint ? `${line} L${lastPoint.x},${baseline} L${points[0].x},${baseline} Z` : ""
 
   return (
-    <svg className="h-12 w-full overflow-visible" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true">
+    <svg className={cn(className, "overflow-visible")} viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true">
       <path d={`M0,${baseline} H120`} fill="none" stroke="var(--border)" strokeWidth="1" />
       {area && <path d={area} fill={signed && lastValue < 0 ? "var(--accent-red)" : color} opacity="0.12" />}
       {line && <path d={line} fill="none" stroke={signed && lastValue < 0 ? "var(--accent-red)" : color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
@@ -374,6 +374,11 @@ function DashboardInner() {
   const annualIngresos = monthlyYear.reduce((s, m) => s + m.ingresos, 0)
   const annualGastos = monthlyYear.reduce((s, m) => s + m.gastos, 0)
   const annualNeto = annualIngresos - annualGastos
+  const bestSavingsMonth = useMemo(() => {
+    let best = -1
+    monthlyYear.forEach((m, i) => { if (m.neto > 0 && (best < 0 || m.neto > monthlyYear[best].neto)) best = i })
+    return best < 0 ? null : { neto: monthlyYear[best].neto, label: new Date(year, best, 1).toLocaleDateString("es-ES", { month: "long" }) }
+  }, [monthlyYear, year])
 
   const netWorthTrendAccounts = useMemo<Array<{
     mes: string
@@ -815,7 +820,7 @@ function DashboardInner() {
             : { title: "Ponte un objetivo", detail: "Elige la cifra de patrimonio que quieres alcanzar" })
 
   const recentTransactions = useMemo(
-    () => analysisTransactions.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 3),
+    () => analysisTransactions.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 6),
     [analysisTransactions]
   )
   const accountName = (id: string) => state.accounts.find((a) => a.id === id)?.nombre ?? "—"
@@ -1545,7 +1550,7 @@ function DashboardInner() {
 
           {/* Resumen, movimientos y metas comparten la última fila del panel. */}
           <section className="stagger-fade grid grid-cols-1 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-4" style={{ animationDelay: "240ms" }}>
-            <div className={cn(CARD, "space-y-4", showAnnual && "md:col-span-2 xl:col-span-4")}>
+            <div className={cn(CARD, "flex flex-col gap-4", showAnnual && "md:col-span-2 xl:col-span-4")}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
                   type="button"
@@ -1566,16 +1571,21 @@ function DashboardInner() {
                 </button>
               </div>
               {!showAnnual && (
-                <div className="flex min-w-0 items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-1 flex-col gap-3">
                   <p className="min-w-0 text-sm text-muted-foreground">
                     Neto anual:{" "}
                     <Sensitive as="span" className={cn("font-semibold tabular-nums", annualNeto >= 0 ? "text-emerald-500" : "text-red-500")}>
                       {formatMoney(annualNeto, "EUR")}
                     </Sensitive>
                   </p>
-                  <div className="w-24 shrink-0" role="img" aria-label={`Tendencia mensual del ahorro neto de ${year}`}>
-                    <MiniBars values={monthlyYear.map((month) => month.neto)} color={annualNeto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} signed />
+                  <div className="min-h-16 flex-1" role="img" aria-label={`Tendencia mensual del ahorro neto de ${year}`}>
+                    <MiniBars values={monthlyYear.map((month) => month.neto)} color={annualNeto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} signed className="h-full min-h-16 w-full" />
                   </div>
+                  <dl className="grid gap-1.5 border-t border-border/70 pt-3 text-xs">
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Ingresos del año</dt><dd><Sensitive className="font-semibold tabular-nums text-emerald-500">{formatMoney(annualIngresos, "EUR")}</Sensitive></dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Gastos del año</dt><dd><Sensitive className="font-semibold tabular-nums text-red-500">{formatMoney(annualGastos, "EUR")}</Sensitive></dd></div>
+                    {bestSavingsMonth && <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Mejor mes de ahorro</dt><dd className="text-right"><span className="capitalize">{bestSavingsMonth.label}</span> · <Sensitive className="font-semibold tabular-nums text-emerald-500">{formatMoney(bestSavingsMonth.neto, "EUR")}</Sensitive></dd></div>}
+                  </dl>
                 </div>
               )}
               {showAnnual && (
@@ -1602,7 +1612,7 @@ function DashboardInner() {
               ) : (
                 <div className="divide-y divide-border/70">
                   {recentTransactions.map((t) => (
-                    <div key={t.id} className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                    <div key={t.id} className={cn("flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0", recentTransactions.indexOf(t) >= 3 && "hidden xl:flex")}>
                       <div className="flex min-w-0 items-center gap-3">
                         <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/80">
                           <CategoryIcon name={t.categoria} color={catColor(t.categoria)} />
