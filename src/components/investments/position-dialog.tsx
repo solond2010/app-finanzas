@@ -24,6 +24,9 @@ const TABS: { kind: AssetKind; label: string; types: string[] }[] = [
   { kind: "custom", label: "Personalizado", types: [] },
 ]
 
+const KIND_OF_TYPE: Record<string, AssetKind> = { EQUITY: "stock", ETF: "stock", MUTUALFUND: "fund", CRYPTOCURRENCY: "crypto" }
+const TYPE_LABEL: Record<string, string> = { EQUITY: "Acción", ETF: "ETF", MUTUALFUND: "Fondo", CRYPTOCURRENCY: "Crypto" }
+
 const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/
 
 export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, unassignedByAccount }: { open: boolean; onOpenChange: (o: boolean) => void; editing?: Position | null; defaultAccountId?: string; unassignedByAccount?: Record<string, number> }) {
@@ -35,6 +38,7 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
+  const [searchState, setSearchState] = useState<"idle" | "empty" | "error">("idle")
   const [selected, setSelected] = useState<Selected | null>(null)
   const [customName, setCustomName] = useState("")
   const [currency, setCurrency] = useState("EUR")
@@ -84,20 +88,23 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
     // Búsqueda con debounce contra una API externa (sistema externo): uso válido
     // de un efecto.
     /* eslint-disable react-hooks/set-state-in-effect */
-    if (kind === "custom" || selected) { setResults([]); return }
+    if (kind === "custom" || selected) { setResults([]); setSearchState("idle"); return }
     const q = query.trim()
-    if (q.length < 2) { setResults([]); return }
+    if (q.length < 2) { setResults([]); setSearchState("idle"); return }
     const activeTypes = TABS.find((t) => t.kind === kind)?.types ?? []
     setSearching(true)
     /* eslint-enable react-hooks/set-state-in-effect */
     const id = setTimeout(() => {
       fetch(`/api/asset-search?q=${encodeURIComponent(q)}`)
-        .then((r) => r.json())
+        .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
         .then((d: { results?: SearchResult[] }) => {
-          const filtered = (d.results ?? []).filter((r) => activeTypes.includes(r.type)).slice(0, 6)
-          setResults(filtered)
+          // Se busca en todos los tipos; los de la pestaña activa salen primero.
+          const all = (d.results ?? []).filter((r) => KIND_OF_TYPE[r.type])
+          const sorted = [...all.filter((r) => activeTypes.includes(r.type)), ...all.filter((r) => !activeTypes.includes(r.type))].slice(0, 8)
+          setResults(sorted)
+          setSearchState(sorted.length ? "idle" : "empty")
         })
-        .catch(() => setResults([]))
+        .catch(() => { setResults([]); setSearchState("error") })
         .finally(() => setSearching(false))
     }, 350)
     return () => clearTimeout(id)
@@ -107,11 +114,14 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
     const isin = ISIN_RE.test(query.trim().toUpperCase()) ? query.trim().toUpperCase() : undefined
     setSelected({ symbol: r.symbol, name: r.name, isin, currency: "EUR" })
     setResults([])
+    const k = KIND_OF_TYPE[r.type]
+    if (k && k !== kind) { setKind(k); setAssetClass(defaultAssetClass(k)) }
     try {
       const res = await fetch(`/api/quote?symbols=${encodeURIComponent(r.symbol)}`)
-      const d = (await res.json()) as { quotes?: Record<string, { price: number; currency: string }> }
+      const d = (await res.json()) as { quotes?: Record<string, { price: number; currency: string; name?: string }> }
       const q = d.quotes?.[r.symbol]
       if (q) {
+        if (q.name && (!r.name || r.name === r.symbol)) setSelected((prev) => (prev ? { ...prev, name: q.name! } : prev))
         setCurrency(q.currency)
         setSelected((prev) => (prev ? { ...prev, currency: q.currency } : prev))
         if (!buyPrice) setBuyPrice(String(q.price))
@@ -205,11 +215,21 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
                       <button key={r.symbol} onClick={() => pickAsset(r)} className="flex w-full items-center gap-3 border-b border-border px-3 py-2 text-left last:border-0 hover:bg-muted/60">
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-[10px] font-bold text-muted-foreground">{r.symbol.slice(0, 2)}</span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium text-foreground">{r.symbol}</span>
-                          <span className="block truncate text-xs text-muted-foreground">{r.name}</span>
+                          <span className="block truncate text-sm font-medium text-foreground">{r.name || r.symbol}</span>
+                          <span className="block truncate font-mono text-[10px] text-muted-foreground">{r.symbol}</span>
                         </span>
+                        <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{TYPE_LABEL[r.type] ?? r.type}</span>
                       </button>
                     ))}
+                  </div>
+                )}
+                {!searching && searchState !== "idle" && results.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-border px-3 py-2.5 text-xs text-muted-foreground">
+                    {searchState === "error" ? "Ahora mismo no podemos buscar precios." : "No encontramos nada con ese nombre."}{" "}
+                    <button type="button" className="font-medium text-primary hover:underline" onClick={() => { setKind("custom"); setAssetClass(defaultAssetClass("custom")); setCustomName(query.trim()) }}>
+                      Añádelo a mano
+                    </button>{" "}
+                    con su nombre y precio.
                   </div>
                 )}
               </>
