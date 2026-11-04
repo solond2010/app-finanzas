@@ -88,7 +88,7 @@ function MiniBars({ values, color, signed = false, className = "h-12 w-full" }: 
       <path d={`M0,${baseline} H120`} fill="none" stroke="var(--border)" strokeWidth="1" />
       {area && <path d={area} fill={signed && lastValue < 0 ? "var(--accent-red)" : color} opacity="0.12" />}
       {line && <path d={line} fill="none" stroke={signed && lastValue < 0 ? "var(--accent-red)" : color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
-      {lastPoint && <circle cx={lastPoint.x} cy={lastPoint.y} r="2.5" fill={signed && lastValue < 0 ? "var(--accent-red)" : color} />}
+      {lastPoint && className === "h-12 w-full" && <circle cx={lastPoint.x} cy={lastPoint.y} r="2.5" fill={signed && lastValue < 0 ? "var(--accent-red)" : color} />}
     </svg>
   )
 }
@@ -820,7 +820,7 @@ function DashboardInner() {
             : { title: "Ponte un objetivo", detail: "Elige la cifra de patrimonio que quieres alcanzar" })
 
   const recentTransactions = useMemo(
-    () => analysisTransactions.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 6),
+    () => analysisTransactions.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 4),
     [analysisTransactions]
   )
   const accountName = (id: string) => state.accounts.find((a) => a.id === id)?.nombre ?? "—"
