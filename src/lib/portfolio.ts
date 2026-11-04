@@ -181,3 +181,17 @@ export function computeSale(position: Pick<Position, "units" | "buyPrice" | "cur
   const costBasis = round2(toEur(unitsSold * position.buyPrice, position.currency))
   return { unitsSold, remainingUnits: full ? 0 : Math.round((position.units - unitsSold) * 1e8) / 1e8, full, costBasis, gain: round2(saleAmountEur - costBasis) }
 }
+
+/** Total en € de vender `units` a `unitPrice` (en la moneda de la cotización). */
+export function saleTotalFromPrice(units: number, unitPrice: number, currency: string): number | null {
+  if (!(units > 0) || !(unitPrice >= 0)) return null
+  return round2(toEur(units * unitPrice, currency))
+}
+
+/** Precio por unidad (en su moneda) que corresponde a un total en €. */
+export function unitPriceFromTotal(totalEur: number, units: number, currency: string): number | null {
+  if (!(units > 0) || !(totalEur >= 0)) return null
+  const perUnitEur = totalEur / units
+  const rate = toEur(1, currency)
+  return Math.round((rate > 0 ? perUnitEur / rate : perUnitEur) * 10000) / 10000
+}

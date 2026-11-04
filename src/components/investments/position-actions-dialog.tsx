@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
 import { useInvestments, type Position } from "@/lib/investments"
 import { useFinance, generateId } from "@/lib/store"
-import { computeSale, type PortfolioRow } from "@/lib/portfolio"
+import { computeSale, saleTotalFromPrice, unitPriceFromTotal, type PortfolioRow } from "@/lib/portfolio"
 import { convertFromEur } from "@/lib/currency"
 import { localDateKey } from "@/lib/date-utils"
 import { money } from "@/lib/format"
@@ -36,8 +36,22 @@ function Body({ position, row, onClose, onEdit }: { position: Position; row: Por
   const { remove, update } = useInvestments()
   const { toast } = useToast()
   const [mode, setMode] = useState<Mode>("menu")
-  const [amount, setAmount] = useState(row.hasQuote ? String(row.value).replace(".", ",") : "")
-  const [units, setUnits] = useState(String(position.units).replace(".", ","))
+  // Precio por unidad: el de mercado si lo hay; si no, el de compra. Unidades ×
+  // precio = total; si se edita el total, se recalcula el precio (sin bucles:
+  // solo se recalcula en el manejador del campo que se ha tocado).
+  const fmt = (n: number | null, d = 2) => (n === null ? "" : n.toLocaleString("es-ES", { useGrouping: false, maximumFractionDigits: d }))
+  const cur = row.priceCurrency
+  const [units, setUnits] = useState(fmt(position.units, 8))
+  const [price, setPrice] = useState(fmt(row.price, 4))
+  const [amount, setAmount] = useState(fmt(saleTotalFromPrice(position.units, row.price, cur)))
+  const [driver, setDriver] = useState<"price" | "total">("price")
+  const onUnits = (v: string) => {
+    setUnits(v)
+    if (driver === "price") setAmount(fmt(saleTotalFromPrice(parseNum(v), parseNum(price), cur)))
+    else setPrice(fmt(unitPriceFromTotal(parseNum(amount), parseNum(v), cur), 4))
+  }
+  const onPrice = (v: string) => { setPrice(v); setDriver("price"); setAmount(fmt(saleTotalFromPrice(parseNum(units), parseNum(v), cur))) }
+  const onAmount = (v: string) => { setAmount(v); setDriver("total"); setPrice(fmt(unitPriceFromTotal(parseNum(v), parseNum(units), cur), 4)) }
   const [record, setRecord] = useState(true)
   const account = state.accounts.find((a) => a.id === position.accountId)
   const sale = computeSale(position, parseNum(units), parseNum(amount))
@@ -93,16 +107,23 @@ function Body({ position, row, onClose, onEdit }: { position: Position; row: Por
     <>
       <DialogHeader>
         <DialogTitle>Vender {position.name}</DialogTitle>
-        <DialogDescription>Indica cuánto has recibido. Tienes {position.units.toLocaleString("es-ES", { maximumFractionDigits: 8 })} unidades.</DialogDescription>
+        <DialogDescription>Tienes {position.units.toLocaleString("es-ES", { maximumFractionDigits: 8 })} unidades.</DialogDescription>
       </DialogHeader>
       <div className="grid gap-3">
+        <div className="grid grid-cols-2 gap-3">
+          <label className="grid gap-1.5 text-sm">
+            <span className="text-xs text-muted-foreground">Unidades vendidas</span>
+            <Input inputMode="decimal" value={units} onChange={(e) => onUnits(e.target.value)} />
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            <span className="text-xs text-muted-foreground">Precio por unidad ({cur === "EUR" ? "€" : cur})</span>
+            <Input inputMode="decimal" value={price} onChange={(e) => onPrice(e.target.value)} placeholder="0,00" />
+          </label>
+        </div>
+        <p className="-mt-1 text-[11px] text-muted-foreground">{row.hasQuote ? "Precio de mercado de ahora; cámbialo si vendiste a otro." : "Sin cotización: puesto el precio de compra; pon el de tu venta."}</p>
         <label className="grid gap-1.5 text-sm">
-          <span className="text-xs text-muted-foreground">Importe total de la venta (€)</span>
-          <Input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" autoFocus />
-        </label>
-        <label className="grid gap-1.5 text-sm">
-          <span className="text-xs text-muted-foreground">Unidades vendidas (todas por defecto)</span>
-          <Input inputMode="decimal" value={units} onChange={(e) => setUnits(e.target.value)} />
+          <span className="text-xs text-muted-foreground">Total recibido (€)</span>
+          <Input inputMode="decimal" value={amount} onChange={(e) => onAmount(e.target.value)} placeholder="0,00" />
         </label>
         {sale ? (
           <div className="rounded-xl border border-border bg-muted/30 p-3 text-sm">

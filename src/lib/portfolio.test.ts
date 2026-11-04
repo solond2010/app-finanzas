@@ -86,3 +86,18 @@ describe("computeSale", () => {
     expect(computeSale(p, 5, -1)).toBeNull()
   })
 })
+
+import { saleTotalFromPrice, unitPriceFromTotal } from "./portfolio"
+
+describe("precio por unidad ↔ total de la venta", () => {
+  it("unidades × precio = total, y al revés", () => {
+    expect(saleTotalFromPrice(118.6, 15.02, "EUR")).toBe(1781.37)
+    expect(unitPriceFromTotal(1900, 118.6, "EUR")).toBeCloseTo(16.0202, 4)
+    expect(saleTotalFromPrice(0, 10, "EUR")).toBeNull()
+    expect(unitPriceFromTotal(100, 0, "EUR")).toBeNull()
+  })
+  it("el total calculado da la ganancia correcta", () => {
+    const total = saleTotalFromPrice(4, 17.5, "EUR")!
+    expect(computeSale({ units: 10, buyPrice: 20, currency: "EUR" }, 4, total)?.gain).toBe(-10)
+  })
+})
