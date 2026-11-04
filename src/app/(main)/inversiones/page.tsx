@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { PositionDialog } from "@/components/investments/position-dialog"
 import { PositionActionsDialog } from "@/components/investments/position-actions-dialog"
+import { convertToEur, type CurrencyCode } from "@/lib/currency"
 import { AlertTriangle, ChartLineUp, HandCoins, PiggyBank, Plus, Repeat } from "@/components/icons"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 
@@ -66,24 +67,6 @@ export default function InversionesPage() {
       update({ ...p, name: q.name })
     }
   }, [positions, quotes, update])
-  // Aportes automáticos: al tener precios se aplican los vencidos. Es
-  // idempotente porque cada aplicación mueve `dcaLast` a la última fecha.
-  const { toast } = useToast()
-  const dcaDone = useRef(new Set<string>())
-  useEffect(() => {
-    if (!loaded || !ready) return
-    let applied = 0
-    for (const p of positions) {
-      const plan = planOf(p)
-      const key = `${p.id}:${p.dcaLast ?? p.date}`
-      if (!plan || dcaDone.current.has(key) || dcaPendingDates(plan).length === 0) continue
-      dcaDone.current.add(key)
-      const price = quotes[p.symbol]?.price || p.buyPrice
-      applied += applyDca(p.id, price)
-      break // una posición por pasada: el estado local se actualiza y el efecto sigue con la siguiente
-    }
-    if (applied > 0) toast(applied === 1 ? "Aporte periódico aplicado" : `${applied} aportes periódicos aplicados`, "success")
-  }, [loaded, ready, positions, quotes, applyDca, toast])
   const [dialog, setDialog] = useState<{ open: boolean; editing: Position | null; accountId?: string }>({ open: false, editing: null })
   const view = useMemo(() => computeInvestments(state.accounts, positions, quotes, contributions), [state.accounts, positions, quotes, contributions])
   const account = (id: string) => state.accounts.find((x) => x.id === id)
@@ -95,7 +78,41 @@ export default function InversionesPage() {
   const actingPosition = acting ? positions.find((x) => x.id === acting.id) ?? null : null
   const actingRow = acting ? [...view.accounts.flatMap((a) => a.rows), ...view.orphans].find((r) => r.id === acting.id) ?? null : null
   const openEdit = (id: string, orphan = false) => setActing({ id, orphan })
-  const unassignedByAccount = Object.fromEntries(view.accounts.map((a) => [a.id, a.unassigned]))
+  const unassignedByAccount = useMemo(() => Object.fromEntries(view.accounts.map((a) => [a.id, a.unassigned])) as Record<string, number>, [view.accounts])
+  // Aportes automáticos: al tener precios se aplican los vencidos. Cada mes
+  // tiene un id fijo y antes de aplicar se relee la nube, así que no se
+  // cuenta dos veces ni aunque haya dos dispositivos abiertos.
+  const { toast } = useToast()
+  const dcaDone = useRef(new Set<string>())
+  useEffect(() => {
+    if (!loaded || !ready) return
+    for (const p of positions) {
+      const plan = planOf(p)
+      const key = `${p.id}:${p.dcaLast ?? p.date}`
+      const due = plan ? dcaPendingDates(plan).length : 0
+      if (!plan || dcaDone.current.has(key) || due === 0) continue
+      dcaDone.current.add(key)
+      const price = quotes[p.symbol]?.price || p.buyPrice
+      const free = p.accountId ? unassignedByAccount[p.accountId] : undefined
+      const short = free !== undefined && convertToEur(due * plan.amount, p.currency as CurrencyCode) > free + 0.5
+      void applyDca(p.id, price).then((n) => {
+        if (n <= 0) return
+        if (short) toast(`Aporte aplicado sin saldo libre suficiente en la cuenta: actualiza su saldo en Cuentas`, "error")
+        else toast(n === 1 ? "Aporte periódico aplicado" : `${n} aportes periódicos aplicados`, "success")
+      })
+      break // una posición por pasada: el estado local se actualiza y el efecto sigue con la siguiente
+    }
+  }, [loaded, ready, positions, quotes, applyDca, toast, unassignedByAccount])
+  // Mes del último aporte automático de cada cuenta (para el aviso de saldo).
+  const lastAutoByAccount = useMemo(() => {
+    const out: Record<string, string> = {}
+    for (const c of contributions) {
+      if (!c.id.startsWith("dca:")) continue
+      const acc = positions.find((p) => p.id === c.positionId)?.accountId
+      if (acc && (!out[acc] || c.date > out[acc])) out[acc] = c.date
+    }
+    return out
+  }, [contributions, positions])
   const hasPositions = view.accounts.some((a) => a.rows.length > 0)
   const header = (
     <header className="flex flex-wrap items-end justify-between gap-3">
@@ -198,7 +215,9 @@ export default function InversionesPage() {
                   <Sensitive className="shrink-0 text-sm font-semibold tabular-nums text-foreground">{money(a.unassigned)}</Sensitive>
                 </div>
                 </>}
-                {a.over && <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" />Las posiciones valen {money(a.positionsValue)}, más que el saldo. Actualiza el saldo en Cuentas o revisa las posiciones.</p>}
+                {a.over && <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" />{lastAutoByAccount[a.id]
+                  ? `Aporte de ${new Date(`${lastAutoByAccount[a.id]}T12:00:00`).toLocaleDateString("es-ES", { month: "long" })} aplicado sin saldo libre suficiente: actualiza el saldo de la cuenta.`
+                  : <>Las posiciones valen {money(a.positionsValue)}, más que el saldo. Actualiza el saldo en Cuentas o revisa las posiciones.</>}</p>}
                 <Button variant="ghost" size="sm" className="mt-2 text-primary" onClick={() => openNew(a.id)}><Plus className="size-4" />{a.rows.length > 0 ? "Añadir posición aquí" : "Detallar en qué está invertido"}</Button>
               </div>
             )

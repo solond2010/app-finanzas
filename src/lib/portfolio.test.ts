@@ -137,3 +137,28 @@ describe("aporte mensual por día", () => {
     expect(dcaPendingDates({ amount: 100, freq: "monthly", last: "2026-10-05" }, new Date(2026, 10, 5))).toHaveLength(1)
   })
 })
+
+import { dedupeContributions, dcaContributionId, fresherDcaPosition, orderParentsFirst, replaceInQueue, type PendingInvestmentWrite } from "./investments"
+
+describe("sincronización segura", () => {
+  const w = (id: string, table: PendingInvestmentWrite["table"], key: string, row?: Record<string, unknown>): PendingInvestmentWrite => ({ id, table, keyField: "id", key, operation: "upsert", row })
+  it("sube la posición antes que su aporte", () => {
+    const q = [w("1", "investment_contributions", "c1", { position_id: "P" }), w("2", "investments", "X"), w("3", "investments", "P")]
+    expect(orderParentsFirst(q).map((x) => x.id)).toEqual(["3", "1", "2"])
+  })
+  it("editar una fila en cola conserva su sitio", () => {
+    const q = [w("1", "investments", "P"), w("2", "investment_contributions", "c1", { position_id: "P" })]
+    expect(replaceInQueue(q, w("9", "investments", "P")).map((x) => x.id)).toEqual(["9", "2"])
+  })
+  it("un mes automático nunca cuenta dos veces", () => {
+    const id = dcaContributionId("P", "2026-03-05")
+    const list = [{ id, positionId: "P", amount: 100, date: "2026-03-05" }, { id, positionId: "P", amount: 100, date: "2026-03-05" }, { id: "x", positionId: "P", amount: 5, date: "2026-01-01" }]
+    expect(dedupeContributions(list)).toHaveLength(2)
+  })
+  it("usa la versión de la nube si ya aplicó más meses", () => {
+    const base = { id: "P", kind: "stock", symbol: "S", name: "S", date: "2026-01-05", units: 1, buyPrice: 1, currency: "EUR", dca: true, dcaAmount: 10, dcaFreq: "monthly" } as const
+    const local = { ...base, dcaLast: "2026-02-05" }, remote = { ...base, units: 2, dcaLast: "2026-03-05" }
+    expect(fresherDcaPosition(local, remote)).toBe(remote)
+    expect(fresherDcaPosition(remote, local)).toBe(remote)
+  })
+})

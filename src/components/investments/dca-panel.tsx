@@ -30,8 +30,8 @@ export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
 
   const fmtDate = (d: Date) => d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })
 
-  const handleApply = (positionId: string, price: number) => {
-    const n = applyDca(positionId, price)
+  const handleApply = async (positionId: string, price: number) => {
+    const n = await applyDca(positionId, price)
     if (n > 0) toast(`${n} aporte${n > 1 ? "s" : ""} aplicado${n > 1 ? "s" : ""}`, "success")
   }
 

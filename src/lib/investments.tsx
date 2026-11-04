@@ -88,13 +88,40 @@ interface ContributionRow {
 
 type InvestmentTable = "investments" | "watchlist" | "investment_contributions"
 type InvestmentSyncStatus = "idle" | "syncing" | "saved" | "error" | "offline"
-interface PendingInvestmentWrite {
+export interface PendingInvestmentWrite {
   id: string
   table: InvestmentTable
   keyField: "id" | "symbol"
   key: string
   operation: "upsert" | "delete"
   row?: Record<string, unknown>
+}
+
+/**
+ * Un aporte necesita que su posición exista antes en la nube. Si la subida de
+ * la posición quedó detrás de su aporte en la cola (p. ej. porque se editó
+ * justo después de crearla), se adelanta. Sin esto la cola se atasca para
+ * siempre con «Error al guardar».
+ */
+export function orderParentsFirst(queue: PendingInvestmentWrite[]): PendingInvestmentWrite[] {
+  const out = [...queue]
+  for (let i = 0; i < out.length; i++) {
+    const w = out[i]
+    if (w.table !== "investment_contributions" || w.operation !== "upsert") continue
+    const parent = w.row?.position_id
+    const j = out.findIndex((x, k) => k > i && x.table === "investments" && x.operation === "upsert" && x.key === parent)
+    if (j > i) { const [pw] = out.splice(j, 1); out.splice(i, 0, pw); i++ }
+  }
+  return out
+}
+
+/** Escritura en cola que sustituye a otra de la misma fila conservando su sitio (no la manda al final). */
+export function replaceInQueue(queue: PendingInvestmentWrite[], write: PendingInvestmentWrite): PendingInvestmentWrite[] {
+  const i = queue.findIndex((item) => item.table === write.table && item.keyField === write.keyField && item.key === write.key)
+  if (i < 0) return [...queue, write]
+  const next = [...queue]
+  next[i] = write
+  return next
 }
 
 const OUTBOX_KEY = "app-finanzas-investment-outbox"
@@ -159,6 +186,30 @@ export function dcaAnchorForDay(day: number, today: Date = new Date()): string {
   return format(anchor, "yyyy-MM-dd")
 }
 
+/** Id fijo por (posición, fecha programada): el mismo aporte en dos dispositivos es la misma fila. */
+export function dcaContributionId(positionId: string, date: string): string {
+  return `dca:${positionId}:${date}`
+}
+
+/** Quita aportes repetidos (mismo id, o mismo aporte automático de la misma fecha). */
+export function dedupeContributions(list: Contribution[]): Contribution[] {
+  const seen = new Set<string>()
+  const out: Contribution[] = []
+  for (const c of list) {
+    const key = c.id.startsWith("dca:") ? c.id : `id:${c.id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(c)
+  }
+  return out
+}
+
+/** Entre la versión local y la de la nube, la que tiene el aporte automático más reciente ya aplicado. */
+export function fresherDcaPosition(local: Position, remote: Position | undefined): Position {
+  if (!remote) return local
+  return (remote.dcaLast ?? remote.date) > (local.dcaLast ?? local.date) ? remote : local
+}
+
 /** Próxima fecha de aporte programada (futura). */
 export function dcaNextDate(plan: DcaPlan): Date {
   const last = parseISO(plan.last)
@@ -214,7 +265,7 @@ interface InvestmentsContextValue {
   watchlist: WatchItem[]
   addWatch: (w: WatchItem) => void
   removeWatch: (symbol: string) => void
-  applyDca: (positionId: string, price: number) => number
+  applyDca: (positionId: string, price: number) => Promise<number>
   contributions: Contribution[]
   addContribution: (positionId: string, amount: number, date: string) => boolean
   syncStatus: InvestmentSyncStatus
@@ -265,6 +316,8 @@ function fromRow(r: InvestmentRow): Position {
 
 export function InvestmentsProvider({ children }: { children: ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([])
+  const positionsRef = useRef<Position[]>([])
+  useEffect(() => { positionsRef.current = positions }, [positions])
   const [loaded, setLoaded] = useState(false)
   const [watchlist, setWatchlist] = useState<WatchItem[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
@@ -293,11 +346,34 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     }
     flushingRef.current = true
     if (pendingRef.current.length) setSyncStatus("syncing")
+    const resent = new Set<string>()
     try {
       while (pendingRef.current.length > 0) {
+        pendingRef.current = orderParentsFirst(pendingRef.current)
         const write = pendingRef.current[0]
-        if (write.operation === "upsert" && write.row) await dbUpsert(write.table, [write.row])
-        else await dbDeleteEq(write.table, write.keyField, write.key)
+        try {
+          if (write.operation === "upsert" && write.row) await dbUpsert(write.table, [write.row])
+          else await dbDeleteEq(write.table, write.keyField, write.key)
+        } catch (error) {
+          const fk = error instanceof Error && /foreign key/i.test(error.message)
+          if (!fk || write.table !== "investment_contributions") throw error
+          const parentId = String(write.row?.position_id ?? "")
+          const parent = positionsRef.current.find((p) => p.id === parentId)
+          if (!parent) {
+            // Aporte de una posición que ya no existe: se descarta (en la nube se
+            // habría borrado igualmente con su posición).
+            pendingRef.current = pendingRef.current.filter((item) => item.id !== write.id)
+            saveOutbox()
+            continue
+          }
+          // La posición existe aquí pero no en la nube: se sube primero (una vez).
+          if (resent.has(parent.id)) throw error
+          resent.add(parent.id)
+          const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+          pendingRef.current = [{ id, table: "investments", keyField: "id", key: parent.id, operation: "upsert", row: toRow(parent) }, ...pendingRef.current.filter((item) => !(item.table === "investments" && item.key === parent.id))]
+          saveOutbox()
+          continue
+        }
         const current = pendingRef.current.findIndex((item) => item.id === write.id)
         if (current >= 0) {
           pendingRef.current = pendingRef.current.filter((item) => item.id !== write.id)
@@ -322,8 +398,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
   const enqueue = useCallback((write: Omit<PendingInvestmentWrite, "id">) => {
     const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const previous = pendingRef.current
-    pendingRef.current = previous.filter((item) => !(item.table === write.table && item.keyField === write.keyField && item.key === write.key))
-    pendingRef.current.push({ ...write, id })
+    pendingRef.current = replaceInQueue(previous, { ...write, id })
     if (!saveOutbox()) {
       pendingRef.current = previous
       return false
@@ -431,6 +506,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
           missing.forEach((contribution) => enqueue({ table: "investment_contributions", keyField: "id", key: contribution.id, operation: "upsert", row: contributionToRow(contribution) }))
           remote = [...remote, ...missing]
         }
+        remote = dedupeContributions(remote)
         setContributions(remote)
         try { localStorage.setItem(CONTRIB_KEY, JSON.stringify(remote)) } catch {}
       } catch {
@@ -506,25 +582,38 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
   // Aplica los aportes vencidos al precio actual: suma participaciones, recalcula
   // el precio medio ponderado y avanza la fecha de la última aportación. Todo se
   // guarda en la posición (tabla `investments`). Devuelve el nº de aportes aplicados.
-  const applyDca = (positionId: string, price: number): number => {
-    const pos = positions.find((p) => p.id === positionId)
-    const plan = pos ? planOf(pos) : null
-    if (!pos || !plan || !price || price <= 0) return 0
-    const due = dcaPendingDates(plan)
+  // Antes de aplicar se relee la nube: si otro dispositivo ya aplicó esos
+  // meses se adopta su versión y no se suma nada. Los aportes usan un id fijo
+  // por (posición, fecha), así que aunque coincidan dos dispositivos la nube
+  // guarda una sola fila por mes.
+  const applyDca = async (positionId: string, price: number): Promise<number> => {
+    const local = positions.find((p) => p.id === positionId)
+    if (!local || !price || price <= 0) return 0
+    let pos = local
+    let cloudIds = new Set<string>()
+    try {
+      const [rp, rc] = await Promise.all([dbSelect<InvestmentRow>("investments"), dbSelect<ContributionRow>("investment_contributions")])
+      const remote = rp?.map(fromRow).find((p) => p.id === positionId)
+      pos = fresherDcaPosition(local, remote)
+      cloudIds = new Set((rc ?? []).filter((c) => c.position_id === positionId).map((c) => c.id))
+      if (pos !== local) persistLocal(positions.map((x) => (x.id === pos.id ? pos : x)))
+    } catch {
+      // Sin red: se sigue con lo local (los ids fijos evitan duplicar en la nube).
+    }
+    const plan = planOf(pos)
+    if (!plan) return 0
+    const due = dcaPendingDates(plan).map((d) => format(d, "yyyy-MM-dd")).filter((d) => !cloudIds.has(dcaContributionId(positionId, d)))
     if (due.length === 0) return 0
     const totalAmount = due.length * plan.amount
     const unitsAdded = totalAmount / price
     const newUnits = pos.units + unitsAdded
     const newBuyPrice = newUnits > 0 ? (pos.units * pos.buyPrice + totalAmount) / newUnits : pos.buyPrice
-    const lastDate = format(due[due.length - 1], "yyyy-MM-dd")
-    if (!update({ ...pos, units: newUnits, buyPrice: newBuyPrice, dcaLast: lastDate })) return 0
-    // En bloque: varias llamadas a addContribution seguidas se pisarían en local.
-    const added: Contribution[] = []
-    for (const d of due) {
-      const c: Contribution = { id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, positionId, amount: plan.amount, date: format(d, "yyyy-MM-dd") }
-      if (enqueue({ table: "investment_contributions", keyField: "id", key: c.id, operation: "upsert", row: contributionToRow(c) })) added.push(c)
-    }
-    if (added.length) persistContrib([...contributions, ...added])
+    const updated = { ...pos, units: newUnits, buyPrice: newBuyPrice, dcaLast: due[due.length - 1] }
+    if (!enqueue({ table: "investments", keyField: "id", key: pos.id, operation: "upsert", row: toRow(updated) })) return 0
+    persistLocal(positions.map((x) => (x.id === pos.id ? updated : x)))
+    const added: Contribution[] = due.map((date) => ({ id: dcaContributionId(positionId, date), positionId, amount: plan.amount, date }))
+    added.forEach((c) => enqueue({ table: "investment_contributions", keyField: "id", key: c.id, operation: "upsert", row: contributionToRow(c) }))
+    persistContrib(dedupeContributions([...contributions, ...added]))
     return due.length
   }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Search, Trash2 } from "@/components/icons"
+import { AlertTriangle, Search, Trash2 } from "@/components/icons"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -147,6 +147,9 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
     if (prev && Number(prev.slice(8, 10)) === day) return prev
     return dcaAnchorForDay(day)
   }
+
+  const freeNow = unassignedByAccount?.[accountId]
+  const dcaShort = dca && Number(dcaAmount) > 0 && freeNow !== undefined && convertToEur(Number(dcaAmount), (selected?.currency ?? currency) as CurrencyCode) > freeNow + 0.5
 
   const handleConfirm = () => {
     const u = Number(units)
@@ -297,6 +300,7 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
                   <Input id="dca-day" type="number" inputMode="numeric" min={1} max={28} value={dcaDay} onChange={(e) => setDcaDay(e.target.value)} className="w-24" />
                 </div>
               )}
+              {dcaShort && <p className="col-span-2 flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-400"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" />Ahora hay {money(freeNow ?? 0)} sin asignar en esta cuenta. El aporte se aplicará igualmente; actualiza el saldo de la cuenta cuando ingreses el dinero.</p>}
               <p className="col-span-2 text-[11px] text-muted-foreground">Cada {dcaFreq === "monthly" ? `mes, el día ${Math.min(28, Math.max(1, Number(dcaDay) || 1))},` : "semana"} se suman participaciones a esta posición con el precio de mercado (o el de compra si no hay cotización), usando el dinero sin asignar de la cuenta. Nunca se aplica dos veces el mismo aporte.</p>
             </div>
           )}
