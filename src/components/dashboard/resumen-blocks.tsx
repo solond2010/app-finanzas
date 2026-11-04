@@ -235,7 +235,7 @@ export function CashflowComboChart({ data, activeKey, onSelect, showSavings }: {
         ))}
       </div>
       {cur && (
-        <div className="mt-3 grid grid-cols-3 items-center gap-2 rounded-xl border border-border bg-background/40 p-3 sm:grid-cols-[auto_1fr_1fr_1fr_auto] sm:gap-4 sm:px-4">
+        <div className="mt-3 grid grid-cols-3 items-start gap-2 rounded-xl border border-border bg-background/40 p-3 sm:grid-cols-[auto_1fr_1fr_1fr_auto] sm:items-center sm:gap-4 sm:px-4">
           <p className="col-span-3 text-sm font-bold first-letter:uppercase sm:col-span-1">{cur.label}</p>
           <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Ingresos</p><p className="truncate text-base font-bold tabular-nums text-emerald-500"><Sensitive>{eur(cur.Ingresos)}</Sensitive></p>{prev && diff(cur.Ingresos, prev.Ingresos, true)}</div>
           <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Gastos</p><p className="truncate text-base font-bold tabular-nums text-red-500"><Sensitive>{eur(cur.Gastos)}</Sensitive></p>{prev && diff(cur.Gastos, prev.Gastos, false)}</div>
