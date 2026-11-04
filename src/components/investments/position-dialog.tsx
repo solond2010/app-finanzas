@@ -43,6 +43,8 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
   const [customName, setCustomName] = useState("")
   const [currency, setCurrency] = useState("EUR")
   const [date, setDate] = useState(() => localDateKey())
+  const [preexisting, setPreexisting] = useState(false)
+  const [thisMonth, setThisMonth] = useState("")
   const [units, setUnits] = useState("")
   const [buyPrice, setBuyPrice] = useState("")
   const [dca, setDca] = useState(false)
@@ -174,7 +176,8 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
       if (!update({ ...payload, id: editing.id })) { toast("No se pudo guardar de forma segura: falta espacio para la cola local", "error"); return }
       toast("Posición actualizada", "success")
     } else {
-      const { merged, saved } = add(payload)
+      const tm = Number(thisMonth.replace(",", "."))
+      const { merged, saved } = add(payload, preexisting ? { preexisting: true, thisMonth: Number.isFinite(tm) && tm > 0 ? tm : 0, today: localDateKey() } : undefined)
       if (!saved) { toast("No se pudo guardar de forma segura: falta espacio para la cola local", "error"); return }
       toast(merged ? "Sumado a tu posición existente" : "Posición añadida", "success")
     }
@@ -252,8 +255,23 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
           </div>
         )}
 
+        {!editing && (
+          <div className="space-y-2 rounded-xl border border-border bg-background/40 p-3">
+            <label className="flex cursor-pointer items-start gap-2.5">
+              <input type="checkbox" checked={preexisting} onChange={(e) => setPreexisting(e.target.checked)} className="mt-0.5 size-4 accent-[var(--gold)]" />
+              <span className="min-w-0"><span className="block text-sm font-semibold text-foreground">¿Ya la tenías antes?</span><span className="block text-xs text-muted-foreground">Se guarda como posición de partida: no cuenta como aportación ni como gasto de este mes.</span></span>
+            </label>
+            {preexisting && (
+              <div className="space-y-1 pl-6">
+                <label className="text-xs text-muted-foreground">Aportas este mes (opcional, €)</label>
+                <Input inputMode="decimal" value={thisMonth} onChange={(e) => setThisMonth(e.target.value)} placeholder="0" className="tabular-nums" />
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Fecha de operación</label>
+          <label className="text-xs text-muted-foreground">{preexisting ? "Desde cuándo la tienes (aprox.)" : "Fecha de operación"}</label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
 

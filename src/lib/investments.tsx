@@ -243,6 +243,19 @@ export function dcaStreak(contributions: Contribution[], positionId: string, fre
 }
 
 /** Fusiona una nueva compra en una posición existente del mismo activo/cuenta, recalculando el precio medio ponderado. */
+/** Opciones al añadir: «ya la tenía» = posición de partida, no cuenta como
+ * aportación (ni en el mes ni en el histórico); `thisMonth` sí cuenta. */
+export interface AddOptions { preexisting?: boolean; thisMonth?: number; today?: string }
+
+/** Aportaciones a apuntar al añadir una compra. Una posición de partida se
+ * marca con un aporte de 0 € (así no se cuenta su compra como aportación). */
+export function purchaseContributions(cost: number, date: string, opts: AddOptions = {}): { amount: number; date: string }[] {
+  if (!opts.preexisting) return cost > 0 ? [{ amount: cost, date }] : []
+  const out = [{ amount: 0, date }]
+  if ((opts.thisMonth ?? 0) > 0) out.push({ amount: opts.thisMonth as number, date: opts.today ?? date })
+  return out
+}
+
 export function mergedPosition(existing: Position, incoming: Omit<Position, "id">): Position {
   const addedCost = incoming.units * incoming.buyPrice
   const newUnits = existing.units + incoming.units
@@ -259,7 +272,7 @@ export function mergedPosition(existing: Position, incoming: Omit<Position, "id"
 interface InvestmentsContextValue {
   positions: Position[]
   loaded: boolean
-  add: (p: Omit<Position, "id">) => { id: string; merged: boolean; saved: boolean }
+  add: (p: Omit<Position, "id">, opts?: AddOptions) => { id: string; merged: boolean; saved: boolean }
   update: (p: Position) => boolean
   remove: (id: string) => boolean
   watchlist: WatchItem[]
@@ -520,7 +533,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { setSyncStatus("error") }
   }
 
-  const add = (p: Omit<Position, "id">) => {
+  const add = (p: Omit<Position, "id">, opts?: AddOptions) => {
     // Comprar más de un activo que ya tienes en la misma cuenta no debe crear
     // una posición duplicada: se fusiona en la existente recalculando el
     // precio medio ponderado (mismo cálculo que applyDca para los aportes DCA).
@@ -528,8 +541,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     if (existing) {
       const merged = mergedPosition(existing, p)
       if (!update(merged)) return { id: existing.id, merged: true, saved: false }
-      const addedCost = p.units * p.buyPrice
-      if (addedCost > 0) addContribution(existing.id, addedCost, p.date)
+      for (const c of purchaseContributions(p.units * p.buyPrice, p.date, opts)) if (c.amount > 0) addContribution(existing.id, c.amount, c.date)
       return { id: existing.id, merged: true, saved: true }
     }
     // eslint-disable-next-line react-hooks/purity -- event-handler code, not render; needs a fresh id per call
@@ -537,7 +549,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     const pos: Position = { ...p, id }
     if (!enqueue({ table: "investments", keyField: "id", key: id, operation: "upsert", row: toRow(pos) })) return { id, merged: false, saved: false }
     persistLocal([...positions, pos])
-    if (pos.units * pos.buyPrice > 0) addContribution(id, pos.units * pos.buyPrice, pos.date)
+    for (const c of purchaseContributions(pos.units * pos.buyPrice, pos.date, opts)) addContribution(id, c.amount, c.date)
     return { id, merged: false, saved: true }
   }
 
