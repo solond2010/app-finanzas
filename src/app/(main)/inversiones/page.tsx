@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import { dcaPendingDates, planOf, useInvestments, type Position } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { salesHistory, useInvestmentSales } from "@/lib/investment-sales"
-import { computeInvestments, freshnessLabel, looksLikeCode, type PortfolioRow, type Quote, type SliceKey } from "@/lib/portfolio"
+import { useQuotes } from "@/lib/use-quotes"
+import { computeInvestments, freshnessLabel, looksLikeCode, type PortfolioRow, type SliceKey } from "@/lib/portfolio"
 import { useFinance } from "@/lib/store"
 import { money } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -32,22 +33,6 @@ const tone = (n: number) => (n > 0 ? "text-[var(--accent-green)]" : n < 0 ? "tex
 const unitPrice = (n: number, cur: string) => `${n.toLocaleString("es-ES", { maximumFractionDigits: n >= 100 ? 2 : 4 })} ${cur === "EUR" ? "€" : cur}`
 
 /** Cotizaciones de mercado para las posiciones (no para las manuales). */
-function useQuotes(positions: Position[]) {
-  const symbols = useMemo(() => [...new Set(positions.filter((p) => p.kind !== "custom").map((p) => p.symbol))].sort().join(","), [positions])
-  const [quotes, setQuotes] = useState<Record<string, Quote>>({})
-  const [ready, setReady] = useState(false)
-  useEffect(() => {
-    if (!symbols) { queueMicrotask(() => setReady(true)); return }
-    let alive = true
-    fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { quotes?: Record<string, Quote> } | null) => { if (alive) { setQuotes(d?.quotes ?? {}); setReady(true) } })
-      .catch(() => { if (alive) setReady(true) })
-    return () => { alive = false }
-  }, [symbols])
-  return { quotes, ready }
-}
-
 export default function InversionesPage() {
   const router = useRouter()
   const { state, loading } = useFinance()

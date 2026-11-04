@@ -158,7 +158,19 @@ function UnifiedMovementForm({
   // Si se abre desde el detalle de una cuenta, esa cuenta manda sobre la
   // elegida por defecto según el tipo.
   const presetAccount = initial?.cuentaId && accounts.some((a) => a.id === initial.cuentaId) ? initial.cuentaId : null
-  const accountFor = (t: "gasto" | "ingreso") => presetAccount ?? defaultAccountFor(t, accounts)
+  // Sin cuenta fijada: la última usada para ese tipo (o la de siempre).
+  const lastUsedFor = (t: "gasto" | "ingreso") => {
+    let best: Transaction | null = null
+    for (const item of transactions) {
+      if (item.tipo !== t || item.categoria === "Transferencia" || item.tags?.includes("traspaso") || !accounts.some((a) => a.id === item.cuenta_id)) continue
+      const k = item.created_at ?? item.fecha
+      if (!best || k > (best.created_at ?? best.fecha)) best = item
+    }
+    return best?.cuenta_id ?? null
+  }
+  const accountFor = (t: "gasto" | "ingreso") => presetAccount ?? lastUsedFor(t) ?? defaultAccountFor(t, accounts)
+  const [showDetails, setShowDetails] = useState(Boolean(initial?.recurrente || initial?.descripcion))
+  const [showCatSelect, setShowCatSelect] = useState(false)
   const [cuentaId, setCuentaId] = useState(() => accountFor(initialTipo === "traspaso" ? "gasto" : initialTipo))
   const [monto, setMonto] = useState(initial?.monto != null && initial.monto > 0 ? String(initial.monto) : "")
   const [fecha, setFecha] = useState(today)
@@ -224,7 +236,7 @@ function UnifiedMovementForm({
     .filter((item) => item.tipo === tipo && item.categoria !== "Transferencia" && visibleCategories.some((category) => category.name === item.categoria))
     .reduce<Record<string, number>>((counts, item) => { counts[item.categoria] = (counts[item.categoria] ?? 0) + 1; return counts }, {}))
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
+    .slice(0, 6)
     .map(([name]) => name)
 
   const fail = (field: ErrorField, message: string) => {
@@ -271,7 +283,7 @@ function UnifiedMovementForm({
     })
   }
 
-  const submitLabel = tipo === "gasto" ? "Registrar gasto" : tipo === "ingreso" ? "Registrar ingreso" : "Transferir"
+  const submitLabel = tipo === "gasto" ? "Guardar gasto" : tipo === "ingreso" ? "Guardar ingreso" : "Transferir"
   const submitDisabled = tipo === "traspaso" && origenId === destinoId
 
   const selectedAccountId = tipo === "traspaso" ? origenId : cuentaId
@@ -386,43 +398,17 @@ function UnifiedMovementForm({
         </>
       ) : (
         <>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Cuenta</label>
-            <Select value={cuentaId} onValueChange={(v) => { if (v) { setCuentaId(v); if (errorField === "cuenta") setErrorField("resuelto") } }} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
-              <SelectTrigger className="h-12 w-full text-sm">
-                <span className="flex min-w-0 flex-1 items-center gap-2">{accounts.find((a) => a.id === cuentaId) && <AccountDot account={accounts.find((a) => a.id === cuentaId)!} />}<span className="min-w-0 truncate"><SelectValue /></span><SelectedBalance account={accounts.find((a) => a.id === cuentaId)} /></span>
-              </SelectTrigger>
-              <SelectContent className="w-[min(28rem,calc(100vw-2rem))] p-1.5 sm:p-2">
-                {accounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id} className="min-h-14 py-2 pr-10">
-                    <AccountSelectItem account={a} />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldError show={errorField === "cuenta"} message={error} />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">{montoLabel}</label>
-              <Input type="text" inputMode="decimal" value={monto} onChange={(e) => { setMonto(e.target.value); if (errorField === "monto") setErrorField("resuelto") }} placeholder="0,00" required aria-invalid={errorField === "monto" || undefined} className="h-12 text-lg font-semibold tabular-nums" />
+              <Input type="text" inputMode="decimal" value={monto} onChange={(e) => { setMonto(e.target.value); if (errorField === "monto") setErrorField("resuelto") }} placeholder="0,00" required aria-invalid={errorField === "monto" || undefined} autoFocus className="h-16 text-center text-3xl font-bold tabular-nums" />
               <FieldError show={errorField === "monto"} message={error} />
-              <div className="flex flex-wrap gap-1.5 pt-1" aria-label="Importes frecuentes">
+              <div className="flex flex-wrap justify-center gap-1.5 pt-1" aria-label="Importes frecuentes">
                 {[10, 20, 50, 100].map((amount) => <button key={amount} type="button" onClick={() => setMonto(String(amount))} className="min-h-9 rounded-full border border-border bg-background/60 px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">{amount} €</button>)}
               </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Fecha</label>
-              <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="h-12 text-base" />
-              <div className="flex gap-1.5 pt-1">
-                {[{ label: "Hoy", value: today }, { label: "Ayer", value: yesterday }].map((option) => <button key={option.label} type="button" onClick={() => setFecha(option.value)} aria-pressed={fecha === option.value} className={cn("min-h-9 rounded-full border px-3 text-xs font-medium transition-colors", fecha === option.value ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>{option.label}</button>)}
-              </div>
-            </div>
-
             <div className={cn("space-y-1.5", newCatOpen && "sm:col-span-2")}>
               <label className="text-sm font-medium text-foreground">Categoría</label>
-              <Select value={categoria} onValueChange={(v) => { if (v) { setCategoria(v); if (errorField === "categoria") setErrorField("resuelto") } }}>
+              {(showCatSelect || frequentCategories.length === 0 || (categoria && !frequentCategories.includes(categoria))) && <Select value={categoria} onValueChange={(v) => { if (v) { setCategoria(v); if (errorField === "categoria") setErrorField("resuelto") } }}>
                 <SelectTrigger className="h-12 w-full text-sm">
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
@@ -431,10 +417,11 @@ function UnifiedMovementForm({
                     <SelectItem key={c.id} value={c.name} className="py-2.5 text-sm">{c.name}</SelectItem>
                   ))}
                 </SelectContent>
-              </Select>
+              </Select>}
               <FieldError show={errorField === "categoria"} message={error} />
               <div className="flex flex-wrap gap-1.5 pt-1" aria-label="Categorías frecuentes">
                 {frequentCategories.map((name) => <button key={name} type="button" onClick={() => { setCategoria(name); if (errorField === "categoria") setErrorField("resuelto") }} aria-pressed={categoria === name} className={cn("min-h-9 rounded-full border px-3 text-xs font-medium transition-colors", categoria === name ? "border-primary/45 bg-primary/10 text-primary" : "border-border bg-background/50 text-muted-foreground hover:text-foreground")}>{name}</button>)}
+                {frequentCategories.length > 0 && !showCatSelect && <button type="button" onClick={() => setShowCatSelect(true)} className="min-h-9 rounded-full border border-border bg-background/50 px-3 text-xs font-medium text-muted-foreground hover:text-foreground">Más…</button>}
                 {!newCatOpen && (
                   <button type="button" onClick={() => { setNewCatOpen(true); setNewCatMsg(null) }} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-primary/45 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/10">
                     <Plus className="h-3 w-3" /> Nueva
@@ -473,12 +460,42 @@ function UnifiedMovementForm({
               {newCatMsg && <p role={newCatMsg.tone === "error" ? "alert" : "status"} className={cn("text-xs", newCatMsg.tone === "error" ? "text-red-500" : "text-muted-foreground")}>{newCatMsg.text}</p>}
             </div>
 
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Cuenta</label>
+            <Select value={cuentaId} onValueChange={(v) => { if (v) { setCuentaId(v); if (errorField === "cuenta") setErrorField("resuelto") } }} items={Object.fromEntries(accounts.map((a) => [a.id, a.nombre]))}>
+              <SelectTrigger className="h-12 w-full text-sm">
+                <span className="flex min-w-0 flex-1 items-center gap-2">{accounts.find((a) => a.id === cuentaId) && <AccountDot account={accounts.find((a) => a.id === cuentaId)!} />}<span className="min-w-0 truncate"><SelectValue /></span><SelectedBalance account={accounts.find((a) => a.id === cuentaId)} /></span>
+              </SelectTrigger>
+              <SelectContent className="w-[min(28rem,calc(100vw-2rem))] p-1.5 sm:p-2">
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id} className="min-h-14 py-2 pr-10">
+                    <AccountSelectItem account={a} />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldError show={errorField === "cuenta"} message={error} />
+          </div>
+
+          <button type="button" onClick={() => setShowDetails((v) => !v)} aria-expanded={showDetails} className="flex w-full items-center justify-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+            {fecha === today ? "Hoy" : fecha === yesterday ? "Ayer" : fecha} · <span className="underline underline-offset-2">{showDetails ? "Ocultar detalles" : "Añadir nota, fecha u otros detalles"}</span>
+          </button>
+          {showDetails && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Fecha</label>
+              <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="h-12 text-base" />
+              <div className="flex gap-1.5 pt-1">
+                {[{ label: "Hoy", value: today }, { label: "Ayer", value: yesterday }].map((option) => <button key={option.label} type="button" onClick={() => setFecha(option.value)} aria-pressed={fecha === option.value} className={cn("min-h-9 rounded-full border px-3 text-xs font-medium transition-colors", fecha === option.value ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>{option.label}</button>)}
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Descripción</label>
               <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder={tipo === "ingreso" ? "Ej: Nómina de junio" : "Ej: Compra en Mercadona"} className="h-12 text-base" />
             </div>
-          </div>
-
+              </div>
           {tipo === "gasto" && (
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Clasificación</label>
@@ -538,6 +555,8 @@ function UnifiedMovementForm({
               </div>
             )}
           </div>
+            </div>
+          )}
         </>
       )}
 
@@ -622,6 +641,17 @@ export function QuickActionsFAB() {
 
   return (
     <>
+      {!dialogOpen && (
+        <button
+          type="button"
+          onClick={() => openMovementDialog()}
+          aria-label="Nuevo movimiento"
+          title="Nuevo movimiento"
+          className="fixed right-4 z-[45] flex size-14 items-center justify-center rounded-full bg-[var(--gold)] text-[var(--gold-foreground)] shadow-[0_12px_30px_-8px_color-mix(in_oklch,var(--gold),transparent_35%)] ring-4 ring-background/70 transition-transform hover:brightness-110 active:scale-90 focus-visible:outline-none focus-visible:ring-primary bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom)+14px)] lg:bottom-6 lg:right-6 lg:size-[60px]"
+        >
+          <Plus className="size-7" strokeWidth={2.4} />
+        </button>
+      )}
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setPrefill(undefined) }}>
         <DialogContent className="z-[70] sm:max-w-md max-sm:bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] max-sm:max-h-[calc(100dvh-var(--bottom-nav-h)-env(safe-area-inset-top)-env(safe-area-inset-bottom))]">
           <DialogHeader>

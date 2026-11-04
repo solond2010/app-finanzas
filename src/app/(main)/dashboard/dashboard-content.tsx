@@ -38,12 +38,15 @@ import { openGoalsEditor, useWealthGoals } from "@/lib/use-wealth-goals"
 import { useAssetsDebts } from "@/lib/use-assets-debts"
 import { assetDebtNetAt, totals as assetDebtTotals } from "@/lib/assets-debts"
 import { localDateKey } from "@/lib/date-utils"
+import { useQuotes } from "@/lib/use-quotes"
+import { useInvestments } from "@/lib/investments"
+import { computeInvestments } from "@/lib/portfolio"
 import { GoalsEmpty } from "@/components/goals/goals-empty"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
 import { CategoryIcon } from "@/components/icons/category-icon"
 import { SHEET_CONTENT, SheetHandle } from "@/components/dashboard/sheet-handle"
-import { CashflowComboChart, ImportantToday, MoneyHero, MonthTiles, type Insight } from "@/components/dashboard/resumen-blocks"
+import { CashflowComboChart, ImportantToday, TopTiles, type Insight } from "@/components/dashboard/resumen-blocks"
 import { OnboardingGuide } from "@/components/onboarding/onboarding-guide"
 import { CashflowDrilldown, CashflowHoverTooltip, type CashflowBucket } from "@/components/dashboard/cashflow-drilldown"
 
@@ -140,7 +143,8 @@ function DashboardInner() {
   // remontar la gráfica al cerrar (Tremor deja la barra pulsada resaltada).
   const [cashflowDrillKey, setCashflowDrillKey] = useState<string | null>(null)
   const [cashflowChartKey, setCashflowChartKey] = useState(0)
-  const [rangeId, setRangeId] = useState<string>("6M")
+  const [rangeId, setRangeId] = useState<string>("12M")
+  const [cashflowMonths, setCashflowMonths] = useState(6)
   const activeRange = RANGES.find((r) => r.id === rangeId) ?? RANGES[3]
   const [showNewAccount, setShowNewAccount] = useState(false)
   const [showAnnual, setShowAnnual] = useState(false)
@@ -284,10 +288,12 @@ function DashboardInner() {
   // En vista por mes el gráfico enseña al menos los 6 últimos meses hasta el
   // final del periodo (con un solo mes no se ve ninguna tendencia).
   const chartStartKey = useMemo(() => {
-    const sixBack = new Date(periodBounds.end.getFullYear(), periodBounds.end.getMonth() - 5, 1)
+    // 0 = «Todo»: desde el primer movimiento.
+    const firstKey = cashflowMonths === 0 && analysisTransactions.length ? analysisTransactions.reduce((m, t) => (t.fecha < m ? t.fecha : m), analysisTransactions[0].fecha) : null
+    const sixBack = firstKey ? new Date(Number(firstKey.slice(0, 4)), Number(firstKey.slice(5, 7)) - 1, 1) : new Date(periodBounds.end.getFullYear(), periodBounds.end.getMonth() - ((cashflowMonths || 6) - 1), 1)
     const start = sixBack < periodBounds.start ? sixBack : periodBounds.start
     return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`
-  }, [periodBounds.start, periodBounds.end])
+  }, [periodBounds.start, periodBounds.end, cashflowMonths, analysisTransactions])
   const chartTransactions = useMemo(
     () => analysisTransactions.filter((transaction) => transaction.fecha >= chartStartKey && transaction.fecha <= periodBounds.endKey && countsTowardCashFlow(transaction, analysisTransactions)),
     [analysisTransactions, chartStartKey, periodBounds.endKey]
@@ -361,6 +367,9 @@ function DashboardInner() {
   const incomeTransactions = periodIncomeTransactions
   const expenseTransactions = periodExpenseTransactions
   // Bienes y deudas apuntados en /patrimonio: suman/restan al patrimonio total.
+  const { positions: invPositions, contributions: invContributions } = useInvestments()
+  const { quotes: invQuotes } = useQuotes(invPositions)
+  const investmentView = useMemo(() => computeInvestments(state.accounts, invPositions, invQuotes, invContributions), [state.accounts, invPositions, invQuotes, invContributions])
   const { assets: ownAssets, debts: ownDebts, values: ownAssetValues } = useAssetsDebts()
   const assetDebt = useMemo(() => assetDebtTotals(ownAssets, ownDebts), [ownAssets, ownDebts])
   const netWorthDisplay = netWorth + assetDebt.neto
@@ -1140,36 +1149,18 @@ function DashboardInner() {
         </div>
       ) : (
         <div className="space-y-4 sm:space-y-5">
-          <MoneyHero
-            periodLabel={periodBounds.label}
-            isCurrentMonth={isCurrentMonth}
-            net={periodTotals.neto}
-            income={periodTotals.ingresos}
-            expenses={periodTotals.gastos}
-            comparable={comparableExpenses}
-            comparableLabel={isCurrentMonth ? "el mes pasado a estas alturas" : "el mes anterior"}
-            daysLeft={daysLeftInMonth}
+          <TopTiles
             netWorth={netWorthDisplay}
-            available={spendableTotal}
-            invested={investmentDisplayTotal}
-            accountsTotal={displayAccounts.length}
-            accountsWithBalance={accountsWithBalance}
-            sparkline={netWorthTrend.map((p) => p.patrimonio)}
             netWorthDelta={netWorth - scoreBaseline + assetDebt.neto - assetDebtPrevMonth}
-            assetsValue={assetDebt.bienes}
-            debtsValue={assetDebt.deudas}
-            netWorthDeltaLabel="vs mes anterior"
-          />
-          <MonthTiles
+            sparkline={netWorthTrend.map((p) => p.patrimonio)}
             label={periodBounds.label}
             income={periodTotals.ingresos}
             expenses={periodTotals.gastos}
             net={periodTotals.neto}
-            incomeCount={incomeTransactions.length}
-            expenseCount={expenseTransactions.length}
-            savingsRate={periodSavingsRate}
             expenseChange={expenseChangePct}
-            onOpen={(k) => setMetricDetail(k)}
+            invested={investmentDisplayTotal}
+            gain={investmentView.gainPct === null ? null : investmentView.gain}
+            gainPct={investmentView.gainPct}
           />
           <ImportantToday items={insights} />
 
@@ -1184,6 +1175,13 @@ function DashboardInner() {
                   <button key={granularity} type="button" onClick={() => setCashflowGranularity(granularity)} data-active={cashflowGranularity === granularity} aria-pressed={cashflowGranularity === granularity} className="range-tab">{label}</button>
                 ))}
               </div>
+              {cashflowGranularity === "month" && (
+                <div className="range-tabs" aria-label="Meses de la gráfica">
+                  {([[3, "3M"], [6, "6M"], [12, "12M"], [24, "24M"], [0, "Todo"]] as const).map(([m, label]) => (
+                    <button key={label} type="button" onClick={() => setCashflowMonths(m)} data-active={cashflowMonths === m} aria-pressed={cashflowMonths === m} className="range-tab">{label}</button>
+                  ))}
+                </div>
+              )}
             </div>
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? periodCashflow.length <= 12 ? (
               <>

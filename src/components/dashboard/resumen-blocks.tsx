@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState, type ReactNode } from "react"
-import { ArrowRight, CalendarClock, ChartLineUp, Flame, HandCoins, Lightbulb, PiggyBank, Receipt, Target, TrendingDown, TrendingUp, Wallet } from "@/components/icons"
+import { ArrowRight, CalendarClock, ChartLineUp, Flame, HandCoins, Lightbulb, PiggyBank, Receipt, Scales, Target, TrendingDown, TrendingUp, Wallet } from "@/components/icons"
 import { Sensitive } from "@/components/shared/sensitive"
 import { formatMoney } from "@/lib/currency"
 import { cn } from "@/lib/utils"
@@ -125,6 +125,48 @@ export function MonthTiles({ label, income, expenses, net, incomeCount, expenseC
           </button>
         ))}
       </div>
+    </section>
+  )
+}
+
+// ── Arriba del Inicio: 4 tarjetas que llevan a su página ─────────────────
+export function TopTiles(props: { netWorth: number; netWorthDelta: number; sparkline: number[]; label: string; income: number; expenses: number; net: number; expenseChange: number | null; invested: number; gain: number | null; gainPct: number | null }) {
+  const d = props.netWorthDelta
+  const base = props.netWorth - d
+  const pct = Math.abs(base) >= 1 ? (d / Math.abs(base)) * 100 : null
+  const tone = Math.abs(d) < 1 || (pct !== null && Math.abs(pct) < 0.1) ? "text-muted-foreground" : d > 0 ? "text-emerald-500" : "text-red-500"
+  const fmtPct = (v: number) => `${v > 0 ? "+" : "−"}${Math.abs(v).toLocaleString("es-ES", { maximumFractionDigits: 1 })} %`
+  const head = (Icon: typeof Receipt, color: string, title: string) => (
+    <span className="flex items-center justify-between gap-2 pr-0.5">
+      <span className="page-section-label flex min-w-0 items-center gap-1.5"><Icon className="size-[18px] shrink-0" style={{ color }} /><span className="truncate">{title}</span></span>
+      <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
+    </span>
+  )
+  const T = cn(TILE, "flex min-w-0 flex-col gap-1.5 p-4 transition-colors hover:border-primary/40")
+  return (
+    <section aria-label="Resumen" className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
+      <Link href="/patrimonio" className={cn(T, "col-span-2 lg:col-span-1 border-[color-mix(in_oklch,var(--gold),transparent_70%)]")}>
+        {head(Scales, "var(--gold)", "Patrimonio total")}
+        <span className="text-[2.1rem] font-bold leading-tight tracking-tight tabular-nums sm:text-[2.5rem]"><Sensitive>{eur(props.netWorth)}</Sensitive></span>
+        <span className="text-xs text-muted-foreground"><Sensitive className={cn("font-semibold", tone)}>{Math.abs(d) < 1 ? "Sin cambios" : `${d > 0 ? "+" : "−"}${eur(Math.abs(d))}${pct !== null && Math.abs(pct) >= 0.1 ? ` (${fmtPct(pct)})` : ""}`}</Sensitive> este mes</span>
+        {props.sparkline.length > 1 && <span className="mt-auto block pt-1"><Sparkline values={props.sparkline} /></span>}
+      </Link>
+      <Link href="/transactions" className={T}>
+        {head(Receipt, "var(--accent-red)", "Gastado este mes")}
+        <span className="truncate text-xl font-bold tabular-nums text-red-500 sm:text-2xl"><Sensitive>{eur(props.expenses)}</Sensitive></span>
+        <span className="h-1.5 overflow-hidden rounded-full bg-muted"><span className="block h-full rounded-full bg-[var(--accent-red)]" style={{ width: `${props.income > 0 ? Math.min(100, (props.expenses / props.income) * 100) : props.expenses > 0 ? 100 : 0}%` }} /></span>
+        <span className="text-xs text-muted-foreground">{props.income > 0 ? `${Math.round((props.expenses / props.income) * 100)} % de lo ingresado` : `En ${props.label}`}{props.expenseChange !== null && <> · <span className={props.expenseChange <= 0 ? "text-emerald-500" : "text-red-500"}>{props.expenseChange > 0 ? "+" : ""}{props.expenseChange} %</span></>}</span>
+      </Link>
+      <Link href="/analytics" className={T}>
+        {head(PiggyBank, props.net >= 0 ? "var(--accent-green)" : "var(--accent-red)", "Ahorro del mes")}
+        <span className={cn("truncate text-xl font-bold tabular-nums sm:text-2xl", props.net > 0 ? "text-emerald-500" : props.net < 0 ? "text-red-500" : "text-muted-foreground")}><Sensitive>{props.net > 0 ? "+" : props.net < 0 ? "−" : ""}{eur(Math.abs(props.net))}</Sensitive></span>
+        <span className="text-xs text-muted-foreground">{props.income > 0 ? <>de <Sensitive>{eur(props.income)}</Sensitive> ingresados</> : "Aún sin ingresos este mes"}</span>
+      </Link>
+      <Link href="/inversiones" className={cn(T, "col-span-2 lg:col-span-1")}>
+        {head(ChartLineUp, "var(--accent-violet)", "Inversiones")}
+        <span className="truncate text-xl font-bold tabular-nums sm:text-2xl"><Sensitive>{eur(props.invested)}</Sensitive></span>
+        <span className="text-xs text-muted-foreground">{props.gain === null ? "Rendimiento: sin cotizaciones" : <><Sensitive className={cn("font-semibold", props.gain >= 0 ? "text-emerald-500" : "text-red-500")}>{props.gain >= 0 ? "+" : "−"}{eur(Math.abs(props.gain))}{props.gainPct !== null ? ` (${fmtPct(props.gainPct)})` : ""}</Sensitive> rendimiento</>}</span>
+      </Link>
     </section>
   )
 }

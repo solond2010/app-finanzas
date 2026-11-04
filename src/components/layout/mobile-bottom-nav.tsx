@@ -3,8 +3,7 @@
 import { useEffect, useState, type ElementType } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { CalendarDays, ChartPie, TrendingUp, Scales, ChatText, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, Plus, ReceiptText, ShieldCheck, SlidersHorizontal, SunMedium, X } from "@/components/icons"
-import { openMovementDialog } from "@/components/layout/quick-actions"
+import { CalendarDays, ChartPie, TrendingUp, Scales, ChatText, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, ReceiptText, ShieldCheck, SlidersHorizontal, SunMedium, X } from "@/components/icons"
 import { openFeedbackDialog } from "@/components/feedback/feedback-dialog"
 import { cn } from "@/lib/utils"
 import { usePrivacy } from "@/lib/privacy"
@@ -14,10 +13,10 @@ const primaryItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
   { href: "/transactions", label: "Movimientos", icon: ReceiptText },
   { href: "/cuentas", label: "Cuentas", icon: Landmark },
+  { href: "/inversiones", label: "Inversiones", icon: TrendingUp },
 ]
 
 const moreItems = [
-  { href: "/inversiones", label: "Inversiones", description: "Tu cartera y lo que ganas", icon: TrendingUp },
   { href: "/patrimonio", label: "Patrimonio", description: "Bienes, deudas y patrimonio neto", icon: Scales },
   { href: "/agenda", label: "Gastos fijos", description: "Alquiler, nómina, suscripciones…", icon: CalendarDays },
   { href: "/analytics", label: "Analíticas", description: "Tu evolución financiera", icon: ChartPie },
@@ -148,15 +147,8 @@ export function MobileBottomNav() {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
             return <NavItem key={item.href} {...item} active={active} />
           })}
-          <button
-            type="button"
-            onClick={() => openMovementDialog()}
-            aria-label="Nuevo movimiento"
-            className="mx-auto flex size-12 -translate-y-2 items-center justify-center rounded-2xl bg-[var(--gold)] text-[var(--gold-foreground)] shadow-lg shadow-[color-mix(in_oklch,var(--gold),transparent_68%)] transition-transform active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          >
-            <Plus className="size-6" strokeWidth={2.2} />
-          </button>
-          <NavItem {...primaryItems[2]} active={pathname === "/cuentas" || pathname.startsWith("/cuentas/")} />
+          {/* El «+» va flotante (QuickActionsFAB), encima de la barra. */}
+          {primaryItems.slice(2).map((item) => <NavItem key={item.href} {...item} active={pathname === item.href || pathname.startsWith(`${item.href}/`)} />)}
           <button
             type="button"
             aria-expanded={moreOpen}
