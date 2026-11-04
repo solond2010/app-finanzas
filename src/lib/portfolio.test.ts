@@ -101,3 +101,26 @@ describe("precio por unidad ↔ total de la venta", () => {
     expect(computeSale({ units: 10, buyPrice: 20, currency: "EUR" }, 4, total)?.gain).toBe(-10)
   })
 })
+
+import { freshnessLabel, looksLikeCode } from "./portfolio"
+
+describe("nombres legibles y frescura del precio", () => {
+  it("detecta códigos frente a nombres", () => {
+    expect(looksLikeCode("0P00012I6A.F", "0P00012I6A.F")).toBe(true)
+    expect(looksLikeCode("IE00B4L5Y983", "IWDA.AS")).toBe(true)
+    expect(looksLikeCode("Fondo indexado MSCI World", "X")).toBe(false)
+    expect(looksLikeCode("Apple", "AAPL")).toBe(false)
+  })
+  it("usa el nombre de la cotización si el guardado es un código", () => {
+    const p = computePortfolio([pos({ name: "0P00012I6A.F", symbol: "0P00012I6A.F" })], { "0P00012I6A.F": { price: 11, currency: "EUR", name: "Vanguard Global Stock Index", time: 1 } }, [])
+    expect(p.rows[0].name).toBe("Vanguard Global Stock Index")
+    expect(p.rows[0].code).toBe("0P00012I6A.F")
+  })
+  it("etiqueta de frescura", () => {
+    const now = 1_000_000_000_000
+    expect(freshnessLabel(now / 1000 - 300, now)).toBe("hace 5 min")
+    expect(freshnessLabel(now / 1000 - 3 * 3600, now)).toBe("hace 3 h")
+    expect(freshnessLabel(now / 1000 - 2 * 86400, now)).toBe("hace 2 días")
+    expect(freshnessLabel(null, now)).toBeNull()
+  })
+})

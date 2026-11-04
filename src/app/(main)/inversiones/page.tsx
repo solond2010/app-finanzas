@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useInvestments, type Position } from "@/lib/investments"
-import { computeInvestments, type PortfolioRow, type Quote, type SliceKey } from "@/lib/portfolio"
+import { computeInvestments, freshnessLabel, looksLikeCode, type PortfolioRow, type Quote, type SliceKey } from "@/lib/portfolio"
 import { useFinance } from "@/lib/store"
 import { money } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -48,8 +48,19 @@ function useQuotes(positions: Position[]) {
 export default function InversionesPage() {
   const router = useRouter()
   const { state, loading } = useFinance()
-  const { positions, contributions, loaded } = useInvestments()
+  const { positions, contributions, loaded, update } = useInvestments()
   const { quotes, ready } = useQuotes(positions)
+  // Si una posición se guardó con el código como nombre, se guarda una vez el
+  // nombre legible que da la cotización.
+  const renamed = useRef(new Set<string>())
+  useEffect(() => {
+    for (const p of positions) {
+      const q = quotes[p.symbol]
+      if (p.kind === "custom" || !q?.name || renamed.current.has(p.id) || !looksLikeCode(p.name || "", p.symbol) || looksLikeCode(q.name, p.symbol)) continue
+      renamed.current.add(p.id)
+      update({ ...p, name: q.name })
+    }
+  }, [positions, quotes, update])
   const [dialog, setDialog] = useState<{ open: boolean; editing: Position | null; accountId?: string }>({ open: false, editing: null })
   const view = useMemo(() => computeInvestments(state.accounts, positions, quotes, contributions), [state.accounts, positions, quotes, contributions])
   const account = (id: string) => state.accounts.find((x) => x.id === id)
@@ -100,7 +111,9 @@ export default function InversionesPage() {
         <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: CLASS_COLORS[r.assetClass] }} aria-hidden />
         <span className="min-w-0 flex-1">
           <span className="line-clamp-2 block break-words text-sm font-medium text-foreground">{r.name}</span>
-          <span className="block text-xs text-muted-foreground"><Sensitive>{r.units.toLocaleString("es-ES", { maximumFractionDigits: 4 })}</Sensitive> uds. · coste {unitPrice(r.avgCost, r.priceCurrency)}{r.hasQuote ? ` · hoy ${unitPrice(r.price, r.priceCurrency)}` : " · sin cotización"}</span>
+          {r.code && <span className="block truncate font-mono text-[10px] text-muted-foreground/80">{r.code}</span>}
+          <span className="block text-xs text-muted-foreground"><Sensitive>{r.units.toLocaleString("es-ES", { maximumFractionDigits: 4 })}</Sensitive> uds. · coste {unitPrice(r.avgCost, r.priceCurrency)}{r.hasQuote ? ` · hoy ${unitPrice(r.price, r.priceCurrency)}` : ""}</span>
+          <span className="block text-[11px] text-muted-foreground/80">{r.hasQuote ? `Precio de mercado · ${freshnessLabel(r.quoteTime) ?? "sin hora"}` : "Precio de compra (sin cotización)"}</span>
         </span>
         <span className="shrink-0 text-right tabular-nums">
           <Sensitive className="block text-sm font-semibold text-foreground">{money(r.value)}</Sensitive>

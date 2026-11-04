@@ -6,11 +6,33 @@ import type { Account } from "@/lib/store"
 // Todo en euros. Sin precio de mercado (activos manuales o sin conexión) se
 // usa el precio de compra, así que esa posición cuenta con ganancia 0.
 
-export type Quote = { price: number; currency: string }
+export type Quote = { price: number; currency: string; name?: string; time?: number | null }
+
+const ISIN = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/
+/** ¿El nombre guardado es en realidad un código (ticker/ISIN) y no un nombre legible? */
+export function looksLikeCode(name: string, symbol: string): boolean {
+  const n = name.trim()
+  if (!n || n === symbol || ISIN.test(n)) return true
+  return !/\s/.test(n) && /[0-9.]/.test(n) && n === n.toUpperCase()
+}
+
+/** «hace 5 min», «hace 3 h», «hace 2 días» a partir de un instante en segundos. */
+export function freshnessLabel(timeSec: number | null | undefined, now: number = Date.now()): string | null {
+  if (!timeSec) return null
+  const min = Math.max(0, Math.round((now - timeSec * 1000) / 60000))
+  if (min < 1) return "ahora"
+  if (min < 60) return `hace ${min} min`
+  const h = Math.round(min / 60)
+  if (h < 24) return `hace ${h} h`
+  const d = Math.round(h / 24)
+  return d === 1 ? "hace 1 día" : `hace ${d} días`
+}
 
 export type PortfolioRow = {
   id: string
   name: string
+  code: string | null // ticker o ISIN, en pequeño debajo del nombre
+  quoteTime: number | null // segundos; null = sin cotización
   assetClass: AssetClass
   units: number
   avgCost: number // por unidad, en su moneda
@@ -53,7 +75,9 @@ export function computePortfolio(positions: Position[], quotes: Record<string, Q
     const value = hasQuote ? toEur(p.units * q!.price, q!.currency || p.currency) : invested
     const gain = value - invested
     return {
-      id: p.id, name: p.name || p.symbol, assetClass: assetClassOf(p), units: p.units, avgCost: p.buyPrice,
+      id: p.id, name: looksLikeCode(p.name || "", p.symbol) && q?.name ? q.name : p.name || p.symbol,
+      code: p.kind === "custom" ? null : p.isin && p.isin !== p.symbol ? `${p.symbol} · ${p.isin}` : p.symbol,
+      quoteTime: hasQuote ? q!.time ?? null : null, assetClass: assetClassOf(p), units: p.units, avgCost: p.buyPrice,
       price: hasQuote ? q!.price : p.buyPrice, priceCurrency: hasQuote ? q!.currency || p.currency : p.currency,
       invested: round2(invested), value: round2(value), gain: round2(gain), gainPct: invested > 0 ? (gain / invested) * 100 : null, hasQuote,
     }
