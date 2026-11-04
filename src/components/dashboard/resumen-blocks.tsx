@@ -138,7 +138,7 @@ export function TopTiles(props: { netWorth: number; netWorthDelta: number; spark
   const fmtPct = (v: number) => `${v > 0 ? "+" : "−"}${Math.abs(v).toLocaleString("es-ES", { maximumFractionDigits: 1 })} %`
   const head = (Icon: typeof Receipt, color: string, title: string) => (
     <span className="flex items-center justify-between gap-2 pr-0.5">
-      <span className="page-section-label flex min-w-0 items-center gap-1.5"><Icon className="size-[18px] shrink-0" style={{ color }} /><span className="truncate">{title}</span></span>
+      <span className="page-section-label flex min-w-0 items-center gap-1.5"><Icon className="size-[18px] shrink-0" style={{ color }} /><span className="leading-tight">{title}</span></span>
       <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
     </span>
   )
