@@ -10,7 +10,7 @@ export function DemoBanner({ sidebarOpen }: { sidebarOpen: boolean }) {
       role="region"
       aria-label="Modo demo"
       className={cn(
-        "fixed inset-x-0 top-0 z-[45] border-b border-[color-mix(in_oklch,var(--gold),transparent_72%)] bg-[#0B0F14]/95 pt-[env(safe-area-inset-top)] text-white shadow-lg shadow-black/20 transition-[left] duration-300",
+        "fixed inset-x-0 top-0 z-[45] border-b border-[color-mix(in_oklch,var(--gold),transparent_72%)] bg-white/95 pt-[env(safe-area-inset-top)] text-foreground shadow-lg shadow-black/5 backdrop-blur dark:bg-[#0B0F14]/95 dark:text-white dark:shadow-black/20 transition-[left] duration-300",
         sidebarOpen ? "lg:left-52" : "lg:left-16",
       )}
     >
@@ -20,17 +20,17 @@ export function DemoBanner({ sidebarOpen }: { sidebarOpen: boolean }) {
         </span>
         <p className="min-w-0 flex-1 truncate text-[13px] leading-tight sm:text-sm">
           <span className="font-semibold">Estás viendo una demo</span>
-          <span className="hidden text-white/60 md:inline"> · Datos ficticios: toca lo que quieras, nada se guarda</span>
+          <span className="hidden text-muted-foreground md:inline dark:text-white/60"> · Datos ficticios: toca lo que quieras, nada se guarda</span>
         </p>
         <a
           href={DEMO_EXIT_HREF}
-          className="hidden h-9 shrink-0 items-center rounded-full px-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] sm:inline-flex"
+          className="hidden h-9 shrink-0 items-center rounded-full px-3 text-sm font-medium text-foreground/70 transition-colors hover:bg-foreground/10 hover:text-foreground dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] sm:inline-flex"
         >
           Salir
         </a>
         <a
           href={DEMO_SIGNUP_HREF}
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[var(--gold)] px-3.5 text-[13px] font-semibold text-[#0B0F14] shadow-md shadow-[color-mix(in_oklch,var(--gold),transparent_70%)] transition-[filter,transform] hover:brightness-110 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:text-sm"
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[var(--gold)] px-3.5 text-[13px] font-semibold text-[#0B0F14] shadow-md shadow-[color-mix(in_oklch,var(--gold),transparent_70%)] transition-[filter,transform] hover:brightness-110 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground dark:focus-visible:ring-white sm:text-sm"
         >
           Crear mi cuenta
           <ArrowRight weight="bold" className="size-3.5" />

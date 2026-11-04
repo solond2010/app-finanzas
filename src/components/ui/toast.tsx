@@ -42,17 +42,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             className={`stagger-fade-fast flex items-center gap-3 rounded-2xl border px-4 py-3.5 text-sm shadow-2xl backdrop-blur-xl ${
               t.type === "success"
-                ? "bg-emerald-950/90 border-emerald-700/50 text-emerald-100"
+                ? "bg-emerald-50/95 border-emerald-200 text-emerald-900 dark:bg-emerald-950/90 dark:border-emerald-700/50 dark:text-emerald-100"
                 : t.type === "error"
-                  ? "bg-red-950/90 border-red-700/50 text-red-100"
-                  : "bg-amber-950/90 border-amber-700/50 text-amber-100"
+                  ? "bg-red-50/95 border-red-200 text-red-900 dark:bg-red-950/90 dark:border-red-700/50 dark:text-red-100"
+                  : "bg-amber-50/95 border-amber-200 text-amber-950 dark:bg-amber-950/90 dark:border-amber-700/50 dark:text-amber-100"
             }`}
             style={{ animationDelay: `${idx * 50}ms` }}
           >
             {t.type === "success"
-              ? <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20"><CheckCircle className="h-3.5 w-3.5 text-emerald-400" /></span>
+              ? <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20"><CheckCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /></span>
               : t.type === "error"
-                ? <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500/20"><AlertCircle className="h-3.5 w-3.5 text-red-400" /></span>
+                ? <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500/20"><AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" /></span>
                 : <span className="flex h-6 w-6 items-center justify-center rounded-full" style={{ backgroundColor: "color-mix(in oklab, var(--gold), transparent 80%)" }}><Info className="h-3.5 w-3.5" style={{ color: "var(--gold)" }} /></span>
             }
             <span className="flex-1 font-medium">{t.message}</span>
@@ -60,12 +60,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={() => { t.action?.onClick(); setToasts((prev) => prev.filter((x) => x.id !== t.id)) }}
-                className="shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-bold text-[var(--gold)] underline-offset-2 hover:bg-black/30 hover:underline"
+                className="shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-bold text-[var(--gold)] underline-offset-2 hover:bg-black/5 dark:hover:bg-black/30 hover:underline"
               >
                 {t.action.label}
               </button>
             )}
-            <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} aria-label="Cerrar aviso" className="shrink-0 rounded-xl p-1.5 opacity-50 hover:opacity-100 hover:bg-black/30 transition-all"><X className="h-3 w-3" /></button>
+            <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} aria-label="Cerrar aviso" className="shrink-0 rounded-xl p-1.5 opacity-50 hover:opacity-100 hover:bg-black/5 dark:hover:bg-black/30 transition-all"><X className="h-3 w-3" /></button>
           </div>
         ))}
       </div>

@@ -218,6 +218,10 @@
     transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease, fill 200ms ease !important;
   }
 
+  /* Controles nativos (selects, fechas, scroll) con el tema activo. */
+  :root { color-scheme: light; }
+  .dark { color-scheme: dark; }
+
   ::-webkit-scrollbar {
     width: 5px;
     height: 5px;
