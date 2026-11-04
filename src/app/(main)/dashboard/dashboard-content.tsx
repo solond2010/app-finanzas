@@ -374,7 +374,7 @@ function DashboardInner() {
   const annualGastos = monthlyYear.reduce((s, m) => s + m.gastos, 0)
   const annualNeto = annualIngresos - annualGastos
 
-  const netWorthTrend = useMemo<Array<{
+  const netWorthTrendAccounts = useMemo<Array<{
     mes: string
     patrimonio: number
     date: string
@@ -483,6 +483,9 @@ function DashboardInner() {
     
     return enrichedTrend
   }, [activeRange, selectedDate, monthOffset, today, selectedMonth, state.accounts, state.transactions])
+  // Bienes y deudas no tienen histórico: se suman como un nivel constante para
+  // que la curva acabe en la misma cifra que el resumen, sin un salto «hoy».
+  const netWorthTrend = useMemo(() => (assetDebt.neto === 0 ? netWorthTrendAccounts : netWorthTrendAccounts.map((p) => ({ ...p, patrimonio: p.patrimonio + assetDebt.neto }))), [netWorthTrendAccounts, assetDebt.neto])
 
   // En los rangos por mes (6M/12M/24M) el mes en curso solo aporta UN punto a
   // netWorthTrend: el valor de HOY. Si dentro de ese mismo mes hubo un pico
