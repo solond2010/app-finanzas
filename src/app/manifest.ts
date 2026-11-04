@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Garra · Tus finanzas, con garra",
     short_name: "Garra",
     description: "Tus cuentas, gastos e inversiones en un solo lugar.",
-    start_url: "/",
+    start_url: "/dashboard",
     display: "standalone",
     background_color: "#0B0F14",
     theme_color: "#0B0F14",

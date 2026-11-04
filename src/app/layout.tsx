@@ -22,6 +22,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.migarra.app"),
   title: { default: "Garra · Tus finanzas, con garra", template: "%s · Garra" },
   description: "Garra: tus cuentas, gastos e inversiones en un solo lugar.",
   applicationName: "Garra",

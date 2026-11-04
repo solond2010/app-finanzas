@@ -74,6 +74,9 @@ async function supabaseProxy(request: NextRequest) {
   const user = data.user
   const { pathname } = request.nextUrl
 
+  // Portada: la landing para quien no ha entrado; con sesión, directo a la app.
+  if (pathname === "/") return user ? NextResponse.redirect(new URL("/dashboard", request.url)) : response
+
   if (isPublicAuthPath(pathname)) {
     if (user && pathname === "/login") return NextResponse.redirect(new URL("/dashboard", request.url))
     return response
@@ -101,6 +104,8 @@ async function passwordProxy(request: NextRequest) {
   const authCookie = request.cookies.get(AUTH_COOKIE_NAME)?.value
   const authed = await isValidSessionToken(authCookie, password)
 
+  if (request.nextUrl.pathname === "/") return authed ? NextResponse.redirect(new URL("/dashboard", request.url)) : NextResponse.next()
+
   if (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/api/login") {
     if (authed && request.nextUrl.pathname !== "/api/login") {
       return NextResponse.redirect(new URL("/dashboard", request.url))
@@ -124,5 +129,5 @@ export const config = {
   // api/shortcuts y api/backup quedan fuera: los llama un Atajo de iOS o el
   // script de copias, no un navegador. Se protegen con su propia clave
   // (ver src/lib/server/shortcut-auth.ts), que además dice de quién son.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|icons/|atajos/|manifest.webmanifest|api/shortcuts|api/backup|api/version).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|icons/|landing/|opengraph-image|atajos/|manifest.webmanifest|api/shortcuts|api/backup|api/version).*)"],
 }
