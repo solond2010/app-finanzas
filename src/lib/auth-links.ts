@@ -15,6 +15,9 @@ export type LinkNotice = { kind: "info" | "error"; text: string }
 
 export function loginNotice(params: { get(name: string): string | null }): LinkNotice | null {
   const aviso = params.get("aviso")
+  if (aviso === "cuenta-borrada") {
+    return { kind: "info", text: "Tu cuenta y todos tus datos se han borrado. Gracias por haber probado Garra." }
+  }
   if (aviso === "confirmado") {
     return { kind: "info", text: "Tu email ya está confirmado. Entra con tu email y tu contraseña." }
   }

@@ -38,7 +38,7 @@ export default function PrivacidadPage() {
       </section>
       <section>
         <h2>Tus derechos</h2>
-        <p>Puedes <strong>acceder</strong> a tus datos, <strong>corregirlos</strong> o <strong>borrarlos</strong> cuando quieras. Casi todo lo puedes editar o eliminar desde la propia app, y también puedes descargar una copia desde Configuración. Para eliminar tu cuenta y todos tus datos, pídenoslo desde «Enviar comentario» y lo haremos. También puedes reclamar ante la Agencia Española de Protección de Datos (aepd.es).</p>
+        <p>Puedes <strong>acceder</strong> a tus datos, <strong>corregirlos</strong> o <strong>borrarlos</strong> cuando quieras. Casi todo lo puedes editar o eliminar desde la propia app, y también puedes descargar una copia desde Configuración. Para eliminar tu cuenta y todos tus datos, ve a Configuración → «Borrar mi cuenta»: antes puedes descargar una copia y el borrado es inmediato y definitivo. Si no puedes entrar, pídenoslo y lo haremos. También puedes reclamar ante la Agencia Española de Protección de Datos (aepd.es).</p>
       </section>
       <section>
         <h2>Cuánto tiempo</h2>

@@ -17,6 +17,7 @@ import Link from "next/link"
 import { LEGACY_USER_ID, USER_ID_COOKIE } from "@/lib/auth-mode"
 import { AccountSettings } from "@/components/settings/account-settings"
 import { FeedbackCard } from "@/components/settings/feedback-card"
+import { DeleteAccountCard } from "@/components/settings/delete-account-card"
 import { PlanCard } from "@/components/settings/plan-card"
 import { CategoryIcon } from "@/components/icons/category-icon"
 import { CategoryIconPicker } from "@/components/categories/category-icon-picker"
@@ -354,6 +355,7 @@ export default function ConfiguracionPage() {
           {!demo && <PlanCard />}
           {!demo && <AccountSettings part="cuenta" />}
           {!demo && <FeedbackCard />}
+          {!demo && <DeleteAccountCard />}
           <p className="px-1 text-xs text-muted-foreground">
             <a href="/privacidad" className="underline underline-offset-2 hover:text-foreground">Política de privacidad</a> · <a href="/terminos" className="underline underline-offset-2 hover:text-foreground">Condiciones de uso</a>
           </p>
