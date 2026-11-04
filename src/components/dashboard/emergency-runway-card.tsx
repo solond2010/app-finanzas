@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
 import { formatMoney } from "@/lib/currency"
+import { cn } from "@/lib/utils"
 import { getSetting, setSetting } from "@/lib/settings"
 
 const SETTING_KEY = "emergency-monthly-living-cost-eur"
@@ -14,6 +15,7 @@ const MONTHS_KEY = "emergency-target-months"
 const DEFAULT_MONTHS = 6
 const MIN_MONTHS = 1
 const MAX_MONTHS = 24
+const MONTH_PRESETS = [3, 6, 9, 12, 18, 24]
 
 function parseMonths(value: string | null | undefined) {
   const n = Math.round(Number(value))
@@ -79,18 +81,27 @@ export function EmergencyRunwayCard({ balanceEur }: { balanceEur: number }) {
   async function saveMonthlyCost(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const value = parseAmount(draft)
-    if (value <= 0) {
-      setValidationError("Introduce un gasto mensual mayor que 0 €.")
-      return
-    }
     const months = parseMonths(monthsDraft)
     if (!months) {
       setValidationError(`El objetivo debe estar entre ${MIN_MONTHS} y ${MAX_MONTHS} meses.`)
       return
     }
+    // Los meses se pueden guardar solos, aunque aún no haya gasto mensual.
+    if (value <= 0 && draft.trim() !== "") {
+      setValidationError("Introduce un gasto mensual mayor que 0 €.")
+      return
+    }
     setTargetMonths(months)
     try { localStorage.setItem(MONTHS_KEY, String(months)) } catch {}
-    void setSetting(MONTHS_KEY, String(months)).catch(() => {})
+    const monthsSaved = setSetting(MONTHS_KEY, String(months)).catch(() => false)
+    if (value <= 0) {
+      setSaving(true)
+      await monthsSaved
+      setSaving(false)
+      setEditing(false)
+      toast(`Objetivo guardado: ${months} ${months === 1 ? "mes" : "meses"}.`, "success")
+      return
+    }
 
     setSaving(true)
     setValidationError("")
@@ -151,7 +162,7 @@ export function EmergencyRunwayCard({ balanceEur }: { balanceEur: number }) {
               {coveredMonths.toLocaleString("es-ES", { useGrouping: "always", minimumFractionDigits: 1, maximumFractionDigits: 1 })}
             </span>
             <span className="text-xs font-medium text-foreground">meses</span>
-            <span className="ml-auto text-[10px] tabular-nums text-muted-foreground">de {targetMonths}</span>
+            <button type="button" onClick={startEditing} className="ml-auto rounded text-[10px] tabular-nums text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-primary" aria-label={`Objetivo: ${targetMonths} meses. Cambiar`}>de {targetMonths}</button>
           </div>
           {targetMonths <= 12 ? (
             <div className="mt-2 grid gap-1" style={{ gridTemplateColumns: `repeat(${targetMonths}, minmax(0, 1fr))` }} role="img" aria-label={`${coveredMonths.toLocaleString("es-ES", { useGrouping: "always", maximumFractionDigits: 1 })} meses cubiertos de un objetivo de ${targetMonths}`}>
@@ -233,6 +244,11 @@ export function EmergencyRunwayCard({ balanceEur }: { balanceEur: number }) {
               />
               <Button type="button" variant="outline" size="icon-sm" aria-label="Un mes más" onClick={() => setMonthsDraft((v) => String(Math.min(MAX_MONTHS, (parseMonths(v) || DEFAULT_MONTHS) + 1)))}>+</Button>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Objetivos habituales">
+            {MONTH_PRESETS.map((m) => (
+              <button key={m} type="button" aria-pressed={parseMonths(monthsDraft) === m} onClick={() => { setMonthsDraft(String(m)); setValidationError("") }} className={cn("min-h-9 rounded-full border px-3 text-xs font-semibold tabular-nums transition-colors", parseMonths(monthsDraft) === m ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>{m} meses</button>
+            ))}
           </div>
           {validationError ? <p id="emergency-monthly-living-cost-error" role="alert" className="text-xs text-destructive">{validationError}</p> : (
             <p className="text-[10px] text-muted-foreground">El importe se guarda en tu cuenta y sirve para calcular los meses cubiertos.</p>
