@@ -190,8 +190,10 @@ export function CashflowComboChart({ data, activeKey, onSelect, showSavings }: {
   const gw = W / data.length
   const bw = Math.min(30, gw * 0.27)
   const line = data.map((b, i) => [gw * i + gw / 2, y(b["Ahorro neto"])] as const)
-  // Por defecto: el último periodo con movimientos (el actual si ya tiene).
+  // Por defecto: el último periodo con movimientos. El actual solo cuenta si
+  // ya tiene algún ingreso (si no, el último completo resulta más útil).
   let lastWithData = data.length - 1
+  if (lastWithData > 0 && data[lastWithData].Ingresos === 0) lastWithData--
   while (lastWithData > 0 && data[lastWithData].Ingresos === 0 && data[lastWithData].Gastos === 0) lastWithData--
   const sel = Math.min(data.length - 1, hover ?? picked ?? lastWithData)
   const cur = data[sel]
@@ -200,7 +202,7 @@ export function CashflowComboChart({ data, activeKey, onSelect, showSavings }: {
   const diff = (v: number, pv: number, goodUp: boolean) => {
     const d = v - pv
     const tone = Math.abs(d) < 1 ? "text-muted-foreground" : (d > 0) === goodUp ? "text-emerald-500" : "text-red-500"
-    return <p className={cn("mt-0.5 text-[11px]", tone)}><Sensitive>{d >= 0 ? "+" : "−"}{eur(Math.abs(d))}</Sensitive> vs {prev?.label}</p>
+    return <p className={cn("mt-0.5 truncate whitespace-nowrap text-[11px]", tone)}><Sensitive>{d >= 0 ? "+" : "−"}{eur(Math.abs(d))}</Sensitive><span className="hidden sm:inline"> vs {prev?.label}</span></p>
   }
   return (
     <div className="relative">
@@ -241,7 +243,7 @@ export function CashflowComboChart({ data, activeKey, onSelect, showSavings }: {
       </div>
       {cur && (
         <div className="mt-3 grid grid-cols-3 items-start gap-2 rounded-xl border border-border bg-background/40 p-3 sm:grid-cols-[auto_1fr_1fr_1fr_auto] sm:items-center sm:gap-4 sm:px-4">
-          <p className="col-span-3 text-sm font-bold first-letter:uppercase sm:col-span-1">{cur.label}</p>
+          <p className="col-span-3 text-sm font-bold sm:col-span-1"><span className="inline-block first-letter:uppercase">{cur.label}</span>{prev && <span className="font-normal text-muted-foreground sm:hidden"> · vs {prev.label}</span>}</p>
           <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Ingresos</p><p className="truncate text-base font-bold tabular-nums text-emerald-500"><Sensitive>{eur(cur.Ingresos)}</Sensitive></p>{prev && diff(cur.Ingresos, prev.Ingresos, true)}</div>
           <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Gastos</p><p className="truncate text-base font-bold tabular-nums text-red-500"><Sensitive>{eur(cur.Gastos)}</Sensitive></p>{prev && diff(cur.Gastos, prev.Gastos, false)}</div>
           <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Ahorro neto</p><p className="truncate text-base font-bold tabular-nums text-primary"><Sensitive>{eur(cur["Ahorro neto"])}</Sensitive></p>{prev && diff(cur["Ahorro neto"], prev["Ahorro neto"], true)}</div>

@@ -1164,7 +1164,7 @@ function DashboardInner() {
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-foreground">Ingresos vs gastos</h2>
-                <p className="mt-1 text-xs text-muted-foreground">{cashflowGranularity === "week" ? `${periodBounds.label} · por semana` : "Últimos meses · toca una barra para ver el desglose"}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{cashflowGranularity === "week" ? `${periodBounds.label} · por semana` : <>Últimos meses<span className="sm:hidden"> · toca una barra para ver su resumen</span><span className="hidden sm:inline"> · haz clic en una barra para ver el desglose</span></>}</p>
               </div>
               <div className="range-tabs" aria-label="Agrupar gráfica">
                 {([ ["week", "Semana"], ["month", "Mes"] ] as const).map(([granularity, label]) => (
