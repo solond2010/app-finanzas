@@ -39,6 +39,7 @@ import { useAssetsDebts } from "@/lib/use-assets-debts"
 import { assetDebtNetAt, totals as assetDebtTotals } from "@/lib/assets-debts"
 import { localDateKey } from "@/lib/date-utils"
 import { useQuotes } from "@/lib/use-quotes"
+import { monthEndForecast } from "@/lib/month-forecast"
 import { useInvestments } from "@/lib/investments"
 import { computeInvestments } from "@/lib/portfolio"
 import { GoalsEmpty } from "@/components/goals/goals-empty"
@@ -862,6 +863,7 @@ function DashboardInner() {
 
   // ── Hero «Tu dinero» y «Lo importante hoy» ──
   const isCurrentMonth = dashboardPeriod === "month" && monthOffset === 0
+  const monthForecast = useMemo(() => monthEndForecast(analysisTransactions.filter((t) => countsTowardCashFlow(t, analysisTransactions)), recurringPayments, today), [analysisTransactions, recurringPayments, today])
   const isSingleMonth = periodBounds.start.getFullYear() === periodBounds.end.getFullYear() && periodBounds.start.getMonth() === periodBounds.end.getMonth()
   // Gasto del mes anterior hasta el mismo día (o el mes anterior completo si
   // se mira un mes ya cerrado), para la frase «vas bien / ojo».
@@ -1162,6 +1164,19 @@ function DashboardInner() {
             gain={investmentView.gainPct === null ? null : investmentView.gain}
             gainPct={investmentView.gainPct}
           />
+          {isCurrentMonth && (
+            <section aria-label="Previsión de fin de mes" className="flex min-w-0 items-center gap-3 rounded-[18px] border border-border bg-card px-4 py-3 sm:px-5">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><TrendingUp className="size-[18px]" /></span>
+              <div className="min-w-0 flex-1">
+                {monthForecast === null ? (
+                  <p className="text-sm font-semibold text-foreground">Aún pocos datos este mes</p>
+                ) : (
+                  <p className="text-sm font-semibold text-foreground">A este ritmo acabarás {today.toLocaleDateString("es-ES", { month: "long" })} con <Sensitive className={monthForecast >= 0 ? "text-emerald-500" : "text-red-500"}>{monthForecast >= 0 ? "+" : "−"}{formatMoney(Math.abs(monthForecast), "EUR")}</Sensitive></p>
+                )}
+                <p className="text-xs text-muted-foreground">Según tu ritmo de gasto y los gastos fijos que quedan este mes</p>
+              </div>
+            </section>
+          )}
           <ImportantToday items={insights} />
 
           <section className={`${CARD} min-w-0`} aria-label="Ingresos y gastos del periodo">
