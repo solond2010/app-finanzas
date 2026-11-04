@@ -268,59 +268,11 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
 
           <Card className="stagger-fade col-span-full min-w-0 overflow-hidden" style={{ animationDelay: "180ms" }}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">Detalle: fotos del patrimonio y balance mensual</CardTitle>
-              <p className="text-xs text-muted-foreground">La foto del patrimonio se hace el día {dayOfMonth}; el balance mensual cuenta del día 1 al último día del mes. Como no cubren las mismas fechas, sus cifras no tienen por qué coincidir.</p>
+              <CardTitle className="text-base font-semibold">Balance mensual</CardTitle>
+              <p className="text-xs text-muted-foreground">Lo que entra, lo que sale y lo que te queda cada mes (del día 1 al último).</p>
             </CardHeader>
             <CardContent className="space-y-6 px-4 pb-4 pt-0 sm:px-6">
               <div className="space-y-2">
-                <div>
-                  <h3 className="text-sm font-semibold">Fotos del patrimonio</h3>
-                  <p className="text-xs text-muted-foreground">Cuánto ha cambiado tu patrimonio de una foto a la siguiente.</p>
-                </div>
-                <div className="space-y-2 sm:hidden">
-                  {[...rows].reverse().map((row, idx) => (
-                    <MobileSnapshotCard key={row.date} row={row} isFirst={idx === rows.length - 1} />
-                  ))}
-                </div>
-                <div className="hidden overflow-x-auto sm:block">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha de la foto</TableHead>
-                        <TableHead className="text-right">Patrimonio</TableHead>
-                        <TableHead className="text-right">Cambio €</TableHead>
-                        <TableHead className="text-right">Cambio %</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {[...rows].reverse().map((row, idx) => {
-                        const isFirst = idx === rows.length - 1
-                        return (
-                          <TableRow key={row.date}>
-                            <TableCell className="font-medium tabular-nums">
-                              <span className="inline-flex items-center gap-2">
-                                {row.mensualidad}
-                                {row.provisional && <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-500">Provisional</span>}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right font-semibold tabular-nums"><Sensitive>{money(row.patrimonio)}</Sensitive></TableCell>
-                            <TableCell className={cn("text-right font-semibold tabular-nums", isFirst ? "text-muted-foreground" : row.variacion >= 0 ? "text-emerald-500" : "text-red-500")}>
-                              {isFirst ? "—" : <Sensitive>{signedMoney(row.variacion)}</Sensitive>}
-                            </TableCell>
-                            <TableCell className={cn("text-right font-semibold tabular-nums", row.crecimiento === null ? "text-muted-foreground" : row.crecimiento >= 0 ? "text-emerald-500" : "text-red-500")}>{formatGrowth(row.crecimiento)}</TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-
-              <div className="space-y-2 border-t border-border/60 pt-5">
-                <div>
-                  <h3 className="text-sm font-semibold">Balance mensual</h3>
-                  <p className="text-xs text-muted-foreground">Lo que entra, lo que sale y lo que te queda cada mes (del día 1 al último).</p>
-                </div>
                 <div className="space-y-2 sm:hidden">
                   {[...cashflowRows].reverse().map((row) => <MobileCashFlowCard key={row.monthKey} row={row} />)}
                 </div>
@@ -359,33 +311,6 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
         </>
       )}
     </section>
-  )
-})
-
-const MobileSnapshotCard = memo(function MobileSnapshotCard({ row, isFirst }: { row: PatrimonioMensualRow; isFirst: boolean }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-3.5 ring-1 ring-border/20">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">Foto del patrimonio</p>
-          <p className="font-semibold tabular-nums text-foreground">{row.mensualidad}{row.provisional && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-500">Provisional</span>}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-muted-foreground">Patrimonio</p>
-          <p className="text-base font-bold tabular-nums"><Sensitive>{money(row.patrimonio)}</Sensitive></p>
-        </div>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
-        <div>
-          <p className="text-[11px] text-muted-foreground">Cambio desde la anterior</p>
-          <p className={cn("text-sm font-semibold tabular-nums", isFirst ? "text-muted-foreground" : row.variacion >= 0 ? "text-emerald-500" : "text-red-500")}>{isFirst ? "—" : <Sensitive>{signedMoney(row.variacion)}</Sensitive>}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-[11px] text-muted-foreground">Cambio %</p>
-          <p className={cn("text-sm font-semibold tabular-nums", row.crecimiento === null ? "text-muted-foreground" : row.crecimiento >= 0 ? "text-emerald-500" : "text-red-500")}>{formatGrowth(row.crecimiento)}</p>
-        </div>
-      </div>
-    </div>
   )
 })
 
