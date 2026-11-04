@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CURRENCY_OPTIONS, currencySymbol } from "@/lib/currency"
-import { BANKS, matchBank } from "@/components/dashboard/account-logo"
+import { BANKS, BankInitial, bankSlug, matchBank } from "@/components/dashboard/account-logo"
 import { useToast } from "@/components/ui/toast"
 import { Upload, X, AlertCircle, Check, Palette } from "@/components/icons"
 import { parseAmount } from "@/lib/validation"
@@ -39,6 +39,7 @@ export function AccountDialog({
   const [limiteMensual, setLimiteMensual] = useState(String(account?.limite_mensual ?? ""))
   const [color, setColor] = useState(account ? accountColor(account) : COLORS[0])
   const [logoUrl, setLogoUrl] = useState(account?.logoUrl ?? "")
+  const [bankQuery, setBankQuery] = useState("")
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -149,8 +150,9 @@ export function AccountDialog({
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs text-muted-foreground">Banco</label>
-              <div className="flex flex-wrap gap-2">
-                {BANKS.map((b) => {
+              <Input value={bankQuery} onChange={(e) => setBankQuery(e.target.value)} placeholder="Buscar banco o bróker…" aria-label="Buscar banco" className="mb-2" />
+              <div className="flex max-h-44 flex-wrap gap-2 overflow-y-auto">
+                {BANKS.filter((b) => !bankQuery.trim() || bankSlug(b.name).includes(bankSlug(bankQuery))).map((b) => {
                   const active = matchBank(banco)?.match === b.match
                   return (
                     <button
@@ -161,7 +163,7 @@ export function AccountDialog({
                     >
                       <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded bg-white">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={`/banks/${b.file}`} alt={b.name} className="h-full w-full object-contain" />
+                        <img src={`/banks/${b.file}`} alt="" loading="lazy" className="h-full w-full object-contain" />
                       </span>
                       {b.name}
                     </button>
@@ -169,9 +171,10 @@ export function AccountDialog({
                 })}
                 <button
                   type="button"
-                  onClick={() => setBanco("")}
-                  className={`rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${!matchBank(banco) ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}
+                  onClick={() => { setBanco(matchBank(bankQuery) ? "" : bankQuery.trim()); }}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${!matchBank(banco) ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}
                 >
+                  {!matchBank(banco) && banco.trim() && <BankInitial name={banco} className="h-5 w-5 rounded text-[11px]" />}
                   Otro
                 </button>
               </div>
