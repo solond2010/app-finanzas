@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useInvestments, type Position } from "@/lib/investments"
+import { dcaPendingDates, planOf, useInvestments, type Position } from "@/lib/investments"
+import { useToast } from "@/components/ui/toast"
 import { salesHistory, useInvestmentSales } from "@/lib/investment-sales"
 import { computeInvestments, freshnessLabel, looksLikeCode, type PortfolioRow, type Quote, type SliceKey } from "@/lib/portfolio"
 import { useFinance } from "@/lib/store"
@@ -49,7 +50,7 @@ function useQuotes(positions: Position[]) {
 export default function InversionesPage() {
   const router = useRouter()
   const { state, loading } = useFinance()
-  const { positions, contributions, loaded, update } = useInvestments()
+  const { positions, contributions, loaded, update, applyDca } = useInvestments()
   const { quotes, ready } = useQuotes(positions)
   const { sales, addSale } = useInvestmentSales()
   const year = String(new Date().getFullYear())
@@ -65,6 +66,24 @@ export default function InversionesPage() {
       update({ ...p, name: q.name })
     }
   }, [positions, quotes, update])
+  // Aportes automáticos: al tener precios se aplican los vencidos. Es
+  // idempotente porque cada aplicación mueve `dcaLast` a la última fecha.
+  const { toast } = useToast()
+  const dcaDone = useRef(new Set<string>())
+  useEffect(() => {
+    if (!loaded || !ready) return
+    let applied = 0
+    for (const p of positions) {
+      const plan = planOf(p)
+      const key = `${p.id}:${p.dcaLast ?? p.date}`
+      if (!plan || dcaDone.current.has(key) || dcaPendingDates(plan).length === 0) continue
+      dcaDone.current.add(key)
+      const price = quotes[p.symbol]?.price || p.buyPrice
+      applied += applyDca(p.id, price)
+      break // una posición por pasada: el estado local se actualiza y el efecto sigue con la siguiente
+    }
+    if (applied > 0) toast(applied === 1 ? "Aporte periódico aplicado" : `${applied} aportes periódicos aplicados`, "success")
+  }, [loaded, ready, positions, quotes, applyDca, toast])
   const [dialog, setDialog] = useState<{ open: boolean; editing: Position | null; accountId?: string }>({ open: false, editing: null })
   const view = useMemo(() => computeInvestments(state.accounts, positions, quotes, contributions), [state.accounts, positions, quotes, contributions])
   const account = (id: string) => state.accounts.find((x) => x.id === id)

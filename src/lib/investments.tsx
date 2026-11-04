@@ -147,6 +147,18 @@ export function dcaPendingDates(plan: DcaPlan, today: Date = new Date()): Date[]
   return out
 }
 
+/**
+ * Para un aporte mensual el día `day` (1–28): la última vez que tocó (hoy
+ * incluido). Se guarda como `dcaLast`, así el primer aporte automático es el
+ * siguiente y nunca se aplica nada hacia atrás.
+ */
+export function dcaAnchorForDay(day: number, today: Date = new Date()): string {
+  const d = Math.min(28, Math.max(1, Math.round(day) || 1))
+  const y = today.getFullYear(), m = today.getMonth()
+  const anchor = today.getDate() >= d ? new Date(y, m, d) : new Date(y, m - 1, d)
+  return format(anchor, "yyyy-MM-dd")
+}
+
 /** Próxima fecha de aporte programada (futura). */
 export function dcaNextDate(plan: DcaPlan): Date {
   const last = parseISO(plan.last)
@@ -506,7 +518,13 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     const newBuyPrice = newUnits > 0 ? (pos.units * pos.buyPrice + totalAmount) / newUnits : pos.buyPrice
     const lastDate = format(due[due.length - 1], "yyyy-MM-dd")
     if (!update({ ...pos, units: newUnits, buyPrice: newBuyPrice, dcaLast: lastDate })) return 0
-    for (const d of due) addContribution(positionId, plan.amount, format(d, "yyyy-MM-dd"))
+    // En bloque: varias llamadas a addContribution seguidas se pisarían en local.
+    const added: Contribution[] = []
+    for (const d of due) {
+      const c: Contribution = { id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, positionId, amount: plan.amount, date: format(d, "yyyy-MM-dd") }
+      if (enqueue({ table: "investment_contributions", keyField: "id", key: c.id, operation: "upsert", row: contributionToRow(c) })) added.push(c)
+    }
+    if (added.length) persistContrib([...contributions, ...added])
     return due.length
   }
 

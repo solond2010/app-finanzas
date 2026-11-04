@@ -124,3 +124,16 @@ describe("nombres legibles y frescura del precio", () => {
     expect(freshnessLabel(null, now)).toBeNull()
   })
 })
+
+import { dcaAnchorForDay, dcaPendingDates } from "./investments"
+
+describe("aporte mensual por día", () => {
+  it("ancla al último día que tocó y no aplica hacia atrás", () => {
+    const today = new Date(2026, 10, 3) // 3 nov
+    expect(dcaAnchorForDay(5, today)).toBe("2026-10-05")
+    expect(dcaAnchorForDay(3, today)).toBe("2026-11-03")
+    expect(dcaAnchorForDay(31, today)).toBe("2026-10-28")
+    expect(dcaPendingDates({ amount: 100, freq: "monthly", last: dcaAnchorForDay(5, today) }, today)).toHaveLength(0)
+    expect(dcaPendingDates({ amount: 100, freq: "monthly", last: "2026-10-05" }, new Date(2026, 10, 5))).toHaveLength(1)
+  })
+})

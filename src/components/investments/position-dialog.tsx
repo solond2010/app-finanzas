@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useFinance } from "@/lib/store"
-import { useInvestments, defaultAssetClass, ASSET_CLASS_LABELS, type AssetClass, type AssetKind, type DcaFreq, type Position } from "@/lib/investments"
+import { useInvestments, dcaAnchorForDay, defaultAssetClass, ASSET_CLASS_LABELS, type AssetClass, type AssetKind, type DcaFreq, type Position } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/date-utils"
@@ -48,6 +48,7 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
   const [dca, setDca] = useState(false)
   const [dcaAmount, setDcaAmount] = useState("")
   const [dcaFreq, setDcaFreq] = useState<DcaFreq>("monthly")
+  const [dcaDay, setDcaDay] = useState("1")
   const [accountId, setAccountId] = useState("")
   const [warned, setWarned] = useState(false)
   const [assetClass, setAssetClass] = useState<AssetClass>("acciones")
@@ -72,12 +73,13 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
         setDca(editing.dca ?? false)
         setDcaAmount(editing.dcaAmount ? String(editing.dcaAmount) : "")
         setDcaFreq(editing.dcaFreq ?? "monthly")
+        setDcaDay(String(Math.min(28, Number((editing.dcaLast ?? editing.date).slice(8, 10)) || 1)))
         setAccountId(editing.accountId ?? investAccounts[0]?.id ?? "")
         setAssetClass(editing.assetClass ?? defaultAssetClass(editing.kind))
       } else {
         setKind("stock"); setSelected(null); setCustomName("")
         setCurrency("EUR"); setDate(localDateKey()); setUnits(""); setBuyPrice("")
-        setDca(false); setDcaAmount(""); setDcaFreq("monthly"); setAccountId(defaultAccountId ?? investAccounts[0]?.id ?? "")
+        setDca(false); setDcaAmount(""); setDcaFreq("monthly"); setDcaDay(String(Math.min(28, new Date().getDate()))); setAccountId(defaultAccountId ?? investAccounts[0]?.id ?? "")
         setAssetClass(defaultAssetClass("stock"))
       }
       setWarned(false)
@@ -136,6 +138,16 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
   const costEur = Number(units) > 0 && Number(buyPrice) > 0 ? convertToEur(Number(units) * Number(buyPrice), (selected?.currency ?? currency) as CurrencyCode) : 0
   const exceeds = available !== undefined && Number.isFinite(costEur) && costEur > available + 0.5
 
+  // Mensual: se ancla al día elegido (sin aportes hacia atrás). Si no cambia
+  // nada del plan, se conserva la última aplicación para no repetirla.
+  const dcaLastFor = (): string => {
+    if (dcaFreq === "weekly") return editing?.dcaLast ?? date
+    const day = Math.min(28, Math.max(1, Number(dcaDay) || 1))
+    const prev = editing?.dca && editing.dcaFreq !== "weekly" && editing.dcaLast
+    if (prev && Number(prev.slice(8, 10)) === day) return prev
+    return dcaAnchorForDay(day)
+  }
+
   const handleConfirm = () => {
     const u = Number(units)
     const p = Number(buyPrice)
@@ -143,7 +155,7 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
     if (exceeds && !warned) { setWarned(true); return }
 
     const dcaFields = dca && Number(dcaAmount) > 0
-      ? { dca: true, dcaAmount: Number(dcaAmount), dcaFreq, dcaLast: editing?.dcaLast ?? date }
+      ? { dca: true, dcaAmount: Number(dcaAmount), dcaFreq, dcaLast: dcaLastFor() }
       : { dca: false, dcaAmount: undefined, dcaFreq: undefined, dcaLast: undefined }
 
     let payload: Omit<Position, "id">
@@ -279,7 +291,13 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
                   ))}
                 </div>
               </div>
-              <p className="col-span-2 text-[11px] text-muted-foreground">Registra tus compras periódicas. Desde Inversiones podrás aplicar los aportes vencidos al precio de mercado y se recalculará tu precio medio.</p>
+              {dcaFreq === "monthly" && (
+                <div className="col-span-2 space-y-1.5">
+                  <label className="text-xs text-muted-foreground" htmlFor="dca-day">Día del mes</label>
+                  <Input id="dca-day" type="number" inputMode="numeric" min={1} max={28} value={dcaDay} onChange={(e) => setDcaDay(e.target.value)} className="w-24" />
+                </div>
+              )}
+              <p className="col-span-2 text-[11px] text-muted-foreground">Cada {dcaFreq === "monthly" ? `mes, el día ${Math.min(28, Math.max(1, Number(dcaDay) || 1))},` : "semana"} se suman participaciones a esta posición con el precio de mercado (o el de compra si no hay cotización), usando el dinero sin asignar de la cuenta. Nunca se aplica dos veces el mismo aporte.</p>
             </div>
           )}
         </div>
