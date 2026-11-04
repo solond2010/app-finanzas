@@ -1,5 +1,6 @@
 "use client"
 
+import type { SaleRecord } from "@/lib/investment-sales"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -20,18 +21,18 @@ const parseNum = (v: string) => Number(v.replace(/\s/g, "").replace(",", "."))
 const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${money(Math.abs(n))}`
 
 /** Acciones sobre una posición: editar, vender o eliminar. */
-export function PositionActionsDialog({ position, row, onClose, onEdit }: { position: Position | null; row: PortfolioRow | null; onClose: () => void; onEdit: (p: Position) => void }) {
+export function PositionActionsDialog({ position, row, onClose, onEdit, onSold }: { position: Position | null; row: PortfolioRow | null; onClose: () => void; onEdit: (p: Position) => void; onSold?: (s: SaleRecord) => void }) {
   const open = !!position && !!row
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
       <DialogContent className="sm:max-w-md">
-        {open && <Body key={position.id} position={position} row={row} onClose={onClose} onEdit={onEdit} />}
+        {open && <Body key={position.id} position={position} row={row} onClose={onClose} onEdit={onEdit} onSold={onSold} />}
       </DialogContent>
     </Dialog>
   )
 }
 
-function Body({ position, row, onClose, onEdit }: { position: Position; row: PortfolioRow; onClose: () => void; onEdit: (p: Position) => void }) {
+function Body({ position, row, onClose, onEdit, onSold }: { position: Position; row: PortfolioRow; onClose: () => void; onEdit: (p: Position) => void; onSold?: (s: SaleRecord) => void }) {
   const { state, dispatch } = useFinance()
   const { remove, update } = useInvestments()
   const { toast } = useToast()
@@ -60,10 +61,12 @@ function Body({ position, row, onClose, onEdit }: { position: Position; row: Por
     if (!sale || !account) return
     const ok = sale.full ? remove(position.id) : update({ ...position, units: sale.remainingUnits })
     if (!ok) { toast("No se pudo guardar de forma segura: falta espacio para la cola local", "error"); return }
-    if (record && Math.abs(sale.gain) >= 0.01) {
+    const txId = record && Math.abs(sale.gain) >= 0.01 ? generateId() : undefined
+    onSold?.({ id: generateId(), positionId: position.id, name: row?.name ?? position.name, code: row?.code, date: localDateKey(), units: sale.unitsSold, received: Math.round(parseNum(amount) * 100) / 100, gain: Math.round(sale.gain * 100) / 100, txId })
+    if (txId) {
       // Solo la ganancia/pérdida: lo invertido ya estaba en el saldo.
       const monto = Math.round(Math.abs(convertFromEur(sale.gain, account.currency)) * 100) / 100
-      dispatch({ type: "ADD_TRANSACTION", payload: { id: generateId(), cuenta_id: account.id, monto, fecha: localDateKey(), tipo: sale.gain > 0 ? "ingreso" : "gasto", categoria: "Inversiones", es_necesidad: false, descripcion: `Venta ${position.name}`, tags: ["inversion"] } })
+      dispatch({ type: "ADD_TRANSACTION", payload: { id: txId, cuenta_id: account.id, monto, fecha: localDateKey(), tipo: sale.gain > 0 ? "ingreso" : "gasto", categoria: "Inversiones", es_necesidad: false, descripcion: `Venta ${row?.name ?? position.name}`, tags: ["inversion"] } })
     }
     toast(sale.full ? "Posición vendida" : "Venta parcial registrada", "success")
     onClose()

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useInvestments, type Position } from "@/lib/investments"
+import { salesHistory, useInvestmentSales } from "@/lib/investment-sales"
 import { computeInvestments, freshnessLabel, looksLikeCode, type PortfolioRow, type Quote, type SliceKey } from "@/lib/portfolio"
 import { useFinance } from "@/lib/store"
 import { money } from "@/lib/format"
@@ -13,7 +14,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { PositionDialog } from "@/components/investments/position-dialog"
 import { PositionActionsDialog } from "@/components/investments/position-actions-dialog"
-import { AlertTriangle, ChartLineUp, PiggyBank, Plus, Repeat } from "@/components/icons"
+import { AlertTriangle, ChartLineUp, HandCoins, PiggyBank, Plus, Repeat } from "@/components/icons"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 
 const CARD = "min-w-0 rounded-2xl border border-border/80 bg-card p-4 sm:p-5"
@@ -50,6 +51,9 @@ export default function InversionesPage() {
   const { state, loading } = useFinance()
   const { positions, contributions, loaded, update } = useInvestments()
   const { quotes, ready } = useQuotes(positions)
+  const { sales, addSale } = useInvestmentSales()
+  const year = String(new Date().getFullYear())
+  const history = useMemo(() => salesHistory(sales, state.transactions, state.accounts, year), [sales, state.transactions, state.accounts, year])
   // Si una posición se guardó con el código como nombre, se guarda una vez el
   // nombre legible que da la cotización.
   const renamed = useRef(new Set<string>())
@@ -86,7 +90,7 @@ export default function InversionesPage() {
   const dialogEl = (
     <>
       <PositionDialog open={dialog.open} onOpenChange={(open) => setDialog((d) => ({ ...d, open }))} editing={dialog.editing} defaultAccountId={dialog.accountId} unassignedByAccount={unassignedByAccount} />
-      <PositionActionsDialog position={actingPosition} row={actingRow} onClose={() => setActing(null)} onEdit={(p) => setDialog({ open: true, editing: acting?.orphan ? { ...p, accountId: undefined } : p })} />
+      <PositionActionsDialog position={actingPosition} row={actingRow} onClose={() => setActing(null)} onEdit={(p) => setDialog({ open: true, editing: acting?.orphan ? { ...p, accountId: undefined } : p })} onSold={addSale} />
     </>
   )
 
@@ -226,6 +230,31 @@ export default function InversionesPage() {
           </div>
         </div>}
       </section>
+      {history.rows.length > 0 && (
+        <section className={CARD} aria-label="Ventas">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><HandCoins className="size-4 text-primary" aria-hidden />Ventas</p>
+            <p className="text-xs text-muted-foreground">Ganado en {year}: <Sensitive className={cn("font-semibold tabular-nums", tone(history.realizedYear))}>{signed(history.realizedYear)}</Sensitive></p>
+          </div>
+          <ul className="mt-3 divide-y divide-border/70">
+            {history.rows.slice(0, 20).map((r) => (
+              <li key={r.id} className="flex items-center gap-3 py-2.5">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-foreground">{r.name}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {new Date(`${r.date}T12:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+                    {r.units !== null ? <> · <Sensitive>{r.units.toLocaleString("es-ES", { maximumFractionDigits: 4 })}</Sensitive> uds.</> : " · venta anterior"}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  {r.received !== null && <Sensitive className="block text-sm tabular-nums text-foreground">{money(r.received)}</Sensitive>}
+                  <Sensitive className={cn("block text-xs font-medium tabular-nums", tone(r.gain))}>{signed(r.gain)}</Sensitive>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {dialogEl}
     </div>
   )
