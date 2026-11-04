@@ -8,7 +8,7 @@ import { accountColor, distinctAccountColors } from "@/lib/account-colors"
 import { AccountDot } from "@/components/dashboard/account-dot"
 import Link from "next/link"
 import { BarChart } from "@tremor/react"
-import { AlertTriangle, CalendarClock, ChartLineUp, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, HandCoins, Landmark, Layers3, Maximize2, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp, Wallet } from "@/components/icons"
+import { AlertTriangle, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, HandCoins, Layers3, Maximize2, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "@/components/icons"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -19,7 +19,6 @@ import { NetWorthExpanded } from "@/components/dashboard/net-worth-expanded"
 import { chartSeries, dateKeyOf, monthlyChangeBars } from "@/lib/net-worth-chart"
 import { EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
-import { TickerTile } from "@/components/shared/ticker-tile"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
@@ -40,6 +39,7 @@ import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
 import { CategoryIcon } from "@/components/icons/category-icon"
 import { SHEET_CONTENT, SheetHandle } from "@/components/dashboard/sheet-handle"
+import { CashflowComboChart, ImportantToday, MoneyHero, MonthTiles, type Insight } from "@/components/dashboard/resumen-blocks"
 import { OnboardingGuide } from "@/components/onboarding/onboarding-guide"
 import { CashflowDrilldown, CashflowHoverTooltip, type CashflowBucket } from "@/components/dashboard/cashflow-drilldown"
 
@@ -63,87 +63,6 @@ const RANGES = [
 
 type DashboardMetric = "gastos" | "ingresos" | "neto" | "inversion" | "cash" | "patrimonio"
 type DashboardPeriod = "month" | "previous" | "3m" | "6m" | "year" | "previousYear" | "custom"
-const MONTHLY_CASHFLOW_SERIES = [
-  { key: "Ingresos", label: "Ingresos", color: "var(--accent-green)" },
-  { key: "Gastos", label: "Gastos", color: "var(--accent-red)" },
-  { key: "Ahorro neto", label: "Ahorro neto", color: "var(--gold)" },
-] as const
-
-function SingleBucketCashflowChart({ bucket, includeSavings, onOpen }: {
-  bucket: { label: string; Ingresos: number; Gastos: number; "Ahorro neto": number }
-  includeSavings: boolean
-  onOpen: () => void
-}) {
-  const series = MONTHLY_CASHFLOW_SERIES.slice(0, includeSavings ? 3 : 2)
-  const values = series.map(({ key }) => bucket[key])
-  const maxValue = Math.max(...values, 0)
-  const minValue = Math.min(...values, 0)
-  // Escala redonda (500, 1.000, 2.500…): el eje mostraba "2.833,60 €".
-  const rawStep = ((maxValue - minValue) * 1.08) / 4 || 1
-  const magnitude = 10 ** Math.floor(Math.log10(rawStep))
-  const step = ([1, 2, 2.5, 5, 10].find((f) => f * magnitude >= rawStep) ?? 10) * magnitude
-  const domainMax = Math.max(step, Math.ceil((maxValue * 1.04) / step) * step)
-  const domainMin = Math.floor(minValue / step) * step
-  const domain = domainMax - domainMin || 1
-  const zeroY = (domainMax / domain) * 100
-  const ticks: { y: number; value: number }[] = []
-  for (let value = domainMax; value >= domainMin - step / 2; value -= step) ticks.push({ y: ((domainMax - value) / domain) * 100, value: Math.round(value) })
-  const axisWidth = moneyAxisWidth(ticks.map((tick) => tick.value), 48, 120)
-
-  return (
-    <button type="button" onClick={onOpen} className="mt-3 block w-full rounded-xl text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label={`${bucket.label}: ${series.map(({ key, label }) => `${label} ${formatMoney(bucket[key], "EUR")}`).join(", ")}. Ver desglose`}>
-      <div className="mb-3 flex flex-wrap justify-end gap-x-4 gap-y-1" aria-hidden="true">
-        {series.map(({ key, label, color }) => (
-          <span key={key} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="size-2 rounded-full" style={{ backgroundColor: color }} />{label}
-          </span>
-        ))}
-      </div>
-      <div className="grid gap-x-3" style={{ gridTemplateColumns: `${axisWidth}px minmax(0, 1fr)` }}>
-        <div className="relative h-32 text-right text-[10px] tabular-nums text-muted-foreground sm:h-40 sm:text-xs" aria-hidden="true">
-          {ticks.map((tick, index) => (
-            <span key={index} className="absolute right-0 -translate-y-1/2 whitespace-nowrap" style={{ top: `${tick.y}%` }}>{chartAxisFormatter(tick.value)}</span>
-          ))}
-        </div>
-        <div className="min-w-0">
-          <div className="relative h-32 sm:h-40">
-            {ticks.map((tick, index) => (
-              <span key={index} aria-hidden="true" className={cn("absolute inset-x-0 border-t", tick.value === 0 ? "border-foreground/20" : "border-border/60")} style={{ top: `${tick.y}%` }} />
-            ))}
-            <span aria-hidden="true" className="absolute inset-x-0 border-t border-foreground/25" style={{ top: `${zeroY}%` }} />
-            <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${series.length}, minmax(0, 1fr))` }}>
-              {series.map(({ key, label, color }) => {
-                const value = bucket[key]
-                const height = Math.abs(value) / domain * 100
-                const top = value >= 0 ? zeroY - height : zeroY
-                return (
-                  <div key={key} className="relative min-w-0" title={`${bucket.label} · ${label}: ${formatMoney(value, "EUR")}`}>
-                    {value !== 0 && (
-                      <span
-                        aria-hidden="true"
-                        className="absolute left-1/2 min-h-1 -translate-x-1/2 rounded-t-md shadow-sm transition-[height,top] duration-500"
-                        style={{ top: `${top}%`, height: `${height}%`, width: "clamp(2rem, 3vw, 3.5rem)", backgroundColor: color }}
-                      />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-          <div className="mt-2 grid gap-2 text-center" style={{ gridTemplateColumns: `repeat(${series.length}, minmax(0, 1fr))` }}>
-            {series.map(({ key, label }) => (
-              <div key={key} className="min-w-0">
-                <p className="truncate text-[10px] font-medium text-muted-foreground sm:text-xs">{label}</p>
-                <p className="break-words text-[10px] font-semibold tabular-nums text-foreground sm:text-xs">{formatMoney(bucket[key], "EUR")}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <p className="mt-2 text-center text-xs text-muted-foreground">{bucket.label}</p>
-    </button>
-  )
-}
 
 function MiniBars({ values, color, signed = false }: { values: number[]; color: string; signed?: boolean }) {
   const min = Math.min(...values, 0)
@@ -220,7 +139,7 @@ function DashboardInner() {
   const [rangeId, setRangeId] = useState<string>("6M")
   const activeRange = RANGES.find((r) => r.id === rangeId) ?? RANGES[3]
   const [showNewAccount, setShowNewAccount] = useState(false)
-  const [showAnnual, setShowAnnual] = useState(true)
+  const [showAnnual, setShowAnnual] = useState(false)
   const [showSpendBreakdown, setShowSpendBreakdown] = useState(false)
   const [metricDetail, setMetricDetail] = useState<DashboardMetric | null>(null)
   // Vista ampliada de «Evolución del patrimonio» (clic/toque en el gráfico).
@@ -358,10 +277,21 @@ function DashboardInner() {
     totals.neto = totals.ingresos - totals.gastos
     return totals
   }, [periodTransactions, currencyByAccount])
+  // En vista por mes el gráfico enseña al menos los 6 últimos meses hasta el
+  // final del periodo (con un solo mes no se ve ninguna tendencia).
+  const chartStartKey = useMemo(() => {
+    const sixBack = new Date(periodBounds.end.getFullYear(), periodBounds.end.getMonth() - 5, 1)
+    const start = sixBack < periodBounds.start ? sixBack : periodBounds.start
+    return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`
+  }, [periodBounds.start, periodBounds.end])
+  const chartTransactions = useMemo(
+    () => analysisTransactions.filter((transaction) => transaction.fecha >= chartStartKey && transaction.fecha <= periodBounds.endKey && countsTowardCashFlow(transaction, analysisTransactions)),
+    [analysisTransactions, chartStartKey, periodBounds.endKey]
+  )
   const periodCashflow = useMemo(() => {
     const buckets: CashflowBucket[] = []
     if (cashflowGranularity === "month") {
-      const cursor = new Date(periodBounds.start.getFullYear(), periodBounds.start.getMonth(), 1)
+      const cursor = parseLocalDate(chartStartKey)
       const last = new Date(periodBounds.end.getFullYear(), periodBounds.end.getMonth(), 1)
       while (cursor <= last) {
         buckets.push({ key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`, label: cursor.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }), Ingresos: 0, Gastos: 0, "Ahorro neto": 0, prev: null })
@@ -379,7 +309,7 @@ function DashboardInner() {
         cursor.setDate(cursor.getDate() + 7)
       }
     }
-    for (const transaction of periodTransactions) {
+    for (const transaction of cashflowGranularity === "month" ? chartTransactions : periodTransactions) {
       const key = cashflowGranularity === "month" ? transaction.fecha.slice(0, 7) : (() => {
         const date = parseLocalDate(transaction.fecha)
         date.setDate(date.getDate() - ((date.getDay() + 6) % 7))
@@ -406,7 +336,7 @@ function DashboardInner() {
       }
     })
     return buckets
-  }, [cashflowGranularity, periodBounds, periodTransactions, currencyByAccount, analysisTransactions])
+  }, [cashflowGranularity, periodBounds, periodTransactions, chartTransactions, chartStartKey, currencyByAccount, analysisTransactions])
   const cashflowDrillBucket = periodCashflow.find((bucket) => bucket.key === cashflowDrillKey) ?? null
   const closeCashflowDrill = () => {
     setCashflowDrillKey(null)
@@ -424,7 +354,6 @@ function DashboardInner() {
   // emergencia e inversión quedan fuera para no presentar reservas como dinero libre.
   const spendableAccounts = useMemo(() => displayAccounts.filter((account) => account.tipo === "efectivo" || account.tipo === "gastos"), [displayAccounts])
   const spendableTotal = useMemo(() => spendableAccounts.reduce((sum, account) => sum + convertToEur(account.saldo, account.currency), 0), [spendableAccounts])
-  const spendableAccountsWithBalance = useMemo(() => spendableAccounts.filter((account) => Math.abs(account.saldo) > 0.005), [spendableAccounts])
   const incomeTransactions = periodIncomeTransactions
   const expenseTransactions = periodExpenseTransactions
   const netWorthDisplay = netWorth
@@ -870,7 +799,7 @@ function DashboardInner() {
             : { title: "Ponte un objetivo", detail: "Elige la cifra de patrimonio que quieres alcanzar" })
 
   const recentTransactions = useMemo(
-    () => analysisTransactions.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5),
+    () => analysisTransactions.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 3),
     [analysisTransactions]
   )
   const accountName = (id: string) => state.accounts.find((a) => a.id === id)?.nombre ?? "—"
@@ -887,6 +816,29 @@ function DashboardInner() {
     () => getNetWorthAtMonth(state.accounts, state.transactions, scoreBaselineKey),
     [state.accounts, state.transactions, scoreBaselineKey]
   )
+
+  // ── Hero «Tu dinero» y «Lo importante hoy» ──
+  const isCurrentMonth = dashboardPeriod === "month" && monthOffset === 0
+  const isSingleMonth = periodBounds.start.getFullYear() === periodBounds.end.getFullYear() && periodBounds.start.getMonth() === periodBounds.end.getMonth()
+  // Gasto del mes anterior hasta el mismo día (o el mes anterior completo si
+  // se mira un mes ya cerrado), para la frase «vas bien / ojo».
+  const comparableExpenses = useMemo(() => {
+    if (!isSingleMonth) return null
+    const s0 = periodBounds.start, e0 = periodBounds.end
+    const start = new Date(s0.getFullYear(), s0.getMonth() - 1, 1)
+    const lastDay = new Date(e0.getFullYear(), e0.getMonth(), 0).getDate()
+    const end = new Date(e0.getFullYear(), e0.getMonth() - 1, Math.min(e0.getDate(), lastDay))
+    const k = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    let total = 0, any = false
+    for (const t of analysisTransactions) {
+      if (t.tipo !== "gasto" || t.fecha < k(start) || t.fecha > k(end) || !countsTowardCashFlow(t, analysisTransactions)) continue
+      total += reportingAmount(t, currencyByAccount); any = true
+    }
+    return any ? total : null
+  }, [isSingleMonth, periodBounds.start, periodBounds.end, analysisTransactions, currencyByAccount])
+  const daysLeftInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() - today.getDate() + 1
+  const accountsWithBalance = displayAccounts.filter((a) => Math.abs(a.saldo) > 0.005).length
+  const expenseChangePct = comparableExpenses && comparableExpenses > 0 ? Math.round((periodTotals.gastos / comparableExpenses - 1) * 100) : null
 
   const { score, tier: scoreTier, factors: scoreFactors } = useMemo(
     () => getFinancialScore({
@@ -940,6 +892,25 @@ function DashboardInner() {
       })
       .filter((b) => b.limite > 0)
   }, [state.budgets, state.categories, analysisTransactions, selectedMonth, currencyByAccount])
+  const insights = useMemo<Insight[]>(() => {
+    const out: Insight[] = []
+    const nextFixed = recurringPayments.filter((p) => p.tipo === "gasto" && p.overdueDays <= 0).sort((a, b) => b.overdueDays - a.overdueDays)[0]
+    if (nextFixed) {
+      const days = Math.abs(nextFixed.overdueDays)
+      const date = parseLocalDate(nextFixed.nextDate).toLocaleDateString("es-ES", { weekday: "long", day: "numeric" })
+      out.push({ key: "fijo", kind: "fijo", eyebrow: "Próximo gasto fijo", title: <>{nextFixed.descripcion || nextFixed.categoria} · <Sensitive>{formatMoney(nextFixed.monto, currencyByAccount.get(nextFixed.cuenta_id) ?? "EUR")}</Sensitive></>, detail: `Toca ${days === 0 ? "hoy" : `el ${date}`}. Revisa que haya saldo en ${accountName(nextFixed.cuenta_id)}.`, href: "/agenda", cta: "Ver gastos fijos", meta: days === 0 ? "hoy" : `en ${days} ${days === 1 ? "día" : "días"}` })
+    }
+    const tight = budgetRows.filter((b) => b.limite > 0 && b.gastado / b.limite >= 0.8).sort((a, b) => b.gastado / b.limite - a.gastado / a.limite)[0]
+    if (unusualSpend) {
+      out.push({ key: "dispara", kind: "dispara", eyebrow: "Se está disparando", title: <>{unusualSpend.category}: <Sensitive>{formatMoney(unusualSpend.current, "EUR")}</Sensitive></>, detail: <>Tu media reciente es <Sensitive>{formatMoney(unusualSpend.average, "EUR")}</Sensitive>. Aviso orientativo: supera la media al menos un 50 % y 100 €.</>, href: `/transactions?tipo=gasto&categoria=${encodeURIComponent(unusualSpend.category)}&mes=${selectedMonth}`, cta: "Ver movimientos", meta: `+${Math.round((unusualSpend.current / unusualSpend.average - 1) * 100)} %` })
+    } else if (tight) {
+      out.push({ key: "dispara", kind: "dispara", eyebrow: "Presupuesto a revisar", title: <>{tight.categoria}: <Sensitive>{formatMoney(tight.gastado, "EUR")}</Sensitive> de <Sensitive>{formatMoney(tight.limite, "EUR")}</Sensitive></>, detail: tight.gastado > tight.limite ? "Ya has pasado el límite de este mes." : "Estás cerca del límite de este mes.", href: `/transactions?tipo=gasto&categoria=${encodeURIComponent(tight.categoria)}&mes=${selectedMonth}`, cta: "Revisar", meta: `${Math.round((tight.gastado / tight.limite) * 100)} %` })
+    }
+    const pasoHref = emergency && !emergency.isComplete ? "/cuentas?tipo=emergencia" : monthTotals.neto < 0 ? `/transactions?mes=${selectedMonth}` : "/cuentas#metas"
+    out.push({ key: "paso", kind: "paso", eyebrow: "Siguiente paso", title: goalGuidance.title, detail: <>{goalGuidance.detail}{nextWealthGoal && <> · próximo objetivo <Sensitive>{money(nextWealthGoal.amount)}</Sensitive>, faltan <Sensitive>{formatMoney(goalsView.remaining, "EUR")}</Sensitive></>}</>, href: pasoHref, cta: "Ir", meta: nextWealthGoal ? `${Math.round(goalsView.progress)} %` : undefined })
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recurringPayments, budgetRows, unusualSpend, emergency, monthTotals.neto, selectedMonth, goalGuidance.title, goalGuidance.detail, nextWealthGoal, goalsView.remaining, goalsView.progress, currencyByAccount])
 
   const [exportingPdf, setExportingPdf] = useState(false)
   const handleExportDashboard = async () => {
@@ -1135,21 +1106,42 @@ function DashboardInner() {
         </div>
       ) : (
         <div className="space-y-4 sm:space-y-5">
-          {/* Seis cifras clave: flujo según el periodo elegido y saldos a su mes final. */}
-          <section className="stagger-fade grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6" aria-label={`Resumen financiero: ${periodBounds.label}`}>
-            <TickerTile label="Gastos" value={<Sensitive>{formatMoney(periodTotals.gastos, "EUR")}</Sensitive>} detail={`${expenseTransactions.length} ${expenseTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-red)" icon={Receipt} onClick={() => setMetricDetail("gastos")} />
-            <TickerTile label="Ingresos" value={<Sensitive>{formatMoney(periodTotals.ingresos, "EUR")}</Sensitive>} detail={`${incomeTransactions.length} ${incomeTransactions.length === 1 ? "movimiento" : "movimientos"}`} valueColor="var(--accent-green)" icon={HandCoins} onClick={() => setMetricDetail("ingresos")} />
-            <TickerTile label="Ahorro neto" value={<Sensitive>{formatMoney(periodTotals.neto, "EUR")}</Sensitive>} detail={periodTotals.ingresos > 0 ? `${periodSavingsRate}% de los ingresos` : "Sin ingresos en el periodo"} detailTone={periodTotals.neto >= 0 ? "positive" : "negative"} valueColor={periodTotals.neto >= 0 ? "var(--accent-green)" : "var(--accent-red)"} icon={PiggyBank} onClick={() => setMetricDetail("neto")} />
-            <TickerTile label="Inversión" value={<Sensitive>{formatMoney(investmentDisplayTotal, "EUR")}</Sensitive>} detail={`${investmentAccounts.length} ${investmentAccounts.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--accent-violet)" icon={ChartLineUp} onClick={() => setMetricDetail("inversion")} />
-            <TickerTile label="Dinero disponible" value={<Sensitive>{formatMoney(spendableTotal, "EUR")}</Sensitive>} detail={`${spendableAccountsWithBalance.length} ${spendableAccountsWithBalance.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--accent-blue)" icon={Wallet} onClick={() => setMetricDetail("cash")} />
-            <TickerTile label="Patrimonio total" value={<Sensitive>{formatMoney(netWorthDisplay, "EUR")}</Sensitive>} detail={`${displayAccounts.length} ${displayAccounts.length === 1 ? "cuenta" : "cuentas"}`} valueColor="var(--foreground)" icon={Landmark} iconColor="var(--gold)" onClick={() => setMetricDetail("patrimonio")} />
-          </section>
+          <MoneyHero
+            periodLabel={periodBounds.label}
+            isCurrentMonth={isCurrentMonth}
+            net={periodTotals.neto}
+            income={periodTotals.ingresos}
+            expenses={periodTotals.gastos}
+            comparable={comparableExpenses}
+            comparableLabel={isCurrentMonth ? "el mes pasado a estas alturas" : "el mes anterior"}
+            daysLeft={daysLeftInMonth}
+            netWorth={netWorthDisplay}
+            available={spendableTotal}
+            invested={investmentDisplayTotal}
+            accountsTotal={displayAccounts.length}
+            accountsWithBalance={accountsWithBalance}
+            sparkline={netWorthTrend.map((p) => p.patrimonio)}
+            netWorthDelta={netWorthDisplay - scoreBaseline}
+            netWorthDeltaLabel="vs mes anterior"
+          />
+          <MonthTiles
+            label={periodBounds.label}
+            income={periodTotals.ingresos}
+            expenses={periodTotals.gastos}
+            net={periodTotals.neto}
+            incomeCount={incomeTransactions.length}
+            expenseCount={expenseTransactions.length}
+            savingsRate={periodSavingsRate}
+            expenseChange={expenseChangePct}
+            onOpen={(k) => setMetricDetail(k)}
+          />
+          <ImportantToday items={insights} />
 
           <section className={`${CARD} min-w-0`} aria-label="Ingresos y gastos del periodo">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-foreground">Ingresos vs gastos</h2>
-                <p className="mt-1 text-xs text-muted-foreground">{periodBounds.label} · {cashflowGranularity === "week" ? "agrupado por semana" : "agrupado por mes"}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{cashflowGranularity === "week" ? `${periodBounds.label} · por semana` : "Últimos meses · toca una barra para ver el desglose"}</p>
               </div>
               <div className="range-tabs" aria-label="Agrupar gráfica">
                 {([ ["week", "Semana"], ["month", "Mes"] ] as const).map(([granularity, label]) => (
@@ -1157,8 +1149,15 @@ function DashboardInner() {
                 ))}
               </div>
             </div>
-            {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? periodCashflow.length === 1 ? (
-              <SingleBucketCashflowChart bucket={periodCashflow[0]} includeSavings={cashflowGranularity === "month"} onOpen={() => setCashflowDrillKey(periodCashflow[0].key)} />
+            {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) ? periodCashflow.length <= 12 ? (
+              <>
+                <div className="mb-2 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+                  <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--accent-green)]" />Ingresos</span>
+                  <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--accent-red)]" />Gastos</span>
+                  {cashflowGranularity === "month" && <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 rounded bg-[var(--gold)]" />Ahorro neto</span>}
+                </div>
+                <CashflowComboChart data={periodCashflow} activeKey={cashflowGranularity === "month" ? selectedMonth : null} showSavings={cashflowGranularity === "month"} onSelect={(key) => setCashflowDrillKey(key)} />
+              </>
             ) : (
               <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["emerald", "red", "orange"] : ["emerald", "red"]} valueFormatter={chartAxisFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={(props) => <CashflowHoverTooltip {...props} granularity={cashflowGranularity} />} key={cashflowChartKey} onValueChange={(value) => { const key = value && typeof value.key === "string" ? value.key : null; if (key) setCashflowDrillKey(key) }} className="dashboard-cashflow-chart h-56 cursor-pointer sm:h-72" showAnimation={cashflowChartKey === 0} />
             ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
@@ -1300,15 +1299,16 @@ function DashboardInner() {
                   <p>80 o más: Excelente · 60–79: Sólido · 40–59: Mejorable · menos de 40: Frágil.</p>
                 </InfoPopover>
               </div>
-              <div className="relative mx-auto my-4 flex items-center justify-center">
-                <CircularProgress value={score} size={136} strokeWidth={10} color={scoreColor} />
-                <div className="absolute flex flex-col items-center">
-                  <span className="text-4xl font-bold tabular-nums text-foreground">{score}</span>
-                  <span className="text-xs text-muted-foreground">de 100</span>
+              <div className="mt-3 flex items-center gap-4">
+                <div className="relative flex shrink-0 items-center justify-center">
+                  <CircularProgress value={score} size={92} strokeWidth={8} color={scoreColor} />
+                  <span className="absolute text-2xl font-bold tabular-nums text-foreground">{score}</span>
                 </div>
-              </div>
-              <p className="text-center text-sm font-semibold" style={{ color: scoreColor }}>{scoreDisplayLabel}</p>
-              <div className="mt-4 space-y-1 border-t border-border pt-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: scoreColor }}>{scoreDisplayLabel}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{scoreFactors.filter((f) => f.ok).length} de {scoreFactors.length} puntos clave cumplidos</p>
+                  <InfoPopover label="Ver los factores de la puntuación" title="Tus factores" trigger={<span className="mt-1.5 inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-primary">Ver factores<ChevronRight className="size-3.5" /></span>}>
+              <div className="space-y-1">
                 {scoreFactors.map((f) => {
                   const fix = scoreFixes[f.label]
                   const icon = (
@@ -1330,6 +1330,9 @@ function DashboardInner() {
                     </Link>
                   )
                 })}
+              </div>
+                  </InfoPopover>
+                </div>
               </div>
             </div>
             <div className="flex min-w-0 flex-col gap-4 2xl:col-span-3">
@@ -1425,9 +1428,8 @@ function DashboardInner() {
                     debajo del título en vez de cortar «Avanza en Vi…». */}
                 <div className="flex flex-col gap-1 @[20rem]:flex-row @[20rem]:items-start @[20rem]:justify-between @[20rem]:gap-3">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Siguiente paso</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground @[20rem]:truncate">{goalGuidance.title}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground @[20rem]:truncate">{goalGuidance.detail}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Próximo objetivo</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground @[20rem]:truncate">{nextWealthGoal ? (nextWealthGoal.name || "Tu siguiente objetivo") : goalsView.allDone ? "Objetivos conseguidos" : "Ponte un objetivo"}</p>
                   </div>
                   {nextWealthGoal && <p className="shrink-0 text-sm font-bold tabular-nums text-foreground @[20rem]:text-right"><Sensitive>{money(nextWealthGoal.amount)}</Sensitive></p>}
                 </div>
@@ -1760,7 +1762,7 @@ function DashboardInner() {
         </DialogContent>
       </Dialog>
 
-      <CashflowDrilldown bucket={cashflowDrillBucket} granularity={cashflowGranularity} transactions={periodTransactions} currencyByAccount={currencyByAccount} catColor={catColor} onClose={closeCashflowDrill} />
+      <CashflowDrilldown bucket={cashflowDrillBucket} granularity={cashflowGranularity} transactions={cashflowGranularity === "month" ? chartTransactions : periodTransactions} currencyByAccount={currencyByAccount} catColor={catColor} onClose={closeCashflowDrill} />
 
       <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={handleCreateAccount} />
     </div>

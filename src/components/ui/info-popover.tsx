@@ -6,14 +6,14 @@ import { Info } from "@/components/icons"
 import { cn } from "@/lib/utils"
 
 /** Botón «i» que abre una explicación. Funciona con clic y con toque (móvil). */
-export function InfoPopover({ label, title, children, className }: { label: string; title?: string; children: ReactNode; className?: string }) {
+export function InfoPopover({ label, title, children, className, trigger }: { label: string; title?: string; children: ReactNode; className?: string; trigger?: ReactNode }) {
   return (
     <Popover.Root>
       <Popover.Trigger
         aria-label={label}
-        className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", className)}
+        className={trigger ? cn("rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", className) : cn("inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", className)}
       >
-        <Info className="size-4" />
+        {trigger ?? <Info className="size-4" />}
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner sideOffset={6} collisionPadding={12} className="z-[70]">
