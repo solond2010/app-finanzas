@@ -25,6 +25,7 @@ import {
   Plus,
   ChatText,
   ShieldCheck,
+  TrendingUp,
 } from "@/components/icons"
 import { useEffect } from "react"
 import { useSidebar } from "@/lib/sidebar"
@@ -37,6 +38,7 @@ const navItems = [
   { href: "/transactions", label: "Movimientos", icon: ReceiptText },
   { href: "/agenda", label: "Gastos fijos", icon: CalendarDays },
   { href: "/cuentas", label: "Cuentas", icon: Landmark },
+  { href: "/inversiones", label: "Inversiones", icon: TrendingUp },
   { href: "/analytics", label: "Analíticas", icon: ChartPie },
   { href: "/configuracion", label: "Configuración", icon: SlidersHorizontal },
 ]
