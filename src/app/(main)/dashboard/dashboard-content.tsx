@@ -34,6 +34,8 @@ import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { goalLabel, goalProgress } from "@/lib/wealth-goals"
 import { openGoalsEditor, useWealthGoals } from "@/lib/use-wealth-goals"
+import { useAssetsDebts } from "@/lib/use-assets-debts"
+import { totals as assetDebtTotals } from "@/lib/assets-debts"
 import { GoalsEmpty } from "@/components/goals/goals-empty"
 import type { StoredNetWorthPeak } from "@/lib/net-worth-snapshots"
 import { parseLocalDate } from "@/lib/date-utils"
@@ -356,7 +358,10 @@ function DashboardInner() {
   const spendableTotal = useMemo(() => spendableAccounts.reduce((sum, account) => sum + convertToEur(account.saldo, account.currency), 0), [spendableAccounts])
   const incomeTransactions = periodIncomeTransactions
   const expenseTransactions = periodExpenseTransactions
-  const netWorthDisplay = netWorth
+  // Bienes y deudas apuntados en /patrimonio: suman/restan al patrimonio total.
+  const { assets: ownAssets, debts: ownDebts } = useAssetsDebts()
+  const assetDebt = useMemo(() => assetDebtTotals(ownAssets, ownDebts), [ownAssets, ownDebts])
+  const netWorthDisplay = netWorth + assetDebt.neto
 
   const savingsRate = getSavingsRate(monthTotals.ingresos, monthTotals.neto)
 
@@ -725,8 +730,14 @@ function DashboardInner() {
       tipo: x.account.tipo,
     }))
     if (investmentDisplayTotal > 0) rows.push({ key: "inversion", label: "Inversiones", value: investmentDisplayTotal, pct: (investmentDisplayTotal / total) * 100, color: invColor, accountId: null, tipo: "inversion" })
+    // Bienes apuntados en /patrimonio (vivienda, coche…): mismo reparto de %.
+    if (assetDebt.bienes > 0) {
+      const all = total + assetDebt.bienes
+      for (const r of rows) r.pct = (r.value / all) * 100
+      rows.push({ key: "bienes", label: "Bienes", value: assetDebt.bienes, pct: (assetDebt.bienes / all) * 100, color: "var(--gold)", accountId: null, tipo: "efectivo" })
+    }
     return rows.sort((a, b) => b.value - a.value)
-  }, [displayAccounts, investmentDisplayTotal])
+  }, [displayAccounts, investmentDisplayTotal, assetDebt.bienes])
   const composicionLeyenda = useMemo(() => {
     const MAX = 5
     if (composicionCuentas.length <= MAX + 1) return composicionCuentas
@@ -737,6 +748,7 @@ function DashboardInner() {
   const openCompositionItem = (item: { key: string; accountId: string | null; tipo: Account["tipo"] }) => {
     if (item.accountId) router.push(`/cuentas/${item.accountId}`)
     else if (item.key === "otras") router.push("/cuentas")
+    else if (item.key === "bienes") router.push("/patrimonio")
     else setCompositionTipo(item.tipo)
   }
 
@@ -1121,7 +1133,9 @@ function DashboardInner() {
             accountsTotal={displayAccounts.length}
             accountsWithBalance={accountsWithBalance}
             sparkline={netWorthTrend.map((p) => p.patrimonio)}
-            netWorthDelta={netWorthDisplay - scoreBaseline}
+            netWorthDelta={netWorth - scoreBaseline}
+            assetsValue={assetDebt.bienes}
+            debtsValue={assetDebt.deudas}
             netWorthDeltaLabel="vs mes anterior"
           />
           <MonthTiles

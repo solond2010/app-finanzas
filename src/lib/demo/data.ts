@@ -240,6 +240,14 @@ export function buildDemoDatabase(now: Date = new Date()): DemoDatabase {
       categories,
       budgets,
       wealth_goals: wealthGoals,
+      assets: [
+        { id: "demo_asset_piso", nombre: "Piso en Valencia", tipo: "vivienda", valor: 240000, valor_fecha: invStart, notas: null },
+        { id: "demo_asset_coche", nombre: "Seat León", tipo: "coche", valor: 14500, valor_fecha: invStart, notas: null },
+      ],
+      debts: [
+        { id: "demo_debt_hipoteca", nombre: "Hipoteca del piso", tipo: "hipoteca", pendiente: 168400, principal_inicial: 200000, cuota_mensual: 760, tin: 2.1, fecha_fin: "2051-06-01", asset_id: "demo_asset_piso", notas: null },
+        { id: "demo_debt_coche", nombre: "Préstamo coche", tipo: "prestamo_coche", pendiente: 7800, principal_inicial: 16000, cuota_mensual: 240, tin: 6.9, fecha_fin: null, asset_id: "demo_asset_coche", notas: null },
+      ],
       investments,
       investment_contributions: contributions,
       watchlist: [

@@ -3,7 +3,7 @@
 import { useEffect, useState, type ElementType } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { CalendarDays, ChartPie, TrendingUp, ChatText, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, Plus, ReceiptText, ShieldCheck, SlidersHorizontal, SunMedium, X } from "@/components/icons"
+import { CalendarDays, ChartPie, TrendingUp, Scales, ChatText, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, Plus, ReceiptText, ShieldCheck, SlidersHorizontal, SunMedium, X } from "@/components/icons"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { openFeedbackDialog } from "@/components/feedback/feedback-dialog"
 import { cn } from "@/lib/utils"
@@ -18,6 +18,7 @@ const primaryItems = [
 
 const moreItems = [
   { href: "/inversiones", label: "Inversiones", description: "Tu cartera y lo que ganas", icon: TrendingUp },
+  { href: "/patrimonio", label: "Patrimonio", description: "Bienes, deudas y patrimonio neto", icon: Scales },
   { href: "/agenda", label: "Gastos fijos", description: "Alquiler, nómina, suscripciones…", icon: CalendarDays },
   { href: "/analytics", label: "Analíticas", description: "Tu evolución financiera", icon: ChartPie },
   { href: "/configuracion", label: "Configuración", description: "Preferencias y datos", icon: SlidersHorizontal },

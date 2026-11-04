@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 
 // Todas las tablas con datos de un usuario, de hijas a padres (claves ajenas).
 export const USER_TABLES = [
+  "debts",
+  "assets",
   "investment_contributions",
   "investments",
   "watchlist",

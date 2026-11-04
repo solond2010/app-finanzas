@@ -30,8 +30,11 @@ export function MoneyHero(props: {
   sparkline: number[]
   netWorthDelta: number
   netWorthDeltaLabel: string
+  assetsValue?: number
+  debtsValue?: number
 }) {
-  const other = props.netWorth - props.available - props.invested
+  const assetsValue = props.assetsValue ?? 0, debtsValue = props.debtsValue ?? 0
+  const other = props.netWorth - props.available - props.invested - assetsValue + debtsValue
   const delta = props.netWorthDelta
   const base = props.netWorth - delta
   const pct = Math.abs(base) >= 1 ? (delta / Math.abs(base)) * 100 : null
@@ -41,7 +44,7 @@ export function MoneyHero(props: {
     <section aria-label="Tu dinero" className="hero-panel grid overflow-hidden rounded-[22px] border border-[color-mix(in_oklch,var(--gold),transparent_70%)] lg:grid-cols-[1.25fr_1fr]">
       <div className="flex flex-col p-5 sm:p-7">
         <p className="page-section-label">Patrimonio total</p>
-        <Link href="/cuentas" className="mt-2 w-fit rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        <Link href="/patrimonio" className="mt-2 w-fit rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           <p className="text-[2.6rem] font-bold leading-none tracking-tight tabular-nums sm:text-6xl"><Sensitive>{eur(props.netWorth)}</Sensitive></p>
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
@@ -68,6 +71,8 @@ export function MoneyHero(props: {
         <p className="text-xs text-muted-foreground">
           <Sensitive>{eur(props.available)}</Sensitive> disponibles + <Sensitive>{eur(props.invested)}</Sensitive> invertidos
           {Math.abs(other) >= 1 && <> {other > 0 ? "+" : "−"} <Sensitive>{eur(Math.abs(other))}</Sensitive> en ahorro y otras cuentas</>}
+          {assetsValue > 0 && <> + <Sensitive>{eur(assetsValue)}</Sensitive> en bienes</>}
+          {debtsValue > 0 && <> − <Sensitive>{eur(debtsValue)}</Sensitive> de deudas</>}
         </p>
       </div>
     </section>

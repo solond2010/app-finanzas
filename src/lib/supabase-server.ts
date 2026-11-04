@@ -59,6 +59,8 @@ const PRIMARY_KEYS: Record<string, string> = {
   investment_contributions: "id",
   settings: "key",
   wealth_goals: "id",
+  assets: "id",
+  debts: "id",
 }
 
 /** Read complete tables in stable, bounded pages instead of silently stopping at PostgREST's row limit. */

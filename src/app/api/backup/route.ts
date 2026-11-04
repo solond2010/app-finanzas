@@ -15,6 +15,8 @@ const BACKUP_TABLES = [
   "investment_contributions",
   "settings",
   "wealth_goals",
+  "assets",
+  "debts",
 ] as const
 
 /** Copia completa (solo lectura) de los datos DEL DUEÑO de la clave. */

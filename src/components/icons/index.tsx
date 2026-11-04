@@ -57,6 +57,12 @@ import {
   HandCoins as PhHandCoins,
   HardDrive as PhHardDrive,
   House as PhHouse,
+  CarProfile as PhCarProfile,
+  Watch as PhWatch,
+  Diamond as PhDiamond,
+  PaintBrush as PhPaintBrush,
+  Package as PhPackage,
+  Scales as PhScales,
   Info as PhInfo,
   Key as PhKey,
   Lightbulb as PhLightbulb,
@@ -166,6 +172,12 @@ export const Gauge = makeIcon(PhGauge, "duotone", "Gauge")
 export const HandCoins = makeIcon(PhHandCoins, "duotone", "HandCoins")
 export const HardDrive = makeIcon(PhHardDrive, "duotone", "HardDrive")
 export const House = makeIcon(PhHouse, "duotone", "House")
+export const CarProfile = makeIcon(PhCarProfile, "duotone", "CarProfile")
+export const Watch = makeIcon(PhWatch, "duotone", "Watch")
+export const Diamond = makeIcon(PhDiamond, "duotone", "Diamond")
+export const PaintBrush = makeIcon(PhPaintBrush, "duotone", "PaintBrush")
+export const Package = makeIcon(PhPackage, "duotone", "Package")
+export const Scales = makeIcon(PhScales, "duotone", "Scales")
 export const Info = makeIcon(PhInfo, "regular", "Info")
 export const KeyRound = makeIcon(PhKey, "regular", "KeyRound")
 export const Landmark = makeIcon(PhBank, "duotone", "Landmark")

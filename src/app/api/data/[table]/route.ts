@@ -19,6 +19,8 @@ const ALLOWED_TABLES = new Set([
   "investments",
   "investment_contributions",
   "wealth_goals",
+  "assets",
+  "debts",
 ])
 
 function checkTable(table: string) {
