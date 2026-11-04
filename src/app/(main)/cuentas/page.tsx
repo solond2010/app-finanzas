@@ -56,6 +56,7 @@ export default function CuentasPage() {
   const accountValueEur = (a: Account) => convertToEur(accountValue(a), a.currency)
   const netWorth = state.accounts.reduce((s, a) => s + accountValueEur(a), 0)
   const visibleAccounts = state.accounts.filter((a) => (accountType === "all" || a.tipo === accountType) && `${a.nombre} ${a.banco ?? ""}`.toLowerCase().includes(accountSearch.trim().toLowerCase()))
+  const isZero = (a: Account) => Math.abs(a.saldo) < 0.005
   const accountGroups = useMemo(() => {
     const groups = new Map<string, { title: string; accounts: Account[] }>()
     for (const account of visibleAccounts.filter((a) => !isZero(a))) {
@@ -76,7 +77,6 @@ export default function CuentasPage() {
   }, [visibleAccounts]) // eslint-disable-line react-hooks/exhaustive-deps
   // Reparto por tipo real de cada cuenta (solo saldos positivos).
   const typeSplit = useMemo(() => Object.entries(typeConfig).map(([tipo, cfg]) => ({ tipo, label: cfg.label, color: cfg.color, value: state.accounts.filter((a) => a.tipo === tipo).reduce((sum, a) => sum + Math.max(0, accountValueEur(a)), 0) })).filter((t) => t.value > 0.005), [state.accounts]) // eslint-disable-line react-hooks/exhaustive-deps
-  const isZero = (a: Account) => Math.abs(a.saldo) < 0.005
   const zeroAccounts = visibleAccounts.filter(isZero)
   const [zeroOpen, setZeroOpen] = useState(false)
   const filtersActive = Boolean(accountSearch.trim()) || accountType !== "all"
