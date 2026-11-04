@@ -26,7 +26,7 @@ import {
   ChatText,
   ShieldCheck,
   TrendingUp,
-  Plant,
+  ChartPieSlice,
   Scales,
 } from "@/components/icons"
 import { useEffect } from "react"
@@ -40,7 +40,7 @@ const navItems = [
   { href: "/transactions", label: "Movimientos", icon: ReceiptText },
   { href: "/agenda", label: "Gastos fijos", icon: CalendarDays },
   { href: "/cuentas", label: "Cuentas", icon: Landmark },
-  { href: "/inversiones", label: "Inversiones", icon: Plant },
+  { href: "/inversiones", label: "Inversiones", icon: ChartPieSlice },
   { href: "/patrimonio", label: "Patrimonio", icon: Scales },
   { href: "/analytics", label: "Analíticas", icon: ChartPie },
   { href: "/configuracion", label: "Configuración", icon: SlidersHorizontal },
