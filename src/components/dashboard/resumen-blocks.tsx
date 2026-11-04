@@ -8,6 +8,8 @@ import { formatMoney } from "@/lib/currency"
 import { cn } from "@/lib/utils"
 
 const eur = (v: number) => formatMoney(v, "EUR")
+const EUR0 = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 0, useGrouping: "always" })
+const eur0 = (v: number) => `${EUR0.format(v)} €`
 const TILE = "rounded-2xl border border-border/80 bg-card transition-colors hover:border-primary/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 
 // ── Hero: lo que te queda + tu dinero ───────────────────────────────────────
@@ -175,6 +177,7 @@ export function ImportantToday({ items }: { items: Insight[] }) {
 export interface ComboBucket { key: string; label: string; Ingresos: number; Gastos: number; "Ahorro neto": number }
 export function CashflowComboChart({ data, activeKey, onSelect, showSavings }: { data: ComboBucket[]; activeKey?: string | null; onSelect: (key: string) => void; showSavings: boolean }) {
   const [hover, setHover] = useState<number | null>(null)
+  const [picked, setPicked] = useState<number | null>(null)
   const W = 640, H = 240, top = 12, bottom = 26
   const max = Math.max(1, ...data.map((b) => Math.max(b.Ingresos, b.Gastos))) * 1.08
   const min = Math.min(0, ...(showSavings ? data.map((b) => b["Ahorro neto"]) : [0]))
@@ -182,7 +185,18 @@ export function CashflowComboChart({ data, activeKey, onSelect, showSavings }: {
   const gw = W / data.length
   const bw = Math.min(30, gw * 0.27)
   const line = data.map((b, i) => [gw * i + gw / 2, y(b["Ahorro neto"])] as const)
-  const h = hover !== null ? data[hover] : null
+  // Por defecto: el último periodo con movimientos (el actual si ya tiene).
+  let lastWithData = data.length - 1
+  while (lastWithData > 0 && data[lastWithData].Ingresos === 0 && data[lastWithData].Gastos === 0) lastWithData--
+  const sel = Math.min(data.length - 1, hover ?? picked ?? lastWithData)
+  const cur = data[sel]
+  const prev = sel > 0 ? data[sel - 1] : null
+  const canHover = () => typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches
+  const diff = (v: number, pv: number, goodUp: boolean) => {
+    const d = v - pv
+    const tone = Math.abs(d) < 1 ? "text-muted-foreground" : (d > 0) === goodUp ? "text-emerald-500" : "text-red-500"
+    return <p className={cn("mt-0.5 text-[11px]", tone)}><Sensitive>{d >= 0 ? "+" : "−"}{eur(Math.abs(d))}</Sensitive> vs {prev?.label}</p>
+  }
   return (
     <div className="relative">
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-56 w-full sm:h-64" role="img" aria-label="Ingresos, gastos y ahorro por periodo">
@@ -190,30 +204,43 @@ export function CashflowComboChart({ data, activeKey, onSelect, showSavings }: {
         {min < 0 && <line x1={0} x2={W} y1={y(0)} y2={y(0)} stroke="var(--muted-foreground)" strokeOpacity={0.4} vectorEffect="non-scaling-stroke" />}
         {data.map((b, i) => {
           const x = gw * i + gw / 2
-          const dim = (activeKey && activeKey !== b.key) || (hover !== null && hover !== i)
+          const dim = sel !== i
           return (
-            <g key={b.key} className="cursor-pointer" onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onClick={() => onSelect(b.key)}>
-              <rect x={x - gw / 2 + 3} y={0} width={gw - 6} height={H - bottom + 4} rx={10} fill={hover === i ? "color-mix(in oklch, var(--gold), transparent 90%)" : activeKey === b.key ? "color-mix(in oklch, var(--gold), transparent 95%)" : "transparent"} />
-              <rect x={x - bw - 2} y={y(b.Ingresos)} width={bw} height={Math.max(0, y(0) - y(b.Ingresos))} rx={5} fill="var(--accent-green)" opacity={dim ? 0.35 : 0.9} />
-              <rect x={x + 2} y={y(b.Gastos)} width={bw} height={Math.max(0, y(0) - y(b.Gastos))} rx={5} fill="var(--accent-red)" opacity={dim ? 0.35 : 0.9} />
+            <g key={b.key} className="cursor-pointer" onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onClick={() => { setPicked(i); if (canHover()) onSelect(b.key) }}>
+              <rect x={x - gw / 2 + 3} y={0} width={gw - 6} height={H - bottom + 4} rx={10} fill={sel === i ? "color-mix(in oklch, var(--gold), transparent 90%)" : activeKey === b.key ? "color-mix(in oklch, var(--gold), transparent 95%)" : "transparent"} />
+              <rect x={x - bw - 2} y={y(b.Ingresos)} width={bw} height={Math.max(0, y(0) - y(b.Ingresos))} rx={5} fill="var(--accent-green)" opacity={dim ? 0.55 : 0.95} />
+              <rect x={x + 2} y={y(b.Gastos)} width={bw} height={Math.max(0, y(0) - y(b.Gastos))} rx={5} fill="var(--accent-red)" opacity={dim ? 0.55 : 0.95} />
             </g>
           )
         })}
         {showSavings && data.length > 1 && <path d={"M" + line.map((p) => p.join(",")).join(" L")} fill="none" stroke="var(--gold)" strokeWidth={2.5} vectorEffect="non-scaling-stroke" strokeLinejoin="round" pointerEvents="none" />}
       </svg>
       {showSavings && (
-        <div className="pointer-events-none absolute inset-0 h-56 sm:h-64">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-56 sm:h-64">
           {line.map((p, i) => <span key={i} className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--gold)] bg-background" style={{ left: `${(p[0] / W) * 100}%`, top: `${(p[1] / H) * 100}%` }} />)}
         </div>
       )}
-      <div className="flex text-[11px] text-muted-foreground">{data.map((b) => <span key={b.key} className={cn("flex-1 truncate text-center first-letter:uppercase", activeKey === b.key && "font-semibold text-primary")}>{b.label}</span>)}</div>
-      {h && hover !== null && (
-        <div className="pointer-events-none absolute top-2 z-10 w-44 rounded-xl border border-border bg-popover p-2.5 text-xs shadow-lg" style={{ left: `clamp(0px, calc(${((hover + 0.5) / data.length) * 100}% - 88px), calc(100% - 176px))` }}>
-          <p className="mb-1 font-semibold first-letter:uppercase">{h.label}</p>
-          <p className="flex justify-between"><span className="text-emerald-500">Ingresos</span><Sensitive className="tabular-nums">{eur(h.Ingresos)}</Sensitive></p>
-          <p className="flex justify-between"><span className="text-red-500">Gastos</span><Sensitive className="tabular-nums">{eur(h.Gastos)}</Sensitive></p>
-          <p className="flex justify-between"><span className="text-primary">Ahorro</span><Sensitive className="tabular-nums">{eur(h["Ahorro neto"])}</Sensitive></p>
-          <p className="mt-1 text-muted-foreground">Toca para ver el desglose</p>
+      <div className="flex text-[11px] text-muted-foreground">
+        {data.map((b, i) => (
+          <div key={b.key} className="min-w-0 flex-1 text-center">
+            <span className={cn("block truncate first-letter:uppercase", sel === i && "font-semibold text-primary")}>{b.label}</span>
+            {data.length <= 8 && (
+              <span className="hidden tabular-nums leading-tight md:block">
+                <Sensitive className="block font-semibold text-emerald-500">{b.Ingresos > 0 ? `+${eur0(b.Ingresos)}` : "—"}</Sensitive>
+                <Sensitive className="block font-semibold text-red-500">{b.Gastos > 0 ? `−${eur0(b.Gastos)}` : "—"}</Sensitive>
+                {showSavings && <Sensitive className="block text-[10px] text-primary">Ahorro {eur0(b["Ahorro neto"])}</Sensitive>}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+      {cur && (
+        <div className="mt-3 grid grid-cols-3 items-center gap-2 rounded-xl border border-border bg-background/40 p-3 sm:grid-cols-[auto_1fr_1fr_1fr_auto] sm:gap-4 sm:px-4">
+          <p className="col-span-3 text-sm font-bold first-letter:uppercase sm:col-span-1">{cur.label}</p>
+          <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Ingresos</p><p className="truncate text-base font-bold tabular-nums text-emerald-500"><Sensitive>{eur(cur.Ingresos)}</Sensitive></p>{prev && diff(cur.Ingresos, prev.Ingresos, true)}</div>
+          <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Gastos</p><p className="truncate text-base font-bold tabular-nums text-red-500"><Sensitive>{eur(cur.Gastos)}</Sensitive></p>{prev && diff(cur.Gastos, prev.Gastos, false)}</div>
+          <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Ahorro neto</p><p className="truncate text-base font-bold tabular-nums text-primary"><Sensitive>{eur(cur["Ahorro neto"])}</Sensitive></p>{prev && diff(cur["Ahorro neto"], prev["Ahorro neto"], true)}</div>
+          <button type="button" onClick={() => onSelect(cur.key)} className="col-span-3 inline-flex min-h-10 items-center justify-center gap-1 rounded-full px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 sm:col-span-1">Ver desglose<ArrowRight className="size-3.5" /></button>
         </div>
       )}
     </div>

@@ -1163,8 +1163,8 @@ function DashboardInner() {
             ) : <EmptyPlaceholder text="No hay ingresos ni gastos en este periodo" className="h-56 sm:h-72" />}
             {periodCashflow.some((bucket) => bucket.Ingresos > 0 || bucket.Gastos > 0) && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11px] text-muted-foreground"><span className="sm:hidden">Toca una barra</span><span className="hidden sm:inline">Haz clic en una barra</span> para ver el desglose por semana y categoría.</p>
-                {periodCashflow.length > 1 && (
+                <p className="text-[11px] text-muted-foreground"><span className="sm:hidden">Toca una barra para ver su resumen; «Ver desglose» abre el detalle.</span><span className="hidden sm:inline">Pasa el ratón para ver el resumen; haz clic en una barra para el desglose por semana y categoría.</span></p>
+                {periodCashflow.length > 12 && (
                   <button type="button" onClick={() => setCashflowDrillKey(periodCashflow[periodCashflow.length - 1].key)} className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 sm:min-h-9">
                     Desglose de {periodCashflow[periodCashflow.length - 1].label} <ChevronRight className="size-3.5" />
                   </button>
