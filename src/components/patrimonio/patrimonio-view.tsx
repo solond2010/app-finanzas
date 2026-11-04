@@ -114,8 +114,8 @@ function AssetHistory({ asset, values, onAdd, onDelete }: { asset: Asset; values
             </ul>
           ) : <p className="text-xs text-muted-foreground">Aún no hay valores anteriores.</p>}
           <form onSubmit={submit} className="flex min-w-0 flex-wrap items-end gap-2">
-            <label className="min-w-0 flex-1 basis-28 text-[11px] text-muted-foreground">Nuevo valor (€)<Input value={valor} onChange={(e) => { setValor(e.target.value); setErr("") }} inputMode="decimal" placeholder={show(asset.valor)} className="mt-1 h-9 tabular-nums" /></label>
-            <label className="min-w-0 flex-1 basis-32 text-[11px] text-muted-foreground">Fecha<Input type="date" value={fecha} max={todayKey()} onChange={(e) => setFecha(e.target.value)} className="mt-1 h-9" /></label>
+            <label className="min-w-0 flex-1 basis-full text-[11px] min-[420px]:basis-28 text-muted-foreground">Nuevo valor (€)<Input value={valor} onChange={(e) => { setValor(e.target.value); setErr("") }} inputMode="decimal" placeholder={show(asset.valor)} className="mt-1 h-9 tabular-nums" /></label>
+            <label className="min-w-0 flex-1 basis-full text-[11px] text-muted-foreground min-[420px]:basis-32">Fecha<Input type="date" value={fecha} max={todayKey()} onChange={(e) => setFecha(e.target.value)} className="mt-1 h-9" /></label>
             <Button type="submit" size="sm" disabled={busy}>Actualizar valor</Button>
           </form>
           {err && <p role="alert" className="text-xs text-destructive">{err}</p>}
