@@ -1242,7 +1242,7 @@ function DashboardInner() {
               {activeRange.unit === "today" && netWorthTrend.length <= 1 ? (
                 <EmptyPlaceholder text="Sin movimientos registrados hoy todavía" className="mt-4 h-52 sm:h-64" />
               ) : netWorthHasData ? (
-                <div className="mt-4">
+                <div className="mt-4 flex flex-1 flex-col">
                   <NetWorthChart
                     points={netWorthSeries.points}
                     monthly={netWorthSeries.monthly}
@@ -1251,7 +1251,7 @@ function DashboardInner() {
                     hideValues={privacy}
                     onActivate={() => setNetWorthExpanded(true)}
                     activateLabel="Pulsa para ver el gráfico ampliado."
-                    className="h-40 w-full sm:h-52 2xl:h-60"
+                    className="h-40 min-h-40 w-full flex-1 sm:h-52 2xl:h-60"
                   />
                   <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
                     <Maximize2 className="size-3" weight="bold" />
@@ -1455,7 +1455,7 @@ function DashboardInner() {
           </section>
 
           <section
-            className={cn("grid grid-cols-1 items-start gap-4 lg:gap-5", topSpending.length > 0 && "lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.85fr)]")}
+            className={cn("grid grid-cols-1 gap-4 lg:gap-5", topSpending.length > 0 && "lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.85fr)]")}
             aria-label="Gastos y colchón de emergencia"
           >
             {topSpending.length > 0 && (
@@ -1526,7 +1526,7 @@ function DashboardInner() {
           </section>
 
           {/* Resumen, movimientos y metas comparten la última fila del panel. */}
-          <section className="stagger-fade grid grid-cols-1 items-start gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-4" style={{ animationDelay: "240ms" }}>
+          <section className="stagger-fade grid grid-cols-1 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-4" style={{ animationDelay: "240ms" }}>
             <div className={cn(CARD, "space-y-4", showAnnual && "md:col-span-2 xl:col-span-4")}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
