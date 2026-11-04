@@ -5,7 +5,7 @@ import { useFinance, type Account, type SinkingFund } from "@/lib/store"
 import { accountGoal, fundCurrentAmount } from "@/lib/calculations"
 import { accountColor } from "@/lib/account-colors"
 import { AnimatedNumber } from "@/components/shared/animated-number"
-import { Wallet as WalletIcon, Plus, Target, TrendingUp, Search, ChevronDown, ChevronsDownUp, ChevronsUpDown, Building2, ChevronRight, EyeOff } from "@/components/icons"
+import { Wallet as WalletIcon, Plus, Target, Flag, Search, ChevronDown, ChevronsDownUp, ChevronsUpDown, Building2, ChevronRight, EyeOff } from "@/components/icons"
 import { formatMoney, convertToEur } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { typeConfig } from "@/lib/account-types"
@@ -280,7 +280,7 @@ export default function CuentasPage() {
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <MetricCard label="Metas activas" value={goalStats.count} subtitle="Objetivos en curso" icon={Target} tone="amber" delay={0} />
             <MetricCard label="Total ahorrado" value={<AnimatedNumber value={Math.round(goalStats.totalAhorrado)} />} subtitle="Acumulado de todas las metas" icon={WalletIcon} tone="blue" delay={80} />
-            <MetricCard label="Objetivo total" value={<AnimatedNumber value={Math.round(goalStats.totalObjetivo)} />} subtitle="Suma de todas las metas" icon={TrendingUp} tone="violet" delay={160} />
+            <MetricCard label="Objetivo total" value={<AnimatedNumber value={Math.round(goalStats.totalObjetivo)} />} subtitle="Suma de todas las metas" icon={Flag} tone="violet" delay={160} />
           </section>
         )}
 

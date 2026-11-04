@@ -3,7 +3,7 @@
 import { TrendPill } from "@/components/shared/trend-pill"
 import { memo, useEffect, useMemo, useState } from "react"
 import { AreaChart } from "@tremor/react"
-import { CalendarDays, Percent, TrendingDown, TrendingUp, Wallet } from "@/components/icons"
+import { CalendarDays, Percent, TrendingDown, TrendingUp, Wallet, Mountains, ChartBar } from "@/components/icons"
 
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { createChartTooltip } from "@/components/shared/chart-tooltip"
@@ -228,7 +228,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
           <Card className="stagger-fade col-span-full xl:col-span-7 min-w-0 overflow-hidden" style={{ animationDelay: "100ms" }}>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <TrendingUp className="h-4 w-4 text-amber-500" />
+                <Mountains className="h-4 w-4 text-amber-500" />
                 Patrimonio por mensualidad
               </CardTitle>
             </CardHeader>
@@ -255,7 +255,7 @@ export const PatrimonioMensualSection = memo(function PatrimonioMensualSection({
           <Card className="stagger-fade col-span-full xl:col-span-5 min-w-0 overflow-hidden" style={{ animationDelay: "140ms" }}>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <TrendingUp className="h-4 w-4 text-emerald-500" />
+                <ChartBar className="h-4 w-4 text-emerald-500" />
                 Cambio de patrimonio (€)
               </CardTitle>
             </CardHeader>

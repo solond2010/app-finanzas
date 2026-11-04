@@ -3,7 +3,7 @@
 import { useEffect, useState, type ElementType } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { CalendarDays, ChartPie, TrendingUp, Scales, ChatText, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, ReceiptText, ShieldCheck, SlidersHorizontal, SunMedium, X } from "@/components/icons"
+import { CalendarDays, ChartPie, Plant, Scales, ChatText, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, ReceiptText, ShieldCheck, SlidersHorizontal, SunMedium, X } from "@/components/icons"
 import { openFeedbackDialog } from "@/components/feedback/feedback-dialog"
 import { cn } from "@/lib/utils"
 import { usePrivacy } from "@/lib/privacy"
@@ -13,7 +13,7 @@ const primaryItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
   { href: "/transactions", label: "Movimientos", icon: ReceiptText },
   { href: "/cuentas", label: "Cuentas", icon: Landmark },
-  { href: "/inversiones", label: "Inversiones", icon: TrendingUp },
+  { href: "/inversiones", label: "Inversiones", icon: Plant },
 ]
 
 const moreItems = [

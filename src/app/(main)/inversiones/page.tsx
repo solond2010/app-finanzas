@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button"
 import { PositionDialog } from "@/components/investments/position-dialog"
 import { PositionActionsDialog } from "@/components/investments/position-actions-dialog"
 import { convertToEur, type CurrencyCode } from "@/lib/currency"
-import { AlertTriangle, ChartLineUp, HandCoins, PiggyBank, Plus, Repeat } from "@/components/icons"
+import { AlertTriangle, Plant, HandCoins, PiggyBank, Plus, Repeat } from "@/components/icons"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 
 const CARD = "min-w-0 rounded-2xl border border-border/80 bg-card p-4 sm:p-5"
@@ -122,7 +122,7 @@ export default function InversionesPage() {
     return (
       <div className="space-y-5">
         {header}
-        <EmptyState bordered icon={ChartLineUp} title="Aún no tienes cuentas de inversión" description="Crea en Cuentas una cuenta de tipo «Inversión» (tu bróker, fondos…) con su saldo. Luego aquí podrás decir en qué acciones, fondos o ETF está ese dinero." action={{ label: "Ir a Cuentas", onClick: () => router.push("/cuentas#nueva") }} />
+        <EmptyState bordered icon={Plant} title="Aún no tienes cuentas de inversión" description="Crea en Cuentas una cuenta de tipo «Inversión» (tu bróker, fondos…) con su saldo. Luego aquí podrás decir en qué acciones, fondos o ETF está ese dinero." action={{ label: "Ir a Cuentas", onClick: () => router.push("/cuentas#nueva") }} />
         {dialogEl}
       </div>
     )

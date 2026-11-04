@@ -100,7 +100,16 @@ import {
   Wallet as PhWallet,
   Warning as PhWarning,
   WarningCircle as PhWarningCircle,
-  X as PhX
+  X as PhX,
+  Binoculars as PhBinocularsIcon,
+  Plant as PhPlantIcon,
+  Coins as PhCoinsIcon,
+  ChartPieSlice as PhChartPieSliceIcon,
+  Waves as PhWavesIcon,
+  Trophy as PhTrophyIcon,
+  Mountains as PhMountainsIcon,
+  ChartBar as PhChartBarIcon,
+  Footprints as PhFootprintsIcon,
 } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "@/lib/utils"
 
@@ -225,3 +234,13 @@ export const Wallet = makeIcon(PhWallet, "duotone", "Wallet")
 export const Wallet2 = makeIcon(PhWallet, "duotone", "Wallet2")
 export const X = makeIcon(PhX, "regular", "X")
 export const XIcon = makeIcon(PhX, "regular", "XIcon")
+
+export const Binoculars = makeIcon(PhBinocularsIcon, "duotone", "Binoculars")
+export const Plant = makeIcon(PhPlantIcon, "duotone", "Plant")
+export const Coins = makeIcon(PhCoinsIcon, "duotone", "Coins")
+export const ChartPieSlice = makeIcon(PhChartPieSliceIcon, "duotone", "ChartPieSlice")
+export const Waves = makeIcon(PhWavesIcon, "duotone", "Waves")
+export const Trophy = makeIcon(PhTrophyIcon, "duotone", "Trophy")
+export const Mountains = makeIcon(PhMountainsIcon, "duotone", "Mountains")
+export const ChartBar = makeIcon(PhChartBarIcon, "duotone", "ChartBar")
+export const Footprints = makeIcon(PhFootprintsIcon, "duotone", "Footprints")

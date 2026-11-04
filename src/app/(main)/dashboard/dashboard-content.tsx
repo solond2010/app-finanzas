@@ -9,7 +9,7 @@ import { accountColor, distinctAccountColors } from "@/lib/account-colors"
 import { AccountDot } from "@/components/dashboard/account-dot"
 import Link from "next/link"
 import { BarChart } from "@tremor/react"
-import { AlertTriangle, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, HandCoins, Layers3, Maximize2, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp } from "@/components/icons"
+import { AlertTriangle, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, HandCoins, Layers3, Maximize2, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp, Binoculars, Trophy } from "@/components/icons"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -1166,7 +1166,7 @@ function DashboardInner() {
           />
           {isCurrentMonth && (
             <section aria-label="Previsión de fin de mes" className="flex min-w-0 items-center gap-3 rounded-[18px] border border-border bg-card px-4 py-3 sm:px-5">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><TrendingUp className="size-[18px]" /></span>
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Binoculars className="size-[18px]" /></span>
               <div className="min-w-0 flex-1">
                 {monthForecast === null ? (
                   <p className="text-sm font-semibold text-foreground">Aún pocos datos este mes</p>
@@ -1414,7 +1414,7 @@ function DashboardInner() {
                   },
                   {
                     key: "mejor",
-                    icon: <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />,
+                    icon: <Trophy className="h-3.5 w-3.5 text-emerald-500" />,
                     label: "Mejor mes",
                     hint: bestMonth ? bestMonth.label : null,
                     value: <span className="text-emerald-500">{bestMonth ? <Sensitive>{formatMoney(bestMonth.value, "EUR")}</Sensitive> : "—"}</span>,

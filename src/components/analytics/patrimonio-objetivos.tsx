@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, Check, Flag, PencilLine, TrendingUp } from "@/components/icons"
+import { ArrowRight, Check, Flag, PencilLine, Footprints } from "@/components/icons"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
@@ -132,7 +132,7 @@ export function PatrimonioObjetivos({ value }: { value: number }) {
             <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <TrendingUp className="h-4 w-4 text-[var(--accent-green)]" />
+                  <Footprints className="h-4 w-4 text-[var(--accent-green)]" />
                   Los siguientes pasos
                 </div>
                 <EditGoalsButton className="hidden h-8 lg:inline-flex" />

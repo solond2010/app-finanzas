@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
-import { CalendarDots, CaretDown, ChartLineUp, DeviceMobile, FileArrowUp, PlayCircle, Scales, ShieldCheck, Sparkle } from "@phosphor-icons/react/dist/ssr"
+import { CalendarDots, CaretDown, ChartPieSlice, DeviceMobile, FileArrowUp, PlayCircle, Scales, ShieldCheck, Sparkle } from "@phosphor-icons/react/dist/ssr"
 import { GarraMark } from "@/components/brand/garra-logo"
 
 // Portada pública (sin sesión). Con sesión, src/proxy.ts manda directo a
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 const SIGNUP = "/login?modo=registro"
 const FEATURES = [
   { icon: Scales, title: "Patrimonio completo", text: "Cuentas, inversiones, vivienda, coche y deudas como la hipoteca: tu patrimonio neto real en una cifra." },
-  { icon: ChartLineUp, title: "Inversiones", text: "Fondos y acciones con su ganancia, tus aportaciones periódicas y en qué está invertido tu dinero." },
+  { icon: ChartPieSlice, title: "Inversiones", text: "Fondos y acciones con su ganancia, tus aportaciones periódicas y en qué está invertido tu dinero." },
   { icon: CalendarDots, title: "Gastos fijos", text: "Alquiler, nómina, suscripciones y cuotas en una agenda que te avisa antes de cada pago." },
   { icon: FileArrowUp, title: "Importa del banco", text: "Sube el CSV de tu banco y elige qué movimientos guardar. El archivo se lee en tu dispositivo." },
   { icon: DeviceMobile, title: "Atajo del iPhone", text: "Apunta un gasto en dos toques desde el iPhone, sin abrir la app." },

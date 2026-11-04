@@ -5,7 +5,7 @@ import { MonthPeriodPicker } from "@/components/ui/month-period-picker"
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { AreaChart } from "@tremor/react"
-import { CalendarClock, HandCoins, Receipt, Check, ChevronDown, ChevronLeft, ChevronRight, Pencil, Target, TrendingUp, X } from "@/components/icons"
+import { CalendarClock, HandCoins, Receipt, Check, ChevronDown, ChevronLeft, ChevronRight, Pencil, Target, Waves, X } from "@/components/icons"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
 import { BankImportButton } from "@/components/dashboard/bank-import-dialog"
 import { getSetting, setSetting } from "@/lib/settings"
@@ -325,7 +325,7 @@ export default function IngresosGastosPage() {
           <section className="hidden grid-cols-1 gap-4 sm:gap-6 md:grid lg:grid-cols-3">
             <div className={`${CARD_HERO} min-w-0 lg:col-span-2`}>
               <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-                <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><TrendingUp className="h-4 w-4 text-primary" /> Evolución del cash flow</p>
+                <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Waves className="h-4 w-4 text-primary" /> Evolución del cash flow</p>
                 <div className="range-tabs">
                   {RANGES.map((r) => (
                     <button key={r.m} onClick={() => setRangeM(r.m)} data-active={rangeM === r.m} className="range-tab">{r.label}</button>

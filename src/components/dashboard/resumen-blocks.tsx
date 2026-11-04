@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState, type ReactNode } from "react"
-import { ArrowRight, CalendarClock, ChartLineUp, Flame, HandCoins, Lightbulb, PiggyBank, Receipt, Scales, Target, TrendingDown, TrendingUp, Wallet } from "@/components/icons"
+import { ArrowRight, CalendarClock, ChartPieSlice, Flame, HandCoins, Lightbulb, PiggyBank, Receipt, Scales, Target, TrendingDown, TrendingUp, Wallet } from "@/components/icons"
 import { Sensitive } from "@/components/shared/sensitive"
 import { formatMoney } from "@/lib/currency"
 import { cn } from "@/lib/utils"
@@ -64,7 +64,7 @@ export function MoneyHero(props: {
             <span className="mt-0.5 block text-lg font-bold tabular-nums text-[var(--accent-blue)]"><Sensitive>{eur(props.available)}</Sensitive></span>
           </Link>
           <Link href="/inversiones" className={cn(TILE, "bg-background/40 p-3")}>
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><ChartLineUp className="size-3.5 text-[var(--accent-violet)]" />Invertido</span>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><ChartPieSlice className="size-3.5 text-[var(--accent-violet)]" />Invertido</span>
             <span className="mt-0.5 block text-lg font-bold tabular-nums text-[var(--accent-violet)]"><Sensitive>{eur(props.invested)}</Sensitive></span>
           </Link>
         </div>
@@ -163,7 +163,7 @@ export function TopTiles(props: { netWorth: number; netWorthDelta: number; spark
         <span className="text-xs text-muted-foreground">{props.income > 0 ? <>de <Sensitive>{eur(props.income)}</Sensitive> ingresados</> : "Aún sin ingresos este mes"}</span>
       </Link>
       <Link href="/inversiones" className={cn(T, "col-span-2 lg:col-span-1")}>
-        {head(ChartLineUp, "var(--accent-violet)", "Inversiones")}
+        {head(ChartPieSlice, "var(--accent-violet)", "Inversiones")}
         <span className="truncate text-xl font-bold tabular-nums sm:text-2xl"><Sensitive>{eur(props.invested)}</Sensitive></span>
         <span className="text-xs text-muted-foreground">{props.gain === null ? "Rendimiento: sin cotizaciones" : <><Sensitive className={cn("font-semibold", props.gain >= 0 ? "text-emerald-500" : "text-red-500")}>{props.gain >= 0 ? "+" : "−"}{eur(Math.abs(props.gain))}{props.gainPct !== null ? ` (${fmtPct(props.gainPct)})` : ""}</Sensitive> rendimiento</>}</span>
       </Link>
