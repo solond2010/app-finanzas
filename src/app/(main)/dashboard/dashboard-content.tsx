@@ -1176,7 +1176,7 @@ function DashboardInner() {
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
           <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:gap-5 2xl:grid-cols-12" style={{ animationDelay: "0ms" }}>
             {/* Patrimonio + rango */}
-            <div className={`${CARD_HERO} min-w-0 md:col-span-2 xl:col-span-2 2xl:col-span-6`}>
+            <div className={`${CARD_HERO} min-w-0 flex flex-col md:col-span-2 xl:col-span-2 2xl:col-span-6`}>
               <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="w-full min-w-0 flex-1 sm:w-auto">
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -1277,8 +1277,9 @@ function DashboardInner() {
               )}
             </div>
 
+            <div className="flex min-w-0 flex-col gap-4 md:col-span-2 xl:col-span-2 2xl:col-span-6">
             {/* Puntuación financiera */}
-            <div className={`${CARD_HERO} flex min-w-0 flex-col self-start 2xl:col-span-3`}>
+            <div className={`${CARD_HERO} flex min-w-0 flex-col`}>
               <div className="flex items-center gap-2">
                 <Gauge className="h-4 w-4 text-primary" />
                 <p className="text-sm font-semibold text-foreground">Puntuación financiera</p>
@@ -1329,7 +1330,6 @@ function DashboardInner() {
                 </div>
               </div>
             </div>
-            <div className="flex min-w-0 flex-col gap-4 2xl:col-span-3">
             <div className={`${CARD} flex min-w-0 flex-col p-4 sm:p-4`}>
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Layers3 className="h-4 w-4 text-primary" /> Composición del patrimonio</p>
               {composicionCuentas.length === 0 ? (
