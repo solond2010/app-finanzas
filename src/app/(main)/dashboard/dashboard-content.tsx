@@ -1107,6 +1107,7 @@ function DashboardInner() {
       ) : (
         <div className="space-y-4 sm:space-y-5">
           <MoneyHero
+            onAddMovement={() => openMovementDialog()}
             periodLabel={periodBounds.label}
             isCurrentMonth={isCurrentMonth}
             net={periodTotals.neto}
@@ -1198,17 +1199,11 @@ function DashboardInner() {
                       <span className="text-muted-foreground">{showPct ? `· ${formatCappedPct(rangePct)} ` : ""}vs. inicio del periodo</span>
                     </p>
                   )}
-                  {netWorthTrend.length > 1 && !hasUsableRangeBaseline && (
-                    <p className="mt-1 text-xs text-muted-foreground" role="note">
-                      Sin comparativa para este periodo.{" "}
-                      <Link href="/configuracion#revision-datos" className="font-medium text-foreground/80 underline decoration-border underline-offset-2 hover:text-foreground">Ver por qué</Link>
-                    </p>
-                  )}
                   {showRangeMax && rangeMaxPoint && (
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       Pico observado: <span title="Mayor saldo reconstruido observado dentro del periodo"><Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive></span> ({rangeMaxPoint.mes.replace(" · pico", "")})
                       {showVsPeakDelta && (
-                        <Sensitive as="span" className="ml-1 font-semibold text-red-500">
+                        <Sensitive as="span" className={cn("ml-1 font-semibold", vsPeakPct < -1 ? "text-red-500" : "text-muted-foreground")}>
                           · {formatMoney(vsPeakDelta, "EUR")}{Math.abs(vsPeakPct) > 0.05 ? ` (${formatCappedPct(vsPeakPct)})` : ""} desde el pico
                         </Sensitive>
                       )}
@@ -1284,7 +1279,7 @@ function DashboardInner() {
             </div>
 
             {/* Puntuación financiera */}
-            <div className={`${CARD_HERO} flex min-w-0 flex-col 2xl:col-span-3`}>
+            <div className={`${CARD_HERO} flex min-w-0 flex-col self-start 2xl:col-span-3`}>
               <div className="flex items-center gap-2">
                 <Gauge className="h-4 w-4 text-primary" />
                 <p className="text-sm font-semibold text-foreground">Puntuación financiera</p>

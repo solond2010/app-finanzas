@@ -28,9 +28,12 @@ export function MoneyHero(props: {
   sparkline: number[]
   netWorthDelta: number
   netWorthDeltaLabel: string
+  onAddMovement?: () => void
 }) {
   const { net, income, expenses, comparable } = props
-  const diffPct = comparable && comparable > 0 ? Math.round((1 - expenses / comparable) * 100) : null
+  const noMovements = income === 0 && expenses === 0
+  // Solo se compara si hay gasto en ambos periodos (evita «100 % menos» desde 0).
+  const diffPct = expenses > 0 && comparable && comparable > 0 ? Math.round((1 - expenses / comparable) * 100) : null
   const other = props.netWorth - props.available - props.invested
   // A principio de mes, antes de cobrar, «vas en negativo» asusta sin motivo:
   // se enseña lo gastado hasta ahora.
@@ -41,6 +44,14 @@ export function MoneyHero(props: {
   return (
     <section aria-label="Tu dinero" className="hero-panel grid overflow-hidden rounded-[22px] border border-[color-mix(in_oklch,var(--gold),transparent_70%)] lg:grid-cols-[1.25fr_1fr]">
       <div className="p-5 sm:p-7">
+        {noMovements ? (
+          <>
+            <p className="page-section-label">{props.isCurrentMonth ? "Este mes" : props.periodLabel}</p>
+            <p className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Aún no hay movimientos en {props.periodLabel}</p>
+            <p className="mt-2 max-w-xl text-sm text-muted-foreground">Apunta el primero y verás aquí cuánto te queda y cómo vas.</p>
+            {props.onAddMovement && <button type="button" onClick={props.onAddMovement} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">Añadir primer movimiento<ArrowRight className="size-4" /></button>}
+          </>
+        ) : (<>
         <p className="page-section-label">{title}</p>
         <p className={cn("mt-2 text-[2.6rem] font-bold leading-none tracking-tight tabular-nums sm:text-6xl", (waitingIncome || net < 0) && "text-red-500")}><Sensitive>{eur(waitingIncome ? expenses : net)}</Sensitive></p>
         <p className="mt-3 max-w-xl text-sm text-foreground/85 sm:text-[15px]">
@@ -53,6 +64,7 @@ export function MoneyHero(props: {
               : <>Ojo: llevas un <b className="font-semibold text-red-500">{-diffPct} % más de gasto</b> que {props.comparableLabel}.</>}
           {props.isCurrentMonth && net > 0 && props.daysLeft > 0 && <> Puedes gastar unos <b className="font-semibold"><Sensitive>{eur(net / props.daysLeft)}</Sensitive> al día</b> hasta fin de mes.</>}
         </p>
+        </>)}
         {(income > 0 || expenses > 0) && (
           <div className="mt-5">
             <div className="relative h-2.5 rounded-full bg-muted">
