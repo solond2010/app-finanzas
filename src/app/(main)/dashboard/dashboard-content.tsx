@@ -859,11 +859,11 @@ function DashboardInner() {
     () => getFinancialScore({
       savingsRate,
       monthlyNeto: monthTotals.neto,
-      netWorthCurrent: netWorthDisplay,
+      netWorthCurrent: netWorth, // la base del mes anterior solo tiene cuentas
       netWorthBaseline: scoreBaseline,
       hasActiveEmergencyFund: displayAccounts.some((a) => a.tipo === "emergencia" && a.saldo > 0),
     }),
-    [savingsRate, monthTotals.neto, netWorthDisplay, scoreBaseline, displayAccounts]
+    [savingsRate, monthTotals.neto, netWorth, scoreBaseline, displayAccounts]
   )
 
   // Dónde se arregla cada factor de la puntuación que no se cumple.
