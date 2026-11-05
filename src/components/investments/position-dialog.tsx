@@ -130,7 +130,7 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
         .then((d: { results?: SearchHit[] }) => {
           const sorted = filterSearchResults(d.results ?? [], activeTypes, {
             hideCrypto: kind === "stock",
-            limit: 10,
+            limit: 12,
           })
           setResults(sorted)
           setSearchState(sorted.length ? "idle" : "empty")

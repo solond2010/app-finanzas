@@ -15,10 +15,23 @@ describe("buscador de activos", () => {
     expect(out[0].currency).toBe("EUR")
   })
 
-  it("calcula precio en USD desde un aporte en EUR", () => {
-    expect(guessCurrency({ symbol: "NVD.DE", name: "NVIDIA", type: "EQUITY", exchange: "GER" })).toBe("EUR")
-    expect(isCryptoOrTokenized({ symbol: "WNVDAX-USD", name: "Wrapped NVIDIA Tokenized stock", type: "EQUITY" })).toBe(true)
-    // 100 €, 2 títulos, 0,92 € por 1 USD → total 108,6956 USD → 54,3478 / título
+  it("Alphabet/Google: EUR (ABEA.DE) primero y USD visible; .F cuenta como EUR", () => {
+    const hits = [
+      { symbol: "GOOG", name: "Alphabet Inc.", type: "EQUITY", exchange: "NMS" },
+      { symbol: "GOOGL", name: "Alphabet Inc.", type: "EQUITY", exchange: "NMS" },
+      { symbol: "ABEA.DE", name: "Alphabet Inc.", type: "EQUITY", exchange: "GER" },
+      { symbol: "ABEC.DE", name: "Alphabet Inc.", type: "EQUITY", exchange: "GER" },
+      { symbol: "ABEA.F", name: "Alphabet Inc.", type: "EQUITY", exchange: "FRA" },
+      { symbol: "RGOOGL-USD", name: "Google Tokenized Stock (Reality) USD", type: "CRYPTOCURRENCY", exchange: "CCC" },
+    ]
+    const out = filterSearchResults(hits, ["EQUITY", "ETF"])
+    expect(out.filter((r) => r.currency === "EUR").map((r) => r.symbol)).toEqual(
+      expect.arrayContaining(["ABEA.DE", "ABEC.DE", "ABEA.F"]),
+    )
+    expect(out.some((r) => r.symbol === "GOOGL" && r.currency === "USD")).toBe(true)
+    expect(out.every((r) => r.symbol !== "RGOOGL-USD")).toBe(true)
+    expect(guessCurrency({ symbol: "ABEA.F", name: "Alphabet", type: "EQUITY", exchange: "FRA" })).toBe("EUR")
+    expect(isCryptoOrTokenized({ symbol: "RGOOGL-USD", name: "Google Tokenized Stock", type: "CRYPTOCURRENCY" })).toBe(true)
     expect(buyPriceFromEurPaid(100, 2, 0.92)).toBeCloseTo(54.347826, 5)
   })
 })

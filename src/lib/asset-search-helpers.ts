@@ -7,7 +7,7 @@ const EUR_EXCHANGES = new Set([
   "DUS", "STU", "HAM", "MUN", "EUX", "PRA", "WSE", "ATH", "BUD", "TASE",
 ])
 const USD_EXCHANGES = new Set(["NYQ", "NMS", "NGM", "ASE", "PCX", "BTS", "NCM", "OQB", "NYSE", "NASDAQ"])
-const EUR_SUFFIX = /\.(DE|PA|AS|BR|LS|MI|MC|VI|HE|IR|BD|BE|TI)$/i
+const EUR_SUFFIX = /\.(DE|F|PA|AS|BR|LS|MI|MC|VI|HE|IR|BD|BE|TI)$/i
 
 /** Crypto o acciones tokenizadas que no deben salir en Acciones/ETF. */
 export function isCryptoOrTokenized(r: SearchHit): boolean {
@@ -38,7 +38,7 @@ export function filterSearchResults(
   opts: { hideCrypto?: boolean; limit?: number } = {},
 ): (SearchHit & { currency: string })[] {
   const hideCrypto = opts.hideCrypto ?? activeTypes.includes("EQUITY")
-  const limit = opts.limit ?? 8
+  const limit = opts.limit ?? 12
   let list = results.filter((r) => activeTypes.includes(r.type))
   if (hideCrypto) list = list.filter((r) => !isCryptoOrTokenized(r))
   const withCur = list.map((r) => ({ ...r, currency: guessCurrency(r) }))
