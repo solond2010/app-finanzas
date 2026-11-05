@@ -636,6 +636,19 @@ describe("findObservedNetWorthPeak", () => {
     const peak = findObservedNetWorthPeak([currentAccount], transactions, 1, new Date(2026, 10, 5))
     expect(peak?.value).toBe(1000)
   })
+
+  it("un traspaso el mismo día NO infla el pico a cierre+importe", () => {
+    const a = account({ id: "a1", saldo: 6306 })
+    const b = account({ id: "a2", saldo: 0, tipo: "ahorro" })
+    const tid = "xfer1"
+    const transactions = [
+      tx({ id: "g1", tipo: "gasto", monto: 5789.27, fecha: "2026-10-22", cuenta_id: "a1", categoria: "Transferencia", tags: ["traspaso", `traspaso:${tid}`] }),
+      tx({ id: "i1", tipo: "ingreso", monto: 5789.27, fecha: "2026-10-22", cuenta_id: "a2", categoria: "Transferencia", tags: ["traspaso", `traspaso:${tid}`] }),
+    ]
+    const peak = findObservedNetWorthPeak([a, b], transactions, 1, new Date(2026, 9, 22))
+    // Patrimonio neto = 6306; el bug sumaba el traspaso → ~12095.
+    expect(peak?.value).toBe(6306)
+  })
 })
 
 describe("buildNetWorthHistoryToday", () => {

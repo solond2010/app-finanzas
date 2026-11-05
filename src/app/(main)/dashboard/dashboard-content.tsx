@@ -637,25 +637,33 @@ function DashboardInner() {
   // de toda la vida (o la serie completa si aún no existe referencia guardada).
   const isAllTimeHigh = netWorthHasData && allTimeObservedPeak !== null && netWorthDisplay >= allTimeObservedPeak - 0.005
 
-  // Si el pico intradía del tramo supera el máximo guardado, subir la marca
-  // (aunque el pico antiguo sea de otra fecha fuera del rango visible).
+  // Recalcula el pico con el algoritmo corregido (puede bajar si el guardado
+  // quedó inflado por traspasos). Ventana amplia = fuente de verdad.
   useEffect(() => {
-    if (loading || !netWorthHasData || !observedIntradayPeak) return
-    if (storedNetWorthPeak && storedNetWorthPeak.value >= observedIntradayPeak.value - 0.005) return
+    if (loading || !netWorthHasData) return
+    const first = state.transactions.length > 0
+      ? state.transactions.reduce((oldest, t) => (t.fecha < oldest ? t.fecha : oldest), state.transactions[0].fecha)
+      : null
+    const from = first ? parseLocalDate(first) : today
+    const days = Math.min(1000, Math.max(1, Math.ceil((today.getTime() - from.getTime()) / 86400000) + 1))
+    const observed = findObservedNetWorthPeak(state.accounts, state.transactions, days, today)
+    if (!observed) return
+    if (storedNetWorthPeak && Math.abs(storedNetWorthPeak.value - observed.value) < 0.005 && storedNetWorthPeak.date === observed.date) return
+    // Solo escribir si cambia; replace permite corregir a la baja el 12k erróneo.
     let cancelled = false
-    import("@/lib/net-worth-snapshots").then(({ persistNetWorthPeakIfHigher }) =>
-      persistNetWorthPeakIfHigher({
-        value: observedIntradayPeak.value,
-        date: observedIntradayPeak.date,
-        label: observedIntradayPeak.label,
-      }).then((peak) => {
+    import("@/lib/net-worth-snapshots").then(({ replaceNetWorthPeak, persistNetWorthPeakIfHigher }) => {
+      const payload = { value: observed.value, date: observed.date, label: observed.label }
+      const op = storedNetWorthPeak && storedNetWorthPeak.value > observed.value + 0.005
+        ? replaceNetWorthPeak(payload)
+        : persistNetWorthPeakIfHigher(payload)
+      return op.then((peak) => {
         if (cancelled) return
         setStoredNetWorthPeak(peak)
         try { localStorage.setItem("netWorthPeak", JSON.stringify(peak)) } catch {}
       })
-    ).catch((error) => console.error("[Finance] No se pudo guardar el pico intradía:", error))
+    }).catch((error) => console.error("[Finance] No se pudo recalcular el pico histórico:", error))
     return () => { cancelled = true }
-  }, [loading, netWorthHasData, observedIntradayPeak, storedNetWorthPeak])
+  }, [loading, netWorthHasData, state.accounts, state.transactions, today, storedNetWorthPeak])
 
   // Si el máximo persistido cae dentro del tramo que acabamos de reconstruir,
   // sustituirlo por el máximo real de esa serie. Así se corrigen también los

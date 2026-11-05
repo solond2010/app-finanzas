@@ -114,6 +114,16 @@ export async function persistMergedNetWorthSnapshots(
   return merged
 }
 
+/** Sustituye el pico guardado (también a la baja) tras un recálculo fiable. */
+export async function replaceNetWorthPeak(peak: StoredNetWorthPeak): Promise<StoredNetWorthPeak> {
+  if (typeof window !== "undefined") {
+    try { window.localStorage.setItem("netWorthPeak", JSON.stringify(peak)) } catch {}
+  }
+  const saved = await setSetting(PEAK_KEY, JSON.stringify(peak))
+  if (!saved) throw new Error("No se pudo guardar el máximo histórico recalculado")
+  return peak
+}
+
 export async function persistNetWorthPeakIfHigher(peak: StoredNetWorthPeak): Promise<StoredNetWorthPeak> {
   const prev = await loadNetWorthPeak()
   if (prev && prev.value > peak.value) return prev
