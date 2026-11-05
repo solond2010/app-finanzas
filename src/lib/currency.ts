@@ -45,6 +45,10 @@ export function currencySymbol(currency: CurrencyCode) {
   return CURRENCY_SYMBOLS[currency] ?? "€"
 }
 
+export function eurPerUnit(currency: CurrencyCode) {
+  return EUR_RATES[currency]
+}
+
 export function convertToEur(amount: number, currency: CurrencyCode) {
   return amount * EUR_RATES[currency]
 }
