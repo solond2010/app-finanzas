@@ -24,6 +24,7 @@ import {
   buildPreciseNetWorthHistoryMonthly,
   buildNetWorthHistoryToday,
   buildNetWorthHistoryDaily,
+  findObservedNetWorthPeak,
   hasSyntheticOpeningBalanceResidual,
 } from "./calculations"
 import { getNetWorthChartDomain } from "./chart-scale"
@@ -608,6 +609,32 @@ describe("buildNetWorthHistoryDaily", () => {
     ]
     const rows = buildNetWorthHistoryDaily([currentAccount], transactions, 1, new Date(2026, 9, 6))
     expect(rows.map((row) => row.patrimonio)).toEqual([90])
+  })
+})
+
+
+describe("findObservedNetWorthPeak", () => {
+  it("el pico intradía (ingreso y luego gasto el mismo día) supera el cierre", () => {
+    // Cierre 6306 = 6456 − 150. Sin created_at: heurística cierre + gastos.
+    const currentAccount = account({ saldo: 6306 })
+    const transactions = [
+      tx({ id: "in", tipo: "ingreso", monto: 200, fecha: "2026-11-05" }),
+      tx({ id: "out", tipo: "gasto", monto: 150, fecha: "2026-11-05" }),
+    ]
+    const peak = findObservedNetWorthPeak([currentAccount], transactions, 1, new Date(2026, 10, 5))
+    expect(peak?.value).toBe(6456)
+    expect(peak?.date).toBe("2026-11-05")
+  })
+
+  it("con created_at usa el orden real del día", () => {
+    const currentAccount = account({ saldo: 900 })
+    const transactions = [
+      tx({ id: "in", tipo: "ingreso", monto: 200, fecha: "2026-11-05", created_at: "2026-11-05T09:00:00.000Z" }),
+      tx({ id: "out", tipo: "gasto", monto: 100, fecha: "2026-11-05", created_at: "2026-11-05T18:00:00.000Z" }),
+    ]
+    // Inicio 800 → +200 = 1000 → −100 = 900. Pico = 1000.
+    const peak = findObservedNetWorthPeak([currentAccount], transactions, 1, new Date(2026, 10, 5))
+    expect(peak?.value).toBe(1000)
   })
 })
 

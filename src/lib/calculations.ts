@@ -377,6 +377,57 @@ export function buildNetWorthHistoryDaily(accounts: Account[], transactions: Tra
   return points
 }
 
+/**
+ * Máximo patrimonio observado en un rango (incluye picos intradía).
+ * - Si hay `created_at`, camina el día en orden real.
+ * - Si no, usa el pico defendible «ingresos antes que gastos» (cierre + gastos del día).
+ * La serie 7D/30D puede seguir pintando solo el cierre; este valor alimenta
+ * el badge «máximo histórico» / «pico observado».
+ */
+export function findObservedNetWorthPeak(
+  accounts: Account[],
+  transactions: Transaction[],
+  days: number,
+  endDate = new Date(),
+): { value: number; date: string; label: string } | null {
+  if (days <= 0 || accounts.length === 0) return null
+  const daily = buildNetWorthHistoryDaily(accounts, transactions, days, endDate)
+  let best: { value: number; date: string; label: string } | null = null
+  const consider = (value: number, date: string, label: string) => {
+    if (!Number.isFinite(value)) return
+    const clean = label.replace(" · pico", "")
+    if (!best || value > best.value + 0.005) best = { value, date, label: clean }
+  }
+  for (const p of daily) {
+    if (p.date) consider(p.patrimonio, p.date, p.mes)
+  }
+
+  // Refinar con orden real cuando hay marcas de tiempo.
+  const txByAccount = groupByAccount(transactions)
+  const byDate = new Map<string, Transaction[]>()
+  for (const t of transactions) {
+    if (isSyntheticOpeningBalanceResidual(t)) continue
+    const key = t.fecha.slice(0, 10)
+    const arr = byDate.get(key)
+    if (arr) arr.push(t)
+    else byDate.set(key, [t])
+  }
+  for (let i = 0; i < days; i++) {
+    const d = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() - (days - 1 - i))
+    const dateKey = toDateKey(d)
+    const dayLabel = d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
+    const dayTx = (byDate.get(dateKey) ?? [])
+      .filter((t) => !!t.created_at)
+      .slice()
+      .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""))
+    if (dayTx.length === 0) continue
+    for (const t of dayTx) {
+      consider(getNetWorthAtMoment(accounts, txByAccount, dateKey, t.created_at ?? ""), dateKey, dayLabel)
+    }
+  }
+  return best
+}
+
 // Una transacción es "futura" respecto al instante (dateKey, createdAt) si es
 // de un día posterior, o del mismo día pero dada de alta después (empate
 // resuelto por `created_at`, no por `fecha`, que no tiene hora).

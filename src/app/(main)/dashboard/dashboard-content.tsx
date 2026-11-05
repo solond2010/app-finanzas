@@ -23,7 +23,7 @@ import { Skeleton } from "@/components/shared/skeleton"
 import { CircularProgress } from "@/components/ui/circular-progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
-import { filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getSavingsRate, getCurrencyByAccount, reportingAmount, buildNetWorthHistoryToday, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, countsTowardCashFlow, hasSyntheticOpeningBalanceResidual, isSyntheticOpeningBalanceResidual } from "@/lib/calculations"
+import { filterTransactionsByMonth, fundCurrentAmount, getAccountsAtMonth, getCategoryBreakdown, getEmergencyCushionStatus, getFinancialScore, getMonthTotalsByString, getNeedsVsWantsForMonth, getNetWorthAtMonth, getSavingsRate, getCurrencyByAccount, reportingAmount, buildNetWorthHistoryToday, buildPreciseNetWorthHistory, buildPreciseNetWorthHistoryMonthly, findObservedNetWorthPeak, countsTowardCashFlow, hasSyntheticOpeningBalanceResidual, isSyntheticOpeningBalanceResidual } from "@/lib/calculations"
 import { convertToEur, formatMoney } from "@/lib/currency"
 import { useFinance, type Account } from "@/lib/store"
 import { usePrivacy } from "@/lib/privacy"
@@ -525,13 +525,8 @@ function DashboardInner() {
   // solo para hallar el pico real, sin tocar el propio gráfico mensual.
   const currentMonthDailyPeak = useMemo(() => {
     if (monthOffset !== 0) return null
-    const daily = buildPreciseNetWorthHistory(
-      state.accounts,
-      state.transactions,
-      today.getDate(),
-      today
-    )
-    return daily.length === 0 ? null : daily.reduce((best, d) => (d.patrimonio > best.patrimonio ? d : best), daily[0])
+    const peak = findObservedNetWorthPeak(state.accounts, state.transactions, today.getDate(), today)
+    return peak ? { label: peak.label, patrimonio: peak.value, date: peak.date } : null
   }, [monthOffset, today, state.accounts, state.transactions])
 
   // Serie que se PINTA: en rangos por mes y "Todo", si el pico diario supera
@@ -602,17 +597,65 @@ function DashboardInner() {
   // Candidatos al máximo del rango: los puntos del propio gráfico, más (solo
   // para rangos por mes) el pico diario real del mes en curso.
   const maxCandidates = chartTrend.length > 0 ? chartTrend : netWorthTrend
-  const allTimeObservedPeak = storedNetWorthPeak?.value ?? (activeRange.unit === "all" && maxCandidates.length > 0 ? Math.max(...maxCandidates.map((point) => point.patrimonio)) : null)
+  // Pico intradía del tramo visible (cierres del gráfico pueden ser más bajos
+  // el mismo día si hubo ingreso y luego gasto). 7D/30D siguen pintando cierre.
+  const observedIntradayPeak = useMemo(() => {
+    if (!netWorthHasData) return null
+    let days: number
+    let end = monthOffset === 0 ? today : new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0)
+    if (activeRange.unit === "today") days = 1
+    else if (activeRange.unit === "days") days = activeRange.count
+    else if (activeRange.unit === "months") {
+      const from = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - activeRange.count + 1, 1)
+      days = Math.max(1, Math.ceil((end.getTime() - from.getTime()) / 86400000) + 1)
+    } else {
+      const first = state.transactions.length > 0
+        ? state.transactions.reduce((oldest, t) => (t.fecha < oldest ? t.fecha : oldest), state.transactions[0].fecha)
+        : null
+      if (!first) days = 30
+      else {
+        const from = parseLocalDate(first)
+        days = Math.min(1000, Math.max(1, Math.ceil((end.getTime() - from.getTime()) / 86400000) + 1))
+      }
+    }
+    return findObservedNetWorthPeak(state.accounts, state.transactions, days, end)
+  }, [netWorthHasData, activeRange, monthOffset, selectedDate, today, state.accounts, state.transactions])
+
+  const chartMaxPoint = netWorthHasData && maxCandidates.length > 0
+    ? maxCandidates.reduce((best, t) => (t.patrimonio > best.patrimonio ? t : best), maxCandidates[0])
+    : null
+  const rangeMaxPoint = (() => {
+    if (!netWorthHasData) return null
+    if (observedIntradayPeak && (!chartMaxPoint || observedIntradayPeak.value > chartMaxPoint.patrimonio + 0.005)) {
+      return { mes: observedIntradayPeak.label, patrimonio: observedIntradayPeak.value, date: observedIntradayPeak.date }
+    }
+    return chartMaxPoint
+  })()
+
+  const allTimeObservedPeak = storedNetWorthPeak?.value ?? (activeRange.unit === "all" && rangeMaxPoint ? rangeMaxPoint.patrimonio : null)
   // Solo afirmar "máximo histórico" cuando se compara contra el pico persistido
   // de toda la vida (o la serie completa si aún no existe referencia guardada).
   const isAllTimeHigh = netWorthHasData && allTimeObservedPeak !== null && netWorthDisplay >= allTimeObservedPeak - 0.005
-  // Punto más alto del rango visible y su etiqueta, para poder mostrar no solo
-  // cuánto se ha caído desde el máximo sino la cifra total que se llegó a
-  // tener (p.ej. "Máximo: 5.636 € el 8 jul"), sin tener que ir a Movimientos.
-  // Se muestra en todos los rangos, incluso si hoy es el propio máximo.
-  const rangeMaxPoint = netWorthHasData
-    ? maxCandidates.reduce((best, t) => (t.patrimonio > best.patrimonio ? t : best), maxCandidates[0])
-    : null
+
+  // Si el pico intradía del tramo supera el máximo guardado, subir la marca
+  // (aunque el pico antiguo sea de otra fecha fuera del rango visible).
+  useEffect(() => {
+    if (loading || !netWorthHasData || !observedIntradayPeak) return
+    if (storedNetWorthPeak && storedNetWorthPeak.value >= observedIntradayPeak.value - 0.005) return
+    let cancelled = false
+    import("@/lib/net-worth-snapshots").then(({ persistNetWorthPeakIfHigher }) =>
+      persistNetWorthPeakIfHigher({
+        value: observedIntradayPeak.value,
+        date: observedIntradayPeak.date,
+        label: observedIntradayPeak.label,
+      }).then((peak) => {
+        if (cancelled) return
+        setStoredNetWorthPeak(peak)
+        try { localStorage.setItem("netWorthPeak", JSON.stringify(peak)) } catch {}
+      })
+    ).catch((error) => console.error("[Finance] No se pudo guardar el pico intradía:", error))
+    return () => { cancelled = true }
+  }, [loading, netWorthHasData, observedIntradayPeak, storedNetWorthPeak])
 
   // Si el máximo persistido cae dentro del tramo que acabamos de reconstruir,
   // sustituirlo por el máximo real de esa serie. Así se corrigen también los
