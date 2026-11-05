@@ -202,7 +202,7 @@ export default function InversionesPage() {
                 </>}
                 {a.over && <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" />{lastAutoByAccount[a.id]
                   ? `Aporte de ${new Date(`${lastAutoByAccount[a.id]}T12:00:00`).toLocaleDateString("es-ES", { month: "long" })} aplicado sin saldo libre suficiente: actualiza el saldo de la cuenta.`
-                  : <>Las posiciones valen {money(a.positionsValue)}, más que el saldo. Actualiza el saldo en Cuentas o revisa las posiciones.</>}</p>}
+                  : <>Las posiciones ({money(a.positionsValue)}) superan bastante el saldo ({money(a.balance)}). Actualiza el saldo en Cuentas o revisa las posiciones.</>}</p>}
                 <Button variant="ghost" size="sm" className="mt-2 text-primary" onClick={() => openNew(a.id)}><Plus className="size-4" />{a.rows.length > 0 ? "Añadir posición aquí" : "Detallar en qué está invertido"}</Button>
               </div>
             )

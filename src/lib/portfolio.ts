@@ -168,7 +168,7 @@ export function computeInvestments(accounts: Account[], positions: Position[], q
     for (const r of rows) byClass.set(r.assetClass, (byClass.get(r.assetClass) ?? 0) + r.value * factor)
     return {
       id: a.id, name: a.nombre, bank: a.banco, color: a.color, balance, positionsValue,
-      unassigned: round2(Math.max(0, balance - positionsValue)), over: positionsValue > balance + 0.5,
+      unassigned: round2(Math.max(0, balance - positionsValue)), over: isSevereOver(positionsValue, balance),
       rows, gain: round2(rows.filter((r) => r.hasQuote).reduce((s, r) => s + r.gain, 0)),
     }
   }).sort((x, y) => y.balance - x.balance)
@@ -189,6 +189,16 @@ export function computeInvestments(accounts: Account[], positions: Position[], q
     total, assigned: round2(total - unassigned), unassigned, gain, gainPct: quotedInvested > 0 ? (gain / quotedInvested) * 100 : null,
     allocation, monthlyPlan: all.monthlyPlan, months: all.months,
   }
+}
+
+
+/** Desfase grande: posiciones > saldo por ≥50 € y ≥2 %. Debajo, ruido de cotización. */
+export function isSevereOver(positionsValue: number, balance: number): boolean {
+  const gap = positionsValue - balance
+  if (!(gap > 0.5)) return false
+  if (gap < 50) return false
+  if (balance > 0 && gap / balance < 0.02) return false
+  return true
 }
 
 // ── Venta de una posición ─────────────────────────────────────────────────

@@ -68,6 +68,14 @@ describe("computeInvestments", () => {
     expect(v.accounts[0].unassigned).toBe(0)
     expect(v.allocation.reduce((s, x) => s + x.value, 0)).toBeCloseTo(100, 2)
   })
+  it("desfase pequeño (<50 € o <2 %) no marca aviso fuerte", () => {
+    // 1030 vs 1000 → 30 € (<50) aunque sea >2 %
+    const soft = computeInvestments([acc({ saldo: 1000 })], [pos({ id: "p", symbol: "A", accountId: "a1", units: 103, buyPrice: 10 })], { A: { price: 10, currency: "EUR" } }, [])
+    expect(soft.accounts[0].over).toBe(false)
+    // 10100 vs 10000 → 100 € pero solo 1 %
+    const softPct = computeInvestments([acc({ saldo: 10000 })], [pos({ id: "p", symbol: "A", accountId: "a1", units: 1010, buyPrice: 10 })], { A: { price: 10, currency: "EUR" } }, [])
+    expect(softPct.accounts[0].over).toBe(false)
+  })
 })
 
 import { computeSale } from "./portfolio"
