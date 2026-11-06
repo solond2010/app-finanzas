@@ -8,7 +8,7 @@ import { salesHistory, useInvestmentSales } from "@/lib/investment-sales"
 import { useQuotes } from "@/lib/use-quotes"
 import { computeInvestments, freshnessLabel, looksLikeCode, type PortfolioRow, type SliceKey } from "@/lib/portfolio"
 import { useFinance } from "@/lib/store"
-import { money } from "@/lib/format"
+import { chartAxisFormatter, chartFormatter, money } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { Sensitive } from "@/components/shared/sensitive"
 import { Skeleton } from "@/components/shared/skeleton"
@@ -16,8 +16,13 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { PositionDialog } from "@/components/investments/position-dialog"
 import { PositionActionsDialog } from "@/components/investments/position-actions-dialog"
+import { NetWorthChart } from "@/components/dashboard/net-worth-chart"
+import { buildPreciseNetWorthHistory } from "@/lib/calculations"
+import { chartSeries } from "@/lib/net-worth-chart"
+import { usePrivacy } from "@/lib/privacy"
 import { convertToEur, type CurrencyCode } from "@/lib/currency"
-import { AlertTriangle, ChartPieSlice, HandCoins, PiggyBank, Plus, Repeat } from "@/components/icons"
+import { localDateKey } from "@/lib/date-utils"
+import { AlertTriangle, ChartPieSlice, HandCoins, PiggyBank, Plus, Repeat, TrendingUp } from "@/components/icons"
 import { AccountLogo } from "@/components/dashboard/account-logo"
 
 const CARD = "min-w-0 rounded-2xl border border-border/80 bg-card p-4 sm:p-5"
@@ -54,6 +59,18 @@ export default function InversionesPage() {
   }, [positions, quotes, update])
   const [dialog, setDialog] = useState<{ open: boolean; editing: Position | null; accountId?: string }>({ open: false, editing: null })
   const view = useMemo(() => computeInvestments(state.accounts, positions, quotes, contributions), [state.accounts, positions, quotes, contributions])
+  const { privacy } = usePrivacy()
+  const todayKey = localDateKey()
+  // Evolución del valor de las cuentas de inversión (mismo saldo que en Cuentas).
+  const portfolioSeries = useMemo(() => {
+    const ids = new Set(view.accounts.map((a) => a.id))
+    const invAccounts = state.accounts.filter((a) => ids.has(a.id))
+    if (invAccounts.length === 0) return { points: [], monthly: false as boolean }
+    const daily = buildPreciseNetWorthHistory(invAccounts, state.transactions, 180)
+    const points = daily.map((p) => ({ date: p.date, value: p.patrimonio, label: p.label }))
+    return chartSeries(points, todayKey)
+  }, [view.accounts, state.accounts, state.transactions, todayKey])
+  const portfolioHasChart = portfolioSeries.points.length >= 2 && portfolioSeries.points.some((p) => Math.abs(p.value) >= 0.5)
   const account = (id: string) => state.accounts.find((x) => x.id === id)
   const maxMonth = Math.max(...view.months.map((m) => m.amount), 1)
   const year12 = view.months.reduce((s, m) => s + m.amount, 0)
@@ -174,6 +191,25 @@ export default function InversionesPage() {
         </div>}
       </section>
 
+      {portfolioHasChart && (
+        <section className={CARD} aria-label="Evolución de la cartera">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><TrendingUp className="size-4 text-primary" aria-hidden />Evolución de la cartera</p>
+            <p className="text-xs text-muted-foreground">Valor de tus cuentas de inversión · pasa el dedo o el ratón para ver el detalle</p>
+          </div>
+          <div className="mt-3 h-44 sm:h-56">
+            <NetWorthChart
+              points={portfolioSeries.points}
+              monthly={portfolioSeries.monthly}
+              formatValue={chartFormatter}
+              formatAxis={chartAxisFormatter}
+              hideValues={privacy}
+              className="h-full"
+            />
+          </div>
+        </section>
+      )}
+
       <section className={cn("grid items-start gap-4", hasPositions && "lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]")}>
         <div className={cn("grid min-w-0 gap-4", !hasPositions && "md:grid-cols-2")}>
           {view.accounts.map((a) => {
@@ -267,6 +303,7 @@ export default function InversionesPage() {
                   <span className="block text-xs text-muted-foreground">
                     {new Date(`${r.date}T12:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
                     {r.units !== null ? <> · <Sensitive>{r.units.toLocaleString("es-ES", { maximumFractionDigits: 4 })}</Sensitive> uds.</> : " · venta anterior"}
+                    {r.commission != null && r.commission > 0 ? <> · comisión <Sensitive>{money(r.commission)}</Sensitive></> : null}
                   </span>
                 </span>
                 <span className="shrink-0 text-right">

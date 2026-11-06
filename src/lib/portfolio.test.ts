@@ -170,3 +170,26 @@ describe("sincronización segura", () => {
     expect(fresherDcaPosition(remote, local)).toBe(remote)
   })
 })
+
+
+import { effectiveBuyPrice, netSaleProceeds, parseOptionalCommission } from "./portfolio"
+
+describe("comisión en compra y venta", () => {
+  it("parsea comisión opcional", () => {
+    expect(parseOptionalCommission("")).toBe(0)
+    expect(parseOptionalCommission("  ")).toBe(0)
+    expect(parseOptionalCommission("5,5")).toBe(5.5)
+    expect(parseOptionalCommission("-1")).toBeNull()
+    expect(parseOptionalCommission("abc")).toBeNull()
+  })
+  it("incorpora la comisión al precio medio de compra", () => {
+    expect(effectiveBuyPrice(10, 100, 5, "EUR")).toBeCloseTo(10.05, 6)
+    expect(effectiveBuyPrice(10, 100, 0, "EUR")).toBe(10)
+  })
+  it("resta la comisión del importe de venta", () => {
+    expect(netSaleProceeds(260, 5)).toBe(255)
+    expect(computeSale({ units: 10, buyPrice: 20, currency: "EUR" }, 10, netSaleProceeds(260, 5)!)).toEqual({
+      unitsSold: 10, remainingUnits: 0, full: true, costBasis: 200, gain: 55,
+    })
+  })
+})

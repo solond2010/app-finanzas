@@ -6,14 +6,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useFinance } from "@/lib/store"
+import { useFinance, generateId } from "@/lib/store"
 import { useInvestments, dcaAnchorForDay, defaultAssetClass, ASSET_CLASS_LABELS, type AssetClass, type AssetKind, type DcaFreq, type Position } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/date-utils"
-import { convertToEur, eurPerUnit, type CurrencyCode } from "@/lib/currency"
+import { convertFromEur, convertToEur, eurPerUnit, type CurrencyCode } from "@/lib/currency"
 import { money } from "@/lib/format"
 import { buyPriceFromEurPaid, filterSearchResults, type SearchHit } from "@/lib/asset-search-helpers"
+import { effectiveBuyPrice, parseOptionalCommission } from "@/lib/portfolio"
 
 interface Selected { symbol: string; name: string; isin?: string; currency: string }
 
@@ -30,7 +31,7 @@ const TYPE_LABEL: Record<string, string> = { EQUITY: "Acción", ETF: "ETF", MUTU
 const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/
 
 export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, unassignedByAccount }: { open: boolean; onOpenChange: (o: boolean) => void; editing?: Position | null; defaultAccountId?: string; unassignedByAccount?: Record<string, number> }) {
-  const { state } = useFinance()
+  const { state, dispatch } = useFinance()
   const { add, update } = useInvestments()
   const { toast } = useToast()
 
@@ -57,6 +58,7 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
   const [accountId, setAccountId] = useState("")
   const [warned, setWarned] = useState(false)
   const [assetClass, setAssetClass] = useState<AssetClass>("acciones")
+  const [commission, setCommission] = useState("")
 
   const investAccounts = useMemo(() => {
     const inv = state.accounts.filter((a) => a.tipo === "inversion")
@@ -72,6 +74,7 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
       setQuery(""); setResults([])
       setPreexisting(false); setThisMonth("")
       setPaidInEur(false); setEurPaid(""); setFxRate("")
+      setCommission("")
       if (editing) {
         setKind(editing.kind)
         setSelected(editing.kind === "custom" ? null : { symbol: editing.symbol, name: editing.name, isin: editing.isin, currency: editing.currency })
@@ -165,7 +168,8 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
 
   // Comprar usa el dinero «sin asignar» de la cuenta: no cambia su saldo.
   const available = !editing && unassignedByAccount ? unassignedByAccount[accountId] : undefined
-  const costEur = Number(units) > 0 && Number(buyPrice) > 0 ? convertToEur(Number(units) * Number(buyPrice), (selected?.currency ?? currency) as CurrencyCode) : 0
+  const feePreview = parseOptionalCommission(commission) ?? 0
+  const costEur = Number(units) > 0 && Number(buyPrice) > 0 ? convertToEur(Number(units) * Number(buyPrice), (selected?.currency ?? currency) as CurrencyCode) + feePreview : 0
   const exceeds = available !== undefined && Number.isFinite(costEur) && costEur > available + 0.5
 
   // Mensual: se ancla al día elegido (sin aportes hacia atrás). Si no cambia
@@ -182,9 +186,11 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
   const dcaShort = dca && Number(dcaAmount) > 0 && freeNow !== undefined && convertToEur(Number(dcaAmount), (selected?.currency ?? currency) as CurrencyCode) > freeNow + 0.5
 
   const handleConfirm = () => {
-    const u = Number(units)
-    const p = Number(buyPrice)
+    const u = Number(units.replace(",", "."))
+    const p = Number(buyPrice.replace(",", "."))
     if (!u || u <= 0 || !p || p <= 0) { toast("Indica cantidad y precio de compra", "error"); return }
+    const fee = parseOptionalCommission(commission)
+    if (fee === null) { toast("La comisión no puede ser negativa", "error"); return }
     if (paidInEur && canPayInEur) {
       const e = Number(eurPaid.replace(",", "."))
       if (!(e > 0)) { toast("Indica el importe que aportaste en euros", "error"); return }
@@ -204,6 +210,11 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
       payload = { kind, symbol: selected.symbol, name: selected.name, isin: selected.isin, date, units: u, buyPrice: p, currency: selected.currency, accountId, assetClass, ...dcaFields }
     }
 
+    // La comisión se incorpora al precio medio: (precio×uds + comisión) / uds.
+    if (!editing && fee > 0) {
+      payload = { ...payload, buyPrice: effectiveBuyPrice(payload.buyPrice, payload.units, fee, payload.currency) }
+    }
+
     if (editing) {
       if (!update({ ...payload, id: editing.id })) { toast("No se pudo guardar de forma segura: falta espacio para la cola local", "error"); return }
       toast("Posición actualizada", "success")
@@ -211,6 +222,29 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
       const tm = Number(thisMonth.replace(",", "."))
       const { merged, saved } = add(payload, preexisting ? { preexisting: true, thisMonth: Number.isFinite(tm) && tm > 0 ? tm : 0, today: localDateKey() } : undefined)
       if (!saved) { toast("No se pudo guardar de forma segura: falta espacio para la cola local", "error"); return }
+      // La comisión sale del saldo de la cuenta (el broker la cobra del efectivo).
+      if (fee > 0 && accountId) {
+        const account = state.accounts.find((a) => a.id === accountId)
+        if (account) {
+          const monto = Math.round((account.currency === "EUR" ? fee : convertFromEur(fee, account.currency as CurrencyCode)) * 100) / 100
+          if (monto > 0) {
+            dispatch({
+              type: "ADD_TRANSACTION",
+              payload: {
+                id: generateId(),
+                cuenta_id: account.id,
+                monto,
+                fecha: date,
+                tipo: "gasto",
+                categoria: "Inversión",
+                es_necesidad: false,
+                descripcion: `Comisión ${payload.name}`,
+                tags: ["inversion", "comision"],
+              },
+            })
+          }
+        }
+      }
       toast(merged ? "Sumado a tu posición existente" : "Posición añadida", "success")
     }
     onOpenChange(false)
@@ -332,6 +366,19 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
               <Input type="number" inputMode="decimal" value={buyPrice} onChange={(e) => { setBuyPrice(e.target.value); if (paidInEur) setPaidInEur(false) }} placeholder="0" disabled={paidInEur && canPayInEur} />
             </div>
           </div>
+
+          {!editing && (
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Comisión (€, opcional)</label>
+              <Input inputMode="decimal" value={commission} onChange={(e) => setCommission(e.target.value)} placeholder="0" className="tabular-nums" />
+              {feePreview > 0 && Number(units.replace(",", ".")) > 0 && Number(buyPrice.replace(",", ".")) > 0 && (
+                <p className="text-[11px] text-muted-foreground">
+                  Se suma al coste: precio medio {effectiveBuyPrice(Number(buyPrice.replace(",", ".")), Number(units.replace(",", ".")), feePreview, (selected?.currency ?? currency)).toLocaleString("es-ES", { maximumFractionDigits: 6 })} {selected?.currency ?? currency}
+                  {" · "}sale {money(feePreview)} del saldo de la cuenta.
+                </p>
+              )}
+            </div>
+          )}
 
           {canPayInEur && !editing && (
             <div className="space-y-2 rounded-xl border border-border bg-background/40 p-3">

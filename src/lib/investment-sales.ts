@@ -16,8 +16,9 @@ export interface SaleRecord {
   code?: string | null
   date: string // YYYY-MM-DD
   units: number
-  received: number // EUR
+  received: number // EUR (neto tras comisión)
   gain: number // EUR (negativo = pérdida)
+  commission?: number // EUR, si hubo
   txId?: string // movimiento de ganancia/pérdida, si se apuntó
 }
 
@@ -29,6 +30,7 @@ export interface SaleView {
   units: number | null
   received: number | null
   gain: number
+  commission: number | null
   legacy: boolean // reconstruida a partir de un movimiento «Venta …» antiguo
 }
 
@@ -49,12 +51,12 @@ function mergeById(a: SaleRecord[], b: SaleRecord[]): SaleRecord[] {
 /** Ventas guardadas + ventas antiguas deducidas de movimientos «Venta …» (solo ganancia/pérdida). */
 export function salesHistory(sales: SaleRecord[], transactions: Transaction[], accounts: Account[], year: string) {
   const linked = new Set(sales.map((s) => s.txId).filter(Boolean))
-  const rows: SaleView[] = sales.map((s) => ({ id: s.id, name: s.name, code: s.code, date: s.date, units: s.units, received: s.received, gain: s.gain, legacy: false }))
+  const rows: SaleView[] = sales.map((s) => ({ id: s.id, name: s.name, code: s.code, date: s.date, units: s.units, received: s.received, gain: s.gain, commission: s.commission ?? null, legacy: false }))
   for (const t of transactions) {
     if (linked.has(t.id) || !t.descripcion?.startsWith("Venta ") || !(t.tags ?? []).includes("inversion")) continue
     const cur = accounts.find((a) => a.id === t.cuenta_id)?.currency ?? "EUR"
     const eur = convertToEur(Math.abs(t.monto), cur)
-    rows.push({ id: `tx:${t.id}`, name: t.descripcion.slice(6), date: t.fecha, units: null, received: null, gain: t.tipo === "ingreso" ? eur : -eur, legacy: true })
+    rows.push({ id: `tx:${t.id}`, name: t.descripcion.slice(6), date: t.fecha, units: null, received: null, gain: t.tipo === "ingreso" ? eur : -eur, commission: null, legacy: true })
   }
   rows.sort((a, b) => b.date.localeCompare(a.date))
   const realizedYear = rows.filter((r) => r.date.startsWith(year)).reduce((s, r) => s + r.gain, 0)

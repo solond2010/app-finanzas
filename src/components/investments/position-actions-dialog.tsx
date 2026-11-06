@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
 import { useInvestments, type Position } from "@/lib/investments"
 import { useFinance, generateId } from "@/lib/store"
-import { computeSale, saleTotalFromPrice, unitPriceFromTotal, type PortfolioRow } from "@/lib/portfolio"
+import { computeSale, netSaleProceeds, parseOptionalCommission, saleTotalFromPrice, unitPriceFromTotal, type PortfolioRow } from "@/lib/portfolio"
 import { convertFromEur } from "@/lib/currency"
 import { localDateKey } from "@/lib/date-utils"
 import { money } from "@/lib/format"
@@ -44,6 +44,7 @@ function Body({ position, row, onClose, onEdit, onSold }: { position: Position; 
   const [amount, setAmount] = useState(fmt(saleTotalFromPrice(position.units, row.price, cur)))
   const [driver, setDriver] = useState<"price" | "total">("price")
   const [record, setRecord] = useState(true)
+  const [commission, setCommission] = useState("")
 
   const applyUnits = (u: number, nextDriver: "price" | "total" = driver) => {
     const uu = Math.max(0, Math.min(position.units, u))
@@ -60,7 +61,10 @@ function Body({ position, row, onClose, onEdit, onSold }: { position: Position; 
   const onAmount = (v: string) => { setAmount(v); setDriver("total"); setPrice(fmt(unitPriceFromTotal(parseNum(v), parseNum(units), cur), 4)) }
 
   const account = state.accounts.find((a) => a.id === position.accountId)
-  const sale = computeSale(position, parseNum(units), parseNum(amount))
+  const fee = parseOptionalCommission(commission)
+  const gross = parseNum(amount)
+  const net = fee === null ? null : netSaleProceeds(gross, fee)
+  const sale = net === null ? null : computeSale(position, parseNum(units), net)
   const presets: { label: string; frac: number }[] = [
     { label: "25 %", frac: 0.25 },
     { label: "50 %", frac: 0.5 },
@@ -69,11 +73,11 @@ function Body({ position, row, onClose, onEdit, onSold }: { position: Position; 
   ]
 
   const confirmSale = () => {
-    if (!sale || !account) return
+    if (!sale || !account || fee === null || net === null || net < 0) return
     const ok = sale.full ? remove(position.id) : update({ ...position, units: sale.remainingUnits })
     if (!ok) { toast("No se pudo guardar de forma segura: falta espacio para la cola local", "error"); return }
     const txId = record && Math.abs(sale.gain) >= 0.01 ? generateId() : undefined
-    onSold?.({ id: generateId(), positionId: position.id, name: row?.name ?? position.name, code: row?.code, date: localDateKey(), units: sale.unitsSold, received: Math.round(parseNum(amount) * 100) / 100, gain: Math.round(sale.gain * 100) / 100, txId })
+    onSold?.({ id: generateId(), positionId: position.id, name: row?.name ?? position.name, code: row?.code, date: localDateKey(), units: sale.unitsSold, received: Math.round(net * 100) / 100, gain: Math.round(sale.gain * 100) / 100, commission: fee > 0 ? fee : undefined, txId })
     if (txId) {
       // Solo la ganancia/pérdida: lo invertido ya estaba en el saldo de la cuenta.
       const monto = Math.round(Math.abs(convertFromEur(sale.gain, account.currency)) * 100) / 100
@@ -177,10 +181,17 @@ function Body({ position, row, onClose, onEdit, onSold }: { position: Position; 
         </div>
         <p className="-mt-1 text-[11px] text-muted-foreground">{row.hasQuote ? "Precio de mercado de ahora; cámbialo si vendiste a otro. El importe se calcula solo." : "Sin cotización: partimos del precio de compra; pon el de tu venta."}</p>
 
-        {sale ? (
+        <label className="grid gap-1.5 text-sm">
+          <span className="text-xs text-muted-foreground">Comisión (€, opcional)</span>
+          <Input inputMode="decimal" value={commission} onChange={(e) => setCommission(e.target.value)} placeholder="0" className="tabular-nums" />
+        </label>
+
+        {sale && net !== null && fee !== null ? (
           <div className="rounded-xl border border-border bg-muted/30 p-3 text-sm">
             <div className="flex justify-between gap-3"><span className="text-muted-foreground">Coste proporcional</span><span className="tabular-nums">{money(sale.costBasis)}</span></div>
-            <div className="mt-1 flex justify-between gap-3"><span className="text-muted-foreground">Cobrado</span><span className="tabular-nums">{money(parseNum(amount))}</span></div>
+            <div className="mt-1 flex justify-between gap-3"><span className="text-muted-foreground">Cobrado bruto</span><span className="tabular-nums">{money(gross)}</span></div>
+            {fee > 0 && <div className="mt-1 flex justify-between gap-3"><span className="text-muted-foreground">Comisión</span><span className="tabular-nums">−{money(fee)}</span></div>}
+            <div className="mt-1 flex justify-between gap-3"><span className="text-muted-foreground">Neto</span><span className="tabular-nums">{money(net)}</span></div>
             <div className="mt-2 flex justify-between gap-3 border-t border-border/60 pt-2 font-semibold">
               <span>{sale.gain > 0 ? "Beneficio" : sale.gain < 0 ? "Pérdida" : "Sin cambio"}</span>
               <span className={cn("tabular-nums", gainTone)}>{signed(sale.gain)}</span>
@@ -193,7 +204,7 @@ function Body({ position, row, onClose, onEdit, onSold }: { position: Position; 
             </p>
           </div>
         ) : (
-          <p className="text-xs text-red-500" role="alert">Revisa el importe y las unidades (no puedes vender más de las que tienes).</p>
+          <p className="text-xs text-red-500" role="alert">{fee === null ? "La comisión no puede ser negativa." : net !== null && net < 0 ? "La comisión no puede ser mayor que lo cobrado." : "Revisa el importe y las unidades (no puedes vender más de las que tienes)."}</p>
         )}
 
         <label className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -203,7 +214,7 @@ function Body({ position, row, onClose, onEdit, onSold }: { position: Position; 
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={() => setMode("menu")}>Volver</Button>
-        <Button disabled={!sale} onClick={confirmSale}>Confirmar venta</Button>
+        <Button disabled={!sale || fee === null || (fee > 0 && net !== null && net < 0)} onClick={confirmSale}>Confirmar venta</Button>
       </DialogFooter>
     </>
   )

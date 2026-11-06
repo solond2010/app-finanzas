@@ -1,5 +1,5 @@
 import { assetClassOf, planOf, ASSET_CLASS_LABELS, type AssetClass, type Contribution, type Position } from "@/lib/investments"
-import { convertToEur, type CurrencyCode } from "@/lib/currency"
+import { convertFromEur, convertToEur, type CurrencyCode } from "@/lib/currency"
 import type { Account } from "@/lib/store"
 
 // Cálculos de la vista «Inversiones»: lo aportado frente a lo que vale hoy.
@@ -62,6 +62,38 @@ export function toEur(amount: number, currency: string): number {
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
+
+
+/** Comisión opcional en €: vacío → 0; negativa o no numérica → null. */
+export function parseOptionalCommission(raw: string): number | null {
+  const t = raw.trim().replace(/\s/g, "").replace(",", ".")
+  if (!t) return 0
+  const n = Number(t)
+  if (!Number.isFinite(n) || n < 0) return null
+  return Math.round(n * 100) / 100
+}
+
+/**
+ * Precio medio efectivo incluyendo comisión del broker (en €).
+ * (precio×unidades + comisión_en_divisa) / unidades.
+ */
+export function effectiveBuyPrice(unitPrice: number, units: number, commissionEur: number, currency: string): number {
+  if (!(units > 0) || !(unitPrice >= 0)) return unitPrice
+  const fee = Math.max(0, commissionEur || 0)
+  if (fee <= 0) return unitPrice
+  const feeInCurrency = currency === "EUR" ? fee : convertFromEur(fee, currency as CurrencyCode)
+  if (!Number.isFinite(feeInCurrency)) return unitPrice
+  return Math.round(((unitPrice * units + feeInCurrency) / units) * 1e8) / 1e8
+}
+
+/** Neto de una venta tras restar la comisión (ambos en €). */
+export function netSaleProceeds(grossEur: number, commissionEur: number): number | null {
+  if (!Number.isFinite(grossEur) || grossEur < 0) return null
+  const fee = Math.max(0, commissionEur || 0)
+  if (!Number.isFinite(fee)) return null
+  return round2(grossEur - fee)
+}
+
 
 function monthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
