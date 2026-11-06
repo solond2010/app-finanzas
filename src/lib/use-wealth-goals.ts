@@ -21,7 +21,13 @@ function emit(next: Snapshot) {
 function load() {
   if (inflight || snapshot.loaded) return
   inflight = dbSelect<Record<string, unknown>>("wealth_goals")
-    .then((rows) => emit({ goals: parseGoalRows(rows ?? []), loaded: true, failed: rows === null }))
+    .then((rows) => {
+      if (rows === null) {
+        emit({ ...snapshot, loaded: true, failed: true })
+        return
+      }
+      emit({ goals: parseGoalRows(rows), loaded: true, failed: false })
+    })
     .finally(() => { inflight = null })
 }
 

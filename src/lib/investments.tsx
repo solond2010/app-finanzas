@@ -475,9 +475,12 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
         if (raw) local = JSON.parse(raw) as Position[]
       } catch { /* ignore */ }
       let loadedPositions: Position[] = local
+      let investmentsFetched = false
       try {
         const data = await dbSelect<InvestmentRow>("investments")
+        // null = red/error: no tocar estado ni marcar seed (reintentaremos).
         if (data) {
+          investmentsFetched = true
           if (seed && data.length === 0 && local.length > 0 && !pendingRef.current.some((item) => item.table === "investments")) {
             local.forEach((position) => enqueue({ table: "investments", keyField: "id", key: position.id, operation: "upsert", row: toRow(position) }))
           }
@@ -523,7 +526,9 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
         }
       } catch { /* offline → local */ }
 
-      if (seed) seededRef.current = true
+      // Solo cerramos el seed si la nube respondió de verdad (array, aunque vacío).
+      // Si el GET falló, la próxima carga puede migrar local → nube.
+      if (seed && investmentsFetched) seededRef.current = true
       lastRefreshRef.current = Date.now()
     } finally {
       refreshingRef.current = false

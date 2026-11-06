@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { reducer, defaultState, collectDeletesFromAction, emptyPendingDeletes, type Account, type Transaction, type Category, type FinanceState } from "./store"
+import { reducer, defaultState, collectDeletesFromAction, emptyPendingDeletes, type Account, type Transaction, type Category, type FinanceState, hasRemoteData } from "./store"
 
 const baseAccount: Account = {
   id: "acc1",
@@ -298,5 +298,18 @@ describe("mergeDefaultCategories (categorías borradas no vuelven)", () => {
     const merged = mergeDefaultCategories([{ ...first, kind: undefined }, { id: "cat_x", name: "X", color: "#000" }])
     expect(merged[0].kind).toBe(first.kind)
     expect(merged[1].kind).toBe("both")
+  })
+})
+
+
+describe("hasRemoteData", () => {
+  const empty = { accounts: [], transactions: [], sinkingFunds: [], categories: [{ id: "c1", name: "X", kind: "both" as const }], budgets: [] }
+  it("no cuenta solo categorías como datos del usuario", () => {
+    expect(hasRemoteData(empty as never)).toBe(false)
+    expect(hasRemoteData(null)).toBe(false)
+  })
+  it("sí cuenta cuentas o movimientos", () => {
+    expect(hasRemoteData({ ...empty, accounts: [{ id: "a" }] } as never)).toBe(true)
+    expect(hasRemoteData({ ...empty, transactions: [{ id: "t" }] } as never)).toBe(true)
   })
 })

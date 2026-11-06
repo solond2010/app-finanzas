@@ -193,9 +193,14 @@ export function mergeDefaultCategories(loaded: Category[]): Category[] {
   })
 }
 
-/** ¿Hay datos del usuario en la nube? (también cuenta si solo tiene categorías). */
-function hasRemoteData(remote: FinanceState | null | undefined): remote is FinanceState {
-  return !!remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0 || remote.categories.length > 0)
+/**
+ * ¿Hay datos financieros del usuario en la nube?
+ * Solo cuentas / movimientos / fondos: las categorías por defecto NO cuentan.
+ * Si contaran, un remoto «vacío + categorías» impediría restaurar la copia
+ * local y re-subirla tras un wipe o un fallo parcial en el servidor.
+ */
+export function hasRemoteData(remote: FinanceState | null | undefined): remote is FinanceState {
+  return !!remote && (remote.accounts.length > 0 || remote.transactions.length > 0 || remote.sinkingFunds.length > 0)
 }
 
 type AccountRow = {

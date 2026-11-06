@@ -31,8 +31,13 @@ function load() {
     dbSelect<Record<string, unknown>>("asset_values").catch(() => null),
   ])
     .then(([a, d, v]) => {
+      // null = fallo de red/API: no interpretar como «sin datos» ni vaciar la UI.
+      if (a === null || d === null) {
+        emit({ ...snapshot, loaded: true })
+        return
+      }
       const values = parseAssetValues(v ?? [])
-      emit({ assets: withLatest(parseAssets(a ?? []), values), values, debts: parseDebts(d ?? []), loaded: true })
+      emit({ assets: withLatest(parseAssets(a), values), values, debts: parseDebts(d), loaded: true })
     })
     .finally(() => { inflight = null })
 }
