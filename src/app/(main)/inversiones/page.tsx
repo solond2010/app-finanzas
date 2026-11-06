@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { dcaPendingDates, planOf, useInvestments, type Position } from "@/lib/investments"
 import { useToast } from "@/components/ui/toast"
-import { salesHistory, useInvestmentSales } from "@/lib/investment-sales"
+import { fullySoldPositionIds, salesHistory, useInvestmentSales } from "@/lib/investment-sales"
 import { useQuotes } from "@/lib/use-quotes"
 import { computeInvestments, freshnessLabel, looksLikeCode, type PortfolioRow, type SliceKey } from "@/lib/portfolio"
 import { useFinance } from "@/lib/store"
@@ -42,7 +42,7 @@ const unitPrice = (n: number, cur: string) => `${n.toLocaleString("es-ES", { max
 export default function InversionesPage() {
   const router = useRouter()
   const { state, loading } = useFinance()
-  const { positions, contributions, loaded, update, applyDca, refresh } = useInvestments()
+  const { positions, contributions, loaded, update, applyDca, refresh, remove, retrySync } = useInvestments()
   const { quotes, ready } = useQuotes(positions)
   const { sales, addSale, refreshSales } = useInvestmentSales()
   // Al entrar en Inversiones: pedir de nuevo a la nube (otro dispositivo pudo vender/comprar).
@@ -50,6 +50,21 @@ export default function InversionesPage() {
     void refresh()
     void refreshSales({ pushLocalExtras: false })
   }, [refresh, refreshSales])
+
+  // Venta total registrada pero posición aún abierta (delete que no llegó a la nube):
+  // cerrarla y sincronizar. IREN y similares desaparecen al recargar sin acción manual.
+  const closedRef = useRef(new Set<string>())
+  useEffect(() => {
+    if (!loaded || sales.length === 0) return
+    const zombies = fullySoldPositionIds(positions, sales).filter((id) => !closedRef.current.has(id))
+    if (zombies.length === 0) return
+    let closed = 0
+    for (const id of zombies) {
+      closedRef.current.add(id)
+      if (remove(id)) closed++
+    }
+    if (closed > 0) retrySync()
+  }, [loaded, positions, sales, remove, retrySync])
   const year = String(new Date().getFullYear())
   const history = useMemo(() => salesHistory(sales, state.transactions, state.accounts, year), [sales, state.transactions, state.accounts, year])
   // Si una posición se guardó con el código como nombre, se guarda una vez el

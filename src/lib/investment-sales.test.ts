@@ -18,3 +18,26 @@ describe("historial de ventas", () => {
     expect(parseSales('[{"id":"x"}]')).toEqual([])
   })
 })
+
+import { fullySoldPositionIds } from "./investment-sales"
+
+describe("fullySoldPositionIds", () => {
+  it("marca como cerrada una posición cuyas ventas cubren todas las uds", () => {
+    expect(fullySoldPositionIds(
+      [{ id: "iren", units: 15.7 }],
+      [{ positionId: "iren", units: 15.7 }],
+    )).toEqual(["iren"])
+  })
+  it("no cierra venta parcial", () => {
+    expect(fullySoldPositionIds(
+      [{ id: "iren", units: 15.7 }],
+      [{ positionId: "iren", units: 5 }],
+    )).toEqual([])
+  })
+  it("suma varias ventas parciales hasta cerrar", () => {
+    expect(fullySoldPositionIds(
+      [{ id: "x", units: 10 }],
+      [{ positionId: "x", units: 4 }, { positionId: "x", units: 6 }],
+    )).toEqual(["x"])
+  })
+})

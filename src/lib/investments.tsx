@@ -353,13 +353,17 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const flushOutboxRef = useRef<() => Promise<void>>(async () => {})
+  // Si enqueue() llega mientras hay un flush en curso, marcamos para repetir:
+  // si no, el delete de una venta puede quedarse en la cola sin subir nunca.
+  const flushAgainRef = useRef(false)
   const flushOutbox = useCallback(async () => {
-    if (flushingRef.current) return
+    if (flushingRef.current) { flushAgainRef.current = true; return }
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       if (pendingRef.current.length) setSyncStatus("offline")
       return
     }
     flushingRef.current = true
+    flushAgainRef.current = false
     if (pendingRef.current.length) setSyncStatus("syncing")
     const resent = new Set<string>()
     try {
@@ -406,6 +410,10 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
       retryRef.current = setTimeout(() => { void flushOutboxRef.current() }, delay)
     } finally {
       flushingRef.current = false
+      if (flushAgainRef.current && pendingRef.current.length > 0) {
+        flushAgainRef.current = false
+        void flushOutboxRef.current()
+      }
     }
   }, [saveOutbox])
   useEffect(() => { flushOutboxRef.current = flushOutbox }, [flushOutbox])

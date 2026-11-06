@@ -100,7 +100,7 @@ function monthKey(date: Date) {
 }
 
 export function computePortfolio(positions: Position[], quotes: Record<string, Quote | undefined>, contributions: Contribution[], today: Date = new Date()): Portfolio {
-  const rows: PortfolioRow[] = positions.map((p) => {
+  const rows: PortfolioRow[] = positions.filter((p) => p.units > 1e-8).map((p) => {
     const q = p.kind === "custom" ? undefined : quotes[p.symbol]
     const hasQuote = !!q && Number.isFinite(q.price) && q.price > 0
     const invested = toEur(p.units * p.buyPrice, p.currency)

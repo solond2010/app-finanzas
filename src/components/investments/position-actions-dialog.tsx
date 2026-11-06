@@ -35,7 +35,7 @@ export function PositionActionsDialog({ position, row, onClose, onEdit, onSold }
 
 function Body({ position, row, onClose, onEdit, onSold }: { position: Position; row: PortfolioRow; onClose: () => void; onEdit: (p: Position) => void; onSold?: (s: SaleRecord) => void }) {
   const { state, dispatch } = useFinance()
-  const { remove, update } = useInvestments()
+  const { remove, update, retrySync } = useInvestments()
   const { toast } = useToast()
   const [mode, setMode] = useState<Mode>("menu")
   const cur = row.priceCurrency
@@ -74,8 +74,12 @@ function Body({ position, row, onClose, onEdit, onSold }: { position: Position; 
 
   const confirmSale = () => {
     if (!sale || !account || fee === null || net === null || net < 0) return
-    const ok = sale.full ? remove(position.id) : update({ ...position, units: sale.remainingUnits })
+    // Cerrar del todo si no quedan uds (también con restos de redondeo).
+    const closeFully = sale.full || sale.remainingUnits <= 1e-8
+    const ok = closeFully ? remove(position.id) : update({ ...position, units: sale.remainingUnits })
     if (!ok) { toast("No se pudo guardar de forma segura: falta espacio para la cola local", "error"); return }
+    // Empujar el delete/update a la nube ya (no dejarlo colgado si había otro flush).
+    retrySync()
     const txId = record && Math.abs(sale.gain) >= 0.01 ? generateId() : undefined
     onSold?.({ id: generateId(), positionId: position.id, name: row?.name ?? position.name, code: row?.code, date: localDateKey(), units: sale.unitsSold, received: Math.round(net * 100) / 100, gain: Math.round(sale.gain * 100) / 100, commission: fee > 0 ? fee : undefined, txId })
     if (txId) {
@@ -96,7 +100,7 @@ function Body({ position, row, onClose, onEdit, onSold }: { position: Position; 
         },
       })
     }
-    toast(sale.full ? "Posición vendida" : "Venta parcial registrada", "success")
+    toast(closeFully ? "Posición vendida" : "Venta parcial registrada", "success")
     onClose()
   }
 

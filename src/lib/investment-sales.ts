@@ -42,6 +42,30 @@ export function parseSales(raw: string | null | undefined): SaleRecord[] {
   } catch { return [] }
 }
 
+
+/**
+ * Posiciones abiertas que ya están totalmente cubiertas por ventas registradas
+ * (mismo positionId, uds vendidas ≥ uds actuales). Típico zombie tras una venta
+ * total cuyo delete no llegó a la nube.
+ */
+export function fullySoldPositionIds(
+  positions: { id: string; units: number }[],
+  sales: Pick<SaleRecord, "positionId" | "units">[],
+): string[] {
+  const soldByPos = new Map<string, number>()
+  for (const s of sales) {
+    if (!s.positionId || !Number.isFinite(s.units) || s.units <= 0) continue
+    soldByPos.set(s.positionId, (soldByPos.get(s.positionId) ?? 0) + s.units)
+  }
+  const out: string[] = []
+  for (const p of positions) {
+    if (!(p.units > 0)) { out.push(p.id); continue }
+    const sold = soldByPos.get(p.id) ?? 0
+    if (sold > 0 && sold >= p.units - 1e-6) out.push(p.id)
+  }
+  return out
+}
+
 function mergeById(a: SaleRecord[], b: SaleRecord[]): SaleRecord[] {
   const m = new Map<string, SaleRecord>()
   for (const s of [...a, ...b]) m.set(s.id, s)
