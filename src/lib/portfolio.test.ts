@@ -43,30 +43,70 @@ import type { Account } from "./store"
 const acc = (o: Partial<Account>): Account => ({ id: "a1", nombre: "Broker", tipo: "inversion", banco: "", saldo: 1000, currency: "EUR", objetivo: null, limite_mensual: null, color: "#000", ...o })
 
 describe("computeInvestments", () => {
-  it("el total es la suma de saldos de las cuentas de inversión; lo no asignado es su propia porción", () => {
+  it("sin asignar = saldo − coste (no MTM); el total es valor de mercado", () => {
+    // a1: coste 100, MTM 300 → efectivo 900; market 1200
+    // a2: sin posiciones → efectivo 500; market 500
     const v = computeInvestments(
       [acc({ id: "a1", saldo: 1000 }), acc({ id: "a2", saldo: 500 }), acc({ id: "g", tipo: "gastos", saldo: 9999 })],
       [pos({ id: "p1", symbol: "A", accountId: "a1" }), pos({ id: "p2", symbol: "Z", accountId: "borrada" })],
       { A: { price: 30, currency: "EUR" } }, [],
     )
-    expect(v.total).toBe(1500)
+    expect(v.capital).toBe(1500)
+    expect(v.total).toBe(1700)
     expect(v.accounts.map((a) => a.id)).toEqual(["a1", "a2"])
+    expect(v.accounts[0].positionsCost).toBe(100)
     expect(v.accounts[0].positionsValue).toBe(300)
-    expect(v.accounts[0].unassigned).toBe(700)
-    expect(v.unassigned).toBe(1200)
+    expect(v.accounts[0].unassigned).toBe(900)
+    expect(v.accounts[0].marketValue).toBe(1200)
+    expect(v.unassigned).toBe(1400)
     expect(v.assigned).toBe(300)
     expect(v.gain).toBe(200)
     expect(v.orphans.map((r) => r.id)).toEqual(["p2"])
     const sum = v.allocation.reduce((s, x) => s + x.value, 0)
-    expect(sum).toBeCloseTo(1500, 2)
-    expect(v.allocation[0]).toMatchObject({ key: "sin_asignar", value: 1200 })
+    expect(sum).toBeCloseTo(1700, 2)
+    expect(v.allocation[0]).toMatchObject({ key: "sin_asignar", value: 1400 })
   })
-  it("si las posiciones superan el saldo, el reparto no pasa del saldo", () => {
-    const v = computeInvestments([acc({ saldo: 100 })], [pos({ id: "p", symbol: "A", accountId: "a1" })], { A: { price: 20, currency: "EUR" } }, [])
-    expect(v.total).toBe(100)
+  it("las minusvalías no se convierten en efectivo falso", () => {
+    // saldo ≈ coste 3165; MTM 3040 → sin asignar ~0, no 125
+    const nvda = pos({ id: "n", symbol: "NVD.DE", name: "NVIDIA", accountId: "a1", units: 9.9074, buyPrice: 178.57 })
+    const meta = pos({ id: "m", symbol: "FB2A.DE", name: "Meta", accountId: "a1", units: 1.2706, buyPrice: 551.69 })
+    const googl = pos({ id: "g", symbol: "ABEA.DE", name: "Alphabet", accountId: "a1", units: 2.603, buyPrice: 267.19 })
+    const v = computeInvestments(
+      [acc({ id: "a1", saldo: 3165 })],
+      [nvda, meta, googl],
+      {
+        "NVD.DE": { price: 170.36, currency: "EUR" },
+        "FB2A.DE": { price: 544.1, currency: "EUR" },
+        "ABEA.DE": { price: 254, currency: "EUR" },
+      },
+      [],
+    )
+    const a = v.accounts[0]
+    expect(a.unassigned).toBeLessThan(1) // ~0 (redondeo)
+    expect(a.positionsValue).toBeCloseTo(3040.34, 1)
+    expect(a.marketValue).toBeCloseTo(a.positionsValue + a.unassigned, 2)
+    expect(a.marketValue).toBeLessThan(a.balance) // MTM < capital libro
+    expect(a.gain).toBeCloseTo(-125.31, 0)
+  })
+  it("si el coste supera el saldo, avisa; el reparto usa MTM real (no se recorta al saldo)", () => {
+    // coste 200, saldo 100, MTM 200 (precio = coste)
+    const v = computeInvestments([acc({ saldo: 100 })], [pos({ id: "p", symbol: "A", accountId: "a1", units: 20, buyPrice: 10 })], { A: { price: 10, currency: "EUR" } }, [])
+    expect(v.accounts[0].positionsCost).toBe(200)
     expect(v.accounts[0].over).toBe(true)
     expect(v.accounts[0].unassigned).toBe(0)
-    expect(v.allocation.reduce((s, x) => s + x.value, 0)).toBeCloseTo(100, 2)
+    expect(v.accounts[0].marketValue).toBe(200)
+    expect(v.total).toBe(200)
+    expect(v.allocation.reduce((s, x) => s + x.value, 0)).toBeCloseTo(200, 2)
+  })
+  it("una subida de cotización no marca over ni inventa caja negativa", () => {
+    // coste 100, MTM 200, saldo 100 → unassigned 0; over false (coste no supera saldo)
+    const v = computeInvestments([acc({ saldo: 100 })], [pos({ id: "p", symbol: "A", accountId: "a1" })], { A: { price: 20, currency: "EUR" } }, [])
+    expect(v.accounts[0].positionsCost).toBe(100)
+    expect(v.accounts[0].positionsValue).toBe(200)
+    expect(v.accounts[0].unassigned).toBe(0)
+    expect(v.accounts[0].over).toBe(false)
+    expect(v.accounts[0].marketValue).toBe(200)
+    expect(v.total).toBe(200)
   })
   it("desfase pequeño (<50 € o <2 %) no marca aviso fuerte", () => {
     // 1030 vs 1000 → 30 € (<50) aunque sea >2 %

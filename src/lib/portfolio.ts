@@ -150,9 +150,10 @@ export function computePortfolio(positions: Position[], quotes: Record<string, Q
 }
 
 // ── Inversiones por cuenta ────────────────────────────────────────────────
-// El saldo de cada cuenta de inversión (el mismo que en Cuentas) es la única
-// fuente de verdad del total. Las posiciones solo reparten ese dinero; lo que
-// no está en ninguna posición queda «Sin asignar». Así nunca se cuenta dos veces.
+// El saldo de Cuentas es capital/libro (lo aportado), no el valor de mercado.
+// «Sin asignar» = efectivo libre = max(0, saldo − Σ coste de posiciones).
+// Valor actual de la cuenta = Σ MTM + efectivo real. No se inventa caja para
+// cuadrar el saldo libro con el MTM (las minusvalías no son efectivo).
 
 export type SliceKey = AssetClass | "sin_asignar"
 
@@ -161,10 +162,12 @@ export type InvestmentAccountView = {
   name: string
   bank: string
   color: string
-  balance: number // €
-  positionsValue: number // €
-  unassigned: number // € (nunca negativo)
-  over: boolean // las posiciones valen más que el saldo
+  balance: number // € capital / saldo de Cuentas (libro)
+  positionsCost: number // € coste de adquisición de las posiciones
+  positionsValue: number // € valor de mercado (MTM)
+  marketValue: number // € MTM + efectivo real
+  unassigned: number // € efectivo libre (nunca negativo)
+  over: boolean // el coste de las posiciones supera bastante el saldo
   rows: PortfolioRow[]
   gain: number
 }
@@ -172,8 +175,9 @@ export type InvestmentAccountView = {
 export type InvestmentsView = {
   accounts: InvestmentAccountView[]
   orphans: PortfolioRow[] // posiciones sin cuenta (no suman al total)
-  total: number
-  assigned: number
+  total: number // valor de mercado (MTM + efectivo)
+  capital: number // suma de saldos libro de Cuentas
+  assigned: number // MTM de posiciones
   unassigned: number
   gain: number
   gainPct: number | null
@@ -193,20 +197,22 @@ export function computeInvestments(accounts: Account[], positions: Position[], q
   const views = invAccounts.map((a) => {
     const rows = positions.filter((p) => p.accountId === a.id).map((p) => rowById.get(p.id)!).sort((x, y) => y.value - x.value)
     const balance = round2(toEur(a.saldo, a.currency))
+    const positionsCost = round2(rows.reduce((s, r) => s + r.invested, 0))
     const positionsValue = round2(rows.reduce((s, r) => s + r.value, 0))
-    // Si las posiciones valen más que el saldo, se reparten proporcionalmente
-    // dentro del saldo para que el reparto siga sumando el total.
-    const factor = positionsValue > 0 ? Math.max(0, Math.min(1, balance / positionsValue)) : 0
-    for (const r of rows) byClass.set(r.assetClass, (byClass.get(r.assetClass) ?? 0) + r.value * factor)
+    const unassigned = round2(Math.max(0, balance - positionsCost))
+    const marketValue = round2(positionsValue + unassigned)
+    for (const r of rows) byClass.set(r.assetClass, (byClass.get(r.assetClass) ?? 0) + r.value)
     return {
-      id: a.id, name: a.nombre, bank: a.banco, color: a.color, balance, positionsValue,
-      unassigned: round2(Math.max(0, balance - positionsValue)), over: isSevereOver(positionsValue, balance),
+      id: a.id, name: a.nombre, bank: a.banco, color: a.color, balance, positionsCost, positionsValue, marketValue,
+      unassigned, over: isSevereOver(positionsCost, balance),
       rows, gain: round2(rows.filter((r) => r.hasQuote).reduce((s, r) => s + r.gain, 0)),
     }
-  }).sort((x, y) => y.balance - x.balance)
+  }).sort((x, y) => y.marketValue - x.marketValue)
 
-  const total = round2(views.reduce((s, v) => s + v.balance, 0))
+  const total = round2(views.reduce((s, v) => s + v.marketValue, 0))
+  const capital = round2(views.reduce((s, v) => s + v.balance, 0))
   const unassigned = round2(views.reduce((s, v) => s + v.unassigned, 0))
+  const assigned = round2(views.reduce((s, v) => s + v.positionsValue, 0))
   const quoted = views.flatMap((v) => v.rows).filter((r) => r.hasQuote)
   const gain = round2(quoted.reduce((s, r) => s + r.gain, 0))
   const quotedInvested = quoted.reduce((s, r) => s + r.invested, 0)
@@ -218,15 +224,15 @@ export function computeInvestments(accounts: Account[], positions: Position[], q
   return {
     accounts: views,
     orphans: positions.filter((p) => !p.accountId || !ids.has(p.accountId)).map((p) => rowById.get(p.id)!),
-    total, assigned: round2(total - unassigned), unassigned, gain, gainPct: quotedInvested > 0 ? (gain / quotedInvested) * 100 : null,
+    total, capital, assigned, unassigned, gain, gainPct: quotedInvested > 0 ? (gain / quotedInvested) * 100 : null,
     allocation, monthlyPlan: all.monthlyPlan, months: all.months,
   }
 }
 
 
-/** Desfase grande: posiciones > saldo por ≥50 € y ≥2 %. Debajo, ruido de cotización. */
-export function isSevereOver(positionsValue: number, balance: number): boolean {
-  const gap = positionsValue - balance
+/** Desfase grande: coste de posiciones > saldo por ≥50 € y ≥2 %. Debajo, ruido de redondeo. */
+export function isSevereOver(positionsCost: number, balance: number): boolean {
+  const gap = positionsCost - balance
   if (!(gap > 0.5)) return false
   if (gap < 50) return false
   if (balance > 0 && gap / balance < 0.02) return false

@@ -215,10 +215,10 @@ export default function InversionesPage() {
 
       <section className={cn("grid gap-4", hasPositions && "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]")}>
         <div className="min-w-0 rounded-2xl hero-panel p-4 sm:p-6">
-          <p className="page-section-label">Total invertido en tus cuentas</p>
+          <p className="page-section-label">Valor de mercado</p>
           <p className="hero-figure mt-1 text-[34px] font-bold leading-none tracking-tight tabular-nums sm:text-[42px]"><Sensitive>{money(view.total)}</Sensitive></p>
-          <p className="mt-2 text-sm text-muted-foreground">{view.accounts.length === 1 ? "1 cuenta de inversión" : `${view.accounts.length} cuentas de inversión`} · mismo saldo que en Cuentas</p>
-          {hasPositions && <p className="mt-3 text-xs text-muted-foreground"><Sensitive className="tabular-nums">{money(view.assigned)}</Sensitive> en posiciones · el resto, sin detallar</p>}
+          <p className="mt-2 text-sm text-muted-foreground">{view.accounts.length === 1 ? "1 cuenta de inversión" : `${view.accounts.length} cuentas de inversión`} · posiciones + efectivo real</p>
+          {hasPositions && <p className="mt-3 text-xs text-muted-foreground"><Sensitive className="tabular-nums">{money(view.assigned)}</Sensitive> en posiciones{view.unassigned > 0.005 ? <> · <Sensitive className="tabular-nums">{money(view.unassigned)}</Sensitive> sin asignar</> : null}{view.capital > 0 ? <> · <Sensitive className="tabular-nums">{money(view.capital)}</Sensitive> en cuenta</> : null}</p>}
         </div>
 
         {hasPositions && <div className="grid min-w-0 grid-cols-2 gap-4 lg:grid-cols-1">
@@ -257,7 +257,7 @@ export default function InversionesPage() {
       <section className={cn("grid items-start gap-4", hasPositions && "lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]")}>
         <div className={cn("grid min-w-0 gap-4", !hasPositions && "md:grid-cols-2")}>
           {view.accounts.map((a) => {
-            const share = a.balance > 0 ? Math.min(100, (a.positionsValue / a.balance) * 100) : 0
+            const share = a.marketValue > 0 ? Math.min(100, (a.positionsValue / a.marketValue) * 100) : 0
             return (
               <div key={a.id} className={CARD}>
                 <div className="flex items-start gap-3">
@@ -267,8 +267,12 @@ export default function InversionesPage() {
                     {a.bank && <p className="text-xs text-muted-foreground">{a.bank}</p>}
                   </div>
                   <div className="shrink-0 text-right">
-                    <Sensitive className="block text-lg font-bold tabular-nums text-foreground">{money(a.balance)}</Sensitive>
-                    <span className="text-[11px] text-muted-foreground">saldo</span>
+                    <Sensitive className="block text-lg font-bold tabular-nums text-foreground">{money(a.marketValue)}</Sensitive>
+                    <span className="text-[11px] text-muted-foreground">valor hoy</span>
+                    {a.rows.some((r) => r.hasQuote) && Math.abs(a.gain) >= 0.005 && (
+                      <span className={cn("block text-[11px] font-medium tabular-nums", tone(a.gain))}><Sensitive>{signed(a.gain)}</Sensitive></span>
+                    )}
+                    <span className="mt-0.5 block text-[11px] tabular-nums text-muted-foreground"><Sensitive>{money(a.balance)}</Sensitive> en cuenta</span>
                   </div>
                 </div>
                 {a.rows.length > 0 && <>
@@ -282,7 +286,7 @@ export default function InversionesPage() {
                 </>}
                 {a.over && <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" />{lastAutoByAccount[a.id]
                   ? `Aporte de ${new Date(`${lastAutoByAccount[a.id]}T12:00:00`).toLocaleDateString("es-ES", { month: "long" })} aplicado sin saldo libre suficiente: actualiza el saldo de la cuenta.`
-                  : <>Las posiciones ({money(a.positionsValue)}) superan bastante el saldo ({money(a.balance)}). Actualiza el saldo en Cuentas o revisa las posiciones.</>}</p>}
+                  : <>El coste de las posiciones ({money(a.positionsCost)}) supera bastante el saldo en cuenta ({money(a.balance)}). Actualiza el saldo en Cuentas o revisa las posiciones.</>}</p>}
                 <Button variant="ghost" size="sm" className="mt-2 text-primary" onClick={() => openNew(a.id)}><Plus className="size-4" />{a.rows.length > 0 ? "Añadir posición aquí" : "Detallar en qué está invertido"}</Button>
               </div>
             )
