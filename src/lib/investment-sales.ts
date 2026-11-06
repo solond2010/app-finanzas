@@ -65,22 +65,35 @@ export function salesHistory(sales: SaleRecord[], transactions: Transaction[], a
 
 export function useInvestmentSales() {
   const [sales, setSales] = useState<SaleRecord[]>([])
+
+  const refreshSales = useCallback(async (opts?: { pushLocalExtras?: boolean }) => {
+    let local: SaleRecord[] = []
+    try { local = parseSales(localStorage.getItem(SALES_KEY)) } catch {}
+    if (local.length) setSales(local)
+    try {
+      const remote = await getSetting(SALES_KEY)
+      if (remote === undefined) return // sin red / error: no pisar
+      const remoteParsed = parseSales(remote)
+      const merged = mergeById(remoteParsed, local)
+      setSales(merged)
+      try { localStorage.setItem(SALES_KEY, JSON.stringify(merged)) } catch {}
+      // Solo en la carga inicial empujamos ventas locales que la nube aún no tiene.
+      if (opts?.pushLocalExtras && merged.length > remoteParsed.length) {
+        void setSetting(SALES_KEY, JSON.stringify(merged))
+      }
+    } catch { /* offline */ }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
-    queueMicrotask(() => {
-      let local: SaleRecord[] = []
-      try { local = parseSales(localStorage.getItem(SALES_KEY)) } catch {}
-      if (!cancelled && local.length) setSales(local)
-      void getSetting(SALES_KEY).then((remote) => {
-        if (cancelled) return
-        const merged = mergeById(parseSales(remote), local)
-        setSales(merged)
-        try { localStorage.setItem(SALES_KEY, JSON.stringify(merged)) } catch {}
-        if (merged.length > parseSales(remote).length) void setSetting(SALES_KEY, JSON.stringify(merged))
-      }).catch(() => {})
-    })
-    return () => { cancelled = true }
-  }, [])
+    queueMicrotask(() => { if (!cancelled) void refreshSales({ pushLocalExtras: true }) })
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return
+      void refreshSales({ pushLocalExtras: false })
+    }
+    document.addEventListener("visibilitychange", onVisibility)
+    return () => { cancelled = true; document.removeEventListener("visibilitychange", onVisibility) }
+  }, [refreshSales])
 
   const addSale = useCallback((s: SaleRecord) => {
     setSales((prev) => {
@@ -93,5 +106,5 @@ export function useInvestmentSales() {
     })
   }, [])
 
-  return { sales, addSale }
+  return { sales, addSale, refreshSales }
 }

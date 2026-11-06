@@ -16,7 +16,7 @@ async function parseJson(res: Response) {
 
 export async function dbSelect<T>(table: string, fields = "*"): Promise<T[] | null> {
   try {
-    const res = await fetch(`/api/data/${table}?fields=${encodeURIComponent(fields)}`)
+    const res = await fetch(`/api/data/${table}?fields=${encodeURIComponent(fields)}`, { cache: "no-store" })
     if (!res.ok) return null
     const body = await parseJson(res)
     return (body?.data as T[]) ?? null
@@ -63,7 +63,7 @@ export async function dbDeleteIn(table: string, ids: string[]): Promise<void> {
 
 export async function settingsGet(key: string): Promise<string | null | undefined> {
   try {
-    const res = await fetch(`/api/settings/${encodeURIComponent(key)}`)
+    const res = await fetch(`/api/settings/${encodeURIComponent(key)}`, { cache: "no-store" })
     if (!res.ok) return undefined
     const body = await parseJson(res)
     if (body?.value === null || body?.value === undefined) return null

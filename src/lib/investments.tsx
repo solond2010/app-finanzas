@@ -283,6 +283,8 @@ interface InvestmentsContextValue {
   addContribution: (positionId: string, amount: number, date: string) => boolean
   syncStatus: InvestmentSyncStatus
   retrySync: () => void
+  /** Relée posiciones/aportes/watchlist desde el servidor (p. ej. al volver a la pestaña). */
+  refresh: () => Promise<void>
 }
 
 const InvestmentsContext = createContext<InvestmentsContextValue | null>(null)
@@ -427,34 +429,28 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     void flushOutbox()
   }, [flushOutbox])
 
-  useEffect(() => {
-    pendingRef.current = readInvestmentOutbox()
-    if (pendingRef.current.length) void flushOutbox()
-    const onOnline = () => retrySync()
-    const onOffline = () => { if (pendingRef.current.length) setSyncStatus("offline") }
-    window.addEventListener("online", onOnline)
-    window.addEventListener("offline", onOffline)
-    return () => {
-      window.removeEventListener("online", onOnline)
-      window.removeEventListener("offline", onOffline)
-      if (retryRef.current) clearTimeout(retryRef.current)
-    }
-  }, [flushOutbox, retrySync])
+  const seededRef = useRef(false)
+  const lastRefreshRef = useRef(0)
+  const refreshingRef = useRef(false)
 
-  useEffect(() => {
-    queueMicrotask(() => { void (async () => {
+  const refreshFromServer = useCallback(async (opts?: { seed?: boolean }) => {
+    const seed = opts?.seed === true && !seededRef.current
+    if (refreshingRef.current) return
+    refreshingRef.current = true
+    try {
+      // Watchlist
       let localWatch: WatchItem[] = []
       try {
         const wraw = localStorage.getItem(WATCH_KEY)
-        if (wraw) { localWatch = JSON.parse(wraw) as WatchItem[]; setWatchlist(localWatch) }
-      } catch {
-        // ignore
-      }
+        if (wraw) localWatch = JSON.parse(wraw) as WatchItem[]
+      } catch { /* ignore */ }
       try {
         const data = await dbSelect<{ symbol: string; name: string }>("watchlist")
         if (data) {
           let remote = data.map((w) => ({ symbol: w.symbol, name: w.name }))
-          if (data.length === 0 && localWatch.length > 0 && !pendingRef.current.some((item) => item.table === "watchlist")) {
+          // Solo en la 1ª carga: migrar local → nube si la tabla está vacía.
+          // En refetch, la nube manda (si otro dispositivo vació la lista, no la resucitamos).
+          if (seed && data.length === 0 && localWatch.length > 0 && !pendingRef.current.some((item) => item.table === "watchlist")) {
             remote = localWatch
             localWatch.forEach((w) => enqueue({ table: "watchlist", keyField: "symbol", key: w.symbol, operation: "upsert", row: { symbol: w.symbol, name: w.name } }))
           }
@@ -462,71 +458,114 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
           setWatchlist(remote)
           try { localStorage.setItem(WATCH_KEY, JSON.stringify(remote)) } catch {}
         }
-      } catch {
-        // sin tabla / sin red → seguimos solo con localStorage
-      }
+      } catch { /* offline → local */ }
+
+      // Posiciones
       let local: Position[] = []
       try {
         const raw = localStorage.getItem(STORAGE_KEY)
-        if (raw) { local = JSON.parse(raw) as Position[]; setPositions(local) }
-      } catch {
-        // ignore corrupt storage
-      }
+        if (raw) local = JSON.parse(raw) as Position[]
+      } catch { /* ignore */ }
       let loadedPositions: Position[] = local
       try {
         const data = await dbSelect<InvestmentRow>("investments")
-        if (!data) return
-        if (data.length === 0 && local.length > 0 && !pendingRef.current.some((item) => item.table === "investments")) {
-          // La tabla existe pero está vacía: migra lo que había en localStorage.
-          local.forEach((position) => enqueue({ table: "investments", keyField: "id", key: position.id, operation: "upsert", row: toRow(position) }))
+        if (data) {
+          if (seed && data.length === 0 && local.length > 0 && !pendingRef.current.some((item) => item.table === "investments")) {
+            local.forEach((position) => enqueue({ table: "investments", keyField: "id", key: position.id, operation: "upsert", row: toRow(position) }))
+          }
+          const remote = overlayPendingRows(data.map(fromRow), "investments", "id", pendingRef.current, (row) => fromRow(row as unknown as InvestmentRow))
+          loadedPositions = remote
+          setPositions(remote)
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(remote)) } catch {}
         }
-        const remote = overlayPendingRows(data.map(fromRow), "investments", "id", pendingRef.current, (row) => fromRow(row as unknown as InvestmentRow))
-        loadedPositions = remote
-        setPositions(remote)
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(remote)) } catch {}
-      } catch {
-        // Sin tabla / sin red → seguimos solo con localStorage.
-      }
+      } catch { /* offline → local */ }
 
+      // Aportes
       let localContrib: Contribution[] = []
       try {
         const craw = localStorage.getItem(CONTRIB_KEY)
-        if (craw) { localContrib = JSON.parse(craw) as Contribution[]; setContributions(localContrib) }
-      } catch {
-        // ignore corrupt storage
-      }
+        if (craw) localContrib = JSON.parse(craw) as Contribution[]
+      } catch { /* ignore */ }
       try {
         const data = await dbSelect<ContributionRow>("investment_contributions")
-        if (!data) return
-        let remote = data.map(contributionFromRow)
-        if (data.length === 0 && localContrib.length > 0 && !pendingRef.current.some((item) => item.table === "investment_contributions")) {
-          remote = localContrib
-          localContrib.forEach((contribution) => enqueue({ table: "investment_contributions", keyField: "id", key: contribution.id, operation: "upsert", row: contributionToRow(contribution) }))
+        if (data) {
+          let remote = data.map(contributionFromRow)
+          if (seed && data.length === 0 && localContrib.length > 0 && !pendingRef.current.some((item) => item.table === "investment_contributions")) {
+            remote = localContrib
+            localContrib.forEach((contribution) => enqueue({ table: "investment_contributions", keyField: "id", key: contribution.id, operation: "upsert", row: contributionToRow(contribution) }))
+          }
+          remote = overlayPendingRows(remote, "investment_contributions", "id", pendingRef.current, (row) => contributionFromRow(row as unknown as ContributionRow))
+          if (seed) {
+            const missing = loadedPositions
+              .filter((p) => !remote.some((c) => c.positionId === p.id))
+              .map((p) => ({
+                id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                positionId: p.id,
+                amount: p.units * p.buyPrice,
+                date: p.date,
+              }))
+            if (missing.length > 0) {
+              missing.forEach((contribution) => enqueue({ table: "investment_contributions", keyField: "id", key: contribution.id, operation: "upsert", row: contributionToRow(contribution) }))
+              remote = [...remote, ...missing]
+            }
+          }
+          remote = dedupeContributions(remote)
+          setContributions(remote)
+          try { localStorage.setItem(CONTRIB_KEY, JSON.stringify(remote)) } catch {}
         }
-        remote = overlayPendingRows(remote, "investment_contributions", "id", pendingRef.current, (row) => contributionFromRow(row as unknown as ContributionRow))
-        // Backfill: cada posición sin ningún aporte registrado (típicamente porque
-        // ya existía antes de esta función) recibe uno inicial con su compra
-        // original, para que el histórico mensual no empiece vacío.
-        const missing = loadedPositions
-          .filter((p) => !remote.some((c) => c.positionId === p.id))
-          .map((p) => ({
-            id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            positionId: p.id,
-            amount: p.units * p.buyPrice,
-            date: p.date,
-          }))
-        if (missing.length > 0) {
-          missing.forEach((contribution) => enqueue({ table: "investment_contributions", keyField: "id", key: contribution.id, operation: "upsert", row: contributionToRow(contribution) }))
-          remote = [...remote, ...missing]
-        }
-        remote = dedupeContributions(remote)
-        setContributions(remote)
-        try { localStorage.setItem(CONTRIB_KEY, JSON.stringify(remote)) } catch {}
-      } catch {
-        // Sin tabla / sin red → seguimos solo con localStorage.
-      }
-    })().finally(() => setLoaded(true)) })
+      } catch { /* offline → local */ }
+
+      if (seed) seededRef.current = true
+      lastRefreshRef.current = Date.now()
+    } finally {
+      refreshingRef.current = false
+      setLoaded(true)
+    }
   }, [enqueue])
+
+  const refresh = useCallback(async () => {
+    await refreshFromServer({ seed: false })
+  }, [refreshFromServer])
+
+  useEffect(() => {
+    pendingRef.current = readInvestmentOutbox()
+    if (pendingRef.current.length) void flushOutbox()
+    // Pintar lo local al instante; luego la nube (con migración solo la 1ª vez).
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) setPositions(JSON.parse(raw) as Position[])
+    } catch { /* ignore */ }
+    try {
+      const wraw = localStorage.getItem(WATCH_KEY)
+      if (wraw) setWatchlist(JSON.parse(wraw) as WatchItem[])
+    } catch { /* ignore */ }
+    try {
+      const craw = localStorage.getItem(CONTRIB_KEY)
+      if (craw) setContributions(JSON.parse(craw) as Contribution[])
+    } catch { /* ignore */ }
+    void refreshFromServer({ seed: true })
+
+    const onOnline = () => {
+      retrySync()
+      void refreshFromServer({ seed: false })
+    }
+    const onOffline = () => { if (pendingRef.current.length) setSyncStatus("offline") }
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return
+      const now = Date.now()
+      if (now - lastRefreshRef.current < 5000) return
+      void refreshFromServer({ seed: false })
+    }
+    window.addEventListener("online", onOnline)
+    window.addEventListener("offline", onOffline)
+    document.addEventListener("visibilitychange", onVisibility)
+    return () => {
+      window.removeEventListener("online", onOnline)
+      window.removeEventListener("offline", onOffline)
+      document.removeEventListener("visibilitychange", onVisibility)
+      if (retryRef.current) clearTimeout(retryRef.current)
+    }
+  }, [flushOutbox, retrySync, refreshFromServer])
 
   const persistLocal = (next: Position[]) => {
     setPositions(next)
@@ -629,7 +668,7 @@ export function InvestmentsProvider({ children }: { children: ReactNode }) {
     return due.length
   }
 
-  return <InvestmentsContext.Provider value={{ positions, loaded, add, update, remove, watchlist, addWatch, removeWatch, applyDca, contributions, addContribution, syncStatus, retrySync }}>{children}</InvestmentsContext.Provider>
+  return <InvestmentsContext.Provider value={{ positions, loaded, add, update, remove, watchlist, addWatch, removeWatch, applyDca, contributions, addContribution, syncStatus, retrySync, refresh }}>{children}</InvestmentsContext.Provider>
 }
 
 export function useInvestments() {

@@ -22,8 +22,9 @@ import { chartSeries } from "@/lib/net-worth-chart"
 import { usePrivacy } from "@/lib/privacy"
 import { convertToEur, type CurrencyCode } from "@/lib/currency"
 import { localDateKey } from "@/lib/date-utils"
-import { AlertTriangle, ChartPieSlice, HandCoins, PiggyBank, Plus, Repeat, TrendingUp } from "@/components/icons"
+import { AlertTriangle, ChartPieSlice, ChatText, HandCoins, PiggyBank, Plus, Repeat, TrendingUp } from "@/components/icons"
 import { AccountLogo } from "@/components/dashboard/account-logo"
+import { openFeedbackDialog } from "@/components/feedback/feedback-dialog"
 
 const CARD = "min-w-0 rounded-2xl border border-border/80 bg-card p-4 sm:p-5"
 const CLASS_COLORS: Record<SliceKey, string> = {
@@ -41,9 +42,14 @@ const unitPrice = (n: number, cur: string) => `${n.toLocaleString("es-ES", { max
 export default function InversionesPage() {
   const router = useRouter()
   const { state, loading } = useFinance()
-  const { positions, contributions, loaded, update, applyDca } = useInvestments()
+  const { positions, contributions, loaded, update, applyDca, refresh } = useInvestments()
   const { quotes, ready } = useQuotes(positions)
-  const { sales, addSale } = useInvestmentSales()
+  const { sales, addSale, refreshSales } = useInvestmentSales()
+  // Al entrar en Inversiones: pedir de nuevo a la nube (otro dispositivo pudo vender/comprar).
+  useEffect(() => {
+    void refresh()
+    void refreshSales({ pushLocalExtras: false })
+  }, [refresh, refreshSales])
   const year = String(new Date().getFullYear())
   const history = useMemo(() => salesHistory(sales, state.transactions, state.accounts, year), [sales, state.transactions, state.accounts, year])
   // Si una posición se guardó con el código como nombre, se guarda una vez el
@@ -116,6 +122,27 @@ export default function InversionesPage() {
     return out
   }, [contributions, positions])
   const hasPositions = view.accounts.some((a) => a.rows.length > 0)
+  const betaBanner = (
+    <div
+      role="status"
+      className="rounded-2xl border border-[color-mix(in_oklch,var(--gold),transparent_70%)] bg-[color-mix(in_oklch,var(--gold),transparent_92%)] px-3.5 py-3 sm:px-4"
+    >
+      <p className="text-sm leading-snug text-foreground">
+        <span className="font-semibold text-[var(--gold)]">Beta · </span>
+        Esta sección aún está en pruebas. Si ves un fallo o quieres añadir algo,{" "}
+        <button
+          type="button"
+          onClick={() => openFeedbackDialog()}
+          className="inline-flex items-center gap-1 font-semibold text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
+        >
+          <ChatText className="size-3.5 shrink-0" aria-hidden />
+          envíanos un comentario
+        </button>
+        {" "}(mismo botón del menú lateral).
+      </p>
+    </div>
+  )
+
   const header = (
     <header className="flex flex-wrap items-end justify-between gap-3">
       <div>
@@ -133,12 +160,13 @@ export default function InversionesPage() {
   )
 
   if (loading || !loaded || (positions.length > 0 && !ready)) {
-    return <div className="space-y-5">{header}<div className="grid gap-4 lg:grid-cols-[2fr_1fr]"><Skeleton className="h-56" /><Skeleton className="h-56" /></div><Skeleton className="h-72" /></div>
+    return <div className="space-y-4 sm:space-y-5">{header}{betaBanner}<div className="grid gap-4 lg:grid-cols-[2fr_1fr]"><Skeleton className="h-56" /><Skeleton className="h-56" /></div><Skeleton className="h-72" /></div>
   }
   if (view.accounts.length === 0) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-4 sm:space-y-5">
         {header}
+        {betaBanner}
         <EmptyState bordered icon={ChartPieSlice} title="Aún no tienes cuentas de inversión" description="Crea en Cuentas una cuenta de tipo «Inversión» (tu bróker, fondos…) con su saldo. Luego aquí podrás decir en qué acciones, fondos o ETF está ese dinero." action={{ label: "Ir a Cuentas", onClick: () => router.push("/cuentas#nueva") }} />
         {dialogEl}
       </div>
@@ -168,6 +196,7 @@ export default function InversionesPage() {
   return (
     <div className="space-y-4 sm:space-y-5">
       {header}
+      {betaBanner}
 
       <section className={cn("grid gap-4", hasPositions && "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]")}>
         <div className="min-w-0 rounded-2xl hero-panel p-4 sm:p-6">
