@@ -1,21 +1,24 @@
 import { NextResponse } from "next/server"
+import { LIVE_FX_CODES } from "@/lib/currency"
 
-// Tipos de cambio en vivo (base EUR) desde Frankfurter (frankfurter.dev),
-// que sirve tipos oficiales del BCE, es gratis y no requiere clave. Antes
-// estaban fijos a mano en currency.ts y nunca se actualizaban.
+// Tipos de cambio diarios agregados de proveedores oficiales vía Frankfurter.
 export async function GET() {
   try {
-    const res = await fetch("https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD,CHF", {
+    const quotes = LIVE_FX_CODES.join(",")
+    const res = await fetch(`https://api.frankfurter.dev/v2/rates?base=EUR&quotes=${quotes}`, {
       next: { revalidate: 3600 }, // los tipos de cambio no cambian de un minuto a otro
     })
     if (!res.ok) throw new Error(`Frankfurter respondió ${res.status}`)
-    const body = await res.json()
-    const usdPerEur = body.rates?.USD
-    const chfPerEur = body.rates?.CHF
-    if (typeof usdPerEur !== "number" || typeof chfPerEur !== "number") throw new Error("Respuesta inesperada")
+    const body = await res.json() as Array<{ quote?: string; rate?: number }>
+    const out: Record<string, number> = {}
+    for (const row of body) {
+      const perEur = row.rate
+      if (row.quote && typeof perEur === "number" && perEur > 0) out[row.quote] = 1 / perEur
+    }
+    if (Object.keys(out).length === 0) throw new Error("Respuesta inesperada")
     // La app guarda "cuántos euros vale 1 unidad de esa divisa" (EUR_RATES),
-    // así que se invierte: la API da "cuántos USD/CHF vale 1 EUR".
-    return NextResponse.json({ USD: 1 / usdPerEur, CHF: 1 / chfPerEur })
+    // así que se invierte: la API da "cuántas unidades de X vale 1 EUR".
+    return NextResponse.json(out)
   } catch {
     return NextResponse.json({ error: "No se pudieron obtener tipos de cambio en vivo" }, { status: 502 })
   }
