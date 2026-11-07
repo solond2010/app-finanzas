@@ -7,6 +7,7 @@ import { type Position } from "@/lib/investments"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
+import { CompanyLogo } from "@/components/investments/company-logo"
 
 interface Quote { price: number; changePct?: number | null; name?: string }
 
@@ -46,7 +47,7 @@ export function PositionDetailPanel({
       <div className="flex items-center justify-between gap-2">
         <button onClick={onBack} aria-label="Volver" className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"><ArrowLeft className="h-4 w-4" /></button>
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">{position.symbol.replace("custom:", "").slice(0, 2).toUpperCase()}</span>
+          <CompanyLogo name={displayName} symbol={position.symbol} crypto={position.kind === "crypto"} className="size-9" />
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-foreground">{displayName}</p>
             <p className="truncate text-xs text-muted-foreground">{position.isin ?? position.symbol}</p>

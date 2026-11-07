@@ -6,6 +6,7 @@ import { useInvestments, dcaPendingDates, dcaNextDate, dcaStreak, planOf } from 
 import { useToast } from "@/components/ui/toast"
 import { formatMoney, type CurrencyCode } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
+import { CompanyLogo } from "@/components/investments/company-logo"
 
 interface Quote { price: number; currency: string; changePct?: number | null }
 
@@ -54,7 +55,7 @@ export function DcaPanel({ quotes }: { quotes: Record<string, Quote> }) {
           const hasPending = pending.length > 0
           return (
             <div key={p.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/20 p-3">
-              <span className="gold-badge flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold">{p.symbol.replace("custom:", "").slice(0, 2).toUpperCase()}</span>
+              <CompanyLogo name={p.name} symbol={p.symbol} crypto={p.kind === "crypto"} className="size-9" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-foreground">{p.name}</p>
                 <p className="truncate text-xs text-muted-foreground">

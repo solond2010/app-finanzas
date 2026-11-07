@@ -5,6 +5,7 @@ import { Plus, Search, TrendingDown, TrendingUp, X } from "@/components/icons"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useInvestments, type WatchItem } from "@/lib/investments"
+import { CompanyLogo } from "@/components/investments/company-logo"
 
 interface Quote { price: number; currency: string; changePct?: number | null; name?: string }
 interface SearchResult { symbol: string; name: string; type: string }
@@ -33,7 +34,7 @@ function WatchCard({ item, quote, hist, onRemove }: { item: WatchItem; quote?: Q
     <div className="group relative w-[230px] shrink-0 rounded-[16px] border border-border bg-card p-4 transition-colors hover:border-foreground/15">
       <button onClick={onRemove} aria-label="Quitar de la lista" className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"><X className="h-3.5 w-3.5" /></button>
       <div className="flex items-center gap-2.5">
-        <span className="gold-badge flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold">{item.symbol.slice(0, 2).toUpperCase()}</span>
+        <CompanyLogo name={displayName} symbol={item.symbol} className="size-8" />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
           <p className="truncate text-xs text-muted-foreground">{item.symbol}</p>
@@ -91,7 +92,7 @@ function WatchlistAddDialog({ open, onOpenChange }: { open: boolean; onOpenChang
           <div className="overflow-hidden rounded-2xl border border-border">
             {results.map((r) => (
               <button key={r.symbol} onClick={() => { addWatch({ symbol: r.symbol, name: r.name }); onOpenChange(false) }} className="flex w-full items-center gap-3 border-b border-border px-3 py-2 text-left last:border-0 hover:bg-muted/60">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-[10px] font-bold text-muted-foreground">{r.symbol.slice(0, 2)}</span>
+                <CompanyLogo name={r.name} symbol={r.symbol} className="size-7" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-foreground">{r.symbol}</span>
                   <span className="block truncate text-xs text-muted-foreground">{r.name}</span>

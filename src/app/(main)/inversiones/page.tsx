@@ -24,6 +24,7 @@ import { convertToEur, type CurrencyCode } from "@/lib/currency"
 import { localDateKey } from "@/lib/date-utils"
 import { AlertTriangle, ChartPieSlice, ChatText, HandCoins, PiggyBank, Plus, Repeat, TrendingUp } from "@/components/icons"
 import { AccountLogo } from "@/components/dashboard/account-logo"
+import { CompanyLogo } from "@/components/investments/company-logo"
 import { openFeedbackDialog } from "@/components/feedback/feedback-dialog"
 
 const CARD = "min-w-0 rounded-2xl border border-border/80 bg-card p-4 sm:p-5"
@@ -193,7 +194,13 @@ export default function InversionesPage() {
   const positionRow = (r: PortfolioRow, orphan = false) => (
     <li key={r.id}>
       <button type="button" onClick={() => openEdit(r.id, orphan)} className="flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-        <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: CLASS_COLORS[r.assetClass] }} aria-hidden />
+        <CompanyLogo
+          name={r.name}
+          symbol={r.code?.split(" · ")[0]}
+          crypto={r.assetClass === "cripto"}
+          accent={CLASS_COLORS[r.assetClass]}
+          className="size-7 sm:size-8"
+        />
         <span className="min-w-0 flex-1">
           <span className="line-clamp-2 block break-words text-sm font-medium text-foreground">{r.name}</span>
           {r.code && <span className="block truncate font-mono text-[10px] text-muted-foreground/80">{r.code}</span>}
