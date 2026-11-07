@@ -14,6 +14,8 @@ import { useToast } from "@/components/ui/toast"
 import { Upload, X, AlertCircle, Check, Palette } from "@/components/icons"
 import { parseAmount } from "@/lib/validation"
 import { ACCOUNT_COLORS, accountColor, isHexColor, normalizeHex, readableOn } from "@/lib/account-colors"
+import { INTEREST_FREQUENCIES, type InterestFrequency } from "@/lib/remunerated-accounts"
+import { localDateKey } from "@/lib/date-utils"
 
 const COLORS = ACCOUNT_COLORS.map((c) => c.hex)
 
@@ -37,6 +39,11 @@ export function AccountDialog({
   const [currency, setCurrency] = useState<Account["currency"]>(account?.currency ?? "EUR")
   const [objetivo, setObjetivo] = useState(String(account?.objetivo ?? ""))
   const [limiteMensual, setLimiteMensual] = useState(String(account?.limite_mensual ?? ""))
+  const [interestTae, setInterestTae] = useState(account?.interest_tae == null ? "" : String(account.interest_tae))
+  const [interestFrequency, setInterestFrequency] = useState<InterestFrequency>(account?.interest_frequency ?? "monthly")
+  const [interestStartDate, setInterestStartDate] = useState(account?.interest_start_date ?? localDateKey())
+  const [interestLastPaymentDate, setInterestLastPaymentDate] = useState(account?.interest_last_payment_date ?? "")
+  const [interestBalanceCap, setInterestBalanceCap] = useState(account?.interest_balance_cap == null ? "" : String(account.interest_balance_cap))
   const [color, setColor] = useState(account ? accountColor(account) : COLORS[0])
   const [logoUrl, setLogoUrl] = useState(account?.logoUrl ?? "")
   const [bankQuery, setBankQuery] = useState("")
@@ -64,6 +71,11 @@ export function AccountDialog({
       setCurrency(account?.currency ?? "EUR")
       setObjetivo(String(account?.objetivo ?? ""))
       setLimiteMensual(String(account?.limite_mensual ?? ""))
+      setInterestTae(account?.interest_tae == null ? "" : String(account.interest_tae))
+      setInterestFrequency(account?.interest_frequency ?? "monthly")
+      setInterestStartDate(account?.interest_start_date ?? localDateKey())
+      setInterestLastPaymentDate(account?.interest_last_payment_date ?? "")
+      setInterestBalanceCap(account?.interest_balance_cap == null ? "" : String(account.interest_balance_cap))
       setColor(account ? accountColor(account) : COLORS[0])
       setLogoUrl(account?.logoUrl ?? "")
     })
@@ -109,6 +121,39 @@ export function AccountDialog({
       parsedLimite = n
     }
 
+    let parsedInterestTae: number | null = null
+    if (tipo === "remunerada" && interestTae.trim() !== "") {
+      const value = Number(interestTae.replace(",", "."))
+      if (!Number.isFinite(value) || value < 0 || value > 100) { setError("La TAE debe estar entre 0 % y 100 %."); return }
+      parsedInterestTae = value
+    }
+
+    let parsedInterestCap: number | null = null
+    if (tipo === "remunerada" && interestBalanceCap.trim() !== "") {
+      const value = parseAmount(interestBalanceCap)
+      if (!value) { setError("El tope remunerado debe ser mayor que 0 (o déjalo vacío). "); return }
+      parsedInterestCap = value
+    }
+    if (tipo === "remunerada" && parsedInterestTae !== null && !interestStartDate && !interestLastPaymentDate) {
+      setError("Indica desde qué fecha debe calcularse la estimación.")
+      return
+    }
+
+    const interestColumnsExist = account && (
+      account.interest_tae !== undefined || account.interest_frequency !== undefined ||
+      account.interest_start_date !== undefined || account.interest_last_payment_date !== undefined ||
+      account.interest_balance_cap !== undefined
+    )
+    const interestSettings = (tipo === "remunerada" && parsedInterestTae !== null) || interestColumnsExist
+      ? {
+          interest_tae: tipo === "remunerada" ? parsedInterestTae : null,
+          interest_frequency: tipo === "remunerada" ? interestFrequency : null,
+          interest_start_date: tipo === "remunerada" ? (interestStartDate || null) : null,
+          interest_last_payment_date: tipo === "remunerada" ? (interestLastPaymentDate || null) : null,
+          interest_balance_cap: tipo === "remunerada" ? parsedInterestCap : null,
+        }
+      : {}
+
     onSave({
       id: account?.id ?? generateId(),
       nombre: nombre.trim(),
@@ -120,6 +165,7 @@ export function AccountDialog({
       limite_mensual: parsedLimite,
       color,
       logoUrl,
+      ...interestSettings,
     })
   }
 
@@ -218,7 +264,7 @@ export function AccountDialog({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="p-2">
+                <SelectContent className="max-h-[min(60vh,320px)] p-2">
                   {CURRENCY_OPTIONS.map((option) => (
                     <SelectItem key={option.code} value={option.code}>
                       {option.label}
@@ -293,6 +339,44 @@ export function AccountDialog({
               <Input type="number" value={limiteMensual} onChange={(e) => setLimiteMensual(e.target.value)} placeholder="Ej: 2000" />
               <p className="text-[11px] leading-4 text-muted-foreground">Tope de gasto al mes para esta cuenta. Te avisamos al llegar al 80 % y si lo pasas.</p>
             </div>
+          )}
+          {tipo === "remunerada" && (
+            <section className="space-y-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.035] p-4 sm:col-span-2">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold text-foreground">Intereses de la cuenta</h3>
+                  <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-600 dark:text-cyan-300">Opcional</span>
+                </div>
+                <p className="text-xs leading-5 text-muted-foreground">Consulta una estimación según tu saldo y las condiciones del banco. No cambia el saldo ni registra ingresos automáticamente.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label htmlFor="account-interest-tae" className="text-xs text-muted-foreground">TAE anual (%)</label>
+                  <Input id="account-interest-tae" type="number" min="0" max="100" step="0.01" inputMode="decimal" value={interestTae} onChange={(e) => setInterestTae(e.target.value)} placeholder="Ej.: 2,50" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">Frecuencia del abono</label>
+                  <Select value={interestFrequency} onValueChange={(value) => setInterestFrequency(value as InterestFrequency)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{INTEREST_FREQUENCIES.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="account-interest-start" className="text-xs text-muted-foreground">Calcular desde</label>
+                  <Input id="account-interest-start" type="date" value={interestStartDate} onChange={(e) => setInterestStartDate(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="account-interest-last-payment" className="text-xs text-muted-foreground">Último abono de intereses</label>
+                  <Input id="account-interest-last-payment" type="date" value={interestLastPaymentDate} onChange={(e) => setInterestLastPaymentDate(e.target.value)} />
+                  <p className="text-[11px] leading-4 text-muted-foreground">Actualízalo cuando registres un abono real. Déjalo vacío si aún no te han pagado.</p>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label htmlFor="account-interest-cap" className="text-xs text-muted-foreground">Saldo máximo remunerado ({currencySymbol(currency)})</label>
+                  <Input id="account-interest-cap" type="number" min="0" step="0.01" inputMode="decimal" value={interestBalanceCap} onChange={(e) => setInterestBalanceCap(e.target.value)} placeholder="Sin límite" />
+                  <p className="text-[11px] leading-4 text-muted-foreground">Opcional. Si el banco remunera todo el saldo, déjalo vacío.</p>
+                </div>
+              </div>
+            </section>
           )}
           {error && (
             <p className="flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-500">

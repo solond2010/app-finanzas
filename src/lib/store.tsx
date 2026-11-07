@@ -7,6 +7,7 @@ import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
 import { type CurrencyCode, refreshExchangeRates } from "./currency"
 import { buildPreciseNetWorthHistory, hasTransferPair, isTransfer } from "./calculations"
 import { localDateKey, parseLocalDate } from "./date-utils"
+import type { InterestFrequency } from "./remunerated-accounts"
 
 export interface Account {
   id: string
@@ -20,6 +21,12 @@ export interface Account {
   color: string
   /** Logo subido por el usuario (Supabase Storage). Si no hay, se usa el logo de un banco reconocido o un icono por tipo. */
   logoUrl?: string
+  /** Parámetros opcionales de una cuenta remunerada; las estimaciones nunca forman parte del saldo. */
+  interest_tae?: number | null
+  interest_frequency?: InterestFrequency | null
+  interest_start_date?: string | null
+  interest_last_payment_date?: string | null
+  interest_balance_cap?: number | null
 }
 
 export interface Transaction {
@@ -214,6 +221,11 @@ type AccountRow = {
   limite_mensual: number | string | null
   color: string | null
   logo_url?: string | null
+  interest_tae?: number | string | null
+  interest_frequency?: InterestFrequency | null
+  interest_start_date?: string | null
+  interest_last_payment_date?: string | null
+  interest_balance_cap?: number | string | null
 }
 
 type TransactionRow = {
@@ -1053,7 +1065,18 @@ function isFinanceState(value: unknown): value is FinanceState {
 
 
 function formatAccount(a: AccountRow): Account {
-  return { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco ?? "", saldo: Number(a.saldo), currency: a.currency ?? "EUR", objetivo: a.objetivo ? Number(a.objetivo) : null, limite_mensual: a.limite_mensual ? Number(a.limite_mensual) : null, color: a.color ?? "", logoUrl: a.logo_url ?? undefined }
+  const account: Account = { id: a.id, nombre: a.nombre, tipo: a.tipo, banco: a.banco ?? "", saldo: Number(a.saldo), currency: a.currency ?? "EUR", objetivo: a.objetivo ? Number(a.objetivo) : null, limite_mensual: a.limite_mensual ? Number(a.limite_mensual) : null, color: a.color ?? "", logoUrl: a.logo_url ?? undefined }
+  // En despliegues antiguos las columnas aún pueden no existir. Mantenerlas
+  // como `undefined` evita que la sincronización envíe campos inexistentes;
+  // cuando la migración ya se aplicó, la API devuelve las columnas aunque sean null.
+  if ("interest_tae" in a || "interest_frequency" in a || "interest_start_date" in a || "interest_last_payment_date" in a || "interest_balance_cap" in a) {
+    account.interest_tae = a.interest_tae == null ? null : Number(a.interest_tae)
+    account.interest_frequency = a.interest_frequency ?? null
+    account.interest_start_date = a.interest_start_date ?? null
+    account.interest_last_payment_date = a.interest_last_payment_date ?? null
+    account.interest_balance_cap = a.interest_balance_cap == null ? null : Number(a.interest_balance_cap)
+  }
+  return account
 }
 
 function normalizeFinanceState(state: FinanceState): FinanceState {
@@ -1129,6 +1152,13 @@ function unformatAccount(a: Account) {
   // en vez de `!== undefined` haría que quitar el logo (string vacío) nunca
   // se enviara, dejando el logo antiguo huérfano en Supabase.
   if (a.logoUrl !== undefined) base.logo_url = a.logoUrl || null
+  if (a.interest_tae !== undefined || a.interest_frequency !== undefined || a.interest_start_date !== undefined || a.interest_last_payment_date !== undefined || a.interest_balance_cap !== undefined) {
+    base.interest_tae = a.interest_tae ?? null
+    base.interest_frequency = a.interest_frequency ?? null
+    base.interest_start_date = a.interest_start_date ?? null
+    base.interest_last_payment_date = a.interest_last_payment_date ?? null
+    base.interest_balance_cap = a.interest_balance_cap ?? null
+  }
   return base
 }
 

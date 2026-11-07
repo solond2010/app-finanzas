@@ -17,6 +17,7 @@ import { accountColor } from "@/lib/account-colors"
 import { monthlyLimitStatus } from "@/lib/monthly-limit"
 import { AccountDot } from "@/components/dashboard/account-dot"
 import { useToast } from "@/components/ui/toast"
+import { RemuneratedAccountPanel } from "@/components/dashboard/remunerated-account-panel"
 
 export default function AccountDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -140,6 +141,8 @@ export default function AccountDetailPage() {
           </div>
         </Card>
       </section>
+
+      {account.tipo === "remunerada" && <RemuneratedAccountPanel account={account} onEdit={() => setEditing(true)} />}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {progress !== null && (

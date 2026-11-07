@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/shared/skeleton"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { money } from "@/lib/format"
+import { calculateRemuneratedAccountForecast } from "@/lib/remunerated-accounts"
 
 export default function CuentasPage() {
   const { state, loading, dispatch } = useFinance()
@@ -205,10 +206,13 @@ export default function CuentasPage() {
                   {isOpen && <div className="border-t border-border/70 bg-background/35 px-3 py-1.5 sm:px-4">
                     {group.accounts.map((account, accountIndex) => {
                       const cfg = typeConfig[account.tipo] ?? typeConfig.efectivo
+                      const dailyInterest = account.tipo === "remunerada" && account.interest_tae != null
+                        ? calculateRemuneratedAccountForecast({ balance: account.saldo, annualTae: account.interest_tae, frequency: account.interest_frequency ?? "monthly", startDate: account.interest_start_date, lastPaymentDate: account.interest_last_payment_date, balanceCap: account.interest_balance_cap }).dailyInterest
+                        : null
                       return <button key={account.id} type="button" onClick={() => router.push(`/cuentas/${account.id}`)} className={`group/row relative flex min-h-[68px] w-full min-w-0 items-center gap-3 rounded-xl py-2 pl-3.5 pr-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${accountIndex > 0 ? "border-t border-border/40" : ""}`}>
                         <span aria-hidden="true" className="absolute inset-y-3 left-0 w-1 rounded-full" style={{ backgroundColor: cfg.color }} />
                         <AccountLogo account={account} className="h-10 w-10 shrink-0 rounded-xl" />
-                        <span className="min-w-0 flex-1"><span className="line-clamp-2 break-words text-sm font-medium leading-tight text-foreground">{account.nombre}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{cfg.label}</span></span>
+                        <span className="min-w-0 flex-1"><span className="line-clamp-2 break-words text-sm font-medium leading-tight text-foreground">{account.nombre}</span><span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground"><span>{cfg.label}</span>{account.interest_tae != null && <span className="text-cyan-600 dark:text-cyan-300">{account.interest_tae.toLocaleString("es-ES", { maximumFractionDigits: 2 })} % TAE</span>}{dailyInterest !== null && <Sensitive className="text-cyan-600 dark:text-cyan-300">≈ {formatMoney(dailyInterest, account.currency)}/día</Sensitive>}</span></span>
                         <span className="shrink-0 text-right"><span className="block text-sm font-semibold tabular-nums text-foreground"><Sensitive>{formatMoney(accountValue(account), account.currency)}</Sensitive></span>{(account.currency ?? "EUR") !== "EUR" && <span className="mt-0.5 block text-[10px] text-muted-foreground">{account.currency}</span>}</span>
                         <ChevronRight className="ml-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover/row:text-primary" />
                       </button>
