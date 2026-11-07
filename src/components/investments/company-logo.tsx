@@ -40,7 +40,8 @@ function normalize(value: string) {
 
 function logoSource(name: string, rawSymbol: string, crypto: boolean) {
   const symbol = rawSymbol.trim().split(" · ")[0].toUpperCase()
-  if (!symbol || symbol.startsWith("CUSTOM:") || /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(symbol)) return null
+  const baseIdentifier = symbol.split(".")[0]
+  if (!symbol || symbol.startsWith("CUSTOM:") || /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(baseIdentifier)) return null
 
   if (crypto) {
     const ticker = /bitcoin/i.test(name) ? "BTC" : /ethereum/i.test(name) ? "ETH" : symbol.replace(/^CRYPTO:/, "")
