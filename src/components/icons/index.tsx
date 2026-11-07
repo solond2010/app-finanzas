@@ -22,6 +22,7 @@ import {
   ArrowsLeftRight as PhArrowsLeftRight,
   ArrowsOut as PhArrowsOut,
   Bank as PhBank,
+  Bell as PhBell,
   Bug as PhBug,
   Buildings as PhBuildings,
   Calendar as PhCalendar,
@@ -146,6 +147,7 @@ export const ArrowRightLeft = makeIcon(PhArrowsLeftRight, "regular", "ArrowRight
 export const ArrowUpCircle = makeIcon(PhArrowCircleUp, "duotone", "ArrowUpCircle")
 export const ArrowUpRight = makeIcon(PhArrowUpRight, "bold", "ArrowUpRight")
 export const Bug = makeIcon(PhBug, "duotone", "Bug")
+export const Bell = makeIcon(PhBell, "duotone", "Bell")
 export const Building2 = makeIcon(PhBuildings, "duotone", "Building2")
 export const Calendar = makeIcon(PhCalendar, "regular", "Calendar")
 export const CalendarClock = makeIcon(PhCalendarDots, "duotone", "CalendarClock")

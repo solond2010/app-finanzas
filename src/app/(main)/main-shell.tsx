@@ -16,6 +16,7 @@ import { ensureLocalCacheOwnerOnce } from "@/lib/local-owner"
 import { enableDemoMode } from "@/lib/demo/runtime"
 import { DemoProvider } from "@/lib/demo/context"
 import { DemoBanner } from "@/components/demo/demo-banner"
+import { FeedbackNotificationsProvider } from "@/components/feedback/feedback-notifications"
 
 function MainInner({ children, demo }: { children: React.ReactNode; demo: boolean }) {
   const { open } = useSidebar()
@@ -57,6 +58,7 @@ export function MainShell({ children, demo }: { children: React.ReactNode; demo:
     <FinanceProvider>
       <InvestmentsProvider>
         <ToastProvider>
+          <FeedbackNotificationsProvider enabled={!demo}>
           <PrivacyProvider>
             <SidebarProvider>
               <MainInner demo={demo}>
@@ -68,6 +70,7 @@ export function MainShell({ children, demo }: { children: React.ReactNode; demo:
             <LimitWatcher />
             <FeedbackDialog />
           </PrivacyProvider>
+          </FeedbackNotificationsProvider>
         </ToastProvider>
       </InvestmentsProvider>
     </FinanceProvider>

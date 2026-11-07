@@ -34,6 +34,7 @@ import { useSidebar } from "@/lib/sidebar"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { openFeedbackDialog } from "@/components/feedback/feedback-dialog"
 import { ADMIN_HREF, useAdminNav } from "@/lib/use-admin-nav"
+import { FeedbackNotificationsButton } from "@/components/feedback/feedback-notifications"
 
 const navItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
@@ -175,6 +176,9 @@ export function Sidebar() {
             })}
           </nav>
           <div className="flex flex-col gap-1 mt-auto">
+            <Tooltip label="Notificaciones">
+              <FeedbackNotificationsButton compact className="size-10 min-h-10 min-w-10 rounded-xl p-0 text-sidebar-foreground/50" />
+            </Tooltip>
             <Tooltip label="Enviar comentario">
               <button
                 type="button"
@@ -276,6 +280,7 @@ export function Sidebar() {
 
         {/* Ajustes globales de escritorio; en móvil viven en el panel «Más». */}
         <div className="mt-auto space-y-1 px-3 pt-4 border-t border-sidebar-border/50">
+          <FeedbackNotificationsButton className="w-full rounded-xl px-3 py-2.5 text-sm font-medium" />
           <button
             type="button"
             onClick={() => openFeedbackDialog()}

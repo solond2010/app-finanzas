@@ -3,11 +3,12 @@
 import { useEffect, useState, type ElementType } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { CalendarDays, ChartPie, ChartPieSlice, Scales, ChatText, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, ReceiptText, ShieldCheck, SlidersHorizontal, SunMedium, X } from "@/components/icons"
+import { CalendarDays, ChartPie, ChartPieSlice, Scales, Bell, ChatText, Ellipsis, Eye, EyeOff, House, Landmark, MoonStar, ReceiptText, ShieldCheck, SlidersHorizontal, SunMedium, X } from "@/components/icons"
 import { openFeedbackDialog } from "@/components/feedback/feedback-dialog"
 import { cn } from "@/lib/utils"
 import { usePrivacy } from "@/lib/privacy"
 import { ADMIN_HREF, useAdminNav } from "@/lib/use-admin-nav"
+import { useFeedbackNotifications } from "@/components/feedback/feedback-notifications"
 
 const primaryItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
@@ -28,6 +29,7 @@ export function MobileBottomNav() {
   const [moreOpen, setMoreOpen] = useState(false)
   const { privacy, toggle: togglePrivacy } = usePrivacy()
   const admin = useAdminNav(pathname)
+  const notifications = useFeedbackNotifications()
   const sheetItems = admin.isAdmin ? [...moreItems, { href: ADMIN_HREF, label: "Administración", description: "Comentarios y errores de la beta", icon: ShieldCheck }] : moreItems
   const moreActive = sheetItems.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
 
@@ -107,6 +109,18 @@ export function MobileBottomNav() {
                   </Link>
                 )
               })}
+              <button
+                type="button"
+                onClick={() => { setMoreOpen(false); notifications.openInbox() }}
+                className="flex min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-foreground transition-colors hover:bg-muted/70 active:scale-[0.99]"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><Bell className="size-5" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">Notificaciones</span>
+                  <span className="block text-xs text-muted-foreground">Respuestas del equipo</span>
+                </span>
+                {notifications.unread > 0 && <span aria-label={`${notifications.unread} notificaciones sin leer`} className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground tabular-nums">{notifications.unread > 99 ? "99+" : notifications.unread}</span>}
+              </button>
               <button
                 type="button"
                 onClick={() => { setMoreOpen(false); openFeedbackDialog() }}

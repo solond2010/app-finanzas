@@ -5,11 +5,12 @@ import Link from "next/link"
 import { AlertTriangle, ArrowLeft, Bug, ChatText, Check, Lightbulb, RotateCcw } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/shared/skeleton"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 
-type FeedbackRow = { id: string; kind: "fallo" | "idea"; message: string; page: string | null; email: string | null; user_agent: string | null; status: "nuevo" | "visto" | "hecho"; created_at: string }
+type FeedbackRow = { id: string; user_id: string | null; kind: "fallo" | "idea"; message: string; page: string | null; email: string | null; user_agent: string | null; status: "nuevo" | "visto" | "hecho"; created_at: string }
 type ErrorRow = { id: number; source: "navegador" | "servidor"; route: string | null; message: string; stack: string | null; digest: string | null; user_agent: string | null; user_id: string | null; created_at: string }
 type Data = { feedback: FeedbackRow[]; errors: ErrorRow[]; errors24h: number }
 
@@ -23,6 +24,9 @@ export default function AdminPage() {
   const [state, setState] = useState<"loading" | "ok" | "forbidden" | "error">("loading")
   const [tab, setTab] = useState<"comentarios" | "errores">("comentarios")
   const [openError, setOpenError] = useState<number | null>(null)
+  const [replying, setReplying] = useState<FeedbackRow | null>(null)
+  const [replyMessage, setReplyMessage] = useState("")
+  const [savingReply, setSavingReply] = useState(false)
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin", { cache: "no-store" }).catch(() => null)
@@ -39,6 +43,28 @@ export default function AdminPage() {
     const res = await fetch("/api/admin", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status }) })
     if (!res.ok) { toast("No se pudo actualizar", "error"); return }
     setData((d) => d && { ...d, feedback: d.feedback.map((f) => (f.id === id ? { ...f, status } : f)) })
+  }
+
+  async function completeFeedback() {
+    if (!replying || savingReply) return
+    const message = replyMessage.trim()
+    if (replying.user_id && (message.length < 3 || message.length > 2000)) {
+      toast("Escribe una respuesta de entre 3 y 2000 caracteres", "error")
+      return
+    }
+    setSavingReply(true)
+    const res = await fetch("/api/admin", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: replying.id, status: "hecho", ...(replying.user_id ? { message } : {}) }),
+    }).catch(() => null)
+    const body = await res?.json().catch(() => null)
+    setSavingReply(false)
+    if (!res?.ok) { toast(body?.error ?? "No se pudo actualizar", "error"); return }
+    setData((d) => d && { ...d, feedback: d.feedback.map((f) => (f.id === replying.id ? { ...f, status: "hecho" } : f)) })
+    setReplying(null)
+    setReplyMessage("")
+    toast(replying.user_id ? "Respuesta enviada y comentario marcado como hecho" : "Comentario marcado como hecho", "success")
   }
 
   if (state === "forbidden") {
@@ -96,7 +122,7 @@ export default function AdminPage() {
                       <p className="text-xs text-muted-foreground">Página: {f.page ?? "no adjunta"} · {device(f.user_agent)}</p>
                       <div className="flex gap-2">
                         {f.status !== "visto" && f.status !== "hecho" && <Button size="sm" variant="outline" onClick={() => void mark(f.id, "visto")}>Marcar visto</Button>}
-                        {f.status !== "hecho" && <Button size="sm" className="gap-1.5" onClick={() => void mark(f.id, "hecho")}><Check className="size-3.5" />Hecho</Button>}
+                        {f.status !== "hecho" && <Button size="sm" className="gap-1.5" onClick={() => { setReplyMessage(""); setReplying(f) }}><Check className="size-3.5" />Hecho</Button>}
                       </div>
                     </div>
                   </CardContent>
@@ -132,6 +158,43 @@ export default function AdminPage() {
           </ul>
         )
       )}
+
+      <Dialog open={replying !== null} onOpenChange={(open) => { if (!open && !savingReply) setReplying(null) }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{replying?.user_id ? "Responder y marcar como hecho" : "Marcar comentario como hecho"}</DialogTitle>
+            <DialogDescription>
+              {replying?.user_id
+                ? "El usuario recibirá este mensaje en sus notificaciones dentro de Garra."
+                : "Este comentario es anónimo y no tiene una cuenta donde recibir una respuesta privada."}
+            </DialogDescription>
+          </DialogHeader>
+          {replying?.user_id ? (
+            <div className="space-y-2">
+              <label htmlFor="feedback-reply" className="text-sm font-medium">Mensaje para el usuario</label>
+              <textarea
+                id="feedback-reply"
+                value={replyMessage}
+                onChange={(event) => setReplyMessage(event.target.value.slice(0, 2000))}
+                placeholder="Cuéntale qué se ha hecho o responde a su comentario…"
+                maxLength={2000}
+                rows={5}
+                className="w-full resize-y rounded-xl border border-input bg-background px-3 py-2.5 text-sm leading-6 outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
+              />
+              <p className="text-right text-xs text-muted-foreground">{replyMessage.trim().length}/2000</p>
+            </div>
+          ) : (
+            <p className="rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">Puedes cerrarlo aquí; no se enviará ninguna notificación al visitante.</p>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" disabled={savingReply} onClick={() => setReplying(null)}>Cancelar</Button>
+            <Button type="button" disabled={savingReply || Boolean(replying?.user_id && replyMessage.trim().length < 3)} onClick={() => void completeFeedback()}>
+              <Check className="size-4" />
+              {savingReply ? "Guardando…" : replying?.user_id ? "Enviar respuesta" : "Marcar como hecho"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
