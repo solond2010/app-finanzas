@@ -15,6 +15,7 @@ import { convertFromEur, convertToEur, eurPerUnit, type CurrencyCode } from "@/l
 import { money } from "@/lib/format"
 import { buyPriceFromEurPaid, filterSearchResults, type SearchHit } from "@/lib/asset-search-helpers"
 import { effectiveBuyPrice, parseOptionalCommission } from "@/lib/portfolio"
+import { CompanyLogo } from "@/components/investments/company-logo"
 
 interface Selected { symbol: string; name: string; isin?: string; currency: string }
 
@@ -326,7 +327,7 @@ export function PositionDialog({ open, onOpenChange, editing, defaultAccountId, 
                       {searching && results.length === 0 && <p className="px-3 py-2 text-xs text-muted-foreground">Buscando…</p>}
                       {results.map((r) => (
                         <button key={r.symbol} type="button" onClick={() => pickAsset(r)} className="flex w-full items-center gap-3 border-b border-border px-3 py-2 text-left last:border-0 hover:bg-muted/60">
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-[10px] font-bold text-muted-foreground">{r.symbol.slice(0, 2)}</span>
+                          <CompanyLogo name={r.name || r.symbol} symbol={r.symbol} crypto={kind === "crypto"} className="h-7 w-7 rounded-lg" />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium text-foreground">{r.name || r.symbol}</span>
                             <span className="block truncate font-mono text-[10px] text-muted-foreground">{r.symbol}</span>
