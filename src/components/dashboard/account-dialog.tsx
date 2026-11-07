@@ -14,7 +14,7 @@ import { useToast } from "@/components/ui/toast"
 import { Upload, X, AlertCircle, Check, Palette } from "@/components/icons"
 import { parseAmount } from "@/lib/validation"
 import { ACCOUNT_COLORS, accountColor, isHexColor, normalizeHex, readableOn } from "@/lib/account-colors"
-import { INTEREST_FREQUENCIES, type InterestFrequency } from "@/lib/remunerated-accounts"
+import { INTEREST_FREQUENCIES, interestFrequencyLabel, type InterestFrequency } from "@/lib/remunerated-accounts"
 import { localDateKey } from "@/lib/date-utils"
 
 const COLORS = ACCOUNT_COLORS.map((c) => c.hex)
@@ -357,7 +357,7 @@ export function AccountDialog({
                 <div className="space-y-1.5">
                   <label className="text-xs text-muted-foreground">Frecuencia del abono</label>
                   <Select value={interestFrequency} onValueChange={(value) => setInterestFrequency(value as InterestFrequency)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger><SelectValue>{(value) => interestFrequencyLabel(value)}</SelectValue></SelectTrigger>
                     <SelectContent>{INTEREST_FREQUENCIES.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>

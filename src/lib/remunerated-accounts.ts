@@ -10,6 +10,10 @@ export const INTEREST_FREQUENCIES: { value: InterestFrequency; label: string; mo
   { value: "annual", label: "Anual", months: 12 },
 ]
 
+export function interestFrequencyLabel(value: string | null | undefined): string {
+  return INTEREST_FREQUENCIES.find((item) => item.value === value)?.label ?? "Selecciona la frecuencia"
+}
+
 export type RemuneratedAccountForecast = {
   eligibleBalance: number
   dailyInterest: number

@@ -2,7 +2,7 @@
 
 import type { Account } from "@/lib/store"
 import { formatMoney } from "@/lib/currency"
-import { calculateRemuneratedAccountForecast, formatForecastDate, INTEREST_FREQUENCIES } from "@/lib/remunerated-accounts"
+import { calculateRemuneratedAccountForecast, formatForecastDate, interestFrequencyLabel } from "@/lib/remunerated-accounts"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Sensitive } from "@/components/shared/sensitive"
@@ -20,7 +20,7 @@ export function RemuneratedAccountPanel({ account, onEdit }: { account: Account;
   }, [today])
   const configured = account.interest_tae != null
   const frequency = account.interest_frequency ?? "monthly"
-  const frequencyLabel = INTEREST_FREQUENCIES.find((item) => item.value === frequency)?.label ?? "Mensual"
+  const frequencyLabel = interestFrequencyLabel(frequency)
   const forecast = calculateRemuneratedAccountForecast({
     balance: account.saldo,
     annualTae: account.interest_tae ?? 0,
