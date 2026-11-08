@@ -4,6 +4,7 @@ import { registerCategoryIcons } from "@/components/icons/category-icon"
 import { findCategoryByName } from "./category-names"
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
+import { reportClientError } from "./report-error-client"
 import { type CurrencyCode, refreshExchangeRates } from "./currency"
 import { buildPreciseNetWorthHistory, hasTransferPair, isTransfer } from "./calculations"
 import { localDateKey, parseLocalDate } from "./date-utils"
@@ -99,6 +100,14 @@ export interface FinanceState {
 }
 
 type SyncStatus = "idle" | "syncing" | "saved" | "error" | "offline"
+type SyncStep = "cuentas" | "movimientos" | "fondos" | "categorías" | "presupuestos" | "borrados"
+
+class FinanceSyncError extends Error {
+  constructor(readonly step: SyncStep, cause: unknown) {
+    super(`Falló la sincronización en ${step}`, { cause })
+    this.name = "FinanceSyncError"
+  }
+}
 
 type Action =
   | { type: "SET_STATE"; payload: FinanceState }
@@ -525,12 +534,13 @@ const FinanceContext = createContext<FinanceContextValue | null>(null)
 // cambia la referencia del objeto cuando cambia `status`, no en cada dispatch.
 interface SyncStatusContextValue {
   status: SyncStatus
+  failedStep: SyncStep | null
   retrySync: () => void
   lastSyncedAt: number | null
   localBackupStatus: "idle" | "saved" | "error"
   retryLocalBackup: () => void
 }
-const SyncStatusContext = createContext<SyncStatusContextValue>({ status: "idle", retrySync: () => {}, lastSyncedAt: null, localBackupStatus: "idle", retryLocalBackup: () => {} })
+const SyncStatusContext = createContext<SyncStatusContextValue>({ status: "idle", failedStep: null, retrySync: () => {}, lastSyncedAt: null, localBackupStatus: "idle", retryLocalBackup: () => {} })
 
 const LOCAL_STATE_KEY = "app-finanzas-data"
 const LOCAL_OUTBOX_KEY = "app-finanzas-outbox-v1"
@@ -599,6 +609,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   useMemo(() => registerCategoryIcons(state.categories), [state.categories])
   const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle")
+  const [failedSyncStep, setFailedSyncStep] = useState<SyncStep | null>(null)
   const [localBackupStatus, setLocalBackupStatus] = useState<"idle" | "saved" | "error">("idle")
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null)
   const [initialized, setInitialized] = useState(false)
@@ -619,6 +630,17 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // sin que hubiera nuevas acciones en medio.
   const dirtyGenerationRef = useRef(0)
 
+  // Una lectura completa de las cinco tablas confirma el estado de nube. Si
+  // una escritura anterior falló después de guardar movimientos, esta lectura
+  // evita dejar el indicador rojo obsoleto cuando el servidor ya tiene todo.
+  const confirmRemoteSync = useCallback(() => {
+    const confirmedAt = Date.now()
+    setSyncStatus("saved")
+    setFailedSyncStep(null)
+    setLastSyncedAt(confirmedAt)
+    try { localStorage.setItem(LOCAL_SYNCED_AT_KEY, String(confirmedAt)) } catch { /* la lectura remota ya confirmó el estado */ }
+  }, [])
+
   useEffect(() => {
     if (loadedRef.current) return
     loadedRef.current = true
@@ -636,9 +658,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       } else if (hasRemoteData(remote)) {
         skipNextSyncRef.current = true
         dispatch({ type: "SET_STATE", payload: { ...remote, categories: mergeDefaultCategories(remote.categories) } })
+        confirmRemoteSync()
       } else {
-        if (local && (local.accounts.length > 0 || local.transactions.length > 0 || local.sinkingFunds.length > 0)) {
+        const hasLocalData = !!local && (local.accounts.length > 0 || local.transactions.length > 0 || local.sinkingFunds.length > 0)
+        if (hasLocalData) {
           dispatch({ type: "SET_STATE", payload: { ...local, categories: mergeDefaultCategories(local.categories) } })
+        } else if (remote && !hasOutbox) {
+          // También puede estar correctamente sincronizada una cuenta nueva vacía.
+          confirmRemoteSync()
         }
       }
     }).finally(() => {
@@ -649,7 +676,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       setInitialized(true)
     })
-  }, [])
+  }, [confirmRemoteSync])
 
   // Una PWA anclada a la pantalla de inicio no se recarga al reabrirla: iOS
   // mantiene el mismo proceso web en segundo plano indefinidamente, así que
@@ -676,15 +703,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       lastRefetchRef.current = now
       loadFromSupabase().then((remote) => {
         if (dirtyRef.current) return
-        if (hasRemoteData(remote)) {
+        if (remote) {
           skipNextSyncRef.current = true
           dispatch({ type: "SET_STATE", payload: { ...remote, categories: mergeDefaultCategories(remote.categories) } })
+          confirmRemoteSync()
         }
       })
     }
     document.addEventListener("visibilitychange", refetchIfVisible)
     return () => document.removeEventListener("visibilitychange", refetchIfVisible)
-  }, [])
+  }, [confirmRemoteSync])
 
   // state en un ref: los reintentos disparados por setTimeout/eventos 'online'
   // deben sincronizar siempre el estado MÁS RECIENTE, no el que había en el
@@ -721,6 +749,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       return
     }
     setSyncStatus("syncing")
+    setFailedSyncStep(null)
     // Copia de los borrados pendientes al inicio del intento: si el usuario
     // borra más cosas mientras corre el sync, esas IDs se acumulan en el ref
     // y no se pierden al limpiar solo las que este intento envió.
@@ -753,6 +782,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         setLastSyncedAt(savedAt)
         try { localStorage.setItem(LOCAL_SYNCED_AT_KEY, String(savedAt)) } catch { /* el estado ya quedó guardado en Supabase */ }
         setSyncStatus("saved")
+        setFailedSyncStep(null)
       })
       .catch((err) => {
         console.error("[Finance] Error al sincronizar con Supabase:", err)
@@ -762,6 +792,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           return
         }
         setSyncStatus("error")
+        const step = err instanceof FinanceSyncError ? err.step : null
+        setFailedSyncStep(step)
+        // Los fallos de sincronización estaban capturados aquí y nunca
+        // llegaban al registro de Administración. Enviar solo la fase, sin
+        // mensaje SQL ni datos financieros, permite localizar el problema.
+        reportClientError(new Error(`Fallo de sincronización financiera en ${step ?? "fase desconocida"}`))
         const delay = RETRY_DELAYS[Math.min(retryAttemptRef.current, RETRY_DELAYS.length - 1)]
         retryAttemptRef.current++
         retryTimeoutRef.current = setTimeout(() => attemptSyncRef.current(), delay)
@@ -899,7 +935,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // cambio en cualquier parte del árbol forzaba un re-render de absolutamente
   // todo lo que usa useFinance() en la app.
   const contextValue = useMemo(() => ({ state, dispatch: trackedDispatch, loading }), [state, trackedDispatch, loading])
-  const syncStatusValue = useMemo(() => ({ status: syncStatus, retrySync, lastSyncedAt, localBackupStatus, retryLocalBackup }), [syncStatus, retrySync, lastSyncedAt, localBackupStatus, retryLocalBackup])
+  const syncStatusValue = useMemo(() => ({ status: syncStatus, failedStep: failedSyncStep, retrySync, lastSyncedAt, localBackupStatus, retryLocalBackup }), [syncStatus, failedSyncStep, retrySync, lastSyncedAt, localBackupStatus, retryLocalBackup])
 
   return (
     <FinanceContext.Provider value={contextValue}>
@@ -1017,21 +1053,29 @@ export function collectDeletesFromAction(state: FinanceState, action: Action, pe
 }
 
 async function syncToSupabase(state: FinanceState, pending: PendingDeletes) {
-  await dbUpsert("accounts", state.accounts.map(a => unformatAccount(a)))
-  await dbUpsert("transactions", state.transactions.map(t => unformatTransaction(t)))
-  await dbUpsert("sinking_funds", state.sinkingFunds.map(sf => unformatSinkingFund(sf)))
-  await dbUpsert("categories", state.categories)
+  await syncStep("cuentas", () => dbUpsert("accounts", state.accounts.map(a => unformatAccount(a))))
+  await syncStep("movimientos", () => dbUpsert("transactions", state.transactions.map(t => unformatTransaction(t))))
+  await syncStep("fondos", () => dbUpsert("sinking_funds", state.sinkingFunds.map(sf => unformatSinkingFund(sf))))
+  await syncStep("categorías", () => dbUpsert("categories", state.categories))
   // Los presupuestos deben subirse DESPUÉS de las categorías: budgets.category_id
   // tiene una FK a categories.id, así que la categoría referenciada ya debe existir.
-  await dbUpsert("budgets", state.budgets.map(b => ({ id: b.id, category_id: b.category_id, amount: b.amount, month: b.month })))
+  await syncStep("presupuestos", () => dbUpsert("budgets", state.budgets.map(b => ({ id: b.id, category_id: b.category_id, amount: b.amount, month: b.month }))))
 
   // Solo se borran IDs marcados por acciones explícitas del usuario (ver
   // collectDeletesFromAction). Orden: presupuestos antes que categorías (FK).
-  if (pending.transactions.size) await dbDeleteIn("transactions", [...pending.transactions])
-  if (pending.sinking_funds.size) await dbDeleteIn("sinking_funds", [...pending.sinking_funds])
-  if (pending.accounts.size) await dbDeleteIn("accounts", [...pending.accounts])
-  if (pending.budgets.size) await dbDeleteIn("budgets", [...pending.budgets])
-  if (pending.categories.size) await dbDeleteIn("categories", [...pending.categories])
+  if (pending.transactions.size) await syncStep("borrados", () => dbDeleteIn("transactions", [...pending.transactions]))
+  if (pending.sinking_funds.size) await syncStep("borrados", () => dbDeleteIn("sinking_funds", [...pending.sinking_funds]))
+  if (pending.accounts.size) await syncStep("borrados", () => dbDeleteIn("accounts", [...pending.accounts]))
+  if (pending.budgets.size) await syncStep("borrados", () => dbDeleteIn("budgets", [...pending.budgets]))
+  if (pending.categories.size) await syncStep("borrados", () => dbDeleteIn("categories", [...pending.categories]))
+}
+
+async function syncStep(step: SyncStep, action: () => Promise<void>) {
+  try {
+    await action()
+  } catch (error) {
+    throw new FinanceSyncError(step, error)
+  }
 }
 
 function loadLocalBackup(): FinanceState | null {

@@ -62,7 +62,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const admin = useAdminNav(pathname)
   const items = admin.isAdmin ? [...navItems, { href: ADMIN_HREF, label: "Administración", icon: ShieldCheck }] : navItems
-  const { status: syncStatus, retrySync, lastSyncedAt } = useSyncStatus()
+  const { status: syncStatus, failedStep: syncFailedStep, retrySync, lastSyncedAt } = useSyncStatus()
   const { status: investmentSyncStatus, retrySync: retryInvestmentSync } = useInvestmentSyncStatus()
   const retryAllSync = () => { retrySync(); retryInvestmentSync() }
   const { privacy, toggle: togglePrivacy } = usePrivacy()
@@ -104,16 +104,57 @@ export function Sidebar() {
     document.cookie = `app-finanzas-theme=${value};path=/;max-age=31536000;samesite=lax`
   }
 
-  const syncMeta =
-    syncStatus === "error" || investmentSyncStatus === "error"
-      ? { label: `Error al guardar${lastSyncedLabel ? ` · último OK ${lastSyncedLabel}` : ""} · toca para reintentar`, icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-red-500", retry: true }
-      : syncStatus === "offline" || investmentSyncStatus === "offline"
-        ? { label: `Sin conexión · se guardará al reconectar${lastSyncedLabel ? ` · último OK ${lastSyncedLabel}` : ""}`, icon: <CloudOff className="h-3.5 w-3.5" />, className: "text-muted-foreground", retry: true }
-        : syncStatus === "syncing" || investmentSyncStatus === "syncing"
-      ? { label: "Sincronizando...", icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, className: "text-amber-500", retry: false }
-      : syncStatus === "saved" || investmentSyncStatus === "saved"
-        ? { label: lastSyncedLabel ? `Guardado en nube · ${lastSyncedLabel}` : "Guardado en nube", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-emerald-500", retry: false }
-        : { label: "Sin cambios pendientes", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-muted-foreground", retry: false }
+  const financeSyncStepLabel: Record<string, string> = {
+    cuentas: "cuentas",
+    movimientos: "movimientos",
+    fondos: "fondos y metas",
+    categorías: "categorías",
+    presupuestos: "presupuestos",
+    borrados: "borrados",
+  }
+  const financeSyncFailed = syncStatus === "error"
+  const investmentSyncFailed = investmentSyncStatus === "error"
+  const syncMeta = financeSyncFailed || investmentSyncFailed
+    ? {
+        label: financeSyncFailed && investmentSyncFailed
+          ? "Error al guardar datos e inversiones · toca para reintentar"
+          : financeSyncFailed
+            ? `Error al guardar ${syncFailedStep ? financeSyncStepLabel[syncFailedStep] : "tus datos"}${lastSyncedLabel ? ` · último OK ${lastSyncedLabel}` : ""} · toca para reintentar`
+            : "Error al guardar inversiones · toca para reintentar",
+        icon: <CloudOff className="h-3.5 w-3.5" />,
+        className: "text-red-500",
+        retry: true,
+      }
+    : syncStatus === "offline" || investmentSyncStatus === "offline"
+      ? {
+          label: syncStatus === "offline" && investmentSyncStatus === "offline"
+            ? "Sin conexión · cambios pendientes"
+            : syncStatus === "offline" ? "Sin conexión · datos pendientes" : "Sin conexión · inversiones pendientes",
+          icon: <CloudOff className="h-3.5 w-3.5" />,
+          className: "text-muted-foreground",
+          retry: true,
+        }
+      : syncStatus === "syncing" || investmentSyncStatus === "syncing"
+        ? {
+            label: syncStatus === "syncing" && investmentSyncStatus === "syncing"
+              ? "Sincronizando datos e inversiones…"
+              : syncStatus === "syncing" ? "Sincronizando tus datos…" : "Sincronizando inversiones…",
+            icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
+            className: "text-amber-500",
+            retry: false,
+          }
+        : syncStatus === "saved" || investmentSyncStatus === "saved"
+          ? {
+              label: syncStatus === "saved" && investmentSyncStatus === "saved"
+                ? lastSyncedLabel ? `Datos e inversiones guardados · ${lastSyncedLabel}` : "Datos e inversiones guardados en nube"
+                : syncStatus === "saved"
+                  ? lastSyncedLabel ? `Datos guardados en nube · ${lastSyncedLabel}` : "Datos guardados en nube"
+                  : "Inversiones guardadas en nube",
+              icon: <Cloud className="h-3.5 w-3.5" />,
+              className: "text-emerald-500",
+              retry: false,
+            }
+          : { label: "Sin cambios pendientes", icon: <Cloud className="h-3.5 w-3.5" />, className: "text-muted-foreground", retry: false }
 
   return (
     <>
