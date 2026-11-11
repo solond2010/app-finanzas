@@ -3,8 +3,8 @@
     <div style="font-size:22px;font-weight:700;color:#F5A524;margin-bottom:4px;">Garra</div>
     <div style="font-size:13px;color:#8A94A6;margin-bottom:24px;">Tus finanzas, con garra</div>
     <h1 style="font-size:20px;margin:0 0 12px;color:#FFFFFF;">Recupera tu acceso</h1>
-    <p style="font-size:15px;line-height:1.5;margin:0 0 24px;color:#C9D1DC;">Pulsa el botón para volver a entrar en Garra. El enlace caduca en 1 hora y solo sirve una vez.</p>
-    <a href="https://app-finanzas-henna.vercel.app/auth/confirm?token_hash={{ .TokenHash }}&type=recovery" style="display:inline-block;background:#F5A524;color:#0B0F14;text-decoration:none;font-weight:600;font-size:15px;padding:14px 24px;border-radius:12px;">Entrar en Garra</a>
+    <p style="font-size:15px;line-height:1.5;margin:0 0 24px;color:#C9D1DC;">Pulsa el botón para elegir una contraseña nueva. El enlace caduca en 1 hora; ábrelo y pulsa el botón en la página, así no se gasta si el correo lo previsualiza.</p>
+    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/auth/reset" style="display:inline-block;background:#F5A524;color:#0B0F14;text-decoration:none;font-weight:600;font-size:15px;padding:14px 24px;border-radius:12px;">Elegir una contraseña nueva</a>
     <p style="font-size:12px;line-height:1.5;margin:24px 0 0;color:#8A94A6;">Si no lo has pedido tú, ignora este email.</p>
   </div>
 </div>

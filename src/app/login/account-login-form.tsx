@@ -9,7 +9,7 @@ import { PasswordInput } from "@/components/ui/password-input"
 import { DemoEntryButton } from "@/components/demo/demo-entry-button"
 import { safeNextPath } from "@/lib/auth-redirect"
 
-type Mode = "login" | "signup" | "magic"
+type Mode = "login" | "signup" | "magic" | "recovery"
 
 const inputClass =
   "flex h-12 w-full rounded-xl border border-input bg-background/60 px-4 text-sm ring-1 ring-border/25 transition-all placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
@@ -18,6 +18,7 @@ const TITLES: Record<Mode, { title: string; subtitle: string; button: string }> 
   login: { title: "Entra en tu cuenta", subtitle: "Con tu email y tu contraseña.", button: "Entrar" },
   signup: { title: "Crea tu cuenta", subtitle: "Gratis. Solo tú verás tus datos.", button: "Crear cuenta" },
   magic: { title: "Entrar sin contraseña", subtitle: "Te enviamos un enlace a tu email para entrar.", button: "Enviar enlace" },
+  recovery: { title: "Recupera tu acceso", subtitle: "Te enviamos un enlace para elegir una contraseña nueva.", button: "Enviar enlace" },
 }
 
 export function AccountLoginForm({ googleEnabled = false }: { googleEnabled?: boolean }) {
@@ -41,20 +42,22 @@ export function AccountLoginForm({ googleEnabled = false }: { googleEnabled?: bo
     setLoading(true)
     setError("")
     setInfo("")
-    const endpoint = mode === "login" ? "/api/auth/login" : mode === "signup" ? "/api/auth/signup" : "/api/auth/magic-link"
+    const endpoint = mode === "login" ? "/api/auth/login" : mode === "signup" ? "/api/auth/signup" : mode === "recovery" ? "/api/auth/recovery" : "/api/auth/magic-link"
     try {
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mode === "magic" ? { email } : { email, password }),
+        body: JSON.stringify(mode === "magic" || mode === "recovery" ? { email } : { email, password }),
       })
       const body = await res.json().catch(() => null)
       if (!res.ok) {
         setError(body?.error ?? "No se pudo completar. Inténtalo de nuevo.")
         return
       }
-      if (mode === "magic") {
-        setInfo("Si hay una cuenta con ese email, te llegará un enlace en unos segundos. Revisa también el spam.")
+      if (mode === "magic" || mode === "recovery") {
+        setInfo(mode === "recovery"
+          ? "Si hay una cuenta con ese email, te llegará un enlace para elegir una contraseña nueva. Revisa también el spam."
+          : "Si hay una cuenta con ese email, te llegará un enlace en unos segundos. Revisa también el spam.")
         return
       }
       if (mode === "signup" && body?.needsConfirmation) {
@@ -72,7 +75,7 @@ export function AccountLoginForm({ googleEnabled = false }: { googleEnabled?: bo
   }
 
   const t = TITLES[mode]
-  const canSubmit = email.includes("@") && (mode === "magic" || password.length >= (mode === "signup" ? 8 : 1))
+  const canSubmit = email.includes("@") && (mode === "magic" || mode === "recovery" || password.length >= (mode === "signup" ? 8 : 1))
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-6">
@@ -116,7 +119,7 @@ export function AccountLoginForm({ googleEnabled = false }: { googleEnabled?: bo
           disabled={loading}
           required
         />
-        {mode !== "magic" && (
+        {mode !== "magic" && mode !== "recovery" && (
           <PasswordInput
             autoComplete={mode === "signup" ? "new-password" : "current-password"}
             value={password}
@@ -163,7 +166,8 @@ export function AccountLoginForm({ googleEnabled = false }: { googleEnabled?: bo
       </div>
       <div className="flex flex-col items-center gap-2 text-sm">
         {mode !== "login" && <button type="button" className="text-primary hover:underline" onClick={() => switchMode("login")}>Ya tengo cuenta: entrar</button>}
-        {mode !== "magic" && <button type="button" className="text-muted-foreground hover:underline" onClick={() => switchMode("magic")}>¿Olvidaste la contraseña? Entra con un enlace por email</button>}
+        {mode !== "recovery" && <button type="button" className="text-muted-foreground hover:underline" onClick={() => switchMode("recovery")}>¿Olvidaste la contraseña?</button>}
+        {mode !== "magic" && <button type="button" className="text-muted-foreground hover:underline" onClick={() => switchMode("magic")}>Entrar sin contraseña (enlace por email)</button>}
       </div>
     </div>
   )

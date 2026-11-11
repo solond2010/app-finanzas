@@ -10,6 +10,9 @@ Para cada plantilla: pega el **Asunto** y, en **Body / Source**, el contenido de
 | Reset password | Recupera tu acceso a Garra | 3-recuperar-acceso.html |
 | Change email address | Confirma tu nuevo email en Garra | 4-cambio-de-email.html |
 
-Los enlaces van a `/auth/confirm?token_hash=…&type=…`: se verifican en el servidor al
-pulsar el botón de esa página, así que funcionan en cualquier navegador o móvil (el de
-Gmail incluido) y los escáneres de correo no gastan el enlace.
+Los enlaces van a `{{ .SiteURL }}/auth/confirm?token_hash=…&type=…` (en producción,
+https://www.migarra.app). Se verifican al pulsar el botón de esa página, así que
+funcionan en cualquier navegador o móvil (el de Gmail incluido) y los escáneres de
+correo no gastan el enlace. En «Reset password», el `next` es `/auth/reset` para
+pedir la contraseña nueva. La Site URL del proyecto en Supabase debe ser
+https://www.migarra.app.

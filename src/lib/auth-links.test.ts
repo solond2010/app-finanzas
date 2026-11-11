@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { confirmCopy, loginNotice, parseOtpType } from "./auth-links"
+import { confirmCopy, defaultNextForOtp, loginNotice, parseOtpType } from "./auth-links"
 
 const params = (q: string) => new URLSearchParams(q)
 
@@ -22,6 +22,9 @@ describe("enlaces de email", () => {
   })
   it("botón según el tipo", () => {
     expect(confirmCopy("signup").button).toBe("Confirmar mi email")
-    expect(confirmCopy("recovery").button).toBe("Entrar en Garra")
+    expect(confirmCopy("recovery").title).toContain("contraseña")
+    expect(confirmCopy("recovery").button).toBe("Continuar")
+    expect(defaultNextForOtp("recovery")).toBe("/auth/reset")
+    expect(defaultNextForOtp("email")).toBe("/dashboard")
   })
 })

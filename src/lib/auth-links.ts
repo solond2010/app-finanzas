@@ -39,13 +39,21 @@ export function loginNotice(params: { get(name: string): string | null }): LinkN
   return null
 }
 
+/** Destino tras verificar el enlace. La recuperación pide una contraseña nueva. */
+export function defaultNextForOtp(type: EmailOtpType): string {
+  return type === "recovery" ? "/auth/reset" : "/dashboard"
+}
+
 /** Texto del botón de /auth/confirm según el tipo de enlace. */
 export function confirmCopy(type: EmailOtpType): { title: string; subtitle: string; button: string } {
   if (type === "email") {
     // "email" lo usan tanto el registro como el enlace para entrar.
     return { title: "Un último paso", subtitle: "Pulsa el botón para confirmar y entrar en Garra.", button: "Continuar" }
   }
-  if (type === "recovery" || type === "magiclink") {
+  if (type === "recovery") {
+    return { title: "Elige una contraseña nueva", subtitle: "Pulsa el botón para continuar. El enlace no se gasta hasta que lo pulses, aunque lo hayas abierto desde el correo.", button: "Continuar" }
+  }
+  if (type === "magiclink") {
     return { title: "Un último paso", subtitle: "Pulsa el botón para entrar en Garra.", button: "Entrar en Garra" }
   }
   if (type === "email_change") {

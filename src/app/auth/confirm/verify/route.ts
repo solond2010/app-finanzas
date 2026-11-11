@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { isSupabaseAuthEnabled } from "@/lib/auth-mode"
-import { parseOtpType } from "@/lib/auth-links"
+import { defaultNextForOtp, parseOtpType } from "@/lib/auth-links"
+import { safeNextPath } from "@/lib/auth-redirect"
 import { createSupabaseRouteClient } from "@/lib/server/request-context"
 
 // Verifica el enlace del email (token_hash + type) y abre sesión en ESTE
@@ -16,6 +17,8 @@ export async function POST(request: Request) {
   const tokenHash = form?.get("token_hash")
   const type = parseOtpType(typeof form?.get("type") === "string" ? (form?.get("type") as string) : null)
   if (typeof tokenHash !== "string" || !tokenHash || !type) return go("/login?error=enlace")
+  const nextRaw = form?.get("next")
+  const next = safeNextPath(typeof nextRaw === "string" ? nextRaw : null, defaultNextForOtp(type))
 
   const supabase = await createSupabaseRouteClient()
   const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
@@ -24,7 +27,7 @@ export async function POST(request: Request) {
     console.warn("[auth/confirm]", error.code ?? "", error.message)
     return go("/login?aviso=enlace-usado")
   }
-  return go("/dashboard")
+  return go(next)
 }
 
 // Si alguien abre esta URL directamente, que vea la página con el botón.

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { isSupabaseAuthEnabled } from "@/lib/auth-mode"
-import { parseOtpType } from "@/lib/auth-links"
+import { defaultNextForOtp, parseOtpType } from "@/lib/auth-links"
 import { appAuthOrigin, safeNextPath } from "@/lib/auth-redirect"
 import { createSupabaseRouteClient } from "@/lib/server/request-context"
 
@@ -14,7 +14,8 @@ export async function GET(request: Request) {
   if (!isSupabaseAuthEnabled()) return go("/login?error=enlace")
 
   const isGoogleFlow = url.searchParams.get("flow") === "google"
-  const next = safeNextPath(url.searchParams.get("next"))
+  const type = parseOtpType(url.searchParams.get("type"))
+  const next = safeNextPath(url.searchParams.get("next"), type ? defaultNextForOtp(type) : "/dashboard")
   const loginRedirect = (aviso: string) => {
     const login = new URL("/login", appAuthOrigin())
     login.searchParams.set("aviso", aviso)
@@ -35,7 +36,6 @@ export async function GET(request: Request) {
   const supabase = await createSupabaseRouteClient()
   const code = url.searchParams.get("code")
   const tokenHash = url.searchParams.get("token_hash")
-  const type = parseOtpType(url.searchParams.get("type"))
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (error) {
@@ -45,6 +45,8 @@ export async function GET(request: Request) {
       // En el flujo de Google no apliques ese aviso: el usuario no confirmó un email.
       console.warn("[auth/callback]", error.code ?? "", error.message)
       if (isGoogleFlow) return loginRedirect("google-error")
+      // Recuperación: no les pedimos la contraseña que no recuerdan.
+      if (type === "recovery") return go("/login?aviso=enlace-usado")
       return go("/login?aviso=confirmado")
     }
   } else if (tokenHash && type) {

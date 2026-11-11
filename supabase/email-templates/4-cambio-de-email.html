@@ -4,7 +4,7 @@
     <div style="font-size:13px;color:#8A94A6;margin-bottom:24px;">Tus finanzas, con garra</div>
     <h1 style="font-size:20px;margin:0 0 12px;color:#FFFFFF;">Confirma tu nuevo email</h1>
     <p style="font-size:15px;line-height:1.5;margin:0 0 24px;color:#C9D1DC;">Pulsa el botón para confirmar que este es tu nuevo email en Garra.</p>
-    <a href="https://app-finanzas-henna.vercel.app/auth/confirm?token_hash={{ .TokenHash }}&type=email_change" style="display:inline-block;background:#F5A524;color:#0B0F14;text-decoration:none;font-weight:600;font-size:15px;padding:14px 24px;border-radius:12px;">Confirmar cambio</a>
+    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change" style="display:inline-block;background:#F5A524;color:#0B0F14;text-decoration:none;font-weight:600;font-size:15px;padding:14px 24px;border-radius:12px;">Confirmar cambio</a>
     <p style="font-size:12px;line-height:1.5;margin:24px 0 0;color:#8A94A6;">Si no has pedido este cambio, ignora este email.</p>
   </div>
 </div>

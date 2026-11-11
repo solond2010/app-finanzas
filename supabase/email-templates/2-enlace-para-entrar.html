@@ -4,7 +4,7 @@
     <div style="font-size:13px;color:#8A94A6;margin-bottom:24px;">Tus finanzas, con garra</div>
     <h1 style="font-size:20px;margin:0 0 12px;color:#FFFFFF;">Tu enlace para entrar</h1>
     <p style="font-size:15px;line-height:1.5;margin:0 0 24px;color:#C9D1DC;">Pulsa el botón para entrar en Garra sin contraseña. El enlace caduca en 1 hora y solo sirve una vez.</p>
-    <a href="https://app-finanzas-henna.vercel.app/auth/confirm?token_hash={{ .TokenHash }}&type=email" style="display:inline-block;background:#F5A524;color:#0B0F14;text-decoration:none;font-weight:600;font-size:15px;padding:14px 24px;border-radius:12px;">Entrar en Garra</a>
+    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email" style="display:inline-block;background:#F5A524;color:#0B0F14;text-decoration:none;font-weight:600;font-size:15px;padding:14px 24px;border-radius:12px;">Entrar en Garra</a>
     <p style="font-size:12px;line-height:1.5;margin:24px 0 0;color:#8A94A6;">Si no lo has pedido tú, ignora este email: nadie puede entrar sin él.</p>
   </div>
 </div>
