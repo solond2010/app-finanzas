@@ -1,32 +1,36 @@
 import "server-only"
 import { supabaseServer } from "@/lib/supabase-server"
-import { asPlan, FOUNDER_SPOTS, type CheckoutOption, type Plan } from "@/lib/billing/plans"
+import { asPlan, type CheckoutOption, type Plan } from "@/lib/billing/plans"
+import { paymentsEnabledFor, isLiveStripeKey } from "@/lib/billing/env-policy"
+import { mergePlanPatch, type PlanPatch } from "@/lib/billing/webhook-plan"
 
 // Pagos con Stripe. Apagados salvo PAYMENTS_ENABLED="true".
 // Claves: STRIPE_SECRET_KEY y STRIPE_WEBHOOK_SECRET (nunca en el código).
 // Por seguridad solo se aceptan claves de prueba (sk_test_) salvo que
-// STRIPE_ALLOW_LIVE="true".
+// STRIPE_ALLOW_LIVE="true". En producción, una clave de test no activa el checkout.
 
 export function paymentsEnabled(): boolean {
-  return process.env.PAYMENTS_ENABLED === "true"
+  return paymentsEnabledFor(process.env)
 }
 
-// Precios del entorno de prueba de Stripe; en real se cambian por variables.
+// Precios del entorno de prueba de Stripe (livemode=false). En vivo se
+// sustituyen por STRIPE_PRICE_PRO_MONTHLY y STRIPE_PRICE_PRO_LIFETIME.
 const TEST_PRICES: Record<CheckoutOption, string> = {
-  pro_monthly: "price_1UXqzOR66ZzTtUm8xsg4N2SV",
-  pro_yearly: "price_1UXqzTR66ZzTtUm8KQhSbU6a",
-  founder: "price_1UXqzWR66ZzTtUm897BZdc29",
+  pro_monthly: "price_1UafEhR66ZzTtUm81vYwDdjt", // 1,99 €/mes, test
+  pro_lifetime: "price_1UXqzWR66ZzTtUm897BZdc29", // 14,99 € único, test
 }
 
 export function priceIdFor(option: CheckoutOption): string {
-  const env = { pro_monthly: process.env.STRIPE_PRICE_PRO_MONTHLY, pro_yearly: process.env.STRIPE_PRICE_PRO_YEARLY, founder: process.env.STRIPE_PRICE_FOUNDER }[option]
+  const env = option === "pro_monthly"
+    ? process.env.STRIPE_PRICE_PRO_MONTHLY
+    : (process.env.STRIPE_PRICE_PRO_LIFETIME ?? process.env.STRIPE_PRICE_FOUNDER)
   return env || TEST_PRICES[option]
 }
 
 export function stripeKey(): string | null {
   const key = process.env.STRIPE_SECRET_KEY
   if (!key) return null
-  if (key.startsWith("sk_live_") && process.env.STRIPE_ALLOW_LIVE !== "true") return null
+  if (isLiveStripeKey(key) && process.env.STRIPE_ALLOW_LIVE !== "true") return null
   return key
 }
 
@@ -42,19 +46,32 @@ export async function getUserPlan(userId: string): Promise<Plan> {
   return (await getUserPlanRow(userId))?.plan ?? "free"
 }
 
-export async function founderCount(): Promise<number> {
-  const { data, error } = await supabaseServer.rpc("founder_count")
+/** Concede Pro vitalicio si el usuario está entre los 50 primeros; no degrada derechos previos. */
+export async function ensureFirstFiftyGrant(userId: string): Promise<void> {
+  const { error } = await supabaseServer.rpc("grant_first_fifty_if_eligible", { p_user_id: userId })
   if (error) throw new Error(error.message)
-  return Number(data) || 0
 }
 
-export async function founderSpotsLeft(): Promise<number> {
-  return Math.max(0, FOUNDER_SPOTS - (await founderCount()))
+export async function saveUserPlan(userId: string, patch: PlanPatch) {
+  const existing = await getUserPlanRow(userId)
+  const merged = mergePlanPatch(existing, patch)
+  const { error } = await supabaseServer.from("user_plans").upsert({ user_id: userId, ...merged, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+  if (error) throw new Error(error.message)
 }
 
-export async function saveUserPlan(userId: string, patch: Partial<Omit<UserPlanRow, "user_id">>) {
-  const { error } = await supabaseServer.from("user_plans").upsert({ user_id: userId, ...patch, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+export async function recordStripeEvent(eventId: string | null, eventType: string, livemode: boolean, applied: boolean, ignoredReason: string | null) {
+  if (!eventId) return { duplicate: false }
+  const { data: existing, error: readError } = await supabaseServer.from("stripe_webhook_events").select("event_id").eq("event_id", eventId).maybeSingle()
+  if (readError) {
+    if (/stripe_webhook_events|schema cache|does not exist/i.test(readError.message)) return { duplicate: false }
+    throw new Error(readError.message)
+  }
+  if (existing) return { duplicate: true }
+  const { error } = await supabaseServer.from("stripe_webhook_events").insert({ event_id: eventId, event_type: eventType, livemode, applied, ignored_reason: ignoredReason })
+  if (error && /duplicate|unique/i.test(error.message)) return { duplicate: true }
+  if (error && /stripe_webhook_events|schema cache|does not exist/i.test(error.message)) return { duplicate: false }
   if (error) throw new Error(error.message)
+  return { duplicate: false }
 }
 
 /** Llamada a la API de Stripe (form-urlencoded), sin dependencias extra. */

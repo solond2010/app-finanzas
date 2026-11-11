@@ -1,9 +1,10 @@
 import { getDataContext, unauthorizedResponse } from "@/lib/server/request-context"
 import { json, readJson, siteOrigin } from "@/lib/server/auth-helpers"
-import { isCheckoutOption, isPaid } from "@/lib/billing/plans"
-import { founderSpotsLeft, getUserPlanRow, paymentsEnabled, priceIdFor, stripeKey, stripeRequest } from "@/lib/server/billing"
+import { decideCheckout } from "@/lib/billing/checkout-policy"
+import { getUserPlanRow, paymentsEnabled, priceIdFor, stripeKey, stripeRequest } from "@/lib/server/billing"
 
 // Abre el pago de Stripe Checkout. Apagado salvo PAYMENTS_ENABLED="true".
+// El importe y el price_id los pone siempre el servidor.
 export async function POST(request: Request) {
   if (!paymentsEnabled()) return json({ error: "Los pagos aún no están activos" }, 404)
   const key = stripeKey()
@@ -12,24 +13,21 @@ export async function POST(request: Request) {
   if (!ctx) return unauthorizedResponse()
 
   const body = await readJson(request)
-  const option = body?.option
-  if (!isCheckoutOption(option)) return json({ error: "Elige un plan" }, 400)
-
   const row = await getUserPlanRow(ctx.userId)
-  if (row && isPaid(row.plan)) return json({ error: "Ya tienes Garra Pro" }, 409)
-  if (option === "founder" && (await founderSpotsLeft()) <= 0) return json({ error: "Ya no quedan plazas de Fundador" }, 409)
+  const decision = decideCheckout({ authenticated: true, body, currentPlan: row?.plan ?? "free" })
+  if (!decision.ok) return json({ error: decision.error }, decision.status)
 
   const origin = siteOrigin(request)
-  const subscription = option !== "founder"
+  const subscription = decision.option === "pro_monthly"
   const params: Record<string, string> = {
     mode: subscription ? "subscription" : "payment",
-    "line_items[0][price]": priceIdFor(option),
+    "line_items[0][price]": priceIdFor(decision.option),
     "line_items[0][quantity]": "1",
     success_url: `${origin}/configuracion?pago=ok`,
     cancel_url: `${origin}/configuracion?pago=cancelado`,
     client_reference_id: ctx.userId,
     "metadata[user_id]": ctx.userId,
-    "metadata[option]": option,
+    "metadata[option]": decision.option,
     locale: "es",
   }
   if (row?.stripe_customer_id) params.customer = row.stripe_customer_id

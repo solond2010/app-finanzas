@@ -1,13 +1,12 @@
 import { json } from "@/lib/server/auth-helpers"
-import { subscriptionGivesPro } from "@/lib/billing/plans"
 import { verifyStripeSignature } from "@/lib/billing/stripe-signature"
-import { getUserPlanRow, saveUserPlan } from "@/lib/server/billing"
+import { decideStripeWebhook } from "@/lib/billing/webhook-plan"
+import { recordStripeEvent, saveUserPlan } from "@/lib/server/billing"
 
 // Avisos de Stripe: activa/desactiva el plan del usuario. Solo acepta
 // peticiones firmadas con STRIPE_WEBHOOK_SECRET.
-type StripeEvent = { type: string; data: { object: Record<string, unknown> } }
-
-const str = (v: unknown) => (typeof v === "string" && v ? v : null)
+// Los eventos de test nunca cambian el ledger de producción.
+type StripeEvent = { id?: string; type: string; livemode?: boolean; data: { object: Record<string, unknown> } }
 
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET
@@ -17,38 +16,21 @@ export async function POST(request: Request) {
 
   let event: StripeEvent
   try { event = JSON.parse(payload) as StripeEvent } catch { return json({ error: "JSON no válido" }, 400) }
-  const obj = event.data?.object ?? {}
+
+  const decision = decideStripeWebhook(event, process.env)
+  if (decision.action === "reject") return json({ error: decision.error }, decision.status)
 
   try {
-    if (event.type === "checkout.session.completed" && obj.payment_status !== "unpaid") {
-      const userId = str(obj.client_reference_id) ?? str((obj.metadata as Record<string, unknown> | undefined)?.user_id)
-      if (!userId) return json({ ok: true, ignored: "sin usuario" })
-      const founder = obj.mode === "payment"
-      await saveUserPlan(userId, {
-        plan: founder ? "founder" : "pro",
-        source: "stripe",
-        stripe_customer_id: str(obj.customer),
-        stripe_subscription_id: founder ? null : str(obj.subscription),
-        subscription_status: founder ? "paid" : "active",
-      })
-    } else if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
-      const userId = str((obj.metadata as Record<string, unknown> | undefined)?.user_id)
-      if (!userId) return json({ ok: true, ignored: "sin usuario" })
-      const row = await getUserPlanRow(userId)
-      // Fundadores y usuarios de antes del lanzamiento no pierden Pro nunca.
-      const keeps = row?.plan === "founder" || row?.source === "early_access" || row?.source === "manual"
-      const status = event.type === "customer.subscription.deleted" ? "canceled" : str(obj.status)
-      const item = ((obj.items as { data?: Record<string, unknown>[] } | undefined)?.data ?? [])[0]
-      const endSec = typeof obj.current_period_end === "number" ? obj.current_period_end : typeof item?.current_period_end === "number" ? item.current_period_end : null
-      const end = endSec ? new Date(endSec * 1000).toISOString() : null
-      await saveUserPlan(userId, {
-        ...(keeps ? {} : { plan: subscriptionGivesPro(status) ? "pro" : "free", source: "stripe" }),
-        stripe_customer_id: str(obj.customer) ?? row?.stripe_customer_id ?? null,
-        stripe_subscription_id: str(obj.id),
-        subscription_status: status,
-        current_period_end: end,
-      })
+    if (decision.action === "ignore") {
+      await recordStripeEvent(decision.eventId, event.type, event.livemode === true, false, decision.reason)
+      return json({ ok: true, ignored: decision.reason })
     }
+
+    // Se aplica primero y luego se registra el evento: si el guardado falla,
+    // Stripe reintenta. saveUserPlan es idempotente y no degrada vitalicios.
+    await saveUserPlan(decision.userId, decision.patch)
+    const recorded = await recordStripeEvent(decision.eventId, event.type, event.livemode === true, true, null)
+    if (recorded.duplicate) return json({ ok: true, duplicate: true })
   } catch (error) {
     console.warn("[billing] webhook:", error instanceof Error ? error.message : error)
     return json({ error: "No se pudo guardar" }, 500) // Stripe lo reintentará
