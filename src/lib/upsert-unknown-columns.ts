@@ -28,7 +28,7 @@ export function stripColumnFromRows(rows: Record<string, unknown>[], column: str
 export type UpsertError = { message: string }
 
 export async function upsertIgnoringUnknownColumns(
-  upsert: (rows: Record<string, unknown>[]) => Promise<{ error: UpsertError | null }>,
+  upsert: (rows: Record<string, unknown>[]) => PromiseLike<{ error: UpsertError | null }>,
   rows: Record<string, unknown>[],
   maxStrips = 8,
 ): Promise<{ error: UpsertError | null; stripped: string[] }> {
