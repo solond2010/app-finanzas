@@ -57,11 +57,11 @@ export default function Landing() {
   return (
     <div className="min-h-dvh bg-[#0B0F14] text-[#EEF1F4] [color-scheme:dark]">
       <div className="mx-auto max-w-[1180px] px-5">
-        <nav className="flex items-center justify-between py-4">
-          <Link href="/" className="flex items-center gap-2.5 text-xl font-extrabold"><GarraMark className="size-8" />Garra</Link>
-          <div className="flex items-center gap-2">
-            <Link href="/login" className="hidden min-h-10 items-center rounded-full border border-[#232B36] px-4 text-sm font-semibold hover:bg-white/[0.06] sm:inline-flex">Entrar</Link>
-            <Link href={SIGNUP} className="inline-flex min-h-10 items-center rounded-full bg-[#F5A524] px-4 text-sm font-bold text-[#0B0F14] hover:brightness-110">Crear cuenta</Link>
+        <nav className="flex items-center justify-between gap-3 py-4">
+          <Link href="/" className="flex min-w-0 items-center gap-2 text-lg font-extrabold sm:gap-2.5 sm:text-xl"><GarraMark className="size-7 shrink-0 sm:size-8" />Garra</Link>
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <Link href="/login" className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-full border border-[#232B36] px-3 text-sm font-semibold hover:bg-white/[0.06] sm:px-4">Entrar</Link>
+            <Link href={SIGNUP} className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-full bg-[#F5A524] px-3 text-sm font-bold text-[#0B0F14] hover:brightness-110 sm:px-4">Crear cuenta</Link>
           </div>
         </nav>
 
@@ -70,9 +70,10 @@ export default function Landing() {
             <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F5A52440] bg-[#F5A5241a] px-3 py-1 text-[13px] font-bold text-[#F5A524]"><Sparkle weight="duotone" className="size-4" />Gratis · en beta</span>
             <h1 className="my-4 text-[2.4rem] font-extrabold leading-[1.05] tracking-tight sm:text-[3.5rem]">Todo tu dinero, <span className="text-[#F5A524]">claro</span> y en un solo sitio.</h1>
             <p className="max-w-[520px] text-[17px] text-[#C3CAD3] sm:text-[19px]">Garra junta tus cuentas, gastos, inversiones, bienes y deudas para que sepas cuánto tienes de verdad y a dónde va cada euro. Sin conectar tu banco.</p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Link href="/demo" className={PRI}><PlayCircle weight="duotone" className="size-5" />Probar la demo sin cuenta</Link>
               <Link href={SIGNUP} className={SEC}>Crear cuenta gratis</Link>
+              <Link href="/login" className="inline-flex min-h-12 items-center justify-center px-2 text-[15px] font-semibold text-[#EEF1F4] underline-offset-4 hover:text-[#F5A524] hover:underline">Ya tengo cuenta</Link>
             </div>
             <p className="mt-3 text-[13px] text-[#8C96A3]">La demo usa datos ficticios: toca lo que quieras, nada se guarda.</p>
           </div>
@@ -149,9 +150,10 @@ export default function Landing() {
           <div className="rounded-[24px] border border-[#F5A52433] bg-gradient-to-br from-[#1A1610] to-[#151B23] px-5 py-12 text-center">
             <h2 className="text-[1.75rem] font-extrabold tracking-tight sm:text-4xl">Pruébala ahora, sin registrarte</h2>
             <p className="mb-6 mt-1 text-[17px] text-[#8C96A3]">Mira la demo con datos de ejemplo y decide después.</p>
-            <div className="flex flex-col justify-center gap-3 sm:flex-row">
+            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link href="/demo" className={PRI}>Probar la demo sin cuenta</Link>
               <Link href={SIGNUP} className={SEC}>Crear cuenta</Link>
+              <Link href="/login" className="inline-flex min-h-12 items-center justify-center px-2 text-[15px] font-semibold text-[#EEF1F4] underline-offset-4 hover:text-[#F5A524] hover:underline">Ya tengo cuenta</Link>
             </div>
           </div>
         </div>
