@@ -24,6 +24,7 @@ export function isPublicAuthPath(pathname: string): boolean {
     pathname === "/auth/callback" ||
     pathname === "/auth/confirm" ||
     pathname.startsWith("/auth/confirm/") ||
+    pathname === "/auth/reset" ||
     pathname.startsWith("/api/auth/") ||
     // Avisos de error: también desde /login (sin sesión). Solo admite INSERT,
     // con límite por IP y sin datos financieros (ver api/errors/route.ts).
