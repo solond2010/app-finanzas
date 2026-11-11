@@ -4,6 +4,7 @@ import { getDataContext, unauthorizedResponse } from "@/lib/server/request-conte
 import { withUserId } from "@/lib/user-scope"
 import { canHaveAccounts, FREE_MAX_ACCOUNTS } from "@/lib/billing/plans"
 import { getUserPlan, paymentsEnabled } from "@/lib/server/billing"
+import { upsertIgnoringUnknownColumns } from "@/lib/upsert-unknown-columns"
 
 // Únicas tablas a las que esta ruta puede dar acceso — evita que un valor de
 // [table] arbitrario llegue a supabase.from(). El navegador ya no tiene la
@@ -70,7 +71,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ tab
 
   // user_id lo pone SIEMPRE el servidor: el navegador no puede escribir a
   // nombre de otro usuario (y RLS lo rechazaría igualmente).
-  const { error } = await ctx.db.from(table).upsert(withUserId(rows as Record<string, unknown>[], ctx.userId))
+  // Si el cliente envía una columna que aún no existe en producción (p. ej.
+  // interest_* antes de aplicar la migración), se reintenta sin esa columna
+  // para no bloquear el resto del guardado (movimientos, etc.).
+  const { error } = await upsertIgnoringUnknownColumns(
+    (payload) => ctx.db.from(table).upsert(payload),
+    withUserId(rows as Record<string, unknown>[], ctx.userId),
+  )
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
