@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { selectAllRows } from "@/lib/supabase-server"
 import { getDataContext, unauthorizedResponse } from "@/lib/server/request-context"
 import { withUserId } from "@/lib/user-scope"
-import { canHaveAccounts, FREE_MAX_ACCOUNTS } from "@/lib/billing/plans"
+import { canHaveAccounts, FREE_MAX_ACCOUNTS, isPaid } from "@/lib/billing/plans"
 import { getUserPlan, paymentsEnabled } from "@/lib/server/billing"
 import { upsertIgnoringUnknownColumns } from "@/lib/upsert-unknown-columns"
 
@@ -29,6 +29,17 @@ function checkTable(table: string) {
   return ALLOWED_TABLES.has(table)
 }
 
+// Escrituras de inversiones, watchlist y metas: solo Pro cuando los pagos están activos.
+// GET sigue abierto para la vista previa desenfocada. Nunca se borran filas.
+const PRO_WRITE_TABLES = new Set(["investments", "watchlist", "investment_contributions", "wealth_goals"])
+
+async function rejectFreeProWrite(table: string, userId: string) {
+  if (!PRO_WRITE_TABLES.has(table) || !paymentsEnabled()) return null
+  const plan = await getUserPlan(userId).catch(() => "pro" as const)
+  if (isPaid(plan)) return null
+  return NextResponse.json({ error: "Esto es de Garra Pro. Tus datos no se borran; pásate a Pro para usarlo.", code: "plan_limit" }, { status: 402 })
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ table: string }> }) {
   const { table } = await params
   if (!checkTable(table)) return NextResponse.json({ error: "Tabla no permitida" }, { status: 400 })
@@ -50,6 +61,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ tab
   if (!checkTable(table)) return NextResponse.json({ error: "Tabla no permitida" }, { status: 400 })
   const ctx = await getDataContext()
   if (!ctx) return unauthorizedResponse()
+
+  const denied = await rejectFreeProWrite(table, ctx.userId)
+  if (denied) return denied
 
   let body: unknown
   try { body = await request.json() } catch { return NextResponse.json({ error: "El cuerpo JSON no es válido" }, { status: 400 }) }
@@ -87,6 +101,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ t
   if (!checkTable(table)) return NextResponse.json({ error: "Tabla no permitida" }, { status: 400 })
   const ctx = await getDataContext()
   if (!ctx) return unauthorizedResponse()
+
+  const denied = await rejectFreeProWrite(table, ctx.userId)
+  if (denied) return denied
 
   let body: Record<string, unknown>
   try {

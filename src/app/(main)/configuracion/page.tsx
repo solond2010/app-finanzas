@@ -23,6 +23,8 @@ import { CategoryIcon } from "@/components/icons/category-icon"
 import { CategoryIconPicker } from "@/components/categories/category-icon-picker"
 import { DemoLockedCard } from "@/components/demo/demo-locked-card"
 import { useDemo } from "@/lib/demo/context"
+import { usePlan } from "@/lib/billing/use-plan"
+import { PaywallPreview } from "@/components/billing/paywall-preview"
 
 export default function ConfiguracionPage() {
   // La nota de la copia automática del Mac solo tiene sentido para Moha
@@ -30,6 +32,8 @@ export default function ConfiguracionPage() {
   const isOwnerDevice = useIsOwner()
   const { state, loading, dispatch } = useFinance()
   const demo = useDemo()
+  const plan = usePlan()
+  const exportLocked = plan.enabled && !plan.entitlements.export
   const { status: syncStatus, lastSyncedAt, retrySync, localBackupStatus, retryLocalBackup } = useSyncStatus()
   const { positions, contributions, loaded: investmentsLoaded, syncStatus: investmentSyncStatus, retrySync: retryInvestmentSync } = useInvestments()
   const backupBlocked = ["syncing", "error", "offline"].includes(syncStatus) || ["syncing", "error", "offline"].includes(investmentSyncStatus)
@@ -129,8 +133,10 @@ export default function ConfiguracionPage() {
   const editingCategory = editingId ? state.categories.find((c) => c.id === editingId) ?? null : null
 
   const exportBackup = async () => {
+    if (exportLocked) { toast("La exportación es de Garra Pro. Tus datos siguen ahí.", "error"); return }
     try {
       const response = await fetch("/api/backup", { cache: "no-store" })
+      if (response.status === 402) throw new Error("La exportación es de Garra Pro. Tus datos siguen ahí.")
       if (!response.ok) throw new Error("No se pudo leer la copia completa desde la nube")
       const backup = await response.blob()
       if (!backup.size) throw new Error("La copia recibida está vacía")
@@ -153,6 +159,7 @@ export default function ConfiguracionPage() {
   }
 
   const exportCSV = () => {
+    if (exportLocked) { toast("La exportación es de Garra Pro. Tus datos siguen ahí.", "error"); return }
     const headers = ["fecha", "tipo", "categoria", "descripcion", "monto", "cuenta", "tags"]
     const rows = state.transactions.map((t) => {
       const account = state.accounts.find((a) => a.id === t.cuenta_id)
@@ -295,21 +302,23 @@ export default function ConfiguracionPage() {
             <p className="text-sm text-muted-foreground font-normal">{state.transactions.length} movimientos registrados</p>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between rounded-2xl bg-muted/30 p-4 ring-1 ring-border/20">
-              <div className="space-y-1">
+            <PaywallPreview locked={exportLocked} title="Esto es de Garra Pro" description="La exportación CSV y la copia completa son de Pro. Tus datos siguen en Garra.">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl bg-muted/30 p-4 ring-1 ring-border/20">
+              <div className="space-y-1 min-w-0">
                 <p className="text-sm font-medium">Descarga tu histórico</p>
                 <p className="text-xs text-muted-foreground">Todos tus movimientos en formato CSV, listos para analizar en Excel o Google Sheets.</p>
               </div>
-              <Button variant="outline" size="sm" className="gap-1.5 shrink-0 ml-4" onClick={exportCSV}>
+              <Button variant="outline" size="sm" className="gap-1.5 shrink-0 sm:ml-4" onClick={exportCSV}>
                 <Download className="h-3.5 w-3.5" /> CSV
               </Button>
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-muted/30 p-4 ring-1 ring-border/20">
-              <div className="space-y-1"><p className="text-sm font-medium">Copia completa</p><p className="text-xs text-muted-foreground">Incluye cuentas, movimientos, metas, presupuestos, inversiones y ajustes. Solo descarga datos ya sincronizados.</p></div>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl bg-muted/30 p-4 ring-1 ring-border/20">
+              <div className="space-y-1 min-w-0"><p className="text-sm font-medium">Copia completa</p><p className="text-xs text-muted-foreground">Incluye cuentas, movimientos, metas, presupuestos, inversiones y ajustes. Solo descarga datos ya sincronizados.</p></div>
               <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={exportBackup} disabled={backupBlocked}>
                 <Download className="h-3.5 w-3.5" /> JSON
               </Button>
             </div>
+            </PaywallPreview>
             <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/35 p-4" role="status" aria-live="polite">
               <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", syncFailed ? "bg-red-500/10 text-red-500" : backupBlocked ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500")}>
                 <SyncIcon className={cn("h-4 w-4", backupBlocked && !syncFailed && "animate-spin")} />

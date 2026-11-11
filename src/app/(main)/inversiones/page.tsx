@@ -26,6 +26,8 @@ import { AlertTriangle, ChartPieSlice, ChatText, HandCoins, PiggyBank, Plus, Rep
 import { AccountLogo } from "@/components/dashboard/account-logo"
 import { CompanyLogo } from "@/components/investments/company-logo"
 import { openFeedbackDialog } from "@/components/feedback/feedback-dialog"
+import { PaywallPreview } from "@/components/billing/paywall-preview"
+import { usePlan } from "@/lib/billing/use-plan"
 
 const CARD = "min-w-0 rounded-2xl border border-border/80 bg-card p-4 sm:p-5"
 const CLASS_COLORS: Record<SliceKey, string> = {
@@ -43,6 +45,8 @@ const unitPrice = (n: number, cur: string) => `${n.toLocaleString("es-ES", { max
 export default function InversionesPage() {
   const router = useRouter()
   const { state, loading } = useFinance()
+  const plan = usePlan()
+  const locked = plan.enabled && !plan.entitlements.investments
   const { positions, contributions, loaded, update, applyDca, refresh, remove, retrySync } = useInvestments()
   const { quotes, ready } = useQuotes(positions)
   const { sales, addSale, refreshSales } = useInvestmentSales()
@@ -165,7 +169,7 @@ export default function InversionesPage() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Inversiones</h1>
         <p className="mt-1 text-sm text-muted-foreground">Tus cuentas de inversión y en qué está invertido su dinero.</p>
       </div>
-      {view.accounts.length > 0 && <Button variant="outline" onClick={() => openNew()}><Plus className="size-4 text-primary" />Añadir posición</Button>}
+      {!locked && view.accounts.length > 0 && <Button variant="outline" onClick={() => openNew()}><Plus className="size-4 text-primary" />Añadir posición</Button>}
     </header>
   )
   const dialogEl = (
@@ -176,15 +180,17 @@ export default function InversionesPage() {
   )
 
   if (loading || !loaded || (positions.length > 0 && !ready)) {
-    return <div className="space-y-4 sm:space-y-5">{header}{betaBanner}<div className="grid gap-4 lg:grid-cols-[2fr_1fr]"><Skeleton className="h-56" /><Skeleton className="h-56" /></div><Skeleton className="h-72" /></div>
+    return <div className="space-y-4 sm:space-y-5">{header}{betaBanner}<PaywallPreview locked={locked} title="Esto es de Garra Pro" description="Inversiones, historial de patrimonio y analíticas. Tus datos siguen ahí."><div className="grid gap-4 lg:grid-cols-[2fr_1fr]"><Skeleton className="h-56" /><Skeleton className="h-56" /></div><Skeleton className="h-72" /></PaywallPreview></div>
   }
   if (view.accounts.length === 0) {
     return (
       <div className="space-y-4 sm:space-y-5">
         {header}
         {betaBanner}
-        <EmptyState bordered icon={ChartPieSlice} title="Aún no tienes cuentas de inversión" description="Crea en Cuentas una cuenta de tipo «Inversión» (tu bróker, fondos…) con su saldo. Luego aquí podrás decir en qué acciones, fondos o ETF está ese dinero." action={{ label: "Ir a Cuentas", onClick: () => router.push("/cuentas#nueva") }} />
-        {dialogEl}
+        <PaywallPreview locked={locked} title="Esto es de Garra Pro" description="Inversiones, historial de patrimonio y analíticas. Tus datos siguen ahí.">
+          <EmptyState bordered icon={ChartPieSlice} title="Aún no tienes cuentas de inversión" description="Crea en Cuentas una cuenta de tipo «Inversión» (tu bróker, fondos…) con su saldo. Luego aquí podrás decir en qué acciones, fondos o ETF está ese dinero." action={locked ? undefined : { label: "Ir a Cuentas", onClick: () => router.push("/cuentas#nueva") }} />
+        </PaywallPreview>
+        {!locked && dialogEl}
       </div>
     )
   }
@@ -220,6 +226,7 @@ export default function InversionesPage() {
       {header}
       {betaBanner}
 
+      <PaywallPreview locked={locked} title="Esto es de Garra Pro" description="Inversiones, historial de patrimonio y analíticas. Tus datos siguen ahí.">
       <section className={cn("grid gap-4", hasPositions && "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]")}>
         <div className="min-w-0 rounded-2xl hero-panel p-4 sm:p-6">
           <p className="page-section-label">Valor de mercado</p>
@@ -370,7 +377,8 @@ export default function InversionesPage() {
           </ul>
         </section>
       )}
-      {dialogEl}
+      </PaywallPreview>
+      {!locked && dialogEl}
     </div>
   )
 }

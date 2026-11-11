@@ -38,6 +38,7 @@ import { formatMoney, convertToEur, currencySymbol, type CurrencyCode } from "@/
 import { dateLabel, isInitialBalanceTransaction } from "@/lib/format"
 import { parseLocalDate } from "@/lib/date-utils"
 import { Sensitive } from "@/components/shared/sensitive"
+import { usePlan } from "@/lib/billing/use-plan"
 import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurringFrequency, recurringTag, type RecurringFrequency } from "@/lib/calculations"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
@@ -366,6 +367,8 @@ export function TransactionsTable({
 }) {
   const { state, loading, dispatch } = useFinance()
   const { toast } = useToast()
+  const plan = usePlan()
+  const exportLocked = plan.enabled && !plan.entitlements.export
   const searchParams = useSearchParams()
   const [filterAccount, setFilterAccount] = useState<string>(cuentaId ?? "all")
   const [filterCategory, setFilterCategory] = useState<string>(() => {
@@ -466,6 +469,7 @@ export function TransactionsTable({
   }
 
   const exportCSV = () => {
+    if (exportLocked) { toast("La exportación es de Garra Pro. Tus datos siguen ahí.", "error"); return }
     const headers = ["fecha", "tipo", "categoria", "descripcion", "monto", "cuenta", "divisa", "tags"]
     const rows = state.transactions.map((t) => {
       const account = state.accounts.find((a) => a.id === t.cuenta_id)
@@ -656,8 +660,8 @@ export function TransactionsTable({
           {selectedMonth && !cuentaId && mobileMode === "list" && <Button type="button" variant="outline" size="sm" className="h-11 w-full gap-2 md:hidden" onClick={() => setMobileFiltersOpen((open) => !open)} aria-expanded={mobileFiltersOpen}><SlidersHorizontal className="size-4" />{activeFiltersCount > 0 ? `Filtros activos · ${activeFiltersCount}` : "Filtros"}{activeFiltersCount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{activeFiltersCount}</span>}</Button>}
         </div>
           <div className={cn("grid w-full grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-2", mobileMode === "calendar" || (selectedMonth && !cuentaId && mobileMode === "list" && !mobileFiltersOpen) ? "!hidden md:!flex" : "")}>
-            <Button type="button" variant="outline" size="sm" className="h-10 w-full gap-1.5 px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm" onClick={exportCSV}>
-              <Download className="h-3.5 w-3.5" /> Exportar CSV
+            <Button type="button" variant="outline" size="sm" className="h-10 w-full gap-1.5 px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm" onClick={exportCSV} title={exportLocked ? "La exportación es de Garra Pro" : undefined}>
+              <Download className="h-3.5 w-3.5" /> {exportLocked ? "Exportar CSV · Pro" : "Exportar CSV"}
             </Button>
             <label className="inline-flex h-10 min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-border px-2 text-[11px] text-muted-foreground sm:h-9 sm:px-2.5 sm:text-xs">
               <input type="checkbox" checked={showAdjustments} onChange={(e) => { setShowAdjustments(e.target.checked); setPage(0) }} />

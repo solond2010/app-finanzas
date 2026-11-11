@@ -22,7 +22,7 @@ export async function GET() {
       source,
       lifetime: isLifetimeAccess(plan, source),
       renews: row?.current_period_end ?? null,
-      entitlements: entitlementsFor(plan, true),
+      entitlements: entitlementsFor(plan, true, source),
       prices: PRICES_EUR,
     })
   } catch (error) {

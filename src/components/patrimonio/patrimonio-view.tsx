@@ -13,6 +13,7 @@ import { useAssetsDebts } from "@/lib/use-assets-debts"
 import { localDateKey, parseLocalDate } from "@/lib/date-utils"
 import { ASSET_LABEL, ASSET_TYPES, DEBT_LABEL, DEBT_TYPES, paidPct, totals, type Asset, type AssetType, type AssetValue, type Debt, type DebtType } from "@/lib/assets-debts"
 import { CarProfile, CreditCard, Diamond, HandCoins, House, Landmark, Package, PaintBrush, PencilLine, Plus, Scales, Trash2, Watch, ClockCounterClockwise, X } from "@/components/icons"
+import { ProjectionCard } from "@/components/billing/projection-card"
 
 type IconC = typeof House
 const ASSET_ICON: Record<AssetType, IconC> = { vivienda: House, coche: CarProfile, relojes: Watch, joyas: Diamond, arte: PaintBrush, otro: Package }
@@ -266,6 +267,8 @@ export function PatrimonioView() {
           <p className="mt-2 text-[11px] text-muted-foreground">Cuentas e inversiones salen de tus cuentas; bienes y deudas los apuntas aquí.</p>
         </div>
       </section>
+
+      <ProjectionCard netWorth={neto} />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <section className={CARD} aria-label="Otros bienes">

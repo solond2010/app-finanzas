@@ -26,6 +26,8 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 import { PatrimonioMensualSection } from "@/components/analytics/patrimonio-mensual"
 import { PatrimonioObjetivos } from "@/components/analytics/patrimonio-objetivos"
+import { PaywallPreview } from "@/components/billing/paywall-preview"
+import { usePlan } from "@/lib/billing/use-plan"
 import { CategoryIcon } from "@/components/icons/category-icon"
 
 // Mismo umbral que MonthlyBudget (src/components/dashboard/monthly-budget.tsx).
@@ -158,6 +160,8 @@ const DayHeatmap = memo(function DayHeatmap({ dailyTotals, firstWeekday }: { dai
 
 export default function AnalyticsPage() {
   const { state, loading } = useFinance()
+  const plan = usePlan()
+  const analyticsLocked = plan.enabled && !plan.entitlements.advancedAnalytics
   const currencyByAccount = useMemo(() => getCurrencyByAccount(state.accounts), [state.accounts])
   const [monthOffset, setMonthOffset] = useState(0)
   const TREND_MONTHS = 6
@@ -400,7 +404,7 @@ export default function AnalyticsPage() {
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           <MonthPeriodPicker monthOffset={monthOffset} onMonthOffsetChange={setMonthOffset} label={formatMonth(selectedDate)} />
           {monthOffset > 0 && <Button type="button" variant="ghost" className="min-h-11 rounded-full px-3 text-xs font-semibold" onClick={() => setMonthOffset(0)}>Este mes</Button>}
-          {hasData && (
+          {hasData && !analyticsLocked && (
             <Button variant="outline" className="h-11 gap-1.5 rounded-full px-4" onClick={handleExportPdf} disabled={exportingPdf}>
               <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Descargar PDF"}
             </Button>
@@ -416,6 +420,7 @@ export default function AnalyticsPage() {
           <Skeleton className="h-80" />
         </div>
       ) : (
+        <PaywallPreview locked={analyticsLocked} title="Solo en Pro" description="Las analíticas avanzadas y el historial de patrimonio son de Garra Pro. Tus datos siguen ahí.">
         <>
           <section className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
             <MetricCard
@@ -655,6 +660,7 @@ export default function AnalyticsPage() {
             </div>
           </CollapsibleBlock>
         </>
+        </PaywallPreview>
       )}
     </div>
   )

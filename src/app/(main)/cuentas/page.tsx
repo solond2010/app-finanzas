@@ -21,11 +21,14 @@ import { MetricCard } from "@/components/dashboard/metric-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
 import { money } from "@/lib/format"
 import { calculateRemuneratedAccountForecast } from "@/lib/remunerated-accounts"
+import { canHaveAccounts, FREE_MAX_ACCOUNTS } from "@/lib/billing/plans"
+import { usePlan } from "@/lib/billing/use-plan"
 
 export default function CuentasPage() {
   const { state, loading, dispatch } = useFinance()
   const router = useRouter()
   const { toast } = useToast()
+  const plan = usePlan()
   const [showNewAccount, setShowNewAccount] = useState(false)
   const [accountSearch, setAccountSearch] = useState("")
   const [accountType, setAccountType] = useState("all")
@@ -120,15 +123,32 @@ export default function CuentasPage() {
   const biggestEffortFund = fundsWithProgress.filter((f) => f.pct < 100).sort((a, b) => b.restante - a.restante)[0] ?? null
   const totalRestante = Math.max(goalStats.totalObjetivo - goalStats.totalAhorrado, 0)
   const hasMetas = state.sinkingFunds.length > 0
+  const atAccountCap = plan.enabled && !canHaveAccounts(plan.plan, true, state.accounts.length + 1)
+  const requestAddAccount = () => {
+    if (atAccountCap) {
+      toast(`El plan gratis permite hasta ${FREE_MAX_ACCOUNTS} cuentas. Pásate a Pro para tener más.`, "error")
+      router.push("/configuracion")
+      return
+    }
+    setShowNewAccount(true)
+  }
+
+  useEffect(() => {
+    if (!showNewAccount || !atAccountCap) return
+    setShowNewAccount(false)
+    toast(`El plan gratis permite hasta ${FREE_MAX_ACCOUNTS} cuentas. Pásate a Pro para tener más.`, "error")
+    router.push("/configuracion")
+  }, [showNewAccount, atAccountCap, router, toast])
 
   return (
+
     <div className="content-fade space-y-6 sm:space-y-7">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Cuentas</h1>
           <p className="mt-1 text-sm text-muted-foreground">{state.accounts.length} {state.accounts.length === 1 ? "cuenta" : "cuentas"} · saldos por banco y metas de ahorro.</p>
         </div>
-        <button type="button" onClick={() => setShowNewAccount(true)} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 self-start rounded-full bg-[var(--gold)] px-4 text-sm font-bold text-[var(--gold-foreground)] shadow-sm transition-[filter,transform] hover:brightness-110 active:scale-[0.98] sm:self-auto">
+        <button type="button" onClick={requestAddAccount} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 self-start rounded-full bg-[var(--gold)] px-4 text-sm font-bold text-[var(--gold-foreground)] shadow-sm transition-[filter,transform] hover:brightness-110 active:scale-[0.98] sm:self-auto">
           <Plus className="size-4" />Nueva cuenta
         </button>
       </header>
@@ -156,7 +176,7 @@ export default function CuentasPage() {
           icon={WalletIcon}
           title="Sin cuentas aún"
           description="Añade tu primera cuenta bancaria para empezar a gestionar tus finanzas."
-          action={{ label: "Crear primera cuenta", icon: Plus, onClick: () => setShowNewAccount(true) }}
+          action={{ label: "Crear primera cuenta", icon: Plus, onClick: requestAddAccount }}
         />
       ) : (
         <>
@@ -291,7 +311,7 @@ export default function CuentasPage() {
         <SinkingFundsGrid />
       </section>}
 
-      <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={(a) => { dispatch({ type: "ADD_ACCOUNT", payload: a }); setShowNewAccount(false); toast("Cuenta creada", "success") }} />
+      <AccountDialog open={showNewAccount && !atAccountCap} onOpenChange={setShowNewAccount} onSave={(a) => { dispatch({ type: "ADD_ACCOUNT", payload: a }); setShowNewAccount(false); toast("Cuenta creada", "success") }} />
     </div>
   )
 }

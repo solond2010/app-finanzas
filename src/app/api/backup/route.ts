@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { selectAllRows, supabaseServer } from "@/lib/supabase-server"
 import { resolveShortcutUser } from "@/lib/server/shortcut-auth"
+import { entitlementsFor } from "@/lib/billing/plans"
+import { getUserPlan, paymentsEnabled } from "@/lib/server/billing"
 
 export const dynamic = "force-dynamic"
 
@@ -24,6 +26,12 @@ const BACKUP_TABLES = [
 export async function GET(request: Request) {
   const auth = await resolveShortcutUser(request)
   if (auth instanceof NextResponse) return auth
+  if (paymentsEnabled()) {
+    const plan = await getUserPlan(auth.userId).catch(() => "pro" as const)
+    if (!entitlementsFor(plan, true).export) {
+      return NextResponse.json({ error: "La exportación es de Garra Pro. Tus datos siguen ahí.", code: "plan_limit" }, { status: 402 })
+    }
+  }
   const scope = { db: supabaseServer, userId: auth.userId }
   try {
     const entries = await Promise.all(BACKUP_TABLES.map(async (table) => [table, await selectAllRows(table, scope)] as const))

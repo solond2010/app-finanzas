@@ -37,8 +37,8 @@ export function isLifetimeAccess(plan: Plan | null | undefined, source: string |
 }
 
 /** Lo que puede usar el usuario. Con los pagos apagados: todo. */
-export function entitlementsFor(plan: Plan, paymentsEnabled: boolean): Entitlements {
-  if (!paymentsEnabled || isPaid(plan)) return FULL
+export function entitlementsFor(plan: Plan, paymentsEnabled: boolean, source?: string | null): Entitlements {
+  if (!paymentsEnabled || isPaid(plan) || isLifetimeAccess(plan, source)) return FULL
   return FREE
 }
 

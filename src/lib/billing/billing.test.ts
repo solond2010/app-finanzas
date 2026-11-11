@@ -28,6 +28,14 @@ describe("planes", () => {
     expect(entitlementsFor("free", true).export).toBe(false)
     expect(canHaveAccounts("pro", true, 40)).toBe(true)
     expect(entitlementsFor("founder", true).export).toBe(true)
+
+    // Un Pro de por vida (50 primeros, early access o manual) no pierde nada
+    // aunque el campo plan llegara a verse como free.
+    expect(entitlementsFor("free", true, "first_fifty").export).toBe(true)
+    expect(entitlementsFor("free", true, "early_access").investments).toBe(true)
+    expect(entitlementsFor("free", true, "manual").advancedAnalytics).toBe(true)
+    expect(entitlementsFor("pro", true, "stripe").export).toBe(true)
+
   })
   it("estados de suscripción que dan Pro", () => {
     expect(subscriptionGivesPro("active")).toBe(true)

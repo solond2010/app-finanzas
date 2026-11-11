@@ -11,6 +11,7 @@ import { formatMoney } from "@/lib/currency"
 
 import { dbDeleteIn } from "@/lib/db-client"
 import { decodeBytes, findDuplicates, readBankCsv, toMovements, type BankTable, type ColumnMapping, type ParsedMovement } from "@/lib/bank-import"
+import { suggestCategory } from "@/lib/categorize-import"
 import { generateId, useFinance, type Transaction } from "@/lib/store"
 import { cn } from "@/lib/utils"
 
@@ -60,6 +61,7 @@ export function BankImportDialog({ open, onOpenChange }: { open: boolean; onOpen
   const [error, setError] = useState("")
   const [shown, setShown] = useState(PAGE)
   const [done, setDone] = useState<Done | null>(null)
+  const [categoryByRow, setCategoryByRow] = useState<Record<number, string>>({})
   const account = accounts.find((a) => a.id === (accountId || accounts[0]?.id))
 
   const parsed = useMemo(() => (table && mapping ? toMovements({ ...table, mapping }) : null), [table, mapping])
@@ -68,7 +70,7 @@ export function BankImportDialog({ open, onOpenChange }: { open: boolean; onOpen
     return findDuplicates(parsed.movements, state.transactions.filter((t) => t.cuenta_id === account.id))
   }, [parsed, account, state.transactions])
 
-  const reset = () => { setStep("elegir"); setTable(null); setMapping(null); setSelected(new Set()); setError(""); setShown(PAGE); setDone(null); setFileName("") }
+  const reset = () => { setStep("elegir"); setTable(null); setMapping(null); setSelected(new Set()); setError(""); setShown(PAGE); setDone(null); setFileName(""); setCategoryByRow({}) }
   const close = (value: boolean) => { onOpenChange(value); if (!value) setTimeout(reset, 200) }
 
   const load = (text: string, name: string) => {
@@ -102,12 +104,24 @@ export function BankImportDialog({ open, onOpenChange }: { open: boolean; onOpen
     setSelected(new Set(movs.filter((m) => !dup.has(m.row)).map((m) => m.row)))
   }
 
-  const categoryFor = (tipo: "ingreso" | "gasto") => {
-    const names = new Set(state.categories.map((c) => c.name))
-    if (tipo === "gasto" && names.has("Otros gastos")) return "Otros gastos"
-    if (tipo === "ingreso" && names.has("Otros ingresos")) return "Otros ingresos"
-    return "Otros"
-  }
+  const historyForLearn = useMemo(
+    () => state.transactions.map((t) => ({ descripcion: t.descripcion, categoria: t.categoria, tipo: t.tipo === "ingreso" ? "ingreso" as const : "gasto" as const })),
+    [state.transactions],
+  )
+  const namedCategories = useMemo(
+    () => state.categories.map((c) => ({ name: c.name, kind: c.kind })),
+    [state.categories],
+  )
+  const suggestions = useMemo(() => {
+    const map = new Map<number, ReturnType<typeof suggestCategory>>()
+    if (!parsed) return map
+    for (const m of parsed.movements) {
+      map.set(m.row, suggestCategory(m.descripcion, m.tipo, historyForLearn, namedCategories))
+    }
+    return map
+  }, [parsed, historyForLearn, namedCategories])
+
+  const categoryFor = (m: ParsedMovement) => categoryByRow[m.row] ?? suggestions.get(m.row)?.category ?? (m.tipo === "ingreso" ? "Otros ingresos" : "Otros gastos")
 
   const doImport = () => {
     if (!parsed || !account) return
@@ -116,7 +130,7 @@ export function BankImportDialog({ open, onOpenChange }: { open: boolean; onOpen
     if (!chosen.length) return
     const txs: Transaction[] = chosen.map((m) => ({
       id: generateId(), cuenta_id: account.id, monto: m.monto, fecha: m.fecha, tipo: m.tipo,
-      categoria: categoryFor(m.tipo), es_necesidad: false, descripcion: m.descripcion, tags: ["importado", `importado:${batch}`],
+      categoria: categoryFor(m), es_necesidad: false, descripcion: m.descripcion, tags: ["importado", `importado:${batch}`],
     }))
     const initialBefore = state.transactions.find((t) => t.cuenta_id === account.id && t.categoria === "Saldo inicial" && (t.id.startsWith("init_") || t.id.startsWith("adj_init_"))) ?? null
     dispatch({ type: "IMPORT_TRANSACTIONS", payload: txs, accountId: account.id, keepBalance })
@@ -207,17 +221,39 @@ export function BankImportDialog({ open, onOpenChange }: { open: boolean; onOpen
             <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
               {movements.slice(0, shown).map((m) => {
                 const dup = duplicates.has(m.row)
+                const suggestion = suggestions.get(m.row)
+                const chosenCat = categoryFor(m)
+                const source = categoryByRow[m.row] ? "none" : (suggestion?.source ?? "none")
+                const options = state.categories.filter((c) => !c.kind || c.kind === "both" || c.kind === m.tipo)
                 return (
                   <li key={m.row}>
-                    <label className={cn("flex cursor-pointer items-center gap-3 px-3 py-2.5", dup && "bg-amber-500/5")}>
-                      <input type="checkbox" className="size-4 shrink-0 accent-[var(--gold)]" checked={selected.has(m.row)} onChange={(e) => setSelected((prev) => { const next = new Set(prev); if (e.target.checked) next.add(m.row); else next.delete(m.row); return next })} />
-                      <span className="w-[4.5rem] shrink-0 text-xs tabular-nums text-muted-foreground">{m.fecha.split("-").reverse().join("/")}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="line-clamp-2 break-words text-sm leading-tight">{m.descripcion || "(sin descripción)"}</span>
-                        {dup && <span className="mt-0.5 block text-[11px] font-medium text-amber-500">Ya existe en Garra</span>}
-                      </span>
-                      <Sensitive className={cn("shrink-0 text-sm font-semibold tabular-nums", m.tipo === "ingreso" ? "text-emerald-500" : "text-foreground")}>{m.tipo === "ingreso" ? "+" : "−"}{formatMoney(m.monto, currency)}</Sensitive>
-                    </label>
+                    <div className={cn("flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3", dup && "bg-amber-500/5")}>
+                      <label className="flex min-w-0 cursor-pointer items-center gap-3 sm:flex-1">
+                        <input type="checkbox" className="size-4 shrink-0 accent-[var(--gold)]" checked={selected.has(m.row)} onChange={(e) => setSelected((prev) => { const next = new Set(prev); if (e.target.checked) next.add(m.row); else next.delete(m.row); return next })} />
+                        <span className="w-[4.5rem] shrink-0 text-xs tabular-nums text-muted-foreground">{m.fecha.split("-").reverse().join("/")}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="line-clamp-2 break-words text-sm leading-tight">{m.descripcion || "(sin descripción)"}</span>
+                          {dup && <span className="mt-0.5 block text-[11px] font-medium text-amber-500">Ya existe en Garra</span>}
+                        </span>
+                        <Sensitive className={cn("shrink-0 text-sm font-semibold tabular-nums", m.tipo === "ingreso" ? "text-emerald-500" : "text-foreground")}>{m.tipo === "ingreso" ? "+" : "−"}{formatMoney(m.monto, currency)}</Sensitive>
+                      </label>
+                      <div className="flex min-w-0 items-center gap-2 pl-7 sm:w-56 sm:shrink-0 sm:pl-0">
+                        {source !== "none" && (
+                          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", source === "learned" ? "bg-emerald-500/15 text-emerald-500" : "bg-primary/15 text-primary")}>
+                            {source === "learned" ? "Aprendido" : "Sugerido"}
+                          </span>
+                        )}
+                        <select
+                          className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
+                          value={chosenCat}
+                          aria-label={`Categoría de ${m.descripcion || "movimiento"}`}
+                          onChange={(e) => setCategoryByRow((prev) => ({ ...prev, [m.row]: e.target.value }))}
+                        >
+                          {options.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                          {!options.some((c) => c.name === chosenCat) && chosenCat && <option value={chosenCat}>{chosenCat}</option>}
+                        </select>
+                      </div>
+                    </div>
                   </li>
                 )
               })}
@@ -233,10 +269,10 @@ export function BankImportDialog({ open, onOpenChange }: { open: boolean; onOpen
               <Button type="button" variant="outline" onClick={reset}>Elegir otro archivo</Button>
               <div className="flex items-center justify-between gap-3 sm:justify-end">
                 <span className="text-xs text-muted-foreground"><Sensitive>−{formatMoney(totals.gastos, currency)} · +{formatMoney(totals.ingresos, currency)}</Sensitive></span>
-                <Button type="button" className="h-11 px-5" disabled={!chosen.length} onClick={doImport}>Importar {chosen.length}</Button>
+                <Button type="button" className="h-11 px-5" disabled={!chosen.length} onClick={doImport}>Confirmar {chosen.length}</Button>
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground">Se guardan con la categoría «Otros»; puedes cambiarla luego en Movimientos.</p>
+            <p className="text-[11px] text-muted-foreground">Sugerimos una categoría (Sugerido o Aprendido de lo que ya clasificaste). Siempre puedes cambiarla ahora o luego en Movimientos.</p>
           </div>
         )}
 

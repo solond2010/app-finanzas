@@ -50,6 +50,7 @@ import { SHEET_CONTENT, SheetHandle } from "@/components/dashboard/sheet-handle"
 import { CashflowComboChart, ImportantToday, TopTiles, type Insight } from "@/components/dashboard/resumen-blocks"
 import { OnboardingGuide } from "@/components/onboarding/onboarding-guide"
 import { CashflowDrilldown, CashflowHoverTooltip, type CashflowBucket } from "@/components/dashboard/cashflow-drilldown"
+import { MonthlySummaryCard } from "@/components/billing/monthly-summary-card"
 
 const CARD = "rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
@@ -1228,6 +1229,7 @@ function DashboardInner() {
               </div>
             </section>
           )}
+          <MonthlySummaryCard netWorthNow={netWorthDisplay} />
           <ImportantToday items={insights} />
 
           <section className={`${CARD} min-w-0`} aria-label="Ingresos y gastos del periodo">

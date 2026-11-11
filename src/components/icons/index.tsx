@@ -68,6 +68,8 @@ import {
   Info as PhInfo,
   Key as PhKey,
   Lightbulb as PhLightbulb,
+  LockSimple as PhLockSimple,
+  Crown as PhCrown,
   List as PhList,
   MagnifyingGlass as PhMagnifyingGlass,
   MagnifyingGlassMinus as PhMagnifyingGlassMinus,
@@ -173,6 +175,7 @@ export const Cloud = makeIcon(PhCloud, "regular", "Cloud")
 export const CloudOff = makeIcon(PhCloudSlash, "regular", "CloudOff")
 export const Copy = makeIcon(PhCopy, "regular", "Copy")
 export const CreditCard = makeIcon(PhCreditCard, "duotone", "CreditCard")
+export const Crown = makeIcon(PhCrown, "duotone", "Crown")
 export const Download = makeIcon(PhDownloadSimple, "regular", "Download")
 export const Ellipsis = makeIcon(PhDotsThree, "bold", "Ellipsis")
 export const Eye = makeIcon(PhEye, "regular", "Eye")
@@ -202,6 +205,7 @@ export const LineChart = makeIcon(PhChartLine, "duotone", "LineChart")
 export const List = makeIcon(PhList, "regular", "List")
 export const Loader2 = makeIcon(PhCircleNotch, "bold", "Loader2")
 export const LogOut = makeIcon(PhSignOut, "regular", "LogOut")
+export const Lock = makeIcon(PhLockSimple, "duotone", "Lock")
 export const Maximize2 = makeIcon(PhArrowsOut, "regular", "Maximize2")
 export const Money = makeIcon(PhMoney, "duotone", "Money")
 export const Minus = makeIcon(PhMinus, "bold", "Minus")
