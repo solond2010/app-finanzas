@@ -1,7 +1,7 @@
 import { json } from "@/lib/server/auth-helpers"
 import { verifyStripeSignature } from "@/lib/billing/stripe-signature"
 import { decideStripeWebhook } from "@/lib/billing/webhook-plan"
-import { recordStripeEvent, saveUserPlan } from "@/lib/server/billing"
+import { fillCheckoutPeriodEnd, recordStripeEvent, saveUserPlan } from "@/lib/server/billing"
 
 // Avisos de Stripe: activa/desactiva el plan del usuario. Solo acepta
 // peticiones firmadas con STRIPE_WEBHOOK_SECRET.
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
     // Se aplica primero y luego se registra el evento: si el guardado falla,
     // Stripe reintenta. saveUserPlan es idempotente y no degrada vitalicios.
-    await saveUserPlan(decision.userId, decision.patch)
+    await saveUserPlan(decision.userId, await fillCheckoutPeriodEnd(decision.patch))
     const recorded = await recordStripeEvent(decision.eventId, event.type, event.livemode === true, true, null)
     if (recorded.duplicate) return json({ ok: true, duplicate: true })
   } catch (error) {

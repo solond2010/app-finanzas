@@ -2,7 +2,7 @@ import "server-only"
 import { supabaseServer } from "@/lib/supabase-server"
 import { asPlan, type CheckoutOption, type Plan } from "@/lib/billing/plans"
 import { paymentsEnabledFor, isLiveStripeKey } from "@/lib/billing/env-policy"
-import { mergePlanPatch, type PlanPatch } from "@/lib/billing/webhook-plan"
+import { mergePlanPatch, periodEndFromStripeObject, type PlanPatch } from "@/lib/billing/webhook-plan"
 
 // Pagos con Stripe. Apagados salvo PAYMENTS_ENABLED="true".
 // Claves: STRIPE_SECRET_KEY y STRIPE_WEBHOOK_SECRET (nunca en el código).
@@ -32,6 +32,28 @@ export function stripeKey(): string | null {
   if (!key) return null
   if (isLiveStripeKey(key) && process.env.STRIPE_ALLOW_LIVE !== "true") return null
   return key
+}
+
+async function stripeGet<T>(path: string, key: string): Promise<T> {
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${key}` },
+    cache: "no-store",
+  })
+  const body = (await res.json().catch(() => null)) as (T & { error?: { message?: string } }) | null
+  if (!res.ok || !body) throw new Error(body?.error?.message ?? `Stripe respondió ${res.status}`)
+  return body
+}
+
+/** Si el checkout mensual no trae el fin de periodo, lo lee de la suscripción en Stripe. */
+export async function fillCheckoutPeriodEnd(patch: PlanPatch): Promise<PlanPatch> {
+  if (patch.current_period_end || !patch.stripe_subscription_id) return patch
+  const key = stripeKey()
+  if (!key) throw new Error("Falta la clave de Stripe para obtener el fin de periodo")
+  const sub = await stripeGet<Record<string, unknown>>(`subscriptions/${encodeURIComponent(patch.stripe_subscription_id)}`, key)
+  const end = periodEndFromStripeObject(sub)
+  if (!end) throw new Error("Stripe no devolvió el fin de periodo de la suscripción")
+  return { ...patch, current_period_end: end }
 }
 
 export type UserPlanRow = { user_id: string; plan: Plan; source: string; stripe_customer_id: string | null; stripe_subscription_id: string | null; subscription_status: string | null; current_period_end: string | null }

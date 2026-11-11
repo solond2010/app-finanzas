@@ -31,10 +31,26 @@ export type WebhookDecision =
 
 const str = (value: unknown) => (typeof value === "string" && value ? value : null)
 
-function periodEnd(obj: Record<string, unknown>): string | null {
+function subscriptionId(value: unknown): string | null {
+  if (typeof value === "string" && value) return value
+  if (value && typeof value === "object" && typeof (value as { id?: unknown }).id === "string") {
+    return (value as { id: string }).id
+  }
+  return null
+}
+
+/** Fin de periodo de una suscripción de Stripe (raíz o primer item; API reciente lo pone en el item). */
+export function periodEndFromStripeObject(obj: Record<string, unknown>): string | null {
   const item = ((obj.items as { data?: Record<string, unknown>[] } | undefined)?.data ?? [])[0]
   const endSec = typeof obj.current_period_end === "number" ? obj.current_period_end : typeof item?.current_period_end === "number" ? item.current_period_end : null
   return endSec ? new Date(endSec * 1000).toISOString() : null
+}
+
+/** Completa current_period_end tras un checkout mensual cuando hay que consultar la suscripción. */
+export function withCheckoutPeriodEnd(patch: PlanPatch, subscription: Record<string, unknown> | null | undefined): PlanPatch {
+  if (patch.current_period_end || !patch.stripe_subscription_id || !subscription) return patch
+  const end = periodEndFromStripeObject(subscription)
+  return end ? { ...patch, current_period_end: end } : patch
 }
 
 /** Une un parche de Stripe con el plan actual sin degradar un Pro vitalicio o early_access. */
@@ -59,6 +75,8 @@ export function decideStripeWebhook(event: StripeLikeEvent | null, env: BillingE
     const userId = str(obj.client_reference_id) ?? str((obj.metadata as Record<string, unknown> | undefined)?.user_id)
     if (!userId) return { action: "ignore", reason: "sin usuario", eventId }
     const lifetime = obj.mode === "payment"
+    const subscription = obj.subscription
+    const expanded = !lifetime && subscription && typeof subscription === "object" ? subscription as Record<string, unknown> : null
     return {
       action: "apply",
       eventId,
@@ -66,9 +84,10 @@ export function decideStripeWebhook(event: StripeLikeEvent | null, env: BillingE
       patch: {
         plan: lifetime ? "founder" : "pro",
         source: "stripe",
-        stripe_customer_id: str(obj.customer),
-        stripe_subscription_id: lifetime ? null : str(obj.subscription),
+        stripe_customer_id: str(obj.customer) ?? (expanded ? str(expanded.customer) : null),
+        stripe_subscription_id: lifetime ? null : subscriptionId(subscription),
         subscription_status: lifetime ? "paid" : "active",
+        current_period_end: expanded ? periodEndFromStripeObject(expanded) : undefined,
       },
     }
   }
@@ -88,7 +107,7 @@ export function decideStripeWebhook(event: StripeLikeEvent | null, env: BillingE
         stripe_customer_id: str(obj.customer),
         stripe_subscription_id: str(obj.id),
         subscription_status: status,
-        current_period_end: periodEnd(obj),
+        current_period_end: periodEndFromStripeObject(obj),
       },
     }
   }

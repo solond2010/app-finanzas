@@ -4,7 +4,7 @@ import { canHaveAccounts, entitlementsFor, firstFiftyGrant, isCheckoutOption, is
 import { verifyStripeSignature } from "./stripe-signature"
 import { decideCheckout } from "./checkout-policy"
 import { allowStripeEventOnLedger, paymentsEnabledFor } from "./env-policy"
-import { decideStripeWebhook, mergePlanPatch } from "./webhook-plan"
+import { decideStripeWebhook, mergePlanPatch, withCheckoutPeriodEnd } from "./webhook-plan"
 
 describe("planes", () => {
   it("expone los precios acordados y no ofrece el plan anual", () => {
@@ -185,6 +185,44 @@ describe("webhook de Stripe", () => {
       const life = mergePlanPatch({ plan: "founder", source: "stripe" }, canceled.patch)
       expect(life.plan).toBeUndefined()
       expect(isLifetimeAccess("pro", "early_access")).toBe(true)
+    }
+  })
+
+  it("rellena current_period_end en el checkout mensual si la suscripción viene expandida", () => {
+    const end = 1_800_000_000
+    const decision = decideStripeWebhook({
+      id: "evt_month_exp",
+      type: "checkout.session.completed",
+      livemode: false,
+      data: { object: { payment_status: "paid", mode: "subscription", client_reference_id: "user-1", customer: "cus_1", subscription: { id: "sub_1", items: { data: [{ current_period_end: end }] } } } },
+    }, isolated)
+    expect(decision).toMatchObject({ action: "apply", userId: "user-1", patch: { plan: "pro", stripe_subscription_id: "sub_1", current_period_end: new Date(end * 1000).toISOString() } })
+  })
+
+  it("si el checkout solo trae el id, el periodo se completa al consultar la suscripción; el vitalicio no lleva fecha", () => {
+    const monthly = decideStripeWebhook({
+      id: "evt_month_id",
+      type: "checkout.session.completed",
+      livemode: false,
+      data: { object: { payment_status: "paid", mode: "subscription", client_reference_id: "user-1", customer: "cus_1", subscription: "sub_1" } },
+    }, isolated)
+    expect(monthly.action).toBe("apply")
+    if (monthly.action === "apply") {
+      expect(monthly.patch.current_period_end).toBeUndefined()
+      const filled = withCheckoutPeriodEnd(monthly.patch, { items: { data: [{ current_period_end: 1_800_000_000 }] } })
+      expect(filled.current_period_end).toBe(new Date(1_800_000_000 * 1000).toISOString())
+      expect(withCheckoutPeriodEnd(monthly.patch, { current_period_end: 1_800_000_000 }).current_period_end).toBe(new Date(1_800_000_000 * 1000).toISOString())
+    }
+    const life = decideStripeWebhook({
+      id: "evt_life_period",
+      type: "checkout.session.completed",
+      livemode: false,
+      data: { object: { payment_status: "paid", mode: "payment", client_reference_id: "user-2", customer: "cus_2" } },
+    }, isolated)
+    expect(life.action).toBe("apply")
+    if (life.action === "apply") {
+      expect(life.patch.stripe_subscription_id).toBeNull()
+      expect(withCheckoutPeriodEnd(life.patch, { current_period_end: 1_800_000_000 })).toEqual(life.patch)
     }
   })
 
