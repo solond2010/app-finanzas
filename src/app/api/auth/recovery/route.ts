@@ -1,10 +1,12 @@
-import { createSupabaseRouteClient } from "@/lib/server/request-context"
-import { countFailure, EMAIL_RE, guardAuthRequest, json, readJson, siteOrigin } from "@/lib/server/auth-helpers"
+import { createImplicitMailerClient } from "@/lib/server/implicit-auth"
+import { countFailure, EMAIL_RE, guardAuthRequest, json, readJson } from "@/lib/server/auth-helpers"
+import { CANONICAL_SITE_ORIGIN } from "@/lib/auth-redirect"
 
 // Enlace para elegir una contraseña nueva. Siempre responde igual, exista o
-// no el email, para no revelar quién tiene cuenta. La plantilla de Supabase
-// debe apuntar a /auth/confirm?token_hash=…&type=recovery (no al ?code de PKCE),
-// para que funcione al abrirlo desde Gmail u otro navegador.
+// no el email, para no revelar quién tiene cuenta.
+// La plantilla por defecto de Supabase usa {{ .ConfirmationURL }}. Pedimos el
+// reset con flowType implicit y redirect a /auth/reset, para que el token
+// viaje en el hash y no dependa del code verifier del navegador (Gmail, iPhone).
 export async function POST(request: Request) {
   const blocked = guardAuthRequest(request)
   if (blocked) return blocked
@@ -12,9 +14,9 @@ export async function POST(request: Request) {
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
   if (!EMAIL_RE.test(email)) return json({ error: "Ese email no parece válido" }, 400)
 
-  const supabase = await createSupabaseRouteClient()
+  const supabase = createImplicitMailerClient()
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${siteOrigin(request)}/auth/callback?type=recovery&next=/auth/reset`,
+    redirectTo: `${CANONICAL_SITE_ORIGIN}/auth/reset`,
   })
   if (error && /rate limit|too many/i.test(error.message)) {
     countFailure(request)

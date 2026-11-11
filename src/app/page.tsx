@@ -3,6 +3,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { CalendarDots, CaretDown, ChartPieSlice, DeviceMobile, FileArrowUp, PlayCircle, Scales, ShieldCheck, Sparkle } from "@phosphor-icons/react/dist/ssr"
 import { GarraMark } from "@/components/brand/garra-logo"
+import { RecoveryHashRedirect } from "@/components/auth/recovery-hash-redirect"
 
 // Portada pública (sin sesión). Con sesión, src/proxy.ts manda directo a
 // /dashboard antes de renderizar nada, así que no hay parpadeo.
@@ -56,6 +57,7 @@ function Shot({ src, alt, w, h, caption, priority }: { src: string; alt: string;
 export default function Landing() {
   return (
     <div className="min-h-dvh bg-[#0B0F14] text-[#EEF1F4] [color-scheme:dark]">
+      <RecoveryHashRedirect />
       <div className="mx-auto max-w-[1180px] px-5">
         <nav className="flex items-center justify-between gap-3 py-4">
           <Link href="/" className="flex min-w-0 items-center gap-2 text-lg font-extrabold sm:gap-2.5 sm:text-xl"><GarraMark className="size-7 shrink-0 sm:size-8" />Garra</Link>
