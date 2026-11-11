@@ -1,19 +1,34 @@
 import { NextResponse } from "next/server"
 import { isSupabaseAuthEnabled } from "@/lib/auth-mode"
 import { parseOtpType } from "@/lib/auth-links"
+import { appAuthOrigin, safeNextPath } from "@/lib/auth-redirect"
 import { createSupabaseRouteClient } from "@/lib/server/request-context"
 
 // Destino de los enlaces de los emails con las plantillas por defecto de
-// Supabase (?code=, flujo PKCE). Las plantillas nuevas usan /auth/confirm,
-// que funciona en cualquier navegador; esto queda para enlaces antiguos.
+// Supabase (?code=, flujo PKCE) y del retorno de OAuth (flow=google).
+// Las plantillas nuevas usan /auth/confirm, que funciona en cualquier
+// navegador; /auth/callback queda para enlaces antiguos y para Google.
 export async function GET(request: Request) {
   const url = new URL(request.url)
-  const go = (path: string) => NextResponse.redirect(new URL(path, url.origin))
+  const go = (path: string) => NextResponse.redirect(new URL(path, appAuthOrigin()))
   if (!isSupabaseAuthEnabled()) return go("/login?error=enlace")
 
-  // Supabase ya rechazó el enlace (usado o caducado) y nos manda el motivo.
+  const isGoogleFlow = url.searchParams.get("flow") === "google"
+  const next = safeNextPath(url.searchParams.get("next"))
+  const loginRedirect = (aviso: string) => {
+    const login = new URL("/login", appAuthOrigin())
+    login.searchParams.set("aviso", aviso)
+    if (next !== "/dashboard") login.searchParams.set("redirect", next)
+    return NextResponse.redirect(login)
+  }
+
+  // Supabase o el proveedor rechazaron el flujo (cancelación, error, enlace usado).
   if (url.searchParams.get("error") || url.searchParams.get("error_code")) {
-    console.warn("[auth/callback]", url.searchParams.get("error_code") ?? url.searchParams.get("error"))
+    const reason = (url.searchParams.get("error_code") ?? url.searchParams.get("error") ?? "").toLowerCase()
+    console.warn("[auth/callback]", reason)
+    if (isGoogleFlow || reason.includes("access_denied") || reason.includes("canceled") || reason.includes("cancelled")) {
+      return loginRedirect(reason.includes("access_denied") || reason.includes("cancel") ? "google-cancelado" : "google-error")
+    }
     return go("/login?aviso=enlace-usado")
   }
 
@@ -24,11 +39,12 @@ export async function GET(request: Request) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (error) {
-      // Si llega un ?code= es que Supabase YA verificó el email. Falla el
-      // canje cuando el enlace se abre en otro navegador (p. ej. el de Gmail)
-      // y no está el code_verifier del registro. La cuenta está confirmada:
-      // basta con entrar con la contraseña.
+      // Si llega un ?code= de un email, Supabase YA verificó el correo. Falla el
+      // canje cuando el enlace se abre en otro navegador y no está el
+      // code_verifier: la cuenta está confirmada y basta entrar con contraseña.
+      // En el flujo de Google no apliques ese aviso: el usuario no confirmó un email.
       console.warn("[auth/callback]", error.code ?? "", error.message)
+      if (isGoogleFlow) return loginRedirect("google-error")
       return go("/login?aviso=confirmado")
     }
   } else if (tokenHash && type) {
@@ -38,7 +54,7 @@ export async function GET(request: Request) {
       return go("/login?aviso=enlace-usado")
     }
   } else {
-    return go("/login?error=enlace")
+    return isGoogleFlow ? loginRedirect("google-error") : go("/login?error=enlace")
   }
-  return go("/dashboard")
+  return go(next)
 }

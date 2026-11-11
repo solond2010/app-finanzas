@@ -27,6 +27,12 @@ export function loginNotice(params: { get(name: string): string | null }): LinkN
       text: "Este enlace ya se usó o ha caducado. Si ya confirmaste tu email, entra con tu contraseña. Si no, pide un enlace nuevo.",
     }
   }
+  if (aviso === "google-cancelado") {
+    return { kind: "info", text: "Has cancelado el acceso con Google. Puedes entrar con tu email o intentarlo de nuevo." }
+  }
+  if (aviso === "google-error") {
+    return { kind: "error", text: "No se pudo entrar con Google. Inténtalo de nuevo o usa tu email y contraseña." }
+  }
   if (params.get("error") === "enlace") {
     return { kind: "error", text: "El enlace no es válido o ha caducado. Pide otro." }
   }
