@@ -76,3 +76,64 @@ describe("altura estable del shell (Android Chrome)", () => {
     ).toMatch(/pointer:\s*coarse[\s\S]*scroll-behavior:\s*auto/)
   })
 })
+
+describe("un solo scroll de documento en móvil", () => {
+  it("body y html no son contenedores de overflow (clip/hidden en X convierte overflow-y en auto)", () => {
+    const css = stripComments(read("src/app/globals.css"), true)
+    const bodyBlock = css.match(/\bbody\s*\{[^}]*\}/g) ?? []
+    const htmlBlock = css.match(/\bhtml\s*\{[^}]*\}/g) ?? []
+    for (const block of [...bodyBlock, ...htmlBlock]) {
+      expect(block, "no pongas overflow-x: clip/hidden en html o body").not.toMatch(/overflow-x\s*:\s*(clip|hidden)/)
+      expect(block, "no pongas overflow: hidden/clip/auto/scroll en html o body").not.toMatch(/overflow\s*:\s*(hidden|clip|auto|scroll)/)
+    }
+  })
+
+  it("overflow-x-clip está en el wrapper exterior, no en main (si no, nace un scroll interno)", () => {
+    const shell = stripComments(read("src/app/(main)/main-shell.tsx"), false)
+    expect(shell).toMatch(/flex min-h-svh overflow-x-clip/)
+    const mainClass = shell.match(/<main className=\{cn\(([\s\S]*?)\)\}/)
+    expect(mainClass, "tiene que haber un <main> con className").toBeTruthy()
+    const inner = mainClass![1]
+    expect(inner, "main no debe usar overflow-x-clip").not.toMatch(/overflow-x-clip/)
+    expect(inner, "main no debe usar min-h-0 (crea un flex child recortado)").not.toMatch(/\bmin-h-0\b/)
+  })
+
+  it("el aviso de demo no es fixed ni sticky", () => {
+    const banner = stripComments(read("src/components/demo/demo-banner.tsx"), false)
+    expect(banner).not.toMatch(/\bfixed\b/)
+    expect(banner).not.toMatch(/\bsticky\b/)
+  })
+
+  it("el html no fuerza scroll suave de Next (data-scroll-behavior)", () => {
+    const layout = stripComments(read("src/app/layout.tsx"), false)
+    expect(layout).not.toMatch(/data-scroll-behavior/)
+  })
+
+  it("el login no usa overflow-hidden en el cascarón (el teclado virtual tiene que poder hacer scroll)", () => {
+    const login = stripComments(read("src/app/login/page.tsx"), false)
+    const root = login.match(/className="[^"]*min-h-svh[^"]*"/)
+    expect(root, "el login tiene un cascarón min-h-svh").toBeTruthy()
+    expect(root![0]).not.toMatch(/overflow-hidden/)
+  })
+
+  it("solo el hook de bloqueo pone overflow hidden en body, y las hojas lo usan", () => {
+    const hook = read("src/lib/use-body-scroll-lock.ts")
+    expect(hook).toMatch(/export function useBodyScrollLock/)
+    expect(hook).toMatch(/document\.documentElement\.style\.overflow = "hidden"/)
+    expect(hook).toMatch(/document\.body\.style\.overflow = "hidden"/)
+
+    const offenders: string[] = []
+    const files = [
+      "src/components/ui/period-popover.tsx",
+      "src/components/layout/mobile-bottom-nav.tsx",
+    ]
+    for (const rel of files) {
+      const src = read(rel)
+      expect(src, `${rel} debe usar useBodyScrollLock`).toMatch(/useBodyScrollLock\(/)
+      if (/document\.body\.style\.overflow\s*=\s*["']hidden["']/.test(src)) {
+        offenders.push(rel)
+      }
+    }
+    expect(offenders, "no asignes body.style.overflow = hidden fuera del hook").toEqual([])
+  })
+})

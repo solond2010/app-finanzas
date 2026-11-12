@@ -60,7 +60,7 @@ export function NetWorthExpanded({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="gap-0 border border-primary/25 bg-[linear-gradient(180deg,var(--hero-bg),var(--popover))] p-5 sm:max-w-[min(1040px,calc(100%-3rem))] sm:p-7 max-sm:max-h-[calc(100dvh-1.5rem-env(safe-area-inset-top))] max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+        className="gap-0 border border-primary/25 bg-[linear-gradient(180deg,var(--hero-bg),var(--popover))] p-5 sm:max-w-[min(1040px,calc(100%-3rem))] sm:p-7 max-sm:max-h-[calc(100svh-1.5rem-env(safe-area-inset-top))] max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
       >
         <div aria-hidden className="mx-auto -mt-1 mb-3 h-1.5 w-10 rounded-full bg-foreground/15 sm:hidden" />
         <div className="flex items-start justify-between gap-3">

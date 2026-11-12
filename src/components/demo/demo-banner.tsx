@@ -1,15 +1,15 @@
 import { ArrowRight, Eye } from "@/components/icons"
 import { DEMO_EXIT_HREF, DEMO_SIGNUP_HREF } from "@/lib/demo/constants"
 
-/** Aviso de demo arriba, en el flujo de la página (no `fixed`) para no pelear
- * con el scroll de iOS. Enlaces <a> (no <Link>): navegación completa para
- * salir del modo demo de verdad. */
+/** Aviso de demo arriba, en el flujo de la página (ni `fixed` ni `sticky`):
+ * en iOS sticky/fixed + un ancestro con overflow pelea con el scroll del
+ * documento. Enlaces <a> (no <Link>): navegación completa para salir de verdad. */
 export function DemoBanner() {
   return (
     <div
       role="region"
       aria-label="Modo demo"
-      className="sticky top-0 z-[45] border-b border-[color-mix(in_oklch,var(--gold),transparent_72%)] bg-white/95 pt-[env(safe-area-inset-top)] text-foreground shadow-lg shadow-black/5 backdrop-blur dark:bg-[#0B0F14]/95 dark:text-white dark:shadow-black/20"
+      className="relative z-[45] border-b border-[color-mix(in_oklch,var(--gold),transparent_72%)] bg-white/95 pt-[env(safe-area-inset-top)] text-foreground shadow-lg shadow-black/5 backdrop-blur dark:bg-[#0B0F14]/95 dark:text-white dark:shadow-black/20"
     >
       <div className="mx-auto flex h-12 w-full max-w-[1840px] items-center gap-2.5 px-3 sm:gap-3 sm:px-6 lg:h-14 lg:px-8 2xl:px-10">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_oklch,var(--gold),transparent_86%)] text-[var(--gold)]">

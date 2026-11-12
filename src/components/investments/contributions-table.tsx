@@ -238,7 +238,7 @@ export function ContributionsTable({ quotes }: { quotes: Record<string, Quote> }
               <Download className="h-3.5 w-3.5" /> Descargar Excel
             </Button>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto">
+          <div className="max-h-[50svh] overflow-y-auto">
             <ContributionsGrid months={allMonths} positions={positions} cur={cur} />
           </div>
           {!addOpen ? (

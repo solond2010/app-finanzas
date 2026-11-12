@@ -103,7 +103,7 @@ export function FeedbackNotificationsProvider({ children, enabled = true }: { ch
               <p className="text-xs text-muted-foreground">Te avisaremos aquí cuando el equipo responda a una idea o un fallo.</p>
             </div>
           ) : (
-            <ul className="max-h-[55dvh] space-y-3 overflow-y-auto pr-1">
+            <ul className="max-h-[55svh] space-y-3 overflow-y-auto pr-1">
               {responses.map((reply) => (
                 <li key={reply.id} className={cn("rounded-xl border p-4", reply.read_at ? "border-border bg-card" : "border-primary/30 bg-primary/[0.04]")}>
                   <div className="mb-2 flex items-center justify-between gap-3">

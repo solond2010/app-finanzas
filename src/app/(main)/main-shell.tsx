@@ -22,22 +22,21 @@ function MainInner({ children, demo }: { children: React.ReactNode; demo: boolea
   const { open } = useSidebar()
 
   // min-h-svh (no 100vh/100dvh): la altura no cambia al ocultar la barra
-  // de Chrome en Android, que si no hace temblar fichas y gráfica.
-  // overflow-x-clip (no hidden): hidden convierte overflow-y en auto y
-  // puede crear un scroll interno que lucha con el del documento.
-  // El scroll es el del documento (un solo flujo). El aviso de demo va en el
-  // flujo, no `fixed`: en iOS un header fijo + overflow anidado provocaba un
-  // scroll elástico raro. El margen del sidebar se aplica al bloque entero
-  // para que el aviso no se meta debajo.
+  // de Chrome en Android. overflow-x-clip va SOLO en este contenedor exterior
+  // (crece con el contenido, height auto): en un hijo flex con min-h-0 +
+  // overflow-x-clip el overflow-y pasa a auto/clip y aparece un scroll interno
+  // que lucha con el del documento (iOS y Chrome Android). El aviso de demo
+  // va en el flujo, sin fixed ni sticky. El margen del sidebar se aplica al
+  // bloque entero para que el aviso no se meta debajo.
   return (
-    <div className="flex min-h-svh">
+    <div className="flex min-h-svh overflow-x-clip">
       <Sidebar />
-      <div className={cn("flex min-h-svh min-w-0 flex-1 flex-col transition-[margin]", open ? "lg:ml-52" : "lg:ml-16")}>
+      <div className={cn("flex min-w-0 flex-1 flex-col transition-[margin]", open ? "lg:ml-52" : "lg:ml-16")}>
         {demo && <DemoBanner />}
         <main className={cn(
           // lg:pb-24: deja sitio al FAB (56px + margen) para que al llegar al
           // final de la página no tape la última fila de una tabla o un total.
-          "min-h-0 min-w-0 flex-1 overflow-x-clip px-3 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom)+1.25rem)] animate-in fade-in duration-500 sm:px-6 lg:px-8 lg:pb-24 lg:pt-8 2xl:px-10",
+          "min-w-0 flex-1 px-3 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom)+1.25rem)] animate-in fade-in duration-500 sm:px-6 lg:px-8 lg:pb-24 lg:pt-8 2xl:px-10",
           demo ? "pt-4" : "pt-[calc(var(--mobile-header-h)+1rem)]",
         )}>
           <div className="mx-auto w-full min-w-0 max-w-[1840px]">

@@ -77,7 +77,7 @@ export function BudgetDialog({ open, onOpenChange, selectedMonth }: BudgetDialog
 
         <p className="text-sm text-muted-foreground">Asigna un límite mensual por categoría. Déjalo vacío o en 0 para quitarlo.</p>
 
-        <div className="-mx-1 max-h-[55vh] space-y-2 overflow-y-auto px-1 py-1">
+        <div className="-mx-1 max-h-[55svh] space-y-2 overflow-y-auto px-1 py-1">
           {sortedCategories.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">No hay categorías. Crea alguna en Configuración.</p>
           ) : (

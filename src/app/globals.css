@@ -747,14 +747,16 @@ a {
   touch-action: manipulation;
 }
 
-html,
-body {
+/* overscroll solo en el documento (html). En body, overflow-x: clip/hidden
+   convierte overflow-y en clip/auto y el body pasa a ser un scroll container
+   que lucha con el viewport; además hace que los diálogos de Base UI bloqueen
+   el body y desplacen elementos sticky. El recorte horizontal va en el shell
+   (contenedor de altura automática), no aquí. */
+html {
   overscroll-behavior-y: contain;
-  -webkit-overflow-scrolling: touch;
 }
 
 body {
-  overflow-x: clip;
   min-height: 100vh; /* fallback si svh no existe */
   min-height: 100svh;
 }

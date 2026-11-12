@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "
 import { createPortal } from "react-dom"
 import { Check, ChevronLeft, ChevronRight, X } from "@/components/icons"
 import { cn } from "@/lib/utils"
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock"
 
 // Selector de periodo compartido: en escritorio, popover flotante anclado
 // bajo la píldora del periodo (sombra, radio y superficie de la app; se
@@ -62,11 +63,6 @@ export function PeriodPopover({
     }
     window.addEventListener("keydown", onKeyDown)
     if (!mobile) document.addEventListener("pointerdown", onPointerDown)
-    let prevOverflow = ""
-    if (mobile) {
-      prevOverflow = document.body.style.overflow
-      document.body.style.overflow = "hidden"
-    }
     // Foco en la opción marcada (o la primera) para poder seguir con teclado.
     const frame = requestAnimationFrame(() => {
       const panel = panelRef.current
@@ -77,9 +73,10 @@ export function PeriodPopover({
       cancelAnimationFrame(frame)
       window.removeEventListener("keydown", onKeyDown)
       document.removeEventListener("pointerdown", onPointerDown)
-      if (mobile) document.body.style.overflow = prevOverflow
     }
   }, [open, mobile, onOpenChange])
+
+  useBodyScrollLock(open && mobile, "[data-period-sheet]")
 
   const header = (
     <div className="mb-2 flex items-center justify-between gap-2 px-1">
@@ -106,7 +103,7 @@ export function PeriodPopover({
             panelClassName,
           )}
         >
-          <div className="max-h-[min(70vh,34rem)] overflow-y-auto overscroll-contain p-1">
+          <div className="max-h-[min(70svh,34rem)] overflow-y-auto overscroll-contain p-1">
             {header}
             {children}
           </div>
@@ -120,7 +117,7 @@ export function PeriodPopover({
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="fixed inset-x-0 bottom-0 z-[60] mx-auto max-h-[calc(100dvh-env(safe-area-inset-top)-1rem)] max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] border border-b-0 border-border bg-card px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 shadow-2xl animate-in slide-in-from-bottom duration-300 ease-out"
+            data-period-sheet className="fixed inset-x-0 bottom-0 z-[60] mx-auto max-h-[calc(100svh-env(safe-area-inset-top)-1rem)] max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] border border-b-0 border-border bg-card px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 shadow-2xl animate-in slide-in-from-bottom duration-300 ease-out"
           >
             <div aria-hidden="true" className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted-foreground/30" />
             {header}

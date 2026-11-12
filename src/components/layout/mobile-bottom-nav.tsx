@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { usePrivacy } from "@/lib/privacy"
 import { ADMIN_HREF, useAdminNav } from "@/lib/use-admin-nav"
 import { useFeedbackNotifications } from "@/components/feedback/feedback-notifications"
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock"
 
 const primaryItems = [
   { href: "/dashboard", label: "Inicio", icon: House },
@@ -49,14 +50,16 @@ export function MobileBottomNav() {
       if (event.key === "Escape") setMoreOpen(false)
     }
     window.addEventListener("keydown", onKeyDown)
-    // Mientras está abierta, la página de detrás no se desplaza.
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
     return () => {
       window.removeEventListener("keydown", onKeyDown)
-      document.body.style.overflow = prevOverflow
     }
   }, [moreOpen])
+
+  useEffect(() => {
+    setMoreOpen(false)
+  }, [pathname])
+
+  useBodyScrollLock(moreOpen, "#mobile-more-menu")
 
   return (
     <>
@@ -74,7 +77,7 @@ export function MobileBottomNav() {
             id="mobile-more-menu"
             aria-labelledby="mobile-more-title"
             aria-label="Más secciones"
-            className="mobile-more-sheet fixed inset-x-0 bottom-0 z-[60] mx-auto max-h-[calc(100dvh-env(safe-area-inset-top)-1rem)] max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] border border-b-0 border-border bg-card px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-6 shadow-2xl lg:hidden animate-in slide-in-from-bottom duration-300 ease-out"
+            className="mobile-more-sheet fixed inset-x-0 bottom-0 z-[60] mx-auto max-h-[calc(100svh-env(safe-area-inset-top)-1rem)] max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] border border-b-0 border-border bg-card px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-6 shadow-2xl lg:hidden animate-in slide-in-from-bottom duration-300 ease-out"
           >
             <div className="mb-3 flex items-center justify-between px-1">
               <div>

@@ -264,7 +264,7 @@ export function AccountDialog({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="max-h-[min(60vh,320px)] p-2">
+                <SelectContent className="max-h-[min(60svh,320px)] p-2">
                   {CURRENCY_OPTIONS.map((option) => (
                     <SelectItem key={option.code} value={option.code}>
                       {option.label}

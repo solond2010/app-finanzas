@@ -155,7 +155,7 @@ export function BankImportDialog({ open, onOpenChange }: { open: boolean; onOpen
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="z-[70] max-h-[92dvh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="z-[70] max-h-[92svh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="text-lg">Importar movimientos del banco</DialogTitle>
           <DialogDescription>

@@ -14,7 +14,7 @@ export default async function LoginPage() {
   const accounts = isSupabaseAuthEnabled()
   const googleEnabled = accounts ? await isGoogleAuthAvailable() : false
   return (
-    <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-background p-4">
+    <div className="relative flex min-h-svh items-center justify-center bg-background p-4">
       <RecoveryHashRedirect />
       <div className="relative hero-panel w-full max-w-sm rounded-[16px] p-8">
         <Suspense fallback={<div className="text-sm text-muted-foreground text-center py-8">Cargando...</div>}>

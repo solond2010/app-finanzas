@@ -59,7 +59,6 @@ export default async function RootLayout({
     <html
       lang="es"
       className={`${inter.variable} ${bricolage.variable} ${geistMono.variable}${isDark ? " dark" : ""}`}
-      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body className="min-h-svh bg-background font-sans antialiased">

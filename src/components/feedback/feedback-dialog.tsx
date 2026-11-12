@@ -75,7 +75,7 @@ export function FeedbackDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="z-[70] sm:max-w-md max-sm:bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] max-sm:max-h-[calc(100dvh-var(--bottom-nav-h)-env(safe-area-inset-top)-env(safe-area-inset-bottom))]">
+      <DialogContent className="z-[70] sm:max-w-md max-sm:bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] max-sm:max-h-[calc(100svh-var(--bottom-nav-h)-env(safe-area-inset-top)-env(safe-area-inset-bottom))]">
         <DialogHeader>
           <DialogTitle className="text-lg">Enviar comentario</DialogTitle>
           <DialogDescription>Cuéntanos un fallo o una idea. Lo leemos todo y nos ayuda a mejorar Garra.</DialogDescription>
