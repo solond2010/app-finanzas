@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
-import { axisTicks, chartSeries, monotonePath, monthlyChangeBars, monthlyCloses, normalizeDateKey } from "./net-worth-chart"
+import { buildPreciseNetWorthHistory, findObservedNetWorthPeak } from "./calculations"
+import type { Account, Transaction } from "./store"
+import { axisTicks, chartSeries, monotonePath, monthlyChangeBars, monthlyCloses, normalizeDateKey, seriesRangeStats } from "./net-worth-chart"
+
 
 const p = (date: string, value: number) => ({ date, value, label: date })
 
@@ -53,6 +56,76 @@ describe("gráfico de patrimonio", () => {
     ]
     const r = chartSeries(pts, "2026-06-01")
     expect(r.points[0].value).toBe(1000)
+  })
+})
+
+
+describe("seriesRangeStats", () => {
+  it("en 30D el Máx, el Inicio y la variación salen de la serie dibujada, no de un pico intradía", () => {
+    // El 4 nov cierra a 6.337 € después de un ingreso y un gasto el mismo día
+    // (el pico intradía sería 6.442,97 €). 30D pinta cierres, no ese intradía.
+    const account = (saldo: number): Account => ({
+      id: "acc_1",
+      nombre: "Cuenta",
+      tipo: "ahorro",
+      banco: "",
+      saldo,
+      currency: "EUR",
+      objetivo: null,
+      limite_mensual: null,
+      color: "#000",
+    })
+    const tx = (overrides: Partial<Transaction>): Transaction => ({
+      id: "tx",
+      cuenta_id: "acc_1",
+      monto: 0,
+      fecha: "2026-11-04",
+      tipo: "gasto",
+      categoria: "Otros",
+      es_necesidad: true,
+      descripcion: "",
+      tags: [],
+      ...overrides,
+    })
+    const current = account(6333.87)
+    const transactions = [
+      tx({ id: "ingreso", tipo: "ingreso", monto: 200, fecha: "2026-11-04" }),
+      tx({ id: "gasto", tipo: "gasto", monto: 105.97, fecha: "2026-11-04" }),
+      tx({ id: "despues", tipo: "gasto", monto: 3.13, fecha: "2026-11-10" }),
+    ]
+    // Cierre el 4: 6333.87 - (-3.13) = 6337; intradía = 6337 + 105.97 = 6442.97
+    const end = new Date(2026, 10, 12)
+    const closes = buildPreciseNetWorthHistory([current], transactions, 30, end)
+    const series = chartSeries(closes.map((row) => ({ date: row.date, value: row.patrimonio, label: row.label })), "2026-11-12")
+    const stats = seriesRangeStats(series.points)
+    const intradía = findObservedNetWorthPeak([current], transactions, 30, end)
+
+    expect(series.monthly).toBe(false)
+    expect(stats?.max.value).toBeCloseTo(6337, 2)
+    expect(stats?.max.date).toBe("2026-11-04")
+    expect(intradía?.value).toBeCloseTo(6442.97, 2)
+    expect(stats?.max.value).toBeLessThan((intradía?.value ?? 0) - 0.5)
+    expect(stats?.delta).toBeCloseTo(stats!.end.value - stats!.start.value, 6)
+    expect(stats?.min.value).toBeLessThanOrEqual(stats!.max.value)
+  })
+
+  it("en un rango largo el Máx es el de los cierres mensuales pintados", () => {
+    const pts = [
+      { date: "2026-06-30", value: 100, label: "jun" },
+      { date: "2026-07-12", value: 180, label: "12 jul" },
+      { date: "2026-07-31", value: 120, label: "jul" },
+      { date: "2026-08-31", value: 140, label: "ago" },
+      { date: "2026-11-01", value: 150, label: "hoy" },
+    ]
+    const series = chartSeries(pts, "2026-11-01")
+    const stats = seriesRangeStats(series.points)
+    expect(series.monthly).toBe(true)
+    expect(stats?.max.value).toBe(150)
+    expect(stats?.min.value).toBe(100)
+    expect(stats?.start.value).toBe(100)
+    expect(stats?.delta).toBe(50)
+    // El 180 intradía/inter-mes no se pinta (último de julio es 120).
+    expect(series.points.map((p) => p.value)).not.toContain(180)
   })
 })
 

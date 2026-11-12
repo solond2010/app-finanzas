@@ -71,6 +71,28 @@ export function chartSeries(points: SeriesPoint[], todayKey: string): { points: 
   return { points: monthlyCloses(clean), monthly: true }
 }
 
+/** Inicio, mínimo, máximo y variación de la serie que se pinta (mismo periodo y granularidad). */
+export type SeriesRangeStats = {
+  start: SeriesPoint
+  min: SeriesPoint
+  max: SeriesPoint
+  end: SeriesPoint
+  delta: number
+}
+
+export function seriesRangeStats(points: SeriesPoint[]): SeriesRangeStats | null {
+  if (points.length === 0) return null
+  let min = points[0]
+  let max = points[0]
+  for (const point of points) {
+    if (point.value < min.value) min = point
+    if (point.value > max.value) max = point
+  }
+  const start = points[0]
+  const end = points[points.length - 1]
+  return { start, min, max, end, delta: end.value - start.value }
+}
+
 /** Si dos puntos caen el mismo día, se queda el último (p. ej. pico + hoy). */
 function dedupeSameDay(points: SeriesPoint[]): SeriesPoint[] {
   const out: SeriesPoint[] = []

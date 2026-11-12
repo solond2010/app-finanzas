@@ -17,7 +17,7 @@ import { AccountDialog } from "@/components/dashboard/account-dialog"
 import { NetWorthChart } from "@/components/dashboard/net-worth-chart"
 import { InfoPopover } from "@/components/ui/info-popover"
 import { NetWorthExpanded } from "@/components/dashboard/net-worth-expanded"
-import { chartSeries, dateKeyOf, monthlyChangeBars } from "@/lib/net-worth-chart"
+import { chartSeries, dateKeyOf, monthlyChangeBars, seriesRangeStats } from "@/lib/net-worth-chart"
 import { EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { CircularProgress } from "@/components/ui/circular-progress"
@@ -599,8 +599,12 @@ function DashboardInner() {
   )
   const netWorthBars = useMemo(() => (netWorthSeries.monthly ? monthlyChangeBars(netWorthSeries.points, today) : []), [netWorthSeries, today])
   const netWorthHasData = !netWorthTrend.every((item) => item.patrimonio === 0)
-  const rangeStart = netWorthTrend[0]?.patrimonio ?? 0
-  const rangeDelta = netWorthDisplay - rangeStart
+  // Inicio / Mín / Máx / pico / variación: la misma serie que se dibuja
+  // (cierres diarios en 7D/30D, cierres mensuales en 6M/12M). Un pico
+  // intradía que el gráfico no pinta no debe aparecer como Máx del periodo.
+  const drawnStats = useMemo(() => seriesRangeStats(netWorthSeries.points), [netWorthSeries])
+  const rangeStart = drawnStats?.start.value ?? 0
+  const rangeDelta = drawnStats?.delta ?? 0
   // Una reconstrucción histórica sin saldo de apertura completo puede dar un
   // patrimonio inicial negativo. No presentar entonces la diferencia como
   // una subida real del periodo (p. ej. 5.471 € desde -84 €).
@@ -608,52 +612,17 @@ function DashboardInner() {
     const accountIds = new Set(state.accounts.map((account) => account.id))
     return hasSyntheticOpeningBalanceResidual(state.transactions.filter((transaction) => accountIds.has(transaction.cuenta_id)))
   }, [state.accounts, state.transactions])
-  const hasUsableRangeBaseline = netWorthTrend.length > 1 && Number.isFinite(rangeStart) && rangeStart > 0.005 && !openingHistoryIsEstimated
+  const hasUsableRangeBaseline = (netWorthSeries.points.length > 1) && Number.isFinite(rangeStart) && rangeStart > 0.005 && !openingHistoryIsEstimated
   // El % solo se muestra si la base es significativa Y el resultado es un dato
   // legible: contra una base pequeña sale un ">500%" que parece un error, y en
   // ese caso la cifra absoluta ya cuenta la historia completa.
   const rangePct = Math.abs(rangeStart) >= 100 ? (rangeDelta / Math.abs(rangeStart)) * 100 : 0
   const showPct = Math.abs(rangeStart) >= 100 && Math.abs(rangePct) <= PCT_CHANGE_CAP
-  // Candidatos al máximo del rango: los puntos del propio gráfico, más (solo
-  // para rangos por mes) el pico diario real del mes en curso.
-  const maxCandidates = chartTrend.length > 0 ? chartTrend : netWorthTrend
-  // Pico intradía del tramo visible (cierres del gráfico pueden ser más bajos
-  // el mismo día si hubo ingreso y luego gasto). 7D/30D siguen pintando cierre.
-  const observedIntradayPeak = useMemo(() => {
-    if (!netWorthHasData) return null
-    let days: number
-    let end = monthOffset === 0 ? today : new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0)
-    if (activeRange.unit === "today") days = 1
-    else if (activeRange.unit === "days") days = activeRange.count
-    else if (activeRange.unit === "months") {
-      const from = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - activeRange.count + 1, 1)
-      days = Math.max(1, Math.ceil((end.getTime() - from.getTime()) / 86400000) + 1)
-    } else {
-      const first = state.transactions.length > 0
-        ? state.transactions.reduce((oldest, t) => (t.fecha < oldest ? t.fecha : oldest), state.transactions[0].fecha)
-        : null
-      if (!first) days = 30
-      else {
-        const from = parseLocalDate(first)
-        days = Math.min(1000, Math.max(1, Math.ceil((end.getTime() - from.getTime()) / 86400000) + 1))
-      }
-    }
-    return findObservedNetWorthPeak(state.accounts, state.transactions, days, end)
-  }, [netWorthHasData, activeRange, monthOffset, selectedDate, today, state.accounts, state.transactions])
-
-  const chartMaxPoint = netWorthHasData && maxCandidates.length > 0
-    ? maxCandidates.reduce((best, t) => (t.patrimonio > best.patrimonio ? t : best), maxCandidates[0])
+  const rangeMaxPoint = drawnStats && netWorthHasData
+    ? { mes: drawnStats.max.label, patrimonio: drawnStats.max.value, date: drawnStats.max.date }
     : null
-  const rangeMaxPoint = (() => {
-    if (!netWorthHasData) return null
-    if (observedIntradayPeak && (!chartMaxPoint || observedIntradayPeak.value > chartMaxPoint.patrimonio + 0.005)) {
-      return { mes: observedIntradayPeak.label, patrimonio: observedIntradayPeak.value, date: observedIntradayPeak.date }
-    }
-    return chartMaxPoint
-  })()
-
-  const rangeMinPoint = netWorthHasData && netWorthTrend.length > 0
-    ? netWorthTrend.reduce((best, t) => (t.patrimonio < best.patrimonio ? t : best), netWorthTrend[0])
+  const rangeMinPoint = drawnStats && netWorthHasData
+    ? { mes: drawnStats.min.label, patrimonio: drawnStats.min.value, date: drawnStats.min.date }
     : null
 
   const allTimeObservedPeak = storedNetWorthPeak?.value ?? (activeRange.unit === "all" && rangeMaxPoint ? rangeMaxPoint.patrimonio : null)
@@ -689,11 +658,11 @@ function DashboardInner() {
     return () => { cancelled = true }
   }, [loading, netWorthHasData, state.accounts, state.transactions, today, storedNetWorthPeak])
 
-  // Si el máximo persistido cae dentro del tramo que acabamos de reconstruir,
-  // sustituirlo por el máximo real de esa serie. Así se corrigen también los
-  // picos obsoletos ya guardados, sin tocar movimientos ni saldos de cuentas.
+  // Si el máximo persistido cae dentro del tramo visible, sincronizarlo con
+  // el pico observado de ese tramo (incluye intradía). No usar el Máx de la
+  // serie dibujada: en 7D/30D esa serie es de cierres y bajaría un pico real.
   useEffect(() => {
-    if (loading || !storedNetWorthPeak?.date || !rangeMaxPoint?.date || !netWorthHasData) return
+    if (loading || !storedNetWorthPeak?.date || !netWorthHasData) return
 
     const keyForDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
     let from: Date
@@ -715,19 +684,22 @@ function DashboardInner() {
     const fromKey = keyForDate(from)
     const throughKey = keyForDate(through)
     if (savedDate < fromKey || savedDate > throughKey) return
-    if (storedNetWorthPeak.date === rangeMaxPoint.date && Math.abs(storedNetWorthPeak.value - rangeMaxPoint.patrimonio) < 0.005) return
+    const days = Math.max(1, Math.ceil((through.getTime() - from.getTime()) / 86400000) + 1)
+    const observed = findObservedNetWorthPeak(state.accounts, state.transactions, days, through)
+    if (!observed) return
+    if (storedNetWorthPeak.date === observed.date && Math.abs(storedNetWorthPeak.value - observed.value) < 0.005) return
 
     let cancelled = false
     import("@/lib/net-worth-snapshots").then(({ reconcileNetWorthPeakAfterBalanceCorrection }) =>
       reconcileNetWorthPeakAfterBalanceCorrection(
-        { value: rangeMaxPoint.patrimonio, date: rangeMaxPoint.date, label: rangeMaxPoint.mes.replace(" · pico", "") },
+        { value: observed.value, date: observed.date, label: observed.label.replace(" · pico", "") },
         fromKey
       ).then((peak) => {
         if (!cancelled) setStoredNetWorthPeak(peak)
       })
     ).catch((error) => console.error("[Finance] No se pudo sincronizar el máximo recalculado del patrimonio:", error))
     return () => { cancelled = true }
-  }, [loading, storedNetWorthPeak, rangeMaxPoint, netWorthHasData, activeRange, monthOffset, selectedDate, today, netWorthTrend])
+  }, [loading, storedNetWorthPeak, netWorthHasData, activeRange, monthOffset, selectedDate, today, netWorthTrend, state.accounts, state.transactions])
 
   const showRangeMax = !!rangeMaxPoint
   // La variación de arriba compara INICIO DEL RANGO vs hoy: en 30D/6M/12M/24M
@@ -736,7 +708,7 @@ function DashboardInner() {
   // dentro de la subida del periodo completo y sale en verde. Esta segunda
   // cifra (hoy vs el propio pico) no depende del rango elegido: si hoy estás
   // por debajo del máximo, siempre se ve en rojo, sin importar la pestaña.
-  const vsPeakDelta = rangeMaxPoint ? netWorthDisplay - rangeMaxPoint.patrimonio : 0
+  const vsPeakDelta = rangeMaxPoint ? (drawnStats?.end.value ?? netWorthDisplay) - rangeMaxPoint.patrimonio : 0
   const showVsPeakDelta = !!rangeMaxPoint && vsPeakDelta < -0.005
   const vsPeakPct = rangeMaxPoint && Math.abs(rangeMaxPoint.patrimonio) >= 100 ? (vsPeakDelta / Math.abs(rangeMaxPoint.patrimonio)) * 100 : 0
 
@@ -1329,7 +1301,7 @@ function DashboardInner() {
                   )}
                   {showRangeMax && rangeMaxPoint && (
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Pico observado: <span title="Mayor saldo reconstruido observado dentro del periodo"><Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive></span> ({rangeMaxPoint.mes.replace(" · pico", "")})
+                      Pico observado: <span title="Máximo de la serie dibujada en este periodo"><Sensitive as="span" className="font-semibold text-foreground">{formatMoney(rangeMaxPoint.patrimonio, "EUR")}</Sensitive></span> ({rangeMaxPoint.mes.replace(" · pico", "")})
                       {showVsPeakDelta && (
                         <Sensitive as="span" className={cn("ml-1 font-semibold", vsPeakPct < -1 ? "text-red-500" : "text-muted-foreground")}>
                           · {formatMoney(vsPeakDelta, "EUR")}{Math.abs(vsPeakPct) > 0.05 ? ` (${formatCappedPct(vsPeakPct)})` : ""} desde el pico
@@ -1392,7 +1364,7 @@ function DashboardInner() {
                   {netWorthTrend.length > 1 && (
                     <dl className="mt-3 grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4">
                       {[
-                        { label: "Inicio", value: rangeStart, sub: netWorthTrend[0]?.mes ?? "", tone: "neutral" as const },
+                        { label: "Inicio", value: rangeStart, sub: drawnStats?.start.label ?? "", tone: "neutral" as const },
                         { label: "Mínimo", value: rangeMinPoint?.patrimonio ?? rangeStart, sub: (rangeMinPoint?.mes ?? "").replace(" · pico", ""), tone: "neutral" as const },
                         { label: "Máximo", value: rangeMaxPoint?.patrimonio ?? rangeStart, sub: (rangeMaxPoint?.mes ?? "").replace(" · pico", ""), tone: "neutral" as const },
                         { label: "En el periodo", value: rangeDelta, sub: showPct ? formatCappedPct(rangePct) : "variación", tone: rangeDelta >= 0 ? "up" as const : "down" as const, signed: true },
