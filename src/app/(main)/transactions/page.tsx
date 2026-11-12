@@ -16,7 +16,7 @@ import { EmptyState, EmptyPlaceholder } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { useFinance, generateId } from "@/lib/store"
 import { parseLocalDate } from "@/lib/date-utils"
-import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, getUpcomingRecurring, isTransfer, getCurrencyByAccount } from "@/lib/calculations"
+import { getCategoryBreakdown, getMonthTotalsByString, getSavingsRate, getUpcomingRecurring, getCurrencyByAccount, countsTowardCashFlow, reportingAmount } from "@/lib/calculations"
 import { useToast } from "@/components/ui/toast"
 import { formatMonth, isInitialBalanceTransaction, chartFormatter, moneyAxisWidth } from "@/lib/format"
 import { formatMoney, convertToEur } from "@/lib/currency"
@@ -160,8 +160,13 @@ export default function IngresosGastosPage() {
 
   // Mayor gasto individual del mes seleccionado, para el ticker superior.
   const biggestExpense = useMemo(
-    () => analysisTransactions.filter((t) => t.tipo === "gasto" && !isTransfer(t) && t.fecha.startsWith(selectedMonth)).reduce((max, t) => (t.monto > max ? t.monto : max), 0),
-    [analysisTransactions, selectedMonth]
+    () => analysisTransactions
+      .filter((t) => t.tipo === "gasto" && countsTowardCashFlow(t, analysisTransactions) && t.fecha.startsWith(selectedMonth))
+      .reduce((max, t) => {
+        const amount = reportingAmount(t, currencyByAccount)
+        return amount > max ? amount : max
+      }, 0),
+    [analysisTransactions, selectedMonth, currencyByAccount]
   )
 
   return (

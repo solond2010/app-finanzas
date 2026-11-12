@@ -1041,7 +1041,7 @@ function DashboardInner() {
         }),
         budgets: budgetRows,
         spending: topSpending.map((c) => ({ categoria: c.categoria, monto: c.monto })),
-        transactions: filterTransactionsByMonth(analysisTransactions, selectedMonth).map((t) => ({
+        transactions: filterTransactionsByMonth(analysisTransactions, selectedMonth).filter((t) => countsTowardCashFlow(t, analysisTransactions)).map((t) => ({
           fecha: t.fecha,
           descripcion: t.descripcion,
           categoria: t.categoria,

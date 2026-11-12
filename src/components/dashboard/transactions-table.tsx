@@ -39,7 +39,7 @@ import { dateLabel, isInitialBalanceTransaction } from "@/lib/format"
 import { parseLocalDate } from "@/lib/date-utils"
 import { Sensitive } from "@/components/shared/sensitive"
 import { usePlan } from "@/lib/billing/use-plan"
-import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurringFrequency, recurringTag, type RecurringFrequency } from "@/lib/calculations"
+import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurringFrequency, recurringTag, countsTowardCashFlow, type RecurringFrequency } from "@/lib/calculations"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { AccountDot } from "@/components/dashboard/account-dot"
@@ -570,7 +570,9 @@ export function TransactionsTable({
       const entry = totals.get(t.fecha) ?? { ingresos: 0, gastos: 0, count: 0 }
       const currency = state.accounts.find((a) => a.id === t.cuenta_id)?.currency ?? "EUR"
       const amount = convertToEur(t.monto, currency)
-      if (!isTransfer(t) && !isInitialBalanceTransaction(t.id)) {
+      // Emparejar contra el libro entero: un traspaso filtrado de la lista
+      // no debe dejar a su pareja como «huérfana» que sume al cashflow.
+      if (countsTowardCashFlow(t, state.transactions)) {
         if (t.tipo === "ingreso") entry.ingresos += amount
         else entry.gastos += amount
       }
@@ -578,7 +580,7 @@ export function TransactionsTable({
       totals.set(t.fecha, entry)
     }
     return totals
-  }, [sorted, state.accounts])
+  }, [sorted, state.accounts, state.transactions])
 
   const [calendarYear, calendarMonthNumber] = calendarMonth.split("-").map(Number)
   const daysInMonth = new Date(calendarYear, calendarMonthNumber, 0).getDate()

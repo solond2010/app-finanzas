@@ -8,6 +8,8 @@ import { PaywallPreview } from "@/components/billing/paywall-preview"
 import { Sensitive } from "@/components/shared/sensitive"
 import { isProAccess, usePlan } from "@/lib/billing/use-plan"
 import { averageMonthlySavings, monthsLabel, monthsToGoal, projectNetWorth } from "@/lib/billing/projection"
+import { getCurrencyByAccount } from "@/lib/calculations"
+import { localDateKey } from "@/lib/date-utils"
 import { formatMoney } from "@/lib/currency"
 import { openGoalsEditor, useWealthGoals } from "@/lib/use-wealth-goals"
 import { useFinance } from "@/lib/store"
@@ -21,8 +23,8 @@ export function ProjectionCard({ netWorth }: { netWorth: number }) {
   const { state } = useFinance()
   const { goals, loaded } = useWealthGoals()
   const avg = useMemo(
-    () => averageMonthlySavings(state.transactions.map((t) => ({ fecha: t.fecha, monto: t.monto, tipo: t.tipo, categoria: t.categoria }))),
-    [state.transactions],
+    () => averageMonthlySavings(state.transactions, localDateKey(), 3, getCurrencyByAccount(state.accounts)),
+    [state.transactions, state.accounts],
   )
   const yearAhead = projectNetWorth(netWorth, avg, 12)
   const sorted = useMemo(() => [...goals].sort((a, b) => a.amount - b.amount), [goals])
