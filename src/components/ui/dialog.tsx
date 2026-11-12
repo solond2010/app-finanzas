@@ -4,32 +4,9 @@ import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 
 import { cn } from "@/lib/utils"
+import { dialogMaxFromClass } from "@/components/ui/dialog-max"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "@/components/icons"
-
-const DIALOG_MAX_TOKENS: Record<string, string> = {
-  "sm:max-w-sm": "24rem",
-  "max-w-sm": "24rem",
-  "sm:max-w-md": "28rem",
-  "max-w-md": "28rem",
-  "sm:max-w-lg": "32rem",
-  "max-w-lg": "32rem",
-  "sm:max-w-xl": "36rem",
-  "max-w-xl": "36rem",
-  "sm:max-w-2xl": "42rem",
-  "max-w-2xl": "42rem",
-  "sm:max-w-3xl": "48rem",
-  "max-w-3xl": "48rem",
-}
-
-function dialogMaxFromClass(className?: string): string | undefined {
-  if (!className) return undefined
-  let found: string | undefined
-  for (const [token, value] of Object.entries(DIALOG_MAX_TOKENS)) {
-    if (className.includes(token)) found = value
-  }
-  return found
-}
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
