@@ -121,6 +121,7 @@ describe("un solo scroll de documento en móvil", () => {
     expect(hook).toMatch(/export function useBodyScrollLock/)
     expect(hook).toMatch(/document\.documentElement\.style\.overflow = "hidden"/)
     expect(hook).toMatch(/document\.body\.style\.overflow = "hidden"/)
+    expect(hook, "en iOS hay que restaurar window.scrollTo al liberar").toMatch(/window\.scrollTo/)
 
     const offenders: string[] = []
     const files = [
