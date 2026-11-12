@@ -6,7 +6,7 @@ import { PaywallPreview } from "@/components/billing/paywall-preview"
 import { Sensitive } from "@/components/shared/sensitive"
 import { isProAccess, usePlan } from "@/lib/billing/use-plan"
 import { buildMonthlySummary, moneyDelta } from "@/lib/billing/monthly-summary"
-import { buildPreciseNetWorthHistoryMonthly } from "@/lib/calculations"
+import { buildPreciseNetWorthHistoryMonthly, getCurrencyByAccount } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { assetDebtNetAt } from "@/lib/assets-debts"
 import { localDateKey } from "@/lib/date-utils"
@@ -50,11 +50,13 @@ export function MonthlySummaryCard({ netWorthNow }: { netWorthNow: number }) {
 
   const summary = useMemo(
     () => buildMonthlySummary({
-      transactions: state.transactions.map((t) => ({ fecha: t.fecha, monto: t.monto, tipo: t.tipo, categoria: t.categoria })),
+      transactions: state.transactions,
+      currencies: getCurrencyByAccount(state.accounts),
       netWorthNow,
       netWorthByMonth,
+      today: localDateKey(),
     }),
-    [state.transactions, netWorthNow, netWorthByMonth],
+    [state.transactions, state.accounts, netWorthNow, netWorthByMonth],
   )
 
   const body = (

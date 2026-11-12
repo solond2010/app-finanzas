@@ -40,4 +40,30 @@ describe("resumen mensual", () => {
     expect(s.expenses).toBe(50)
     expect(s.prevNetWorth).toBeNull()
   })
+
+  it("un traspaso o una compra de inversión no infla los gastos ni el pico de la gráfica", () => {
+    const txsWithTransfer = [
+      { fecha: "2026-09-10", monto: 2000, tipo: "ingreso", categoria: "Salario", id: "s9", cuenta_id: "cash" },
+      { fecha: "2026-09-12", monto: 1041.2, tipo: "gasto", categoria: "Supermercado", id: "g9", cuenta_id: "cash" },
+      { fecha: "2026-10-08", monto: 2284.79, tipo: "ingreso", categoria: "Salario", id: "s10", cuenta_id: "cash" },
+      { fecha: "2026-10-15", monto: 1041.2, tipo: "gasto", categoria: "Supermercado", id: "g10", cuenta_id: "cash" },
+      // Traspaso a inversión (las dos patas): antes se sumaba como gasto y
+      // dejaba «Gastos del mes» en 17.115,11 €, con un pico falso en la gráfica.
+      { fecha: "2026-10-20", monto: 16073.91, tipo: "gasto", categoria: "Transferencia", id: "xf_out", cuenta_id: "cash", tags: ["traspaso", "traspaso:inv-oct"] },
+      { fecha: "2026-10-20", monto: 16073.91, tipo: "ingreso", categoria: "Transferencia", id: "xf_in", cuenta_id: "inv", tags: ["traspaso", "traspaso:inv-oct"] },
+    ]
+    const s = buildMonthlySummary({
+      transactions: txsWithTransfer,
+      netWorthNow: 6193.57,
+      today: "2026-11-11",
+    })
+    expect(s.label).toBe("Octubre 2026")
+    expect(s.expenses).toBe(1041.2)
+    expect(s.prevExpenses).toBe(1041.2)
+    expect(s.expensesDelta).toBe(0)
+    expect(s.income).toBe(2284.79)
+    expect(s.savings).toBe(1243.59)
+    expect(s.expenseHistory.at(-1)).toBe(1041.2)
+    expect(Math.max(...s.expenseHistory)).toBe(1041.2)
+  })
 })

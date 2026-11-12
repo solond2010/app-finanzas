@@ -1,9 +1,22 @@
 // Resumen del último mes cerrado (o del mes en curso si aún no hay uno cerrado).
 // Solo cifras: no envía correos.
+// Los gastos/ingresos siguen el mismo criterio que la tarjeta «Gastado este mes»
+// (countsTowardCashFlow): no cuentan traspasos emparejados ni ajustes de saldo.
+
+import { countsTowardCashFlow, reportingAmount, type CurrencyByAccount } from "@/lib/calculations"
+import type { Transaction } from "@/lib/store"
 
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
 
-export type CashTx = { fecha: string; monto: number; tipo: string; categoria?: string | null }
+export type CashTx = {
+  fecha: string
+  monto: number
+  tipo: string
+  categoria?: string | null
+  id?: string
+  cuenta_id?: string
+  tags?: string[]
+}
 
 export type MonthlySummary = {
   year: number
@@ -39,14 +52,32 @@ function shiftMonth(key: string, delta: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
 }
 
-function totalsFor(transactions: CashTx[], key: string): { income: number; expenses: number; savings: number } {
+function asTransaction(tx: CashTx, index: number): Transaction {
+  return {
+    id: tx.id ?? `tmp_${index}`,
+    cuenta_id: tx.cuenta_id ?? "",
+    monto: tx.monto,
+    fecha: tx.fecha,
+    tipo: tx.tipo === "ingreso" ? "ingreso" : "gasto",
+    categoria: tx.categoria ?? "",
+    es_necesidad: false,
+    descripcion: "",
+    tags: tx.tags ?? [],
+  }
+}
+
+function totalsFor(transactions: CashTx[], key: string, currencies?: CurrencyByAccount): { income: number; expenses: number; savings: number } {
+  const all = transactions.map(asTransaction)
   let income = 0, expenses = 0
-  for (const tx of transactions) {
-    if (isIgnored(tx) || monthKey(tx.fecha) !== key) continue
-    const amount = Number(tx.monto)
+  for (let i = 0; i < transactions.length; i++) {
+    const raw = transactions[i]!
+    const tx = all[i]!
+    if (isIgnored(raw) || monthKey(raw.fecha) !== key) continue
+    if (!countsTowardCashFlow(tx, all)) continue
+    const amount = reportingAmount(tx, currencies)
     if (!Number.isFinite(amount)) continue
     if (tx.tipo === "ingreso") income += amount
-    else if (tx.tipo === "gasto") expenses += amount
+    else expenses += amount
   }
   income = Math.round(income * 100) / 100
   expenses = Math.round(expenses * 100) / 100
@@ -64,6 +95,7 @@ export function buildMonthlySummary(input: {
   transactions: CashTx[]
   netWorthNow: number
   netWorthByMonth?: Record<string, number>
+  currencies?: CurrencyByAccount
   today?: string
 }): MonthlySummary {
   const today = input.today ?? new Date().toISOString().slice(0, 10)
@@ -72,8 +104,9 @@ export function buildMonthlySummary(input: {
   const hasPrev = input.transactions.some((tx) => !isIgnored(tx) && monthKey(tx.fecha) === previous)
   const key = hasPrev ? previous : current
   const prevKey = shiftMonth(key, -1)
-  const cur = totalsFor(input.transactions, key)
-  const prev = totalsFor(input.transactions, prevKey)
+  const currencies = input.currencies
+  const cur = totalsFor(input.transactions, key, currencies)
+  const prev = totalsFor(input.transactions, prevKey, currencies)
   const historyKeys = [shiftMonth(key, -5), shiftMonth(key, -4), shiftMonth(key, -3), shiftMonth(key, -2), prevKey, key]
   const map = input.netWorthByMonth ?? {}
   const netWorth = key === current ? input.netWorthNow : (map[key] ?? input.netWorthNow)
@@ -95,8 +128,8 @@ export function buildMonthlySummary(input: {
     prevNetWorth,
     netWorthDelta,
     improved,
-    expenseHistory: historyKeys.map((k) => totalsFor(input.transactions, k).expenses),
-    savingsHistory: historyKeys.map((k) => totalsFor(input.transactions, k).savings),
+    expenseHistory: historyKeys.map((k) => totalsFor(input.transactions, k, currencies).expenses),
+    savingsHistory: historyKeys.map((k) => totalsFor(input.transactions, k, currencies).savings),
   }
 }
 
