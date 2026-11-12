@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react"
 import { usePathname } from "next/navigation"
+import { Envelope } from "@phosphor-icons/react/dist/ssr"
 import { AlertCircle, Bug, Lightbulb, Send } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -144,6 +145,17 @@ export function FeedbackDialog() {
             </Button>
           </div>
         </form>
+        <div className="flex items-start gap-2.5 border-t border-border pt-3.5">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-[var(--gold)]">
+            <Envelope weight="regular" className="size-4" />
+          </span>
+          <p className="text-[13px] leading-snug text-muted-foreground">
+            ¿Prefieres escribirnos?{" "}
+            <a href="mailto:contacto@migarra.app" className="font-semibold text-[var(--gold)] hover:underline">
+              contacto@migarra.app
+            </a>
+          </p>
+        </div>
       </DialogContent>
     </Dialog>
   )

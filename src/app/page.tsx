@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
-import { CalendarDots, CaretDown, ChartPieSlice, DeviceMobile, FileArrowUp, PlayCircle, Scales, ShieldCheck, Sparkle } from "@phosphor-icons/react/dist/ssr"
+import { CalendarDots, CaretDown, ChartPieSlice, DeviceMobile, Envelope, FileArrowUp, PlayCircle, Scales, ShieldCheck, Sparkle } from "@phosphor-icons/react/dist/ssr"
 import { GarraMark } from "@/components/brand/garra-logo"
 import { RecoveryHashRedirect } from "@/components/auth/recovery-hash-redirect"
 
@@ -163,7 +163,11 @@ export default function Landing() {
 
       <footer className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-3 border-t border-[#232B36] px-5 pb-10 pt-6 text-sm text-[#8C96A3]">
         <span className="flex items-center gap-2"><GarraMark className="size-6" />Garra · migarra.app</span>
-        <nav className="flex gap-5" aria-label="Legal">
+        <nav className="flex flex-wrap items-center gap-5" aria-label="Legal y contacto">
+          <a href="mailto:contacto@migarra.app" className="inline-flex items-center gap-2 rounded-full border border-[#F5A52455] bg-[#F5A52414] py-[7px] pl-2.5 pr-3 text-[#EEF1F4] hover:bg-[#F5A52422]">
+            <Envelope weight="regular" className="size-4 text-[#F5A524]" />
+            <span>Contacto · <span className="font-semibold text-[#F5A524]">contacto@migarra.app</span></span>
+          </a>
           <Link href="/privacidad" className="hover:text-[#EEF1F4]">Privacidad</Link>
           <Link href="/terminos" className="hover:text-[#EEF1F4]">Condiciones de uso</Link>
           <Link href="/login" className="hover:text-[#EEF1F4]">Entrar</Link>
