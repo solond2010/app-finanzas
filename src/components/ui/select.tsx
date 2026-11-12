@@ -5,9 +5,25 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "@/components/icons"
+import { readSafeAreaInsets, viewportCollisionPadding } from "@/lib/viewport-collision-padding"
+
 
 const Select = SelectPrimitive.Root
 
+function useSelectCollisionPadding() {
+  const [padding, setPadding] = React.useState(() => viewportCollisionPadding(readSafeAreaInsets()))
+  React.useLayoutEffect(() => {
+    const update = () => setPadding(viewportCollisionPadding(readSafeAreaInsets()))
+    update()
+    window.addEventListener("resize", update)
+    window.visualViewport?.addEventListener("resize", update)
+    return () => {
+      window.removeEventListener("resize", update)
+      window.visualViewport?.removeEventListener("resize", update)
+    }
+  }, [])
+  return padding
+}
 
 function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
   return (
@@ -54,13 +70,18 @@ function SelectContent({
   sideOffset = 4,
   align = "center",
   alignOffset = 0,
-  alignItemWithTrigger = true,
+  // Alinearlo con el trigger (estilo <select> nativo) estira la lista por
+  // encima del viewport en un campo bajo (p. ej. «Cuenta» en Nuevo movimiento)
+  // y recorta la primera fila. En táctil Base UI ya lo desactiva; lo apagamos
+  // siempre para que el panel quede acotado al espacio visible.
+  alignItemWithTrigger = false,
   ...props
 }: SelectPrimitive.Popup.Props &
   Pick<
     SelectPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
   >) {
+  const collisionPadding = useSelectCollisionPadding()
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner
@@ -69,6 +90,7 @@ function SelectContent({
         align={align}
         alignOffset={alignOffset}
         alignItemWithTrigger={alignItemWithTrigger}
+        collisionPadding={collisionPadding}
         // Los menús se montan en un portal; deben quedar por encima del modal
         // (el formulario de movimiento usa z-[70]) para que sus opciones no
         // queden ocultas detrás del propio diálogo.
@@ -77,11 +99,13 @@ function SelectContent({
         <SelectPrimitive.Popup
           data-slot="select-content"
           data-align-trigger={alignItemWithTrigger}
-          className={cn("relative isolate z-[80] max-h-(--available-height) w-(--anchor-width) min-w-56 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-2xl border border-border/70 bg-popover/98 text-popover-foreground shadow-xl ring-1 ring-black/5 backdrop-blur-sm duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
+          className={cn("relative isolate z-[80] flex max-h-(--available-height) w-(--anchor-width) min-w-56 origin-(--transform-origin) flex-col overflow-hidden rounded-2xl border border-border/70 bg-popover/98 p-1.5 text-popover-foreground shadow-xl ring-1 ring-black/5 backdrop-blur-sm duration-100 sm:p-2 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
           {...props}
         >
           <SelectScrollUpButton />
-          <SelectPrimitive.List>{children}</SelectPrimitive.List>
+          <SelectPrimitive.List className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {children}
+          </SelectPrimitive.List>
           <SelectScrollDownButton />
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>
