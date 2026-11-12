@@ -39,24 +39,30 @@ export function PaywallNotice({
   }
 
   return (
-    <div className={cn("w-full max-w-md rounded-2xl border border-[color-mix(in_oklch,var(--gold),transparent_65%)] bg-card/95 p-4 shadow-[0_12px_40px_-18px_rgba(0,0,0,0.55)] sm:p-6", className)}>
-      <div className="flex items-center gap-2 text-[var(--gold)]">
-        <span className="grid size-9 place-items-center rounded-xl bg-primary/10">
+    <div
+      data-paywall-notice
+      className={cn(
+        "mx-auto w-full min-w-0 max-w-[min(28rem,calc(100vw-2rem))] overflow-x-hidden rounded-2xl border border-[color-mix(in_oklch,var(--gold),transparent_65%)] bg-card/95 p-4 shadow-[0_12px_40px_-18px_rgba(0,0,0,0.55)] sm:p-6",
+        className,
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-2 text-[var(--gold)]">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10">
           <Lock className="size-5" />
         </span>
-        <p className="font-heading text-lg font-bold tracking-tight text-foreground sm:text-xl">{title}</p>
+        <p className="min-w-0 text-pretty break-words font-heading text-lg font-bold tracking-tight text-foreground sm:text-xl">{title}</p>
       </div>
-      <p className="mt-2 text-sm leading-5 text-muted-foreground">{description}</p>
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <Button className="h-11 w-full font-semibold sm:flex-1" disabled={!!busy} onClick={() => buy("pro_monthly")}>
+      <p className="mt-2 text-pretty break-words text-sm leading-5 text-muted-foreground">{description}</p>
+      <div className="mt-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <Button className="h-auto min-h-11 w-full min-w-0 shrink whitespace-normal text-center font-semibold sm:min-w-[12rem] sm:flex-1" disabled={!!busy} onClick={() => buy("pro_monthly")}>
           <Crown className="size-4" />
           {busy === "pro_monthly" ? "Abriendo…" : "Pásate a Pro · 1,99 €/mes"}
         </Button>
-        <Button variant="outline" className="h-11 w-full sm:flex-1" disabled={!!busy} onClick={() => buy("pro_lifetime")}>
+        <Button variant="outline" className="h-auto min-h-11 w-full min-w-0 shrink whitespace-normal text-center sm:min-w-[12rem] sm:flex-1" disabled={!!busy} onClick={() => buy("pro_lifetime")}>
           {busy === "pro_lifetime" ? "Abriendo…" : "O 14,99 € de por vida"}
         </Button>
       </div>
-      <p className="mt-3 text-center text-[11px] text-muted-foreground">Tus datos no se borran; solo se desbloquean con Pro.</p>
+      <p className="mt-3 text-pretty break-words text-center text-[11px] text-muted-foreground">Tus datos no se borran; solo se desbloquean con Pro.</p>
     </div>
   )
 }
@@ -98,7 +104,7 @@ export function PaywallDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton
-        className="max-w-md border-0 bg-transparent p-0 shadow-none"
+        className="w-[min(28rem,calc(100vw-2rem))] max-w-[min(28rem,calc(100vw-2rem))] min-w-0 overflow-x-hidden border-0 bg-transparent p-0 shadow-none [--dialog-max:28rem]"
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <DialogDescription className="sr-only">{description}</DialogDescription>

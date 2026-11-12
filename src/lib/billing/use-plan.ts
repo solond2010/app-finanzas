@@ -31,6 +31,18 @@ export function usePlan(): PlanInfo {
 
   useEffect(() => {
     let alive = true
+    // Solo plan free: sirve para previsualizar avisos Pro (E2E / QA). Nunca desbloquea Pro.
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("previewPaywall") === "1") {
+      setInfo({
+        enabled: true,
+        plan: "free",
+        source: null,
+        lifetime: false,
+        entitlements: entitlementsFor("free", true),
+        loading: false,
+      })
+      return
+    }
     fetch("/api/billing/plan", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((body) => {
