@@ -52,19 +52,34 @@ export function NetWorthChart({
   const dragged = useRef(false)
   const uid = useId().replace(/:/g, "")
 
+  // Medimos en píxeles enteros y no llamamos a setState si no cambian: un
+  // ResizeObserver que publica fracciones, o un SVG con overflow que hace
+  // aparecer/desaparecer la barra de scroll, entraba en un bucle y las
+  // gráficas de Inicio temblaban en escritorio.
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    const update = () => setBox({ w: el.clientWidth, h: el.clientHeight })
+    let frame = 0
+    const update = () => {
+      const w = Math.round(el.clientWidth)
+      const h = Math.round(el.clientHeight)
+      setBox((prev) => (prev.w === w && prev.h === h ? prev : { w, h }))
+    }
     update()
-    const ro = new ResizeObserver(update)
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(update)
+    })
     ro.observe(el)
-    return () => ro.disconnect()
+    return () => {
+      cancelAnimationFrame(frame)
+      ro.disconnect()
+    }
   }, [])
 
   const showBars = large && !!bars && bars.length > 0
   const PAD_TOP = large ? 30 : 12
-  const AXIS_H = 22
+  const AXIS_H = 24
   const BARS_H = showBars ? (box.w < 520 ? 46 : 62) : 0
   const PAD_L = large ? 44 : 2
   const PAD_R = large ? 16 : 10
@@ -141,7 +156,7 @@ export function NetWorthChart({
   return (
     <div
       ref={ref}
-      className={cn("relative select-none outline-none focus-visible:rounded-xl focus-visible:ring-2 focus-visible:ring-primary", onActivate && "cursor-zoom-in", className)}
+      className={cn("relative overflow-hidden select-none outline-none focus-visible:rounded-xl focus-visible:ring-2 focus-visible:ring-primary", onActivate && "cursor-zoom-in", className)}
       style={{ touchAction: "pan-y" }}
       role={onActivate ? "button" : "group"}
       aria-label={`${summary}${onActivate ? ` ${activateLabel ?? "Pulsa para ampliar."}` : " Usa las flechas para recorrer los puntos."}`}
@@ -182,7 +197,7 @@ export function NetWorthChart({
       onBlur={() => setHover(null)}
     >
       {geo && (
-        <svg width={geo.w} height={geo.h} className="block overflow-visible" aria-hidden="true">
+        <svg width={geo.w} height={geo.h} className="block overflow-hidden" aria-hidden="true">
           <defs>
             <linearGradient id={`nwa${uid}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={GOLD} stopOpacity={large ? 0.3 : 0.26} />

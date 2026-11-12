@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
-import { CalendarDots, CaretDown, ChartPieSlice, DeviceMobile, Envelope, FileArrowUp, PlayCircle, Scales, ShieldCheck, Sparkle } from "@phosphor-icons/react/dist/ssr"
+import { CalendarDots, CaretDown, ChartPieSlice, DeviceMobile, Envelope, FileArrowUp, PiggyBank, PlayCircle, Scales, ShieldCheck, Sparkle } from "@phosphor-icons/react/dist/ssr"
 import { GarraMark } from "@/components/brand/garra-logo"
 import { RecoveryHashRedirect } from "@/components/auth/recovery-hash-redirect"
 
@@ -100,6 +100,15 @@ export default function Landing() {
                 <p className="text-[15px] text-[#8C96A3]">{text}</p>
               </div>
             ))}
+          </div>
+          <div className={`${CARD} mt-4 flex flex-col items-start gap-4 border-[#F5A52455] bg-gradient-to-br from-[#1A1610] to-[#151B23] p-5 sm:flex-row sm:items-center sm:p-6`}>
+            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#F5A52422] text-[#F5A524]">
+              <PiggyBank weight="duotone" className="size-7" />
+            </span>
+            <div className="min-w-0">
+              <h3 className="text-lg font-bold">Metas de ahorro, como una hucha</h3>
+              <p className="mt-1 text-[15px] text-[#8C96A3]">Ponle un objetivo a tu ahorro y ve el porcentaje, lo que llevas y lo que te falta, con una barra de progreso clara.</p>
+            </div>
           </div>
         </div>
       </section>

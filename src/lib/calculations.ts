@@ -679,7 +679,32 @@ export interface UpcomingRecurring {
   tags: string[]
   frequency: RecurringFrequency
   nextDate: string
+  /** Fecha de la última ocurrencia registrada (YYYY-MM-DD). Vacío si aún no hay ninguna. */
+  lastDate: string
   overdueDays: number
+}
+
+/** True si la última ocurrencia es del mes civil de `today`. */
+export function isRecurringPaidThisMonth(lastDate: string, today = new Date()): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(lastDate)) return false
+  return lastDate.slice(0, 7) === `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
+}
+
+/**
+ * En «Próximos 30 días», una recurrencia mensual/anual ya registrada este mes
+ * se muestra como pagada (al final), aunque el siguiente vencimiento caiga
+ * todavía dentro de la ventana. Las semanales siguen en pendientes si tienen
+ * otra cuota en esa ventana.
+ */
+export function showRecurringAsPaidThisMonth(
+  item: Pick<UpcomingRecurring, "lastDate" | "frequency" | "nextDate">,
+  todayKey: string,
+  endKey: string,
+  today = new Date(),
+): boolean {
+  if (!isRecurringPaidThisMonth(item.lastDate, today)) return false
+  if (item.frequency === "semanal" && item.nextDate >= todayKey && item.nextDate <= endKey) return false
+  return true
 }
 
 // Una transacción recurrente se agrupa con las demás de la misma cuenta+
@@ -722,6 +747,7 @@ out.push({
         : last.tags,
       frequency,
       nextDate: toDateKey(next),
+      lastDate: last.fecha,
       overdueDays,
     })
   }

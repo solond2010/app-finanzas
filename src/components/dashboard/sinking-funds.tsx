@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type SinkingFund, generateId } from "@/lib/store"
 import { calculateMonthlySaving, fundCurrentAmount } from "@/lib/calculations"
-import { CircularProgress } from "@/components/ui/circular-progress"
 import { PiggyBank, Plus, Pencil, Trash2, Target, AlertCircle } from "@/components/icons"
 import { currencySymbol } from "@/lib/currency"
 import { Sensitive } from "@/components/shared/sensitive"
@@ -169,10 +168,12 @@ export function SinkingFundsGrid() {
               const monthly = calculateMonthlySaving(fund.cantidad_objetivo, ahorradoActual, fund.fecha_limite)
               const account = displayAccounts.find((a) => a.id === fund.cuenta_id)
               const symbol = currencySymbol(account?.currency ?? "EUR")
-              const circleColor = progress >= 100 ? "var(--accent-green)" : progress >= 50 ? "var(--accent-amber)" : "var(--accent-blue)"
+              const done = progress >= 100
+              const barColor = done ? "bg-emerald-500" : "bg-[var(--gold)]"
+              const pctColor = done ? "text-emerald-500" : "text-[var(--gold)]"
 
               return (
-                <div key={fund.id} className="group relative rounded-[14px] border border-border bg-card p-5 transition-colors hover:border-foreground/15">
+                <div key={fund.id} className="group relative rounded-[14px] border border-border bg-card p-5 transition-colors hover:border-primary/30">
                   <button
                     className="absolute top-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                     onClick={() => setDeleteConfirm(fund)}
@@ -180,36 +181,40 @@ export function SinkingFundsGrid() {
                   >
                     <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
                   </button>
-                  <div className="flex flex-col items-center gap-3 pt-2">
-                    <div className="relative flex items-center justify-center">
-                      <CircularProgress value={progress} size={88} strokeWidth={7} color={circleColor} />
-                      <span className="absolute text-lg font-bold tabular-nums tracking-tight" style={{ color: circleColor }}>
-                        {progress}%
-                      </span>
+                  <div className="flex items-start gap-3 pr-6">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_oklch,var(--gold),transparent_86%)] text-[var(--gold)]">
+                      <PiggyBank className="size-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h3>
+                        <button
+                          type="button"
+                          aria-label={`Editar meta ${fund.nombre}`}
+                          className="inline-flex max-w-full items-center gap-2 rounded-md text-[15px] font-semibold tracking-tight transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                          onClick={() => setEditingFund(fund)}
+                        >
+                          <span className="truncate">{fund.nombre}</span>
+                          <Pencil aria-hidden="true" className="h-3 w-3 shrink-0 text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100" />
+                        </button>
+                      </h3>
+                      {account && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{account.nombre}</p>}
                     </div>
-                    <h3 className="text-center">
-                      <button
-                        type="button"
-                        aria-label={`Editar meta ${fund.nombre}`}
-                        className="inline-flex items-center gap-2 rounded-md text-[15px] font-semibold tracking-tight transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-                        onClick={() => setEditingFund(fund)}
-                      >
-                        {fund.nombre}
-                        <Pencil aria-hidden="true" className="h-3 w-3 text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100" />
-                      </button>
-                    </h3>
-                    <div className="text-center">
-                      <p className="text-sm font-semibold tabular-nums text-foreground">
-                        {/* max 2 decimales: el valor de mercado trae decimales largos y
-                            "511,647 €" se lee como seiscientos mil, no como 511,65 */}
-                        <Sensitive>{ahorradoActual.toLocaleString("es-ES", { useGrouping: "always", maximumFractionDigits: 2 })} {symbol}</Sensitive>
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        de <Sensitive>{fund.cantidad_objetivo.toLocaleString("es-ES", { useGrouping: "always" })} {symbol}</Sensitive>
-                      </p>
-                    </div>
+                    <span className={`shrink-0 text-sm font-bold tabular-nums ${pctColor}`}>{progress}%</span>
                   </div>
-                  <div className="mt-3 space-y-1 text-center text-[11px] text-muted-foreground">
+                  <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={`${progress} % de la meta`}>
+                    <div className={`h-full rounded-full transition-[width] duration-500 ${barColor}`} style={{ width: `${progress}%` }} />
+                  </div>
+                  <div className="mt-2 flex items-baseline justify-between gap-2 text-sm">
+                    <p className="font-semibold tabular-nums text-foreground">
+                      {/* max 2 decimales: el valor de mercado trae decimales largos y
+                          "511,647 €" se lee como seiscientos mil, no como 511,65 */}
+                      <Sensitive>{ahorradoActual.toLocaleString("es-ES", { useGrouping: "always", maximumFractionDigits: 2 })} {symbol}</Sensitive>
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      de <Sensitive>{fund.cantidad_objetivo.toLocaleString("es-ES", { useGrouping: "always" })} {symbol}</Sensitive>
+                    </p>
+                  </div>
+                  <div className="mt-3 space-y-1 text-[11px] text-muted-foreground">
                     <p>
                       Meta:{" "}
                       {(() => {
@@ -217,7 +222,6 @@ export function SinkingFundsGrid() {
                         return isNaN(d.getTime()) ? "Sin fecha" : d.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
                       })()}
                     </p>
-                    {account && <p>Cuenta: {account.nombre}</p>}
                     {monthly > 0 && (
                       <p className="font-medium text-foreground">
                         <span className="mr-1 text-muted-foreground">Aportación necesaria:</span><Sensitive as="span" className="tabular-nums">{monthly.toLocaleString("es-ES", { useGrouping: "always" })} {symbol}/mes</Sensitive>

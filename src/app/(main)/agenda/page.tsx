@@ -5,7 +5,7 @@ import { useMemo } from "react"
 import Link from "next/link"
 import { CalendarDays, HandCoins, Receipt, Check, CircleAlert, Clock3, Repeat2, X } from "@/components/icons"
 import { useFinance, generateId } from "@/lib/store"
-import { fixedVsVariable, type UpcomingRecurring } from "@/lib/calculations"
+import { fixedVsVariable, showRecurringAsPaidThisMonth, type UpcomingRecurring } from "@/lib/calculations"
 import { localDateKey, parseLocalDate } from "@/lib/date-utils"
 import { convertToEur, formatMoney } from "@/lib/currency"
 import { Button } from "@/components/ui/button"
@@ -34,8 +34,10 @@ export default function AgendaPage() {
     return localDateKey(date)
   }, [today])
   const recurring = useRecurringWithDebts(state.transactions)
-  const overdue = useMemo(() => recurring.filter((item) => item.nextDate < today).sort((a, b) => a.nextDate.localeCompare(b.nextDate)), [recurring, today])
-  const upcoming = useMemo(() => recurring.filter((item) => item.nextDate >= today && item.nextDate <= endDate).sort((a, b) => a.nextDate.localeCompare(b.nextDate)), [recurring, today, endDate])
+  const todayDate = useMemo(() => parseLocalDate(today), [today])
+  const overdue = useMemo(() => recurring.filter((item) => item.nextDate < today && !showRecurringAsPaidThisMonth(item, today, endDate, todayDate)).sort((a, b) => a.nextDate.localeCompare(b.nextDate)), [recurring, today, endDate, todayDate])
+  const paidThisMonth = useMemo(() => recurring.filter((item) => showRecurringAsPaidThisMonth(item, today, endDate, todayDate)).sort((a, b) => b.lastDate.localeCompare(a.lastDate)), [recurring, today, endDate, todayDate])
+  const upcoming = useMemo(() => recurring.filter((item) => item.nextDate >= today && item.nextDate <= endDate && !showRecurringAsPaidThisMonth(item, today, endDate, todayDate)).sort((a, b) => a.nextDate.localeCompare(b.nextDate)), [recurring, today, endDate, todayDate])
   const accountById = useMemo(() => new Map(state.accounts.map((account) => [account.id, account])), [state.accounts])
   const fixed = useMemo(() => fixedVsVariable(state.transactions, recurring, (amount, cuentaId) => convertToEur(amount, accountById.get(cuentaId)?.currency ?? "EUR")), [state.transactions, recurring, accountById])
   const fixedList = useMemo(() => [...recurring].sort((a, b) => (a.tipo === b.tipo ? parseLocalDate(a.nextDate).getDate() - parseLocalDate(b.nextDate).getDate() : a.tipo === "gasto" ? -1 : 1)), [recurring])
@@ -74,13 +76,13 @@ export default function AgendaPage() {
     toast("Se ha detenido la recurrencia; el historial se conserva", "success")
   }
 
-  const recurringCard = (item: UpcomingRecurring, isOverdue = false) => {
+  const recurringCard = (item: UpcomingRecurring, isOverdue = false, isPaid = false) => {
     const account = accountById.get(item.cuenta_id)
     const isIncome = item.tipo === "ingreso"
     return (
-      <article key={item.key} className="flex min-w-0 flex-col gap-3 rounded-xl border border-border/80 bg-background/45 p-3 sm:flex-row sm:items-center sm:p-4">
-        <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${isOverdue ? "bg-red-500/10 text-red-500" : isIncome ? "bg-emerald-500/10 text-emerald-500" : "bg-primary/10 text-primary"}`}>
-          {isOverdue ? <CircleAlert className="size-5" /> : isIncome ? <HandCoins className="app-icon-tint size-5" /> : <Receipt className="app-icon-tint size-5" />}
+      <article key={item.key} className={`flex min-w-0 flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:p-4 ${isPaid ? "border-border/60 bg-muted/30" : "border-border/80 bg-background/45"}`}>
+        <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${isPaid ? "bg-muted text-muted-foreground" : isOverdue ? "bg-red-500/10 text-red-500" : isIncome ? "bg-emerald-500/10 text-emerald-500" : "bg-primary/10 text-primary"}`}>
+          {isPaid ? <Check className="size-5" /> : isOverdue ? <CircleAlert className="size-5" /> : isIncome ? <HandCoins className="app-icon-tint size-5" /> : <Receipt className="app-icon-tint size-5" />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -90,7 +92,7 @@ export default function AgendaPage() {
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span>{account?.nombre ?? "Cuenta no disponible"}</span><span aria-hidden="true">·</span>
             <span>{frequencyLabel(item.frequency)}</span><span aria-hidden="true">·</span>
-            <span className={isOverdue ? "font-medium text-red-500" : ""}>{formatDate(item.nextDate)}</span>
+            <span className={isOverdue ? "font-medium text-red-500" : ""}>{formatDate(isPaid && item.lastDate ? item.lastDate : item.nextDate)}</span>
             {isOverdue && <span>· {item.overdueDays} {item.overdueDays === 1 ? "día de retraso" : "días de retraso"}</span>}
           </p>
         </div>
@@ -99,9 +101,15 @@ export default function AgendaPage() {
             {isIncome ? "+" : "−"}{formatMoney(item.monto, account?.currency ?? "EUR")}
           </Sensitive>
           <div className="flex shrink-0 items-center gap-1.5">
-            <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5 rounded-xl px-3 text-xs" onClick={() => register(item)} disabled={!account} title={!account ? "La cuenta vinculada ya no existe" : undefined}>
-              <Check className="size-3.5" /> Ya se realizó
-            </Button>
+            {isPaid ? (
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-xl px-1 text-xs font-medium text-muted-foreground">
+                <Check className="size-3.5 text-muted-foreground" /> Pagado este mes
+              </span>
+            ) : (
+              <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5 rounded-xl px-3 text-xs" onClick={() => register(item)} disabled={!account} title={!account ? "La cuenta vinculada ya no existe" : undefined}>
+                <Check className="size-3.5" /> Confirmar pago
+              </Button>
+            )}
             <Button type="button" size="icon" variant="ghost" className="size-9 rounded-xl text-muted-foreground hover:text-red-500" onClick={() => stop(item)} aria-label={`Dejar de repetir ${item.descripcion || item.categoria}`} title="Dejar de repetir">
               <X className="size-4" />
             </Button>
@@ -179,8 +187,18 @@ export default function AgendaPage() {
           <div className="flex items-center gap-2"><Clock3 className="size-4 text-primary" /><h2 id="upcoming-title" className="text-base font-semibold">Próximos 30 días</h2></div>
           {!loading && <span className="text-xs text-muted-foreground">{upcoming.length} {upcoming.length === 1 ? "movimiento" : "movimientos"}</span>}
         </div>
-        {loading ? <div className={`${CARD} h-32 animate-pulse`} /> : upcoming.length ? (
-          <div className="space-y-2">{upcoming.map((item) => recurringCard(item))}</div>
+        {loading ? <div className={`${CARD} h-32 animate-pulse`} /> : upcoming.length || paidThisMonth.length ? (
+          <div className="space-y-2">
+            {upcoming.map((item) => recurringCard(item))}
+            {paidThisMonth.length > 0 && (
+              <details className="rounded-xl border border-border/70 bg-card">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-muted-foreground [&::-webkit-details-marker]:hidden">
+                  <Check className="size-4" /> Ver pagados este mes · {paidThisMonth.length}
+                </summary>
+                <div className="space-y-2 px-3 pb-3">{paidThisMonth.map((item) => recurringCard(item, false, true))}</div>
+              </details>
+            )}
+          </div>
         ) : overdue.length === 0 ? (
           <div className={CARD}>
             <EmptyState icon={Repeat2} title="No hay movimientos programados" description="Crea un gasto o ingreso y activa la repetición. La agenda te avisará antes de cada vencimiento." />
@@ -192,7 +210,7 @@ export default function AgendaPage() {
         ) : <div className={`${CARD} text-sm text-muted-foreground`}>No hay nuevos vencimientos en los próximos 30 días.</div>}
       </section>
 
-      {!loading && recurring.length > 0 && <p className="text-center text-xs leading-5 text-muted-foreground">Las fechas e importes son estimaciones basadas en la última operación de cada recurrencia. «Ya se realizó» añade el movimiento con la fecha de hoy y actualiza el saldo.</p>}
+      {!loading && recurring.length > 0 && <p className="text-center text-xs leading-5 text-muted-foreground">Las fechas e importes son estimaciones basadas en la última operación de cada recurrencia. «Confirmar pago» añade el movimiento con la fecha de hoy y actualiza el saldo. Los ya registrados este mes aparecen como «Pagado este mes».</p>}
     </div>
   )
 }

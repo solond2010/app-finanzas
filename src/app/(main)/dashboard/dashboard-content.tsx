@@ -1352,7 +1352,7 @@ function DashboardInner() {
                     hideValues={privacy}
                     onActivate={() => setNetWorthExpanded(true)}
                     activateLabel="Pulsa para ver el gráfico ampliado."
-                    className="h-40 min-h-40 w-full flex-1 sm:h-52 2xl:h-60"
+                    className="h-40 min-h-40 w-full sm:h-52 2xl:h-60"
                   />
                   <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
                     <Maximize2 className="size-3" weight="bold" />
@@ -1737,7 +1737,7 @@ function DashboardInner() {
                   <>
                     <p className="text-sm text-muted-foreground">{metricTransactions.length} {metricDetail === "gastos" ? "gastos" : "ingresos"} en este periodo · los traspasos emparejados no se cuentan.</p>
                     {metricTransactions.length > 0 ? (
-                      <div className="max-h-[42dvh] divide-y divide-border overflow-y-auto rounded-xl border border-border/70 px-3">
+                      <div className="max-h-[42svh] divide-y divide-border overflow-y-auto overscroll-contain rounded-xl border border-border/70 px-3">
                         {metricTransactions.map((transaction) => {
                           const account = state.accounts.find((item) => item.id === transaction.cuenta_id)
                           const value = reportingAmount(transaction, currencyByAccount)
@@ -1804,7 +1804,7 @@ function DashboardInner() {
                 {(metricDetail === "inversion" || metricDetail === "patrimonio") && (
                   <>
                     <p className="text-sm text-muted-foreground">{metricDetail === "inversion" ? "Saldos manuales de tus cuentas de inversión." : "Incluye todas tus cuentas: efectivo, gastos, ahorro, emergencia e inversión."}</p>
-                    <div className="max-h-[42dvh] divide-y divide-border overflow-y-auto rounded-xl border border-border/70 px-3">
+                    <div className="max-h-[42svh] divide-y divide-border overflow-y-auto overscroll-contain rounded-xl border border-border/70 px-3">
                       {sortedDetailAccounts.length > 0 ? sortedDetailAccounts.map((account) => (
                         <div key={account.id} className="flex items-center justify-between gap-3 py-3">
                           <div className="min-w-0"><p className="truncate text-sm font-medium">{account.nombre}</p><p className="text-xs text-muted-foreground">{typeConfig[account.tipo]?.label ?? account.tipo}{account.banco ? ` · ${account.banco}` : ""}</p></div>
@@ -1838,7 +1838,7 @@ function DashboardInner() {
                   <DialogDescription>{group ? `${Math.round(group.pct)}% de tu patrimonio` : "Sin saldo"} · saldos a {formatMonth(selectedDate)}</DialogDescription>
                 </DialogHeader>
                 <p className="text-3xl font-bold tracking-tight tabular-nums"><Sensitive>{formatMoney(group?.value ?? 0, "EUR")}</Sensitive></p>
-                <ul className="max-h-[42dvh] divide-y divide-border/70 overflow-y-auto rounded-xl border border-border/70">
+                <ul className="max-h-[42svh] divide-y divide-border/70 overflow-y-auto overscroll-contain rounded-xl border border-border/70">
                   {accounts.map((account) => (
                     <li key={account.id}>
                       <Link href={`/cuentas/${account.id}`} onClick={() => setCompositionTipo(null)} className="flex min-h-12 items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none">

@@ -747,6 +747,12 @@ a {
   touch-action: manipulation;
 }
 
+html,
+body {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 body {
   overflow-x: clip;
   min-height: 100vh; /* fallback si svh no existe */

@@ -25,21 +25,26 @@ function MainInner({ children, demo }: { children: React.ReactNode; demo: boolea
   // de Chrome en Android, que si no hace temblar fichas y gráfica.
   // overflow-x-clip (no hidden): hidden convierte overflow-y en auto y
   // puede crear un scroll interno que lucha con el del documento.
+  // El scroll es el del documento (un solo flujo). El aviso de demo va en el
+  // flujo, no `fixed`: en iOS un header fijo + overflow anidado provocaba un
+  // scroll elástico raro. El margen del sidebar se aplica al bloque entero
+  // para que el aviso no se meta debajo.
   return (
     <div className="flex min-h-svh">
-      {demo && <DemoBanner sidebarOpen={open} />}
       <Sidebar />
-      <main className={cn(
-        // lg:pb-24: deja sitio al FAB (56px + margen) para que al llegar al
-        // final de la página no tape la última fila de una tabla o un total.
-        "min-h-svh min-w-0 flex-1 overflow-x-clip px-3 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom)+1.25rem)] pt-[calc(var(--mobile-header-h)+1rem)] animate-in fade-in duration-500 transition-[margin] sm:px-6 lg:px-8 lg:pb-24 lg:pt-8 2xl:px-10",
-        open ? "lg:ml-52" : "lg:ml-16"
-      )}>
-        <div className="mx-auto w-full min-w-0 max-w-[1840px]">
-          {demo && <div aria-hidden className="h-12 lg:h-14" />}
-          {children}
-        </div>
-      </main>
+      <div className={cn("flex min-h-svh min-w-0 flex-1 flex-col transition-[margin]", open ? "lg:ml-52" : "lg:ml-16")}>
+        {demo && <DemoBanner />}
+        <main className={cn(
+          // lg:pb-24: deja sitio al FAB (56px + margen) para que al llegar al
+          // final de la página no tape la última fila de una tabla o un total.
+          "min-h-0 min-w-0 flex-1 overflow-x-clip px-3 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom)+1.25rem)] animate-in fade-in duration-500 sm:px-6 lg:px-8 lg:pb-24 lg:pt-8 2xl:px-10",
+          demo ? "pt-4" : "pt-[calc(var(--mobile-header-h)+1rem)]",
+        )}>
+          <div className="mx-auto w-full min-w-0 max-w-[1840px]">
+            {children}
+          </div>
+        </main>
+      </div>
       <MobileBottomNav />
     </div>
   )

@@ -1,18 +1,15 @@
 import { ArrowRight, Eye } from "@/components/icons"
 import { DEMO_EXIT_HREF, DEMO_SIGNUP_HREF } from "@/lib/demo/constants"
-import { cn } from "@/lib/utils"
 
-/** Aviso fijo arriba en la demo. Enlaces <a> (no <Link>): navegación completa
- * para salir del modo demo de verdad. */
-export function DemoBanner({ sidebarOpen }: { sidebarOpen: boolean }) {
+/** Aviso de demo arriba, en el flujo de la página (no `fixed`) para no pelear
+ * con el scroll de iOS. Enlaces <a> (no <Link>): navegación completa para
+ * salir del modo demo de verdad. */
+export function DemoBanner() {
   return (
     <div
       role="region"
       aria-label="Modo demo"
-      className={cn(
-        "fixed inset-x-0 top-0 z-[45] border-b border-[color-mix(in_oklch,var(--gold),transparent_72%)] bg-white/95 pt-[env(safe-area-inset-top)] text-foreground shadow-lg shadow-black/5 backdrop-blur dark:bg-[#0B0F14]/95 dark:text-white dark:shadow-black/20 transition-[left] duration-300",
-        sidebarOpen ? "lg:left-52" : "lg:left-16",
-      )}
+      className="sticky top-0 z-[45] border-b border-[color-mix(in_oklch,var(--gold),transparent_72%)] bg-white/95 pt-[env(safe-area-inset-top)] text-foreground shadow-lg shadow-black/5 backdrop-blur dark:bg-[#0B0F14]/95 dark:text-white dark:shadow-black/20"
     >
       <div className="mx-auto flex h-12 w-full max-w-[1840px] items-center gap-2.5 px-3 sm:gap-3 sm:px-6 lg:h-14 lg:px-8 2xl:px-10">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_oklch,var(--gold),transparent_86%)] text-[var(--gold)]">

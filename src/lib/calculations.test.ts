@@ -10,6 +10,8 @@ import {
   getNetWorthAtMonth,
   getCategoryBreakdown,
   getUpcomingRecurring,
+  isRecurringPaidThisMonth,
+  showRecurringAsPaidThisMonth,
   calculateMonthlySaving,
   accountGoal,
   fundCurrentAmount,
@@ -224,6 +226,19 @@ describe("getUpcomingRecurring", () => {
   it("conserva el día original después de febrero al registrar un vencimiento de fin de mes", () => {
     const febreroRegistrado = getUpcomingRecurring([tx({ tags: ["recurrente", "recurrente-dia:31"], fecha: "2026-02-28" })])[0]
     expect(febreroRegistrado.nextDate).toBe("2026-03-31")
+  })
+
+  it("expone la fecha de la última ocurrencia", () => {
+    const item = getUpcomingRecurring([tx({ tags: ["recurrente"], fecha: "2026-05-01" })])[0]
+    expect(item.lastDate).toBe("2026-05-01")
+  })
+
+  it("marca como pagado este mes un gasto mensual ya registrado, aunque el siguiente caiga en la ventana de 30 días", () => {
+    const today = new Date(2026, 10, 12) // 12 nov 2026
+    expect(isRecurringPaidThisMonth("2026-11-01", today)).toBe(true)
+    expect(isRecurringPaidThisMonth("2026-10-01", today)).toBe(false)
+    expect(showRecurringAsPaidThisMonth({ lastDate: "2026-11-01", frequency: "mensual", nextDate: "2026-12-01" }, "2026-11-12", "2026-12-12", today)).toBe(true)
+    expect(showRecurringAsPaidThisMonth({ lastDate: "2026-11-10", frequency: "semanal", nextDate: "2026-11-17" }, "2026-11-12", "2026-12-12", today)).toBe(false)
   })
 })
 

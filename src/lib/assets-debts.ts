@@ -98,6 +98,7 @@ export function debtRecurring(debts: Debt[], transactions: Transaction[], today 
       tags: [tag],
       frequency: "mensual" as const,
       nextDate: localDateKey(next),
+      lastDate: paid?.fecha ?? "",
       overdueDays: Math.round((t0.getTime() - next.getTime()) / 86400000),
     }
   })
@@ -107,7 +108,7 @@ export function debtRecurring(debts: Debt[], transactions: Transaction[], today 
 // arranque de la sesión, para que solo cuenten las cuotas marcadas después.
 const SESSION_START = new Date().toISOString()
 
-/** Pendiente real: el guardado menos las cuotas («Ya se realizó») creadas
+/** Pendiente real: el guardado menos las cuotas («Pagado este mes») creadas
  * después de guardarlo. Se calcula, no se escribe: deshacer o borrar el
  * movimiento lo devuelve solo y nunca se aplica dos veces. */
 export function applyDebtPayments(debts: Debt[], transactions: Transaction[]): Debt[] {
