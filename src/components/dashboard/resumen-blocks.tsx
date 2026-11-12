@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState, type ReactNode } from "react"
-import { ArrowRight, CalendarClock, ChartPieSlice, Flame, HandCoins, Lightbulb, PiggyBank, Receipt, Scales, Target, TrendingDown, TrendingUp, Wallet } from "@/components/icons"
+import { ArrowRight, CalendarClock, ChartPieSlice, Flame, HandCoins, PiggyBank, Receipt, Scales, Target, TrendingDown, TrendingUp, Wallet } from "@/components/icons"
 import { Sensitive } from "@/components/shared/sensitive"
 import { formatMoney } from "@/lib/currency"
 import { cn } from "@/lib/utils"
@@ -180,20 +180,14 @@ const KIND = {
 }
 export function ImportantToday({ items }: { items: Insight[] }) {
   const [open, setOpen] = useState<string | null>(null)
+  if (items.length === 0) return null
   return (
     <section aria-label="Lo importante hoy">
       <div className="mb-2.5 flex items-baseline justify-between px-0.5">
         <h2 className="text-base font-semibold text-foreground">Lo importante hoy</h2>
-        {items.length > 0 && <span className="text-xs text-muted-foreground">{items.length} {items.length === 1 ? "aviso" : "avisos"}</span>}
+        <span className="text-xs text-muted-foreground">{items.length} {items.length === 1 ? "aviso" : "avisos"}</span>
       </div>
-      {items.length === 0 ? (
-        <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border bg-card/60 p-4">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Lightbulb className="size-5" /></span>
-          <p className="min-w-0 flex-1 text-sm text-muted-foreground">Todo en orden. Aquí verás tus próximos gastos fijos, categorías que se disparan y tu siguiente paso.</p>
-          <Link href="/agenda" className="shrink-0 rounded-full bg-primary/12 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20">Gastos fijos</Link>
-        </div>
-      ) : (
-        <div className={cn("grid gap-2.5 sm:gap-3", items.length >= 3 ? "md:grid-cols-3" : items.length === 2 ? "md:grid-cols-2" : "")}>
+      <div className={cn("grid gap-2.5 sm:gap-3", items.length >= 3 ? "md:grid-cols-3" : items.length === 2 ? "md:grid-cols-2" : "")}>
           {items.map((it) => {
             const K = KIND[it.kind]
             const isOpen = open === it.key
@@ -215,7 +209,6 @@ export function ImportantToday({ items }: { items: Insight[] }) {
             )
           })}
         </div>
-      )}
     </section>
   )
 }

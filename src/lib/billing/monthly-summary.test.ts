@@ -19,6 +19,7 @@ describe("resumen mensual", () => {
       today: "2026-11-11",
     })
     expect(s.label).toBe("Octubre 2026")
+    expect(s.heading).toBe("Resumen de octubre")
     expect(s.income).toBe(2000)
     expect(s.expenses).toBe(780)
     expect(s.savings).toBe(1220)
@@ -37,6 +38,7 @@ describe("resumen mensual", () => {
       today: "2026-11-11",
     })
     expect(s.label).toBe("Noviembre 2026")
+    expect(s.heading).toBe("Resumen de noviembre")
     expect(s.expenses).toBe(50)
     expect(s.prevNetWorth).toBeNull()
   })

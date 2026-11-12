@@ -1,11 +1,13 @@
 "use client"
 
 import { useMemo } from "react"
-import { Calendar, PiggyBank, TrendingDown, TrendingUp, Wallet } from "@/components/icons"
+import { Calendar, PiggyBank, TrendingDown, TrendingUp, Wallet, X } from "@/components/icons"
 import { PaywallPreview } from "@/components/billing/paywall-preview"
 import { Sensitive } from "@/components/shared/sensitive"
 import { isProAccess, usePlan } from "@/lib/billing/use-plan"
 import { buildMonthlySummary, moneyDelta } from "@/lib/billing/monthly-summary"
+import { MONTHLY_SUMMARY_SETTING } from "@/lib/dashboard-banners"
+import { useDismissForMonth } from "@/lib/use-dismiss-for-month"
 import { buildPreciseNetWorthHistoryMonthly, getCurrencyByAccount } from "@/lib/calculations"
 import { formatMoney } from "@/lib/currency"
 import { assetDebtNetAt } from "@/lib/assets-debts"
@@ -35,6 +37,7 @@ export function MonthlySummaryCard({ netWorthNow }: { netWorthNow: number }) {
   const plan = usePlan()
   const locked = plan.enabled && !isProAccess(plan)
   const { state } = useFinance()
+  const { hidden, dismiss, ready } = useDismissForMonth(MONTHLY_SUMMARY_SETTING)
   const { assets, debts, values } = useAssetsDebts()
 
   const netWorthByMonth = useMemo(() => {
@@ -62,18 +65,28 @@ export function MonthlySummaryCard({ netWorthNow }: { netWorthNow: number }) {
   const body = (
     <section className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6" aria-label={`Resumen mensual de ${summary.label}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="page-section-label flex items-center gap-1.5"><Calendar className="size-3.5" />Resumen mensual</p>
           <h2 className="mt-1 text-lg font-bold tracking-tight text-foreground sm:text-xl">
-            {summary.improved ? "Has mejorado este mes" : `Resumen de ${summary.label}`}
+            {summary.heading}
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">{summary.label} · una tarjeta dentro de Garra, sin correos.</p>
         </div>
-        {summary.netWorthDelta !== null && (
-          <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums", (summary.netWorthDelta ?? 0) >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500")}>
-            {moneyDelta(summary.netWorthDelta ?? 0)}
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-1">
+          {summary.netWorthDelta !== null && (
+            <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums", (summary.netWorthDelta ?? 0) >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500")}>
+              {moneyDelta(summary.netWorthDelta ?? 0)}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={dismiss}
+            aria-label="Cerrar resumen mensual"
+            className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
@@ -101,6 +114,8 @@ export function MonthlySummaryCard({ netWorthNow }: { netWorthNow: number }) {
       </div>
     </section>
   )
+
+  if (ready && hidden) return null
 
   if (locked) {
     return (

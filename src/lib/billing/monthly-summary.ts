@@ -4,6 +4,7 @@
 // (countsTowardCashFlow): no cuentan traspasos emparejados ni ajustes de saldo.
 
 import { countsTowardCashFlow, reportingAmount, type CurrencyByAccount } from "@/lib/calculations"
+import { monthlySummaryHeading } from "@/lib/dashboard-banners"
 import type { Transaction } from "@/lib/store"
 
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
@@ -22,6 +23,7 @@ export type MonthlySummary = {
   year: number
   month: number
   label: string
+  heading: string
   expenses: number
   prevExpenses: number
   expensesDelta: number
@@ -84,10 +86,11 @@ function totalsFor(transactions: CashTx[], key: string, currencies?: CurrencyByA
   return { income, expenses, savings: Math.round((income - expenses) * 100) / 100 }
 }
 
-function labelOf(key: string): { year: number; month: number; label: string } {
+function labelOf(key: string): { year: number; month: number; label: string; heading: string } {
   const [year, month] = key.split("-").map(Number)
   const name = MONTHS[month - 1] ?? key
-  return { year, month: month - 1, label: `${name.charAt(0).toUpperCase()}${name.slice(1)} ${year}` }
+  const label = `${name.charAt(0).toUpperCase()}${name.slice(1)} ${year}`
+  return { year, month: month - 1, label, heading: monthlySummaryHeading(label) }
 }
 
 /** `netWorthByMonth` son cierres YYYY-MM → patrimonio al final de ese mes. */

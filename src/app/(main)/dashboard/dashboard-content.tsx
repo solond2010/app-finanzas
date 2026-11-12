@@ -9,7 +9,7 @@ import { accountColor, distinctAccountColors } from "@/lib/account-colors"
 import { AccountDot } from "@/components/dashboard/account-dot"
 import Link from "next/link"
 import { BarChart } from "@tremor/react"
-import { AlertTriangle, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, HandCoins, Layers3, Maximize2, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp, Binoculars, Trophy } from "@/components/icons"
+import { AlertTriangle, CalendarClock, Check, ChevronLeft, ChevronRight, Eye, EyeOff, FileDown, Flame, Gauge, HandCoins, Layers3, Maximize2, Minus, PiggyBank, Plus, Receipt, Target, TrendingDown, TrendingUp, Binoculars, Trophy, X } from "@/components/icons"
 import { openMovementDialog } from "@/components/layout/quick-actions"
 import { EmergencyRunwayCard } from "@/components/dashboard/emergency-runway-card"
 import { SinkingFundsGrid } from "@/components/dashboard/sinking-funds"
@@ -51,6 +51,8 @@ import { CashflowComboChart, ImportantToday, TopTiles, type Insight } from "@/co
 import { OnboardingGuide } from "@/components/onboarding/onboarding-guide"
 import { CashflowDrilldown, CashflowHoverTooltip, type CashflowBucket } from "@/components/dashboard/cashflow-drilldown"
 import { MonthlySummaryCard } from "@/components/billing/monthly-summary-card"
+import { importantTodayKinds, PACE_BANNER_SETTING } from "@/lib/dashboard-banners"
+import { useDismissForMonth } from "@/lib/use-dismiss-for-month"
 
 const CARD = "rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_6px_18px_-10px_rgba(0,0,0,0.08)] sm:p-6"
 // Mismo card que arriba pero con el tinte azul-marino de hero-panel, reservado
@@ -882,18 +884,6 @@ function DashboardInner() {
   const { goals: wealthGoals, loaded: wealthGoalsLoaded } = useWealthGoals()
   const goalsView = useMemo(() => goalProgress(wealthGoals, netWorthDisplay), [wealthGoals, netWorthDisplay])
   const nextWealthGoal = goalsView.next
-  const goalGuidance = emergency && !emergency.isComplete
-    ? { title: "Completa tu colchón", detail: `${Math.round(emergency.progress * 100)} % de la meta de emergencia` }
-    : monthTotals.neto < 0
-      ? { title: "Recupera el balance del mes", detail: "El flujo seleccionado está en negativo" }
-      : nextGoal
-        ? { title: `Avanza en ${nextGoal.nombre}`, detail: `Meta de ahorro al ${Math.round(nextGoal.pct)}%` }
-        : savingsRate >= 20
-          ? { title: "Mantén este ritmo", detail: `Tasa de ahorro actual: ${savingsRate}%` }
-          : (nextWealthGoal
-            ? { title: nextWealthGoal.name ? `Camino a ${nextWealthGoal.name}` : "Alcanza tu siguiente objetivo", detail: "Un paso cada vez, según tu patrimonio" }
-            : { title: "Ponte un objetivo", detail: "Elige la cifra de patrimonio que quieres alcanzar" })
-
   const recentTransactions = useMemo(
     () => analysisTransactions.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 4),
     [analysisTransactions]
@@ -915,6 +905,7 @@ function DashboardInner() {
 
   // ── Hero «Tu dinero» y «Lo importante hoy» ──
   const isCurrentMonth = dashboardPeriod === "month" && monthOffset === 0
+  const { hidden: paceHidden, dismiss: dismissPace, ready: paceReady } = useDismissForMonth(PACE_BANNER_SETTING)
   const monthForecast = useMemo(() => monthEndForecast(analysisTransactions.filter((t) => countsTowardCashFlow(t, analysisTransactions)), recurringPayments, today), [analysisTransactions, recurringPayments, today])
   const isSingleMonth = periodBounds.start.getFullYear() === periodBounds.end.getFullYear() && periodBounds.start.getMonth() === periodBounds.end.getMonth()
   // Gasto del mes anterior hasta el mismo día (o el mes anterior completo si
@@ -992,22 +983,22 @@ function DashboardInner() {
   const insights = useMemo<Insight[]>(() => {
     const out: Insight[] = []
     const nextFixed = recurringPayments.filter((p) => p.tipo === "gasto" && p.overdueDays <= 0).sort((a, b) => b.overdueDays - a.overdueDays)[0]
-    if (nextFixed) {
+    const tight = budgetRows.filter((b) => b.limite > 0 && b.gastado / b.limite >= 0.8).sort((a, b) => b.gastado / b.limite - a.gastado / a.limite)[0]
+    const kinds = importantTodayKinds({ upcomingFixed: Boolean(nextFixed), unusualOrBudget: Boolean(unusualSpend || tight) })
+    if (kinds.includes("fijo") && nextFixed) {
       const days = Math.abs(nextFixed.overdueDays)
       const date = parseLocalDate(nextFixed.nextDate).toLocaleDateString("es-ES", { weekday: "long", day: "numeric" })
       out.push({ key: "fijo", kind: "fijo", eyebrow: "Próximo gasto fijo", title: <>{nextFixed.descripcion || nextFixed.categoria} · <Sensitive>{formatMoney(nextFixed.monto, currencyByAccount.get(nextFixed.cuenta_id) ?? "EUR")}</Sensitive></>, detail: `Toca ${days === 0 ? "hoy" : `el ${date}`}. Revisa que haya saldo en ${accountName(nextFixed.cuenta_id)}.`, href: "/agenda", cta: "Ver gastos fijos", meta: days === 0 ? "hoy" : `en ${days} ${days === 1 ? "día" : "días"}` })
     }
-    const tight = budgetRows.filter((b) => b.limite > 0 && b.gastado / b.limite >= 0.8).sort((a, b) => b.gastado / b.limite - a.gastado / a.limite)[0]
-    if (unusualSpend) {
-      out.push({ key: "dispara", kind: "dispara", eyebrow: "Se está disparando", title: <>{unusualSpend.category}: <Sensitive>{formatMoney(unusualSpend.current, "EUR")}</Sensitive></>, detail: <>Tu media reciente es <Sensitive>{formatMoney(unusualSpend.average, "EUR")}</Sensitive>. Aviso orientativo: supera la media al menos un 50 % y 100 €.</>, href: `/transactions?tipo=gasto&categoria=${encodeURIComponent(unusualSpend.category)}&mes=${selectedMonth}`, cta: "Ver movimientos", meta: `+${Math.round((unusualSpend.current / unusualSpend.average - 1) * 100)} %` })
-    } else if (tight) {
-      out.push({ key: "dispara", kind: "dispara", eyebrow: "Presupuesto a revisar", title: <>{tight.categoria}: <Sensitive>{formatMoney(tight.gastado, "EUR")}</Sensitive> de <Sensitive>{formatMoney(tight.limite, "EUR")}</Sensitive></>, detail: tight.gastado > tight.limite ? "Ya has pasado el límite de este mes." : "Estás cerca del límite de este mes.", href: `/transactions?tipo=gasto&categoria=${encodeURIComponent(tight.categoria)}&mes=${selectedMonth}`, cta: "Revisar", meta: `${Math.round((tight.gastado / tight.limite) * 100)} %` })
+    if (kinds.includes("dispara")) {
+      if (unusualSpend) {
+        out.push({ key: "dispara", kind: "dispara", eyebrow: "Se está disparando", title: <>{unusualSpend.category}: <Sensitive>{formatMoney(unusualSpend.current, "EUR")}</Sensitive></>, detail: <>Tu media reciente es <Sensitive>{formatMoney(unusualSpend.average, "EUR")}</Sensitive>. Aviso orientativo: supera la media al menos un 50 % y 100 €.</>, href: `/transactions?tipo=gasto&categoria=${encodeURIComponent(unusualSpend.category)}&mes=${selectedMonth}`, cta: "Ver movimientos", meta: `+${Math.round((unusualSpend.current / unusualSpend.average - 1) * 100)} %` })
+      } else if (tight) {
+        out.push({ key: "dispara", kind: "dispara", eyebrow: "Presupuesto a revisar", title: <>{tight.categoria}: <Sensitive>{formatMoney(tight.gastado, "EUR")}</Sensitive> de <Sensitive>{formatMoney(tight.limite, "EUR")}</Sensitive></>, detail: tight.gastado > tight.limite ? "Ya has pasado el límite de este mes." : "Estás cerca del límite de este mes.", href: `/transactions?tipo=gasto&categoria=${encodeURIComponent(tight.categoria)}&mes=${selectedMonth}`, cta: "Revisar", meta: `${Math.round((tight.gastado / tight.limite) * 100)} %` })
+      }
     }
-    const pasoHref = emergency && !emergency.isComplete ? "/cuentas?tipo=emergencia" : monthTotals.neto < 0 ? `/transactions?mes=${selectedMonth}` : "/cuentas#metas"
-    out.push({ key: "paso", kind: "paso", eyebrow: "Siguiente paso", title: goalGuidance.title, detail: <>{goalGuidance.detail}{nextWealthGoal && <> · próximo objetivo <Sensitive>{money(nextWealthGoal.amount)}</Sensitive>, faltan <Sensitive>{formatMoney(goalsView.remaining, "EUR")}</Sensitive></>}</>, href: pasoHref, cta: "Ir", meta: nextWealthGoal ? `${Math.round(goalsView.progress)} %` : undefined })
     return out
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recurringPayments, budgetRows, unusualSpend, emergency, monthTotals.neto, selectedMonth, goalGuidance.title, goalGuidance.detail, nextWealthGoal, goalsView.remaining, goalsView.progress, currencyByAccount])
+  }, [recurringPayments, budgetRows, unusualSpend, selectedMonth, currencyByAccount])
 
   const [exportingPdf, setExportingPdf] = useState(false)
   const handleExportDashboard = async () => {
@@ -1216,7 +1207,7 @@ function DashboardInner() {
             gain={investmentView.gainPct === null ? null : investmentView.gain}
             gainPct={investmentView.gainPct}
           />
-          {isCurrentMonth && (
+          {isCurrentMonth && paceReady && !paceHidden && (
             <section aria-label="Previsión de fin de mes" className="flex min-w-0 items-center gap-3 rounded-[18px] border border-border bg-card px-4 py-3 sm:px-5">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Binoculars className="size-[18px]" /></span>
               <div className="min-w-0 flex-1">
@@ -1227,6 +1218,14 @@ function DashboardInner() {
                 )}
                 <p className="text-xs text-muted-foreground">Según tu ritmo de gasto y los gastos fijos que quedan este mes</p>
               </div>
+              <button
+                type="button"
+                onClick={dismissPace}
+                aria-label="Cerrar previsión de fin de mes"
+                className="flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <X className="size-4" />
+              </button>
             </section>
           )}
           <MonthlySummaryCard netWorthNow={netWorthDisplay} />
