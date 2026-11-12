@@ -603,6 +603,60 @@ describe("buildPreciseNetWorthHistory", () => {
     expect(rows[0].patrimonio).toBe(120)
     expect(rows[1].patrimonio).toBe(97)
   })
+
+  it("no inventa un patrimonio negativo antes de la apertura de la cuenta", () => {
+    // Gasto de 83,95 € fechado en diciembre, antes de un saldo inicial de
+    // 1.500 € en marzo. El origen implícito es 0; dic–feb no deben salir a
+    // -83,95 €. Tras la apertura se mantiene el saldo real.
+    const currentAccount = account({ saldo: 1416.05 })
+    const transactions = [
+      tx({ id: "gasto_previo", tipo: "gasto", monto: 83.95, fecha: "2025-12-15" }),
+      tx({
+        id: "init_acc_1",
+        tipo: "ingreso",
+        monto: 1500,
+        fecha: "2026-03-01",
+        categoria: "Saldo inicial",
+        created_at: "2026-03-01T12:00:00.000Z",
+      }),
+    ]
+    const rows = buildPreciseNetWorthHistoryMonthly([currentAccount], transactions, 12, "2026-11")
+    const byDate = Object.fromEntries(rows.map((row) => [row.date, row.patrimonio]))
+    expect(byDate["2025-12"]).toBe(0)
+    expect(byDate["2026-02"]).toBe(0)
+    expect(byDate["2026-03"]).toBe(1416.05)
+    expect(byDate["2026-11"]).toBe(1416.05)
+    expect(Math.min(...rows.map((row) => row.patrimonio))).toBe(0)
+  })
+
+  it("los saldos de apertura incompletos no generan un inicio negativo", () => {
+    // Residual sintético no reversible + un gasto anterior al primer ingreso:
+    // el origen implícito queda en -83,95 € y no debe aparecer como Inicio.
+    const currentAccount = account({ saldo: 5000 })
+    const transactions = [
+      tx({
+        id: "adj_init_acc_1",
+        tipo: "gasto",
+        monto: 83.95,
+        fecha: "2025-09-29",
+        categoria: "Saldo inicial",
+      }),
+      tx({ id: "gasto_dic", tipo: "gasto", monto: 100, fecha: "2025-12-10" }),
+      tx({ id: "ingreso", tipo: "ingreso", monto: 5183.95, fecha: "2026-01-15" }),
+    ]
+    const rows = buildPreciseNetWorthHistoryMonthly([currentAccount], transactions, 12, "2026-11")
+    const byDate = Object.fromEntries(rows.map((row) => [row.date, row.patrimonio]))
+    expect(byDate["2025-12"]).toBe(0)
+    expect(byDate["2026-01"]).toBe(5000)
+    expect(byDate["2026-11"]).toBe(5000)
+    expect(Math.min(...rows.map((row) => row.patrimonio))).toBe(0)
+  })
+
+  it("respeta un patrimonio negativo real cuando la cuenta está en números rojos", () => {
+    const debtAccount = account({ saldo: -500 })
+    const rows = buildPreciseNetWorthHistory([debtAccount], [], 3, new Date(2026, 9, 6))
+    expect(rows.map((row) => row.patrimonio)).toEqual([-500, -500, -500])
+  })
 })
 
 describe("buildNetWorthHistoryDaily", () => {

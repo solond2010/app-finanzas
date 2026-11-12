@@ -176,6 +176,54 @@ function shouldReverseBalanceReconciliation(t: Transaction) {
   return true
 }
 
+/** Saldo implícito de la cuenta antes de cualquier movimiento reversible. */
+function impliedOriginBalance(account: Account, accountTxs: Transaction[]): number {
+  let balance = account.saldo
+  for (const t of accountTxs) {
+    if (shouldReverseBalanceReconciliation(t)) balance -= transactionDelta(t)
+  }
+  return balance
+}
+
+/**
+ * Primera fecha en la que el saldo reconstruido deja de ser un negativo
+ * inventado: el origen implícito era < 0, pero el saldo actual no es una
+ * deuda (está ≥ 0). Antes de esa fecha el tramo negativo es un artefacto
+ * (cuenta aún no abierta o apertura incompleta), no una deuda real.
+ * Si el origen ya es no negativo, no hay tramo que recortar.
+ */
+function firstFundedDateKey(account: Account, accountTxs: Transaction[]): string | null {
+  if (account.saldo < -0.005) return null
+  let balance = impliedOriginBalance(account, accountTxs)
+  // Origen ya positivo: un negativo posterior es un descubierto real, no un
+  // artefacto de apertura. Si el origen es 0 (o negativo), los números rojos
+  // hasta el primer saldo ≥ 0 son anteriores a la apertura y se recortan.
+  if (balance > 0.005) return null
+  const events = accountTxs
+    .filter((t) => shouldReverseBalanceReconciliation(t))
+    .slice()
+    .sort((a, b) => a.fecha.slice(0, 10).localeCompare(b.fecha.slice(0, 10)) || a.id.localeCompare(b.id))
+  for (const t of events) {
+    balance += transactionDelta(t)
+    if (balance >= -0.005) return t.fecha.slice(0, 10)
+  }
+  // El saldo actual ya no es negativo: cualquier histórico < 0 queda recortado.
+  return "9999-12-31"
+}
+
+function historicalAccountBalance(account: Account, rawBalance: number, dateKey: string, fundedOn: string | null): number {
+  if (rawBalance >= -0.005) return rawBalance
+  if (account.saldo < -0.005) return rawBalance
+  if (fundedOn && dateKey < fundedOn) return 0
+  return rawBalance
+}
+
+function endOfMonthDateKey(monthKey: string): string {
+  const [year, month] = monthKey.split("-").map(Number)
+  const lastDay = new Date(year, month, 0).getDate()
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
+}
+
 // Un traspaso entre cuentas propias se registra como gasto en la cuenta origen
 // e ingreso en la destino (para que cuadren los saldos), pero NO es un ingreso
 // ni un gasto real, así que se excluye de los totales de reporte. En patrimonio
@@ -277,22 +325,24 @@ function groupByAccount(transactions: Transaction[]): Map<string, Transaction[]>
   return map
 }
 
-function accountsWithDelta(accounts: Account[], txByAccount: Map<string, Transaction[]>, isFuture: (t: Transaction) => boolean) {
+function accountsWithDelta(accounts: Account[], txByAccount: Map<string, Transaction[]>, isFuture: (t: Transaction) => boolean, asOfDateKey?: string) {
   return accounts.map((account) => {
-    const accountTxs = txByAccount.get(account.id)
+    const accountTxs = txByAccount.get(account.id) ?? []
     let balanceDelta = 0
-    if (accountTxs) {
-      for (const t of accountTxs) {
-        if (shouldReverseBalanceReconciliation(t) && isFuture(t)) balanceDelta += transactionDelta(t)
-      }
+    for (const t of accountTxs) {
+      if (shouldReverseBalanceReconciliation(t) && isFuture(t)) balanceDelta += transactionDelta(t)
     }
-    return { ...account, saldo: account.saldo - balanceDelta }
+    let saldo = account.saldo - balanceDelta
+    if (asOfDateKey) {
+      saldo = historicalAccountBalance(account, saldo, asOfDateKey, firstFundedDateKey(account, accountTxs))
+    }
+    return { ...account, saldo }
   })
 }
 
 export function getAccountsAtMonth(accounts: Account[], transactions: Transaction[], monthKey?: string) {
   if (!monthKey) return accounts
-  return accountsWithDelta(accounts, groupByAccount(transactions), (t) => isAfterMonth(t.fecha, monthKey))
+  return accountsWithDelta(accounts, groupByAccount(transactions), (t) => isAfterMonth(t.fecha, monthKey), endOfMonthDateKey(monthKey))
 }
 
 export function getNetWorthAtMonth(accounts: Account[], transactions: Transaction[], monthKey?: string) {
@@ -309,7 +359,7 @@ export function groupTransactionsByAccount(transactions: Transaction[]): Map<str
 
 export function getNetWorthAtMonthFromGroups(accounts: Account[], txByAccount: Map<string, Transaction[]>, monthKey?: string) {
   if (!monthKey) return getNetWorth(accounts)
-  return getNetWorth(accountsWithDelta(accounts, txByAccount, (t) => isAfterMonth(t.fecha, monthKey)))
+  return getNetWorth(accountsWithDelta(accounts, txByAccount, (t) => isAfterMonth(t.fecha, monthKey), endOfMonthDateKey(monthKey)))
 }
 
 function toDateKey(date: Date) {
@@ -328,7 +378,7 @@ function isAfterDate(dateString: string, dateKey: string) {
 }
 
 function getAccountsAtDate(accounts: Account[], txByAccount: Map<string, Transaction[]>, dateKey: string) {
-  return accountsWithDelta(accounts, txByAccount, (t) => isAfterDate(t.fecha, dateKey))
+  return accountsWithDelta(accounts, txByAccount, (t) => isAfterDate(t.fecha, dateKey), dateKey)
 }
 
 function getNetWorthAtDate(accounts: Account[], txByAccount: Map<string, Transaction[]>, dateKey: string) {
@@ -448,7 +498,7 @@ function isAfterMoment(t: Transaction, dateKey: string, createdAt: string) {
 }
 
 function getNetWorthAtMoment(accounts: Account[], txByAccount: Map<string, Transaction[]>, dateKey: string, createdAt: string) {
-  return getNetWorth(accountsWithDelta(accounts, txByAccount, (t) => isAfterMoment(t, dateKey, createdAt)))
+  return getNetWorth(accountsWithDelta(accounts, txByAccount, (t) => isAfterMoment(t, dateKey, createdAt), dateKey))
 }
 
 // Evolución del día en curso, un punto por cada transacción dada de alta hoy
@@ -628,7 +678,7 @@ export function buildNetWorthHistory(transactions: Transaction[], accounts: Acco
   const txByAccount = groupByAccount(transactions)
   return getMonthWindow(endMonthKey, monthCount).map((month) => ({
     mes: formatMonth(parseMonthKey(month)),
-    patrimonio: getNetWorth(accountsWithDelta(accounts, txByAccount, (t) => isAfterMonth(t.fecha, month))),
+    patrimonio: getNetWorth(accountsWithDelta(accounts, txByAccount, (t) => isAfterMonth(t.fecha, month), endOfMonthDateKey(month))),
   }))
 }
 
@@ -786,6 +836,7 @@ export function buildPreciseNetWorthHistory(
   endDate = new Date()
 ): PreciseNetWorthPoint[] {
   const txByAccount = groupByAccount(transactions)
+  const fundedOnByAccount = new Map(accounts.map((account) => [account.id, firstFundedDateKey(account, txByAccount.get(account.id) ?? [])]))
   const points: PreciseNetWorthPoint[] = []
 
   for (let i = 0; i < days; i++) {
@@ -801,6 +852,7 @@ export function buildPreciseNetWorthHistory(
       for (const t of accountTxs) {
         if (shouldReverseBalanceReconciliation(t) && isAfterDate(t.fecha, dateKey)) balance -= transactionDelta(t)
       }
+      balance = historicalAccountBalance(account, balance, dateKey, fundedOnByAccount.get(account.id) ?? null)
       if (account.tipo === "inversion") investedCash += convertToEur(balance, account.currency)
       else cash += convertToEur(balance, account.currency)
     }
