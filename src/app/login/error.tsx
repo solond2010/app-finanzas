@@ -9,7 +9,7 @@ export default function LoginError({ error, reset }: { error: Error & { digest?:
   useEffect(() => { console.error(error); reportClientError(error, { digest: error.digest }) }, [error])
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 text-center">
+    <div className="flex min-h-svh flex-col items-center justify-center gap-6 text-center">
       <div className="rounded-full bg-red-500/10 p-5 ring-1 ring-red-500/20">
         <AlertTriangle className="h-8 w-8 text-red-500" />
       </div>

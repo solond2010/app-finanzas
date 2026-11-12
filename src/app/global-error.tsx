@@ -11,7 +11,7 @@ export default function GlobalError({ error, unstable_retry }: { error: Error & 
 
   return (
     <html lang="es" className="dark">
-      <body className="flex min-h-screen items-center justify-center bg-background p-6 font-sans text-foreground antialiased">
+      <body className="flex min-h-svh items-center justify-center bg-background p-6 font-sans text-foreground antialiased">
         <title>Algo salió mal · Garra</title>
         <div className="flex max-w-sm flex-col items-center gap-5 text-center">
           <div className="rounded-full bg-red-500/10 p-5 ring-1 ring-red-500/20">

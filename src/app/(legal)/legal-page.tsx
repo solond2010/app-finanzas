@@ -6,7 +6,7 @@ export const LEGAL_UPDATED = "3 de noviembre de 2026"
 /** Página legal sencilla: se lee igual con o sin sesión y en la demo. */
 export function LegalPage({ title, intro, children }: { title: string; intro: string; children: ReactNode }) {
   return (
-    <main className="min-h-dvh bg-background px-4 py-8 text-foreground sm:py-14">
+    <main className="min-h-svh bg-background px-4 py-8 text-foreground sm:py-14">
       <article className="mx-auto max-w-2xl">
         <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">← Volver a Garra</Link>
         <h1 className="mt-5 text-3xl font-bold tracking-tight">{title}</h1>

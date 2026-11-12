@@ -97,7 +97,7 @@ export function ResetPasswordForm() {
   const canSubmit = password.length >= 8 && password === repeat && !loading
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
+    <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-background p-4">
       <div className="relative hero-panel w-full max-w-sm rounded-[16px] p-8">
         <div className="flex w-full max-w-sm flex-col gap-6">
           <div className="flex items-center justify-center">

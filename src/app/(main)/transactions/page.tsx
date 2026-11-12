@@ -165,7 +165,7 @@ export default function IngresosGastosPage() {
   )
 
   return (
-    <div className="content-fade w-full max-w-full space-y-6 overflow-x-hidden sm:space-y-7">
+    <div className="content-fade w-full max-w-full space-y-6 overflow-x-clip sm:space-y-7">
       {/* Cabecera */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

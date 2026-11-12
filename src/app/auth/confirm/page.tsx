@@ -19,7 +19,7 @@ export default async function ConfirmPage({ searchParams }: { searchParams: Prom
   const copy = confirmCopy(type)
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
+    <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-background p-4">
       <div className="relative hero-panel w-full max-w-sm rounded-[16px] p-8">
         <div className="flex flex-col gap-6">
           <GarraLogo tagline className="justify-center" />

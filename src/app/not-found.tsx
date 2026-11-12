@@ -3,7 +3,7 @@ import { SearchX, ArrowLeft } from "@/components/icons"
 
 export default function GlobalNotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background p-4 text-center">
+    <div className="flex min-h-svh flex-col items-center justify-center gap-8 bg-background p-4 text-center">
       <div className="flex flex-col items-center gap-6">
         <div className="rounded-[16px] border border-border bg-card p-6">
           <div className="rounded-full bg-muted/50 p-5 ring-1 ring-border/30">

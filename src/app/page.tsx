@@ -56,7 +56,7 @@ function Shot({ src, alt, w, h, caption, priority }: { src: string; alt: string;
 
 export default function Landing() {
   return (
-    <div className="min-h-dvh bg-[#0B0F14] text-[#EEF1F4] [color-scheme:dark]">
+    <div className="min-h-svh bg-[#0B0F14] text-[#EEF1F4] [color-scheme:dark]">
       <RecoveryHashRedirect />
       <div className="mx-auto max-w-[1180px] px-5">
         <nav className="flex items-center justify-between gap-3 py-4">

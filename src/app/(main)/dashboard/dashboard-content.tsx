@@ -1078,7 +1078,7 @@ function DashboardInner() {
     .sort((a, b) => convertToEur(b.saldo, b.currency) - convertToEur(a.saldo, a.currency))
 
   return (
-    <div className="content-fade w-full max-w-full space-y-6 overflow-x-hidden sm:space-y-7">
+    <div className="content-fade w-full max-w-full space-y-6 overflow-x-clip sm:space-y-7">
       <header className="relative z-40 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="min-w-0">
