@@ -39,6 +39,7 @@ import { dateLabel, isInitialBalanceTransaction } from "@/lib/format"
 import { parseLocalDate } from "@/lib/date-utils"
 import { Sensitive } from "@/components/shared/sensitive"
 import { usePlan } from "@/lib/billing/use-plan"
+import { PaywallDialog } from "@/components/billing/paywall-preview"
 import { filterTransactionsByMonth, isTransfer, isRecurringTransaction, recurringFrequency, recurringTag, countsTowardCashFlow, type RecurringFrequency } from "@/lib/calculations"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
@@ -369,6 +370,7 @@ export function TransactionsTable({
   const { toast } = useToast()
   const plan = usePlan()
   const exportLocked = plan.enabled && !plan.entitlements.export
+  const [csvPaywall, setCsvPaywall] = useState(false)
   const searchParams = useSearchParams()
   const [filterAccount, setFilterAccount] = useState<string>(cuentaId ?? "all")
   const [filterCategory, setFilterCategory] = useState<string>(() => {
@@ -469,7 +471,7 @@ export function TransactionsTable({
   }
 
   const exportCSV = () => {
-    if (exportLocked) { toast("La exportación es de Garra Pro. Tus datos siguen ahí.", "error"); return }
+    if (exportLocked) { setCsvPaywall(true); return }
     const headers = ["fecha", "tipo", "categoria", "descripcion", "monto", "cuenta", "divisa", "tags"]
     const rows = state.transactions.map((t) => {
       const account = state.accounts.find((a) => a.id === t.cuenta_id)
@@ -1270,6 +1272,12 @@ export function TransactionsTable({
         description={<>Se eliminarán <strong>{selectedIds.size}</strong> movimientos. Podrás deshacerlo durante unos segundos.</>}
         confirmLabel="Eliminar"
         destructive
+      />
+      <PaywallDialog
+        open={csvPaywall}
+        onOpenChange={setCsvPaywall}
+        title="Solo en Pro"
+        description="La exportación de movimientos en CSV es de Garra Pro. Tus datos siguen en la app; solo se desbloquea la descarga."
       />
     </Card>
   )

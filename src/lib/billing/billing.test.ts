@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto"
 import { describe, expect, it } from "vitest"
-import { canHaveAccounts, entitlementsFor, firstFiftyGrant, isCheckoutOption, isFirstFiftyUser, isLifetimeAccess, normalizeCheckoutOption, PRICES_EUR, subscriptionGivesPro, type RankedUser } from "./plans"
+import { canHaveAccounts, canHaveGoals, entitlementsFor, firstFiftyGrant, FREE_MAX_GOALS, isCheckoutOption, isFirstFiftyUser, isLifetimeAccess, normalizeCheckoutOption, PRICES_EUR, subscriptionGivesPro, type RankedUser } from "./plans"
 import { verifyStripeSignature } from "./stripe-signature"
 import { decideCheckout } from "./checkout-policy"
 import { allowStripeEventOnLedger, paymentsEnabledFor } from "./env-policy"
@@ -17,7 +17,9 @@ describe("planes", () => {
   })
   it("con los pagos apagados nadie tiene límites", () => {
     expect(entitlementsFor("free", false).maxAccounts).toBeNull()
+    expect(entitlementsFor("free", false).maxGoals).toBeNull()
     expect(canHaveAccounts("free", false, 50)).toBe(true)
+    expect(canHaveGoals("free", false, 8)).toBe(true)
   })
   it("con los pagos activos el plan gratis tiene 3 cuentas y Pro/vitalicio ilimitadas", () => {
     expect(canHaveAccounts("free", true, 3)).toBe(true)
@@ -27,6 +29,9 @@ describe("planes", () => {
     expect(entitlementsFor("free", true).advancedAnalytics).toBe(false)
     expect(entitlementsFor("free", true).export).toBe(false)
     expect(canHaveAccounts("pro", true, 40)).toBe(true)
+    expect(canHaveGoals("free", true, FREE_MAX_GOALS)).toBe(true)
+    expect(canHaveGoals("free", true, FREE_MAX_GOALS + 1)).toBe(false)
+    expect(canHaveGoals("pro", true, 8)).toBe(true)
     expect(entitlementsFor("founder", true).export).toBe(true)
 
     // Un Pro de por vida (50 primeros, early access o manual) no pierde nada
@@ -35,6 +40,8 @@ describe("planes", () => {
     expect(entitlementsFor("free", true, "early_access").investments).toBe(true)
     expect(entitlementsFor("free", true, "manual").advancedAnalytics).toBe(true)
     expect(entitlementsFor("pro", true, "stripe").export).toBe(true)
+    expect(canHaveGoals("free", true, 3, "first_fifty")).toBe(true)
+    expect(canHaveGoals("free", true, 3, "early_access")).toBe(true)
 
   })
   it("estados de suscripción que dan Pro", () => {

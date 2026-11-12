@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { selectAllRows } from "@/lib/supabase-server"
 import { getDataContext, unauthorizedResponse } from "@/lib/server/request-context"
 import { withUserId } from "@/lib/user-scope"
-import { canHaveAccounts, FREE_MAX_ACCOUNTS, isPaid } from "@/lib/billing/plans"
+import { canHaveAccounts, canHaveGoals, FREE_MAX_ACCOUNTS, FREE_MAX_GOALS, isPaid } from "@/lib/billing/plans"
 import { getUserPlan, paymentsEnabled } from "@/lib/server/billing"
 import { upsertIgnoringUnknownColumns } from "@/lib/upsert-unknown-columns"
 
@@ -80,6 +80,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ tab
       const ids = new Set((existing ?? []).map((r: { id: string }) => r.id))
       for (const row of rows as Record<string, unknown>[]) if (typeof row.id === "string") ids.add(row.id)
       if (!canHaveAccounts(plan, true, ids.size)) return NextResponse.json({ error: `El plan gratis permite hasta ${FREE_MAX_ACCOUNTS} cuentas. Pásate a Pro para tener más.`, code: "plan_limit" }, { status: 402 })
+    }
+  }
+
+  // Plan gratis: hasta 2 metas de ahorro. Las que ya existen se pueden
+  // actualizar; no se ocultan ni se borran.
+  if (table === "sinking_funds" && paymentsEnabled()) {
+    const plan = await getUserPlan(ctx.userId).catch(() => "pro" as const)
+    if (plan === "free") {
+      const { data: existing } = await ctx.db.from("sinking_funds").select("id").eq("user_id", ctx.userId)
+      const ids = new Set((existing ?? []).map((r: { id: string }) => r.id))
+      for (const row of rows as Record<string, unknown>[]) if (typeof row.id === "string") ids.add(row.id)
+      if (!canHaveGoals(plan, true, ids.size)) return NextResponse.json({ error: `El plan gratis permite hasta ${FREE_MAX_GOALS} metas de ahorro. Pásate a Pro para tener más.`, code: "plan_limit" }, { status: 402 })
     }
   }
 

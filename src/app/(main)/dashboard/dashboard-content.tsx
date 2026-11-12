@@ -51,6 +51,8 @@ import { CashflowComboChart, ImportantToday, TopTiles, type Insight } from "@/co
 import { OnboardingGuide } from "@/components/onboarding/onboarding-guide"
 import { CashflowDrilldown, CashflowHoverTooltip, type CashflowBucket } from "@/components/dashboard/cashflow-drilldown"
 import { MonthlySummaryCard } from "@/components/billing/monthly-summary-card"
+import { PaywallDialog } from "@/components/billing/paywall-preview"
+import { usePlan } from "@/lib/billing/use-plan"
 import { importantTodayKinds, PACE_BANNER_SETTING } from "@/lib/dashboard-banners"
 import { useDismissForMonth } from "@/lib/use-dismiss-for-month"
 
@@ -146,6 +148,21 @@ function DashboardInner() {
   // Tramo abierto en el desglose de «Ingresos vs gastos» y clave para
   // remontar la gráfica al cerrar (Tremor deja la barra pulsada resaltada).
   const [cashflowDrillKey, setCashflowDrillKey] = useState<string | null>(null)
+  const plan = usePlan()
+  const [paywall, setPaywall] = useState<{ title: string; description: string } | null>(null)
+  const exportLocked = plan.enabled && !plan.entitlements.export
+  const breakdownLocked = plan.enabled && !plan.entitlements.advancedAnalytics
+  const requestCashflowDrill = (key: string) => {
+    if (breakdownLocked) {
+      setPaywall({
+        title: "Solo en Pro",
+        description: "El desglose por categorías de cada mes está en Pro. El gráfico y el resumen del mes siguen siendo tuyos.",
+      })
+      return
+    }
+    setCashflowDrillKey(key)
+  }
+
   const [cashflowChartKey, setCashflowChartKey] = useState(0)
   const [rangeId, setRangeId] = useState<string>("12M")
   const [cashflowMonths, setCashflowMonths] = useState(6)
@@ -1006,6 +1023,13 @@ function DashboardInner() {
 
   const [exportingPdf, setExportingPdf] = useState(false)
   const handleExportDashboard = async () => {
+    if (exportLocked) {
+      setPaywall({
+        title: "Solo en Pro",
+        description: "Los informes en PDF son de Garra Pro. Tus datos siguen en la app; solo se desbloquea la descarga.",
+      })
+      return
+    }
     setExportingPdf(true)
     try {
       const { generateDashboardPdf } = await import("@/lib/dashboard-pdf")
@@ -1261,7 +1285,7 @@ function DashboardInner() {
                   <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--accent-red)]" />Gastos</span>
                   {cashflowGranularity === "month" && <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 rounded bg-[var(--gold)]" />Ahorro neto</span>}
                 </div>
-                <CashflowComboChart data={periodCashflow} activeKey={cashflowGranularity === "month" ? selectedMonth : null} showSavings={cashflowGranularity === "month"} onSelect={(key) => setCashflowDrillKey(key)} />
+                <CashflowComboChart data={periodCashflow} activeKey={cashflowGranularity === "month" ? selectedMonth : null} showSavings={cashflowGranularity === "month"} onSelect={(key) => requestCashflowDrill(key)} />
               </>
             ) : (
               <BarChart data={periodCashflow} index="label" categories={cashflowGranularity === "month" ? ["Ingresos", "Gastos", "Ahorro neto"] : ["Ingresos", "Gastos"]} colors={cashflowGranularity === "month" ? ["emerald", "red", "orange"] : ["emerald", "red"]} valueFormatter={chartAxisFormatter} yAxisWidth={moneyAxisWidth(periodCashflow.flatMap((bucket) => [bucket.Ingresos, bucket.Gastos, ...(cashflowGranularity === "month" ? [bucket["Ahorro neto"]] : [])]))} barCategoryGap={periodCashflow.length <= 3 ? "32%" : periodCashflow.length <= 6 ? "22%" : periodCashflow.length <= 14 ? "14%" : "8%"} tickGap={periodCashflow.length > 8 ? 18 : 6} showLegend showGridLines customTooltip={(props) => <CashflowHoverTooltip {...props} granularity={cashflowGranularity} />} key={cashflowChartKey} onValueChange={(value) => { const key = value && typeof value.key === "string" ? value.key : null; if (key) setCashflowDrillKey(key) }} className="dashboard-cashflow-chart h-56 cursor-pointer sm:h-72" showAnimation={cashflowChartKey === 0} />
@@ -1270,7 +1294,7 @@ function DashboardInner() {
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[11px] text-muted-foreground"><span className="sm:hidden">Toca una barra para ver su resumen; «Ver desglose» abre el detalle.</span><span className="hidden sm:inline">Pasa el ratón para ver el resumen; haz clic en una barra para el desglose por semana y categoría.</span></p>
                 {periodCashflow.length > 12 && (
-                  <button type="button" onClick={() => setCashflowDrillKey(periodCashflow[periodCashflow.length - 1].key)} className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 sm:min-h-9">
+                  <button type="button" onClick={() => requestCashflowDrill(periodCashflow[periodCashflow.length - 1].key)} className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 sm:min-h-9">
                     Desglose de {periodCashflow[periodCashflow.length - 1].label} <ChevronRight className="size-3.5" />
                   </button>
                 )}
@@ -1896,6 +1920,12 @@ function DashboardInner() {
         </DialogContent>
       </Dialog>
 
+            <PaywallDialog
+        open={!!paywall}
+        onOpenChange={(open) => { if (!open) setPaywall(null) }}
+        title={paywall?.title}
+        description={paywall?.description}
+      />
       <CashflowDrilldown bucket={cashflowDrillBucket} granularity={cashflowGranularity} transactions={cashflowGranularity === "month" ? chartTransactions : periodTransactions} currencyByAccount={currencyByAccount} catColor={catColor} onClose={closeCashflowDrill} />
 
       <AccountDialog open={showNewAccount} onOpenChange={setShowNewAccount} onSave={handleCreateAccount} />

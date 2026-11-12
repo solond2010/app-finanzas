@@ -26,7 +26,7 @@ import { Sensitive } from "@/components/shared/sensitive"
 import { cn } from "@/lib/utils"
 import { PatrimonioMensualSection } from "@/components/analytics/patrimonio-mensual"
 import { PatrimonioObjetivos } from "@/components/analytics/patrimonio-objetivos"
-import { PaywallPreview } from "@/components/billing/paywall-preview"
+import { PaywallDialog, PaywallPreview } from "@/components/billing/paywall-preview"
 import { usePlan } from "@/lib/billing/use-plan"
 import { CategoryIcon } from "@/components/icons/category-icon"
 
@@ -369,7 +369,13 @@ export default function AnalyticsPage() {
 
 
   const [exportingPdf, setExportingPdf] = useState(false)
+  const [pdfPaywall, setPdfPaywall] = useState(false)
+  const exportLocked = plan.enabled && !plan.entitlements.export
   const handleExportPdf = async () => {
+    if (exportLocked) {
+      setPdfPaywall(true)
+      return
+    }
     setExportingPdf(true)
     try {
       const { generateAnalyticsPdf } = await import("@/lib/analytics-pdf")
@@ -404,7 +410,7 @@ export default function AnalyticsPage() {
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           <MonthPeriodPicker monthOffset={monthOffset} onMonthOffsetChange={setMonthOffset} label={formatMonth(selectedDate)} />
           {monthOffset > 0 && <Button type="button" variant="ghost" className="min-h-11 rounded-full px-3 text-xs font-semibold" onClick={() => setMonthOffset(0)}>Este mes</Button>}
-          {hasData && !analyticsLocked && (
+          {hasData && (
             <Button variant="outline" className="h-11 gap-1.5 rounded-full px-4" onClick={handleExportPdf} disabled={exportingPdf}>
               <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Descargar PDF"}
             </Button>
@@ -412,6 +418,12 @@ export default function AnalyticsPage() {
         </div>
       </header>
 
+      <PaywallDialog
+        open={pdfPaywall}
+        onOpenChange={setPdfPaywall}
+        title="Solo en Pro"
+        description="Los informes en PDF son de Garra Pro. Tus datos siguen en la app; solo se desbloquea la descarga."
+      />
       {loading ? (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

@@ -9,6 +9,7 @@ export type CheckoutOption = "pro_monthly" | "pro_lifetime"
 export type LegacyCheckoutOption = "founder"
 
 export const FREE_MAX_ACCOUNTS = 3
+export const FREE_MAX_GOALS = 2
 export const FIRST_FIFTY_LIMIT = 50
 
 export const PRICES_EUR: Record<CheckoutOption, number> = { pro_monthly: 1.99, pro_lifetime: 14.99 }
@@ -17,14 +18,15 @@ export type PlanSource = "early_access" | "first_fifty" | "manual" | "stripe"
 
 export type Entitlements = {
   maxAccounts: number | null // null = sin límite
+  maxGoals: number | null // null = sin límite; las metas que ya existen no se ocultan
   investments: boolean
   netWorthHistory: boolean
   advancedAnalytics: boolean
   export: boolean
 }
 
-const FULL: Entitlements = { maxAccounts: null, investments: true, netWorthHistory: true, advancedAnalytics: true, export: true }
-const FREE: Entitlements = { maxAccounts: FREE_MAX_ACCOUNTS, investments: false, netWorthHistory: false, advancedAnalytics: false, export: false }
+const FULL: Entitlements = { maxAccounts: null, maxGoals: null, investments: true, netWorthHistory: true, advancedAnalytics: true, export: true }
+const FREE: Entitlements = { maxAccounts: FREE_MAX_ACCOUNTS, maxGoals: FREE_MAX_GOALS, investments: false, netWorthHistory: false, advancedAnalytics: false, export: false }
 
 export function isPaid(plan: Plan): boolean {
   return plan === "pro" || plan === "founder"
@@ -43,8 +45,14 @@ export function entitlementsFor(plan: Plan, paymentsEnabled: boolean, source?: s
 }
 
 /** ¿Puede tener `nextCount` cuentas? Nunca borra las que ya existen. */
-export function canHaveAccounts(plan: Plan, paymentsEnabled: boolean, nextCount: number): boolean {
-  const max = entitlementsFor(plan, paymentsEnabled).maxAccounts
+export function canHaveAccounts(plan: Plan, paymentsEnabled: boolean, nextCount: number, source?: string | null): boolean {
+  const max = entitlementsFor(plan, paymentsEnabled, source).maxAccounts
+  return max === null || nextCount <= max
+}
+
+/** ¿Puede tener `nextCount` metas de ahorro? Nunca oculta ni borra las que ya existen. */
+export function canHaveGoals(plan: Plan, paymentsEnabled: boolean, nextCount: number, source?: string | null): boolean {
+  const max = entitlementsFor(plan, paymentsEnabled, source).maxGoals
   return max === null || nextCount <= max
 }
 

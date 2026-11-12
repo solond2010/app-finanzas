@@ -28,6 +28,9 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { Skeleton } from "@/components/shared/skeleton"
 import { parseAmount } from "@/lib/validation"
 import { parseLocalDate } from "@/lib/date-utils"
+import { PaywallDialog } from "@/components/billing/paywall-preview"
+import { canHaveGoals, FREE_MAX_GOALS } from "@/lib/billing/plans"
+import { usePlan } from "@/lib/billing/use-plan"
 
 function SinkingFundForm({
   fund,
@@ -120,17 +123,28 @@ export function SinkingFundsGrid() {
   const [editingFund, setEditingFund] = useState<SinkingFund | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<SinkingFund | null>(null)
+  const [goalPaywall, setGoalPaywall] = useState(false)
+  const plan = usePlan()
+  const atGoalCap = plan.enabled && !canHaveGoals(plan.plan, true, state.sinkingFunds.length + 1, plan.source)
 
+  const requestNewGoal = () => {
+    if (atGoalCap) {
+      setGoalPaywall(true)
+      return
+    }
+    setShowNew(true)
+  }
 
 
   return (
+    <>
     <Card className="col-span-full">
       <CardHeader className="flex flex-col gap-3 space-y-0 pb-2 lg:flex-row lg:items-center lg:justify-between">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <PiggyBank className="h-5 w-5 text-amber-500" />
           Metas de ahorro
         </CardTitle>
-        <Button size="sm" className="gap-1" onClick={() => setShowNew(true)}>
+        <Button size="sm" className="gap-1" onClick={requestNewGoal}>
           <Plus className="h-3.5 w-3.5" /> Nueva meta
         </Button>
         <Dialog open={showNew} onOpenChange={setShowNew}>
@@ -140,7 +154,10 @@ export function SinkingFundsGrid() {
             </DialogHeader>
             <SinkingFundForm
               accounts={displayAccounts}
-               onSave={(f) => { dispatch({ type: "ADD_SINKING_FUND", payload: f }); setShowNew(false); toast("Meta de ahorro creada", "success") }}
+               onSave={(f) => {
+                  if (atGoalCap) { setShowNew(false); setGoalPaywall(true); return }
+                  dispatch({ type: "ADD_SINKING_FUND", payload: f }); setShowNew(false); toast("Meta de ahorro creada", "success")
+                }}
               onCancel={() => setShowNew(false)}
             />
           </DialogContent>
@@ -158,7 +175,7 @@ export function SinkingFundsGrid() {
             tone="amber"
             title="Aún no tienes metas de ahorro"
             description="Define un objetivo y sigue tu progreso mes a mes."
-            action={{ label: "Crear primera meta", icon: Plus, onClick: () => setShowNew(true) }}
+            action={{ label: "Crear primera meta", icon: Plus, onClick: requestNewGoal }}
           />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -261,5 +278,13 @@ export function SinkingFundsGrid() {
         destructive
       />
     </Card>
+      <PaywallDialog
+        open={goalPaywall}
+        onOpenChange={setGoalPaywall}
+        title="Solo en Pro"
+        description={`En el plan gratuito puedes tener hasta ${FREE_MAX_GOALS} metas de ahorro. La tercera y las siguientes son de Pro. Las que ya tienes no se tocan.`}
+      />
+    </>
   )
 }
+
