@@ -62,7 +62,7 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className="min-h-svh bg-background font-sans antialiased">
         {children}
         <VersionWatcher />
         <ErrorReporter />

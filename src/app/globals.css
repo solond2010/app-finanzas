@@ -724,8 +724,20 @@ aside nav a[aria-current="page"] {
 
 /* ── Misc ── */
 
+/* Altura del shell: 100svh (small viewport) no cambia cuando Chrome
+   oculta o muestra la barra de direcciones. 100vh y 100dvh sí lo hacen
+   en Android y pueden entrar en un bucle (el contenido tiembla). El
+   scroll es el del documento; no hay un contenedor interno atado a vh. */
 html {
   scroll-behavior: smooth;
+}
+
+/* En táctil, el scroll suave + el cambio de viewport al ocultar la barra
+   pelean y se ve una oscilación. El suave se mantiene en escritorio. */
+@media (pointer: coarse) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 /* Interacción más natural en táctil y mejor contención en móviles estrechos. */
@@ -737,6 +749,8 @@ a {
 
 body {
   overflow-x: clip;
+  min-height: 100vh; /* fallback si svh no existe */
+  min-height: 100svh;
 }
 
 @media (max-width: 767px) {
