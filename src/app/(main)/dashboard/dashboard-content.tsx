@@ -635,6 +635,10 @@ function DashboardInner() {
     return chartMaxPoint
   })()
 
+  const rangeMinPoint = netWorthHasData && netWorthTrend.length > 0
+    ? netWorthTrend.reduce((best, t) => (t.patrimonio < best.patrimonio ? t : best), netWorthTrend[0])
+    : null
+
   const allTimeObservedPeak = storedNetWorthPeak?.value ?? (activeRange.unit === "all" && rangeMaxPoint ? rangeMaxPoint.patrimonio : null)
   // Solo afirmar "máximo histórico" cuando se compara contra el pico persistido
   // de toda la vida (o la serie completa si aún no existe referencia guardada).
@@ -1277,7 +1281,7 @@ function DashboardInner() {
           {/* Fila hero: evolución de patrimonio + puntuación financiera */}
           <section className="stagger-fade grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4 xl:gap-5 2xl:grid-cols-12" style={{ animationDelay: "0ms" }}>
             {/* Patrimonio + rango */}
-            <div className={`${CARD_HERO} min-w-0 flex flex-col md:col-span-2 xl:col-span-2 2xl:col-span-6`}>
+            <div className={`${CARD_HERO} flex h-full min-w-0 flex-col md:col-span-2 xl:col-span-2 2xl:col-span-6`}>
               <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="w-full min-w-0 flex-1 sm:w-auto">
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -1352,13 +1356,43 @@ function DashboardInner() {
                     hideValues={privacy}
                     onActivate={() => setNetWorthExpanded(true)}
                     activateLabel="Pulsa para ver el gráfico ampliado."
-                    className="h-40 min-h-40 w-full sm:h-52 2xl:h-60"
+                    // flex-1 + min-h (sin height fija): rellena la altura que
+                    // impone la fila del grid. El ResizeObserver solo lee el
+                    // tamaño ya resuelto; no lo escribe, así no hay bucle.
+                    className="min-h-40 w-full flex-1 sm:min-h-52 2xl:min-h-60"
                   />
-                  <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                  <p className="mt-2 flex shrink-0 items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
                     <Maximize2 className="size-3" weight="bold" />
                     <span className="sm:hidden">Toca el gráfico para ampliarlo</span><span className="hidden sm:inline">Haz clic en el gráfico para ampliarlo</span>
                   </p>
-                  <p className="mx-auto mt-4 max-w-[62ch] border-t border-border/60 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
+                  {netWorthTrend.length > 1 && (
+                    <dl className="mt-3 grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4">
+                      {[
+                        { label: "Inicio", value: rangeStart, sub: netWorthTrend[0]?.mes ?? "", tone: "neutral" as const },
+                        { label: "Mínimo", value: rangeMinPoint?.patrimonio ?? rangeStart, sub: (rangeMinPoint?.mes ?? "").replace(" · pico", ""), tone: "neutral" as const },
+                        { label: "Máximo", value: rangeMaxPoint?.patrimonio ?? rangeStart, sub: (rangeMaxPoint?.mes ?? "").replace(" · pico", ""), tone: "neutral" as const },
+                        { label: "En el periodo", value: rangeDelta, sub: showPct ? formatCappedPct(rangePct) : "variación", tone: rangeDelta >= 0 ? "up" as const : "down" as const, signed: true },
+                      ].map((item) => (
+                        <div key={item.label} className="rounded-xl border border-border/60 bg-foreground/[0.03] px-3 py-2 dark:bg-white/[0.04]">
+                          <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{item.label}</dt>
+                          <dd className={cn("mt-0.5 text-sm font-semibold tabular-nums", item.tone === "up" ? "text-emerald-500" : item.tone === "down" && item.signed ? "text-red-500" : "text-foreground")}>
+                            <Sensitive>
+                              {item.signed ? (item.value >= 0 ? "+" : "−") + formatMoney(Math.abs(item.value), "EUR") : formatMoney(item.value, "EUR")}
+                            </Sensitive>
+                          </dd>
+                          {item.sub ? <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{item.sub}</p> : null}
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                  {(assetDebt.bienes > 0.005 || assetDebt.deudas > 0.005) && (
+                    <p className="mt-2 shrink-0 text-center text-[11px] leading-relaxed text-muted-foreground">
+                      Activos <Sensitive as="span" className="font-medium text-foreground">{formatMoney(netWorth + assetDebt.bienes, "EUR")}</Sensitive>
+                      <span className="text-border"> · </span>
+                      Deudas <Sensitive as="span" className="font-medium text-red-500">{formatMoney(assetDebt.deudas, "EUR")}</Sensitive>
+                    </p>
+                  )}
+                  <p className="mx-auto mt-4 max-w-[62ch] shrink-0 border-t border-border/60 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
                     El histórico se reconstruye desde los saldos actuales y los movimientos guardados; no equivale a una captura bancaria de cada fecha.
                   </p>
                   {balanceAdjustmentsInRange.count > 0 && (

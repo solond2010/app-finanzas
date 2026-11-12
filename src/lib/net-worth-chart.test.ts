@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 import { axisTicks, chartSeries, monotonePath, monthlyChangeBars, monthlyCloses, normalizeDateKey } from "./net-worth-chart"
 
@@ -51,5 +53,27 @@ describe("gráfico de patrimonio", () => {
     ]
     const r = chartSeries(pts, "2026-06-01")
     expect(r.points[0].value).toBe(1000)
+  })
+})
+
+describe("la tarjeta de Inicio rellena el hueco del grid", () => {
+  const src = readFileSync(resolve(__dirname, "../app/(main)/dashboard/dashboard-content.tsx"), "utf8")
+  const chart = src.match(/<NetWorthChart[\s\S]*?className="([^"]+)"/)
+
+  it("el gráfico usa flex-1 y min-h, sin height fija que deje un hueco", () => {
+    expect(chart, "tiene que haber un NetWorthChart en el Inicio").toBeTruthy()
+    const cls = chart![1]
+    expect(cls).toMatch(/flex-1/)
+    expect(cls).toMatch(/min-h-40/)
+    expect(cls).not.toMatch(/(?<![\w-])h-40\b/)
+    expect(cls).not.toMatch(/sm:h-52/)
+    expect(cls).not.toMatch(/2xl:h-60/)
+  })
+
+  it("debajo del gráfico vuelve el resumen de inicio, mínimo, máximo y periodo", () => {
+    expect(src).toMatch(/label: "Inicio"/)
+    expect(src).toMatch(/label: "Mínimo"/)
+    expect(src).toMatch(/label: "Máximo"/)
+    expect(src).toMatch(/label: "En el periodo"/)
   })
 })

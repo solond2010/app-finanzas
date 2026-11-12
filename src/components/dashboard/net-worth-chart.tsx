@@ -78,7 +78,10 @@ export function NetWorthChart({
   }, [])
 
   const showBars = large && !!bars && bars.length > 0
-  const PAD_TOP = large ? 30 : 12
+  // Si la tarjeta estira el gráfico (grid de escritorio), las marcas de
+  // mín/máx caben sin cambiar la altura del contenedor: solo el dibujo interno.
+  const showExtremes = !hideValues && points.length > 2 && (large || box.h >= 200)
+  const PAD_TOP = large ? 30 : showExtremes ? 22 : 12
   const AXIS_H = 24
   const BARS_H = showBars ? (box.w < 520 ? 46 : 62) : 0
   const PAD_L = large ? 44 : 2
@@ -251,7 +254,7 @@ export function NetWorthChart({
             </g>
           )}
 
-          {large && points.length > 2 && !hideValues && [
+          {showExtremes && [
             { i: iMax, label: `Máx ${(formatAxis ?? formatValue)(points[iMax].value)}`, color: GREEN, above: true },
             { i: iMin, label: `Mín ${(formatAxis ?? formatValue)(points[iMin].value)}`, color: RED, above: false },
           ].filter((m, k, arr) => k === 0 || m.i !== arr[0].i).map((m) => {
