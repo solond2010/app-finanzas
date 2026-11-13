@@ -21,8 +21,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const addToast = useCallback((message: string, type: Toast["type"] = "info", options?: ToastOptions) => {
     const id = ++toastId
-    setToasts((prev) => [...prev, { id, message, type, action: options?.action }])
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), options?.duration ?? (options?.action ? 6000 : 3500))
+    let added = false
+    setToasts((prev) => {
+      // Evita apilar el mismo aviso dos veces (Enter + clic en Añadir, etc.).
+      if (prev.some((item) => item.message === message && item.type === type)) return prev
+      added = true
+      return [...prev, { id, message, type, action: options?.action }]
+    })
+    if (!added) return
+    setTimeout(() => setToasts((prev) => prev.filter((item) => item.id !== id)), options?.duration ?? (options?.action ? 6000 : 3500))
   }, [])
 
   return (

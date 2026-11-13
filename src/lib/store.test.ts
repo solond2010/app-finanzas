@@ -226,6 +226,56 @@ describe("reducer / ADD_CATEGORY", () => {
     const next = reducer(state, { type: "ADD_CATEGORY", payload: { name: "  suscripciones  ", color: "#111", kind: "gasto" } })
     expect(next.categories).toHaveLength(1)
   })
+
+  it("permite el mismo nombre en ingreso y en gasto (Inversión)", () => {
+    const state: FinanceState = {
+      ...emptyState,
+      categories: [{ id: "cat_inversion", name: "Inversión", color: "#000", kind: "ingreso" }],
+    }
+    const next = reducer(state, { type: "ADD_CATEGORY", payload: { id: "cat_inv_gasto", name: "Inversión", color: "#111", kind: "gasto" } })
+    expect(next.categories).toHaveLength(2)
+    expect(next.categories.map((c) => c.kind).sort()).toEqual(["gasto", "ingreso"])
+  })
+
+  it("rechaza Inversión como gasto si ya existe en Ambos", () => {
+    const state: FinanceState = {
+      ...emptyState,
+      categories: [{ id: "c-both", name: "Inversión", color: "#000", kind: "both" }],
+    }
+    const next = reducer(state, { type: "ADD_CATEGORY", payload: { name: "Inversión", color: "#111", kind: "gasto" } })
+    expect(next.categories).toHaveLength(1)
+  })
+
+  it("rechaza crear como Ambos si ya existe en Ingresos", () => {
+    const state: FinanceState = {
+      ...emptyState,
+      categories: [{ id: "c-in", name: "Inversión", color: "#000", kind: "ingreso" }],
+    }
+    const next = reducer(state, { type: "ADD_CATEGORY", payload: { name: "Inversión", color: "#111", kind: "both" } })
+    expect(next.categories).toHaveLength(1)
+  })
+})
+
+describe("reducer / UPDATE_CATEGORY", () => {
+  it("al renombrar un gasto no mueve los ingresos homónimos", () => {
+    const state: FinanceState = {
+      ...emptyState,
+      categories: [
+        { id: "c-in", name: "Inversión", color: "#000", kind: "ingreso" },
+        { id: "c-out", name: "Inversión", color: "#111", kind: "gasto" },
+      ],
+      transactions: [
+        tx({ id: "t-in", tipo: "ingreso", categoria: "Inversión", monto: 100 }),
+        tx({ id: "t-out", tipo: "gasto", categoria: "Inversión", monto: 20 }),
+      ],
+    }
+    const next = reducer(state, {
+      type: "UPDATE_CATEGORY",
+      payload: { id: "c-out", name: "Inversiones", color: "#111", kind: "gasto" },
+    })
+    expect(next.transactions.find((t) => t.id === "t-out")?.categoria).toBe("Inversiones")
+    expect(next.transactions.find((t) => t.id === "t-in")?.categoria).toBe("Inversión")
+  })
 })
 
 describe("reducer / DELETE_CATEGORY", () => {

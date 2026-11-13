@@ -1,7 +1,7 @@
 "use client"
 
 import { registerCategoryIcons } from "@/components/icons/category-icon"
-import { findCategoryByName } from "./category-names"
+import { findBlockingCategory, transactionMatchesCategoryKind } from "./category-names"
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
 import { reportClientError } from "./report-error-client"
@@ -442,10 +442,9 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
     case "DELETE_SINKING_FUND":
       return { ...state, sinkingFunds: state.sinkingFunds.filter((s) => s.id !== action.payload) }
     case "ADD_CATEGORY":
-      // Comparación sin distinguir mayúsculas, tildes ni espacios: mismo
-      // criterio que el formulario de Configuración, aquí también por si
-      // ADD_CATEGORY llega a dispararse alguna vez desde otro punto de la app.
-      return findCategoryByName(state.categories, action.payload.name)
+      // Mismo nombre sí puede existir en gasto y en ingreso; no si el tipo
+      // coincide o si una de las dos es «Ambos».
+      return findBlockingCategory(state.categories, action.payload.name, action.payload.kind)
         ? state
         : { ...state, categories: [...state.categories, { id: action.payload.id ?? generateId(), ...action.payload }] }
     case "UPDATE_CATEGORY": {
@@ -454,7 +453,13 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
       return {
         ...state,
         categories: state.categories.map((c) => c.id === action.payload.id ? action.payload : c),
-        transactions: previous.name === action.payload.name ? state.transactions : state.transactions.map((t) => t.categoria === previous.name ? { ...t, categoria: action.payload.name } : t),
+        // Solo remapea movimientos del mismo tipo: si hay «Inversión» en
+        // ingresos y en gastos, renombrar una no debe arrastrar la otra.
+        transactions: previous.name === action.payload.name ? state.transactions : state.transactions.map((t) => (
+          t.categoria === previous.name && transactionMatchesCategoryKind(t, previous.kind)
+            ? { ...t, categoria: action.payload.name }
+            : t
+        )),
       }
     }
     case "DELETE_CATEGORY":

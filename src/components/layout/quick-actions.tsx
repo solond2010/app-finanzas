@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils"
 import { transferDescription } from "@/lib/transfer-description"
 import { CategoryIcon } from "@/components/icons/category-icon"
 import { CategoryIconPicker } from "@/components/categories/category-icon-picker"
-import { MAX_CATEGORY_NAME, cleanCategoryName, findCategoryByName } from "@/lib/category-names"
+import { MAX_CATEGORY_NAME, cleanCategoryName, findBlockingCategory } from "@/lib/category-names"
 
 type MovementType = "gasto" | "ingreso" | "traspaso"
 
@@ -212,15 +212,11 @@ function UnifiedMovementForm({
     if (tipo === "traspaso") return
     const name = cleanCategoryName(newCatName)
     if (!name) { setNewCatMsg({ tone: "error", text: "Escribe un nombre." }); return }
-    const existing = findCategoryByName(categories, name)
+    const existing = findBlockingCategory(categories, name, tipo)
     if (existing) {
-      if (!existing.kind || existing.kind === tipo || existing.kind === "both") {
-        setCategoria(existing.name)
-        setNewCatOpen(false); setNewCatName("")
-        setNewCatMsg({ tone: "info", text: `Ya tenías «${existing.name}»; la he elegido.` })
-      } else {
-        setNewCatMsg({ tone: "error", text: `«${existing.name}» ya existe como categoría de ${existing.kind === "ingreso" ? "ingresos" : "gastos"}.` })
-      }
+      setCategoria(existing.name)
+      setNewCatOpen(false); setNewCatName("")
+      setNewCatMsg({ tone: "info", text: `Ya tenías «${existing.name}»; la he elegido.` })
       return
     }
     onCreateCategory(name, tipo, newCatIcon)

@@ -1,6 +1,7 @@
 import type { FinanceState } from "./store"
 import type { Contribution, Position } from "./investments"
 import { isSyntheticOpeningBalanceResidual } from "./calculations"
+import { categoryKey, categoryKindLabel, categoryKindsConflict } from "./category-names"
 
 /** `refs` (opcional) va alineado con `details`: id de la cuenta afectada, para enlazarla en la UI. */
 export type IntegrityFinding = { code: string; label: string; count: number; details?: string[]; refs?: string[] }
@@ -66,10 +67,27 @@ export function auditFinanceState(state: FinanceState, positions: Position[] = [
     const money = (value: number) => `${value.toLocaleString("es-ES", { useGrouping: "always", minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${account.currency ?? "€"}`
     return `${account.nombre}: saldo ${money(account.saldo)} · suma de movimientos ${money(ledger)}`
   }), mismatchedAccounts.map((account) => account.id))
-  const normalizedNames = state.categories.map((row) => row.name.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES"))
-  const repeatedNames = [...new Set(normalizedNames.filter((name, index) => normalizedNames.indexOf(name) !== index))]
-  add("duplicate-category-names", "Categorías con nombres duplicados", normalizedNames.length - new Set(normalizedNames).size,
-    repeatedNames.map((name) => state.categories.filter((_, index) => normalizedNames[index] === name).map((row) => `«${row.name}»`).join(" y ")))
+  const conflictingNameDetails: string[] = []
+  const byNormalizedName = new Map<string, typeof state.categories>()
+  for (const row of state.categories) {
+    const key = categoryKey(row.name)
+    const list = byNormalizedName.get(key) ?? []
+    list.push(row)
+    byNormalizedName.set(key, list)
+  }
+  for (const rows of byNormalizedName.values()) {
+    if (rows.length < 2) continue
+    let conflict = false
+    for (let i = 0; i < rows.length; i++) {
+      for (let j = i + 1; j < rows.length; j++) {
+        if (categoryKindsConflict(rows[i].kind, rows[j].kind)) conflict = true
+      }
+    }
+    if (conflict) {
+      conflictingNameDetails.push(rows.map((row) => `«${row.name}» (${categoryKindLabel(row.kind)})`).join(" y "))
+    }
+  }
+  add("duplicate-category-names", "Categorías con nombres duplicados del mismo tipo", conflictingNameDetails.length, conflictingNameDetails)
 
   const positionIds = new Set(positions.map((position) => position.id))
   const investmentAccountIds = new Set(state.accounts.map((account) => account.id))

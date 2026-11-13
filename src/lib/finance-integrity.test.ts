@@ -46,4 +46,32 @@ describe("auditFinanceState", () => {
     expect(findings.find((item) => item.code === "orphan-positions")?.details).toEqual(["Acción ABC"])
     expect(JSON.stringify({ state, positions, contributions })).toBe(original)
   })
+
+  it("no marca Inversión en ingreso y en gasto como duplicado conflictivo", () => {
+    const state = {
+      accounts: [],
+      transactions: [],
+      sinkingFunds: [],
+      categories: [
+        { id: "c-in", name: "Inversión", color: "#000", kind: "ingreso" },
+        { id: "c-out", name: "Inversión", color: "#111", kind: "gasto" },
+      ],
+      budgets: [],
+    } as unknown as FinanceState
+    expect(auditFinanceState(state).map((item) => item.code)).not.toContain("duplicate-category-names")
+  })
+
+  it("sí marca dos categorías de gasto con el mismo nombre", () => {
+    const state = {
+      accounts: [],
+      transactions: [],
+      sinkingFunds: [],
+      categories: [
+        { id: "c1", name: "Ocio", color: "#000", kind: "gasto" },
+        { id: "c2", name: "ocio", color: "#111", kind: "gasto" },
+      ],
+      budgets: [],
+    } as unknown as FinanceState
+    expect(auditFinanceState(state).map((item) => item.code)).toContain("duplicate-category-names")
+  })
 })

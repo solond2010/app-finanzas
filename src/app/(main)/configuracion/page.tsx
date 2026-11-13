@@ -1,7 +1,7 @@
 "use client"
 
-import { categoryKey, cleanCategoryName, findCategoryByName } from "@/lib/category-names"
-import { useEffect, useMemo, useState } from "react"
+import { alreadyExistsInMessage, categoryKey, cleanCategoryName, findBlockingCategory, transactionMatchesCategoryKind, categoryKindsConflict } from "@/lib/category-names"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -47,6 +47,7 @@ export default function ConfiguracionPage() {
     ? syncStatus === "offline" || investmentSyncStatus === "offline" ? "Sin conexión" : "No se pudo guardar"
     : backupBlocked ? "Sincronizando cambios…" : syncStatus === "saved" || investmentSyncStatus === "saved" ? "Guardado en la nube" : "Último estado de sincronización"
   const { toast } = useToast()
+  const addCategoryLock = useRef(false)
   const [newCat, setNewCat] = useState("")
   const [newCatKind, setNewCatKind] = useState<"ingreso" | "gasto">("gasto")
   const [categorySearch, setCategorySearch] = useState("")
@@ -80,13 +81,15 @@ export default function ConfiguracionPage() {
   const closeReset = (open: boolean) => { setResetOpen(open); if (!open) setResetText("") }
 
   const addCategory = () => {
+    // Evita el toast doble: Enter en el input + clic en Añadir (o submit implícito).
+    if (addCategoryLock.current) return
+    addCategoryLock.current = true
+    window.setTimeout(() => { addCategoryLock.current = false }, 400)
     const name = cleanCategoryName(newCat)
     if (!name) return
-    // Comparación sin distinguir mayúsculas/tildes de caja: "Suscripciones" y
-    // "suscripciones" son la misma categoría para quien la usa, y antes de
-    // este fix el check exacto dejaba pasar duplicados con distinta capitalización.
-    if (findCategoryByName(state.categories, name)) {
-      toast("Esa categoría ya existe", "error")
+    const blocking = findBlockingCategory(state.categories, name, newCatKind)
+    if (blocking) {
+      toast(alreadyExistsInMessage(blocking.kind), "error")
       return
     }
     dispatch({ type: "ADD_CATEGORY", payload: { name, color: "#64748b", kind: newCatKind, icon: newCatIcon } })
@@ -103,14 +106,14 @@ export default function ConfiguracionPage() {
   ]
 
   const deleteCategory = (id: string, name: string) => {
-    const inUse = state.transactions.some((t) => t.categoria === name)
-    // Las transacciones referencian la categoría por NOMBRE: si existe otra
-    // categoría duplicada con el mismo nombre, borrar esta copia es inocuo
-    // (ninguna transacción se queda huérfana). Sin esta comprobación, un
-    // nombre duplicado con movimientos quedaba imposible de limpiar: las dos
-    // copias se bloqueaban mutuamente para siempre.
-    const isLastWithName = state.categories.filter((c) => c.name === name).length <= 1
-    if (inUse && isLastWithName) {
+    const category = state.categories.find((c) => c.id === id)
+    // Las txs se guardan por nombre: solo cuentan las del tipo de esta categoría,
+    // para no bloquear el borrado de «Inversión» en gastos por ingresos homónimos.
+    const inUse = state.transactions.some((t) => t.categoria === name && transactionMatchesCategoryKind(t, category?.kind))
+    const isLastWithNameAndKind = state.categories.filter((c) =>
+      categoryKey(c.name) === categoryKey(name) && categoryKindsConflict(c.kind, category?.kind)
+    ).length <= 1
+    if (inUse && isLastWithNameAndKind) {
       toast("No puedes eliminar una categoría con movimientos", "error")
       return
     }
@@ -124,8 +127,10 @@ export default function ConfiguracionPage() {
     if (!category || !name) return
     // Solo si cambia el nombre: si solo cambia el icono no hace falta (y así
     // también se puede poner icono a una categoría que tenga duplicados).
-    if (categoryKey(name) !== categoryKey(category.name) && state.categories.some((c) => c.id !== id && findCategoryByName([c], name))) { toast("Ya existe una categoría con ese nombre", "error"); return }
-    if (state.categories.filter((c) => c.name === category.name).length > 1 && name !== category.name) { toast("Hay categorías duplicadas con este nombre; renombra primero las otras para evitar mover movimientos incorrectos", "error"); return }
+    if (categoryKey(name) !== categoryKey(category.name)) {
+      const blocking = findBlockingCategory(state.categories.filter((c) => c.id !== id), name, category.kind)
+      if (blocking) { toast(alreadyExistsInMessage(blocking.kind), "error"); return }
+    }
     dispatch({ type: "UPDATE_CATEGORY", payload: { ...category, name, icon: editingIcon } })
     setEditingId(null)
     toast(name !== category.name ? "Categoría actualizada; sus movimientos conservaron la categoría" : "Categoría actualizada", "success")
@@ -232,7 +237,7 @@ export default function ConfiguracionPage() {
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory() } }}
                   />
                 </div>
-                <Button size="sm" className="gap-1 shrink-0" onClick={addCategory}>
+                <Button type="button" size="sm" className="gap-1 shrink-0" onClick={addCategory}>
                   <Plus className="h-3.5 w-3.5" /> Añadir
                 </Button>
               </div>
