@@ -25,11 +25,11 @@ const moreItems = [
   { href: "/configuracion", label: "Configuración", description: "Preferencias y datos", icon: SlidersHorizontal },
 ]
 
-export function MobileBottomNav() {
+export function MobileBottomNav({ showAdminNav = false }: { showAdminNav?: boolean }) {
   const pathname = usePathname()
   const [moreOpen, setMoreOpen] = useState(false)
   const { privacy, toggle: togglePrivacy } = usePrivacy()
-  const admin = useAdminNav(pathname)
+  const admin = useAdminNav(pathname, showAdminNav)
   const notifications = useFeedbackNotifications()
   const sheetItems = admin.showAdminLink ? [...moreItems, { href: ADMIN_HREF, label: "Administración", description: "Comentarios, errores y usuarios", icon: ShieldCheck }] : moreItems
   const moreActive = sheetItems.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))

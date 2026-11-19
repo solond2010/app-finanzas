@@ -1,11 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAdminNavVisibility } from "@/lib/admin-nav-visibility"
 
-// Menú «Administración»: el servidor es quien decide si hay sesión de admin
-// (AdminNavProvider). Aquí solo se cuenta el badge de comentarios sin revisar
-// y se respeta la preferencia de ocultarlo en este dispositivo.
+// Badge de comentarios sin revisar. El servidor es quien decide si el enlace
+// de Administración aparece (prop showAdminNav); si no, no se llama a la API.
 
 let summary: Promise<number> | null = null
 
@@ -26,12 +24,11 @@ export function refreshAdminNav() {
   summary = null
 }
 
-export function useAdminNav(pathname: string) {
-  const visibility = useAdminNavVisibility()
+export function useAdminNav(pathname: string, showAdminNav = false) {
   const [nuevos, setNuevos] = useState(0)
 
   useEffect(() => {
-    if (!visibility.isAdminSession) {
+    if (!showAdminNav) {
       setNuevos(0)
       return
     }
@@ -39,12 +36,12 @@ export function useAdminNav(pathname: string) {
     if (pathname.startsWith("/admin")) refreshAdminNav()
     void loadNuevos().then((value) => { if (alive) setNuevos(value) })
     return () => { alive = false }
-  }, [pathname, visibility.isAdminSession])
+  }, [pathname, showAdminNav])
 
   return {
-    isAdmin: visibility.isAdminSession,
-    showAdminLink: visibility.showAdminLink,
-    nuevos: visibility.showAdminLink ? nuevos : 0,
+    isAdmin: showAdminNav,
+    showAdminLink: showAdminNav,
+    nuevos: showAdminNav ? nuevos : 0,
   }
 }
 

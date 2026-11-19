@@ -18,7 +18,7 @@ import { DemoProvider } from "@/lib/demo/context"
 import { DemoBanner } from "@/components/demo/demo-banner"
 import { FeedbackNotificationsProvider } from "@/components/feedback/feedback-notifications"
 
-function MainInner({ children, demo }: { children: React.ReactNode; demo: boolean }) {
+function MainInner({ children, demo, showAdminNav }: { children: React.ReactNode; demo: boolean; showAdminNav: boolean }) {
   const { open } = useSidebar()
 
   // min-h-svh (no 100vh/100dvh): la altura no cambia al ocultar la barra
@@ -30,7 +30,7 @@ function MainInner({ children, demo }: { children: React.ReactNode; demo: boolea
   // bloque entero para que el aviso no se meta debajo.
   return (
     <div className="flex min-h-svh overflow-x-clip">
-      <Sidebar />
+      <Sidebar showAdminNav={showAdminNav} />
       <div className={cn("flex min-w-0 flex-1 flex-col transition-[margin]", open ? "lg:ml-52" : "lg:ml-16")}>
         {demo && <DemoBanner />}
         <main className={cn(
@@ -44,12 +44,12 @@ function MainInner({ children, demo }: { children: React.ReactNode; demo: boolea
           </div>
         </main>
       </div>
-      <MobileBottomNav />
+      <MobileBottomNav showAdminNav={showAdminNav} />
     </div>
   )
 }
 
-export function MainShell({ children, demo }: { children: React.ReactNode; demo: boolean }) {
+export function MainShell({ children, demo, showAdminNav = false }: { children: React.ReactNode; demo: boolean; showAdminNav?: boolean }) {
   if (demo) {
     // Demo: antes de que ningún provider lea localStorage o llame a /api,
     // se pasa todo a memoria (ver src/lib/demo/runtime.ts). La copia local
@@ -69,7 +69,7 @@ export function MainShell({ children, demo }: { children: React.ReactNode; demo:
           <FeedbackNotificationsProvider enabled={!demo}>
           <PrivacyProvider>
             <SidebarProvider>
-              <MainInner demo={demo}>
+              <MainInner demo={demo} showAdminNav={showAdminNav}>
                 {children}
               </MainInner>
             </SidebarProvider>

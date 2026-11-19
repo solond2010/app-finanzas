@@ -8,11 +8,11 @@ export const dynamic = "force-dynamic"
 
 export default async function ConfiguracionPage() {
   const isAdmin = await currentUserIsAdmin()
-  const adminSettings = isAdmin ? await loadAdminSettings() : null
+  const adminSettings = isAdmin ? await renderAdminSettings() : null
   return <ConfiguracionClient adminSettings={adminSettings} />
 }
 
-async function loadAdminSettings() {
+async function renderAdminSettings() {
   const { AdminVisibilityCard } = await import("@/components/settings/admin-visibility-card")
   return <AdminVisibilityCard />
 }

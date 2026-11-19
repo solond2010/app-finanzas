@@ -58,9 +58,9 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
   )
 }
 
-export function Sidebar() {
+export function Sidebar({ showAdminNav = false }: { showAdminNav?: boolean }) {
   const pathname = usePathname()
-  const admin = useAdminNav(pathname)
+  const admin = useAdminNav(pathname, showAdminNav)
   const items = admin.showAdminLink ? [...navItems, { href: ADMIN_HREF, label: "Administración", icon: ShieldCheck }] : navItems
   const { status: syncStatus, failedStep: syncFailedStep, retrySync, lastSyncedAt } = useSyncStatus()
   const { status: investmentSyncStatus, retrySync: retryInvestmentSync } = useInvestmentSyncStatus()
