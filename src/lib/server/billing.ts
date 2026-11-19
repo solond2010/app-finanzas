@@ -1,6 +1,7 @@
 import "server-only"
 import { supabaseServer } from "@/lib/supabase-server"
 import { asPlan, type CheckoutOption, type Plan } from "@/lib/billing/plans"
+import { GARRA_PORTAL_METADATA, pickPortalConfiguration, type PortalConfigurationLike } from "@/lib/billing/portal-policy"
 import { paymentsEnabledFor, isLiveStripeKey } from "@/lib/billing/env-policy"
 import { mergePlanPatch, periodEndFromStripeObject, type PlanPatch } from "@/lib/billing/webhook-plan"
 
@@ -56,7 +57,7 @@ export async function fillCheckoutPeriodEnd(patch: PlanPatch): Promise<PlanPatch
   return { ...patch, current_period_end: end }
 }
 
-export type UserPlanRow = { user_id: string; plan: Plan; source: string; stripe_customer_id: string | null; stripe_subscription_id: string | null; subscription_status: string | null; current_period_end: string | null }
+export type UserPlanRow = { user_id: string; plan: Plan; source: string; stripe_customer_id: string | null; stripe_subscription_id: string | null; subscription_status: string | null; current_period_end: string | null; cancel_at_period_end?: boolean | null }
 
 export async function getUserPlanRow(userId: string): Promise<UserPlanRow | null> {
   const { data, error } = await supabaseServer.from("user_plans").select("*").eq("user_id", userId).maybeSingle()
@@ -107,4 +108,42 @@ export async function stripeRequest<T>(path: string, params: Record<string, stri
   const body = (await res.json().catch(() => null)) as (T & { error?: { message?: string } }) | null
   if (!res.ok || !body) throw new Error(body?.error?.message ?? `Stripe respondió ${res.status}`)
   return body
+}
+
+const PORTAL_CONFIG_PARAMS: Record<string, string> = {
+  "business_profile[headline]": "Garra",
+  "features[invoice_history][enabled]": "true",
+  "features[payment_method_update][enabled]": "true",
+  "features[subscription_cancel][enabled]": "true",
+  "features[subscription_cancel][mode]": "at_period_end",
+  "features[subscription_cancel][proration_behavior]": "none",
+  "features[subscription_update][enabled]": "false",
+  "metadata[app]": GARRA_PORTAL_METADATA,
+}
+
+type PortalConfiguration = PortalConfigurationLike & { id: string }
+
+/** Reutiliza una configuración válida o crea la de Garra (sin cambiar de plan). */
+export async function ensureStripePortalConfiguration(key: string, returnUrl: string): Promise<string> {
+  const listed = await stripeGet<{ data?: PortalConfiguration[] }>("billing_portal/configurations?limit=100&active=true", key)
+  const existing = pickPortalConfiguration(listed.data ?? [])
+  if (existing) return existing
+  const created = await stripeRequest<{ id: string }>("billing_portal/configurations", {
+    ...PORTAL_CONFIG_PARAMS,
+    default_return_url: returnUrl,
+  }, key)
+  if (!created.id) throw new Error("Stripe no devolvió la configuración del portal")
+  return created.id
+}
+
+export async function createBillingPortalSession(key: string, customerId: string, returnUrl: string): Promise<{ url: string }> {
+  const configuration = await ensureStripePortalConfiguration(key, returnUrl)
+  const session = await stripeRequest<{ url?: string }>("billing_portal/sessions", {
+    customer: customerId,
+    return_url: returnUrl,
+    locale: "es",
+    configuration,
+  }, key)
+  if (!session.url) throw new Error("Stripe no devolvió la dirección del portal")
+  return { url: session.url }
 }

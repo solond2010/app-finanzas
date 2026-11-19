@@ -1,6 +1,7 @@
 import { getDataContext } from "@/lib/server/request-context"
 import { json } from "@/lib/server/auth-helpers"
 import { entitlementsFor, isLifetimeAccess, PRICES_EUR } from "@/lib/billing/plans"
+import { canManageStripeSubscription } from "@/lib/billing/portal-policy"
 import { ensureFirstFiftyGrant, getUserPlanRow, paymentsEnabled } from "@/lib/server/billing"
 
 export const dynamic = "force-dynamic"
@@ -22,6 +23,8 @@ export async function GET() {
       source,
       lifetime: isLifetimeAccess(plan, source),
       renews: row?.current_period_end ?? null,
+      cancelAtPeriodEnd: Boolean(row?.cancel_at_period_end) && canManageStripeSubscription(row),
+      canManageSubscription: canManageStripeSubscription(row),
       entitlements: entitlementsFor(plan, true, source),
       prices: PRICES_EUR,
     })

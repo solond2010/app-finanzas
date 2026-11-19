@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
 import { PRICES_EUR, isLifetimeAccess, type CheckoutOption, type Entitlements, type Plan } from "@/lib/billing/plans"
+import { formatProUntil } from "@/lib/billing/portal-policy"
 import { cn } from "@/lib/utils"
 
 type PlanInfo = {
@@ -13,8 +14,12 @@ type PlanInfo = {
   source: string | null
   lifetime?: boolean
   renews: string | null
+  cancelAtPeriodEnd?: boolean
+  canManageSubscription?: boolean
   entitlements: Entitlements
 }
+
+type Busy = CheckoutOption | "portal" | null
 
 const eur = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" })
 
@@ -58,10 +63,14 @@ function planLabel(plan: Plan, source: string | null): string {
   return "Gratis"
 }
 
+function renewsOn(value: string) {
+  return new Date(value).toLocaleDateString("es-ES", { day: "numeric", month: "numeric", timeZone: "Europe/Madrid" })
+}
+
 /** Tarjeta «Tu plan». No se muestra nada mientras los pagos estén apagados. */
 export function PlanCard() {
   const [info, setInfo] = useState<PlanInfo | null>(null)
-  const [busy, setBusy] = useState<CheckoutOption | null>(null)
+  const [busy, setBusy] = useState<Busy>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -88,8 +97,22 @@ export function PlanCard() {
     setBusy(null)
   }
 
+  async function openPortal() {
+    setBusy("portal")
+    try {
+      const res = await fetch("/api/billing/portal", { method: "POST" })
+      const body = await res.json().catch(() => null)
+      if (res.ok && typeof body?.url === "string") { window.location.href = body.url; return }
+      toast(body?.error ?? "No se pudo abrir la suscripción", "error")
+    } catch {
+      toast("No se pudo abrir la suscripción", "error")
+    }
+    setBusy(null)
+  }
+
   const lifetime = info.lifetime ?? isLifetimeAccess(info.plan, info.source)
   const label = planLabel(info.plan, info.source)
+  const until = info.cancelAtPeriodEnd ? formatProUntil(info.renews) : null
 
   return (
     <Card>
@@ -113,10 +136,15 @@ export function PlanCard() {
         ) : info.plan === "pro" ? (
           <div className="space-y-3">
             <p className="text-sm">
-              <span className="font-semibold">{label}</span>
-              {info.renews && <span className="text-muted-foreground"> · se renueva el {new Date(info.renews).toLocaleDateString("es-ES")}</span>}
+              <span className="font-semibold">{until ?? label}</span>
+              {!until && info.renews && <span className="text-muted-foreground"> · se renueva el {renewsOn(info.renews)}</span>}
             </p>
             <FeatureList items={PRO_FEATURES} />
+            {info.canManageSubscription && (
+              <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={!!busy} onClick={() => void openPortal()}>
+                {busy === "portal" ? "Abriendo…" : "Gestionar suscripción"}
+              </Button>
+            )}
           </div>
         ) : (
           <>

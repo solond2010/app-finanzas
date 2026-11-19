@@ -209,7 +209,31 @@ describe("webhook de Stripe", () => {
     }
   })
 
-  it("rellena current_period_end en el checkout mensual si la suscripción viene expandida", () => {
+  it("si cancela a fin de periodo sigue en Pro y guarda la fecha", () => {
+    const decision = decideStripeWebhook({
+      id: "evt_cancel_end",
+      type: "customer.subscription.updated",
+      livemode: false,
+      data: { object: { id: "sub_1", metadata: { user_id: "user-1" }, customer: "cus_1", status: "active", cancel_at_period_end: true, current_period_end: 1_800_000_000 } },
+    }, isolated)
+    expect(decision).toMatchObject({
+      action: "apply",
+      userId: "user-1",
+      patch: { plan: "pro", source: "stripe", subscription_status: "active", cancel_at_period_end: true, current_period_end: new Date(1_800_000_000 * 1000).toISOString() },
+    })
+  })
+
+  it("un evento de baja inmediata deja el mensual en gratis y quita la marca de fin de periodo", () => {
+    const decision = decideStripeWebhook({
+      id: "evt_deleted_flag",
+      type: "customer.subscription.deleted",
+      livemode: false,
+      data: { object: { id: "sub_1", metadata: { user_id: "user-1" }, customer: "cus_1", status: "canceled", cancel_at_period_end: true, current_period_end: 1_800_000_000 } },
+    }, isolated)
+    expect(decision).toMatchObject({ action: "apply", patch: { plan: "free", cancel_at_period_end: false } })
+  })
+
+    it("rellena current_period_end en el checkout mensual si la suscripción viene expandida", () => {
     const end = 1_800_000_000
     const decision = decideStripeWebhook({
       id: "evt_month_exp",
