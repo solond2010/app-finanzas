@@ -1,7 +1,7 @@
 // Clasificación de planes para el listado de usuarios de Administración.
 // Solo se usa en el servidor y en tests; no expone ids de Stripe ni secretos.
 
-import { asPlan, isPaid, isLifetimeAccess, subscriptionGivesPro } from "@/lib/billing/plans"
+import { asPlan, isPaid, isLifetimeAccess, subscriptionGivesPro, type Plan } from "@/lib/billing/plans"
 
 export type AdminPlanKind = "free" | "monthly" | "lifetime" | "first_fifty" | "early_access"
 
@@ -12,10 +12,15 @@ export type AdminPlanInput = {
 }
 
 export type AdminUserRow = {
+  id: string
   email: string | null
   created_at: string
   plan: AdminPlanKind
+  canGrant: boolean
+  canRevoke: boolean
 }
+
+export type AdminProAction = "grant" | "revoke"
 
 export const ADMIN_PLAN_LABELS: Record<AdminPlanKind, string> = {
   free: "Gratis",
@@ -27,6 +32,12 @@ export const ADMIN_PLAN_LABELS: Record<AdminPlanKind, string> = {
 
 export const ADMIN_USERS_PAGE_SIZE = 25
 
+const USER_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function isUserUuid(value: string): boolean {
+  return USER_ID_RE.test(value)
+}
+
 /** Qué etiqueta mostrar: primero las fuentes vitalicias, luego el plan de pago. */
 export function adminPlanKind(input: AdminPlanInput | null | undefined): AdminPlanKind {
   if (!input) return "free"
@@ -34,13 +45,50 @@ export function adminPlanKind(input: AdminPlanInput | null | undefined): AdminPl
   const plan = asPlan(input.plan)
   if (source === "early_access") return "early_access"
   if (source === "first_fifty") return "first_fifty"
-  if (plan === "founder" || source === "manual") return "lifetime"
+  if (plan === "founder" || source === "manual" || source === "admin_grant") return "lifetime"
   if (plan === "pro") {
     if (source === "stripe" && !subscriptionGivesPro(input.subscription_status)) return "free"
     return "monthly"
   }
   if (isPaid(plan) || isLifetimeAccess(plan, source)) return "lifetime"
   return "free"
+}
+
+/** El botón de quitar solo aplica al Pro otorgado desde Administración. */
+export function adminProCapabilities(input: AdminPlanInput | null | undefined): { canGrant: boolean; canRevoke: boolean } {
+  if ((input?.source ?? "") === "admin_grant") return { canGrant: false, canRevoke: true }
+  if (adminPlanKind(input) === "free") return { canGrant: true, canRevoke: false }
+  return { canGrant: false, canRevoke: false }
+}
+
+function adminProChangeError(input: AdminPlanInput | null | undefined, action: AdminProAction): string {
+  if (action === "revoke") return "Solo se puede quitar el Pro otorgado desde Administración."
+  const kind = adminPlanKind(input)
+  if ((input?.source ?? "") === "admin_grant") return "Este usuario ya tiene el Pro otorgado desde Administración."
+  if (kind === "first_fifty") return "Este usuario es de los 50 primeros. Ese Pro no se puede cambiar desde aquí."
+  if (kind === "early_access") return "Este usuario tiene Pro de la beta. No se puede cambiar desde aquí."
+  if (kind === "monthly" || (kind === "lifetime" && (input?.source ?? "") === "stripe")) {
+    return "Este usuario tiene un Pro de pago. No se toca desde aquí."
+  }
+  if (kind === "lifetime") return "Este usuario ya tiene Pro de por vida. No se puede cambiar desde aquí."
+  return "No se puede otorgar Pro a este usuario."
+}
+
+/**
+ * Decide el cambio de plan desde Administración. No toca Stripe, los 50
+ * primeros, la beta ni un Pro de pago; quitar solo revoca admin_grant.
+ */
+export function decideAdminProChange(
+  input: AdminPlanInput | null | undefined,
+  action: AdminProAction,
+): { ok: true; plan: Plan; source: string } | { ok: false; error: string } {
+  const caps = adminProCapabilities(input)
+  if (action === "grant") {
+    if (!caps.canGrant) return { ok: false, error: adminProChangeError(input, action) }
+    return { ok: true, plan: "pro", source: "admin_grant" }
+  }
+  if (!caps.canRevoke) return { ok: false, error: adminProChangeError(input, action) }
+  return { ok: true, plan: "free", source: "stripe" }
 }
 
 /** De pago = lo que ha pasado por Stripe (mensual o único), no beta ni 50 primeros ni manual. */

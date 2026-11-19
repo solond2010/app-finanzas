@@ -53,7 +53,7 @@ function planLabel(plan: Plan, source: string | null): string {
   if (plan === "founder") return "Pro de por vida"
   if (plan === "pro" && source === "early_access") return "Pro para siempre (usuario de la beta)"
   if (plan === "pro" && source === "first_fifty") return "Pro para siempre (uno de los 50 primeros)"
-  if (plan === "pro" && source === "manual") return "Pro para siempre"
+  if (plan === "pro" && (source === "manual" || source === "admin_grant")) return "Pro para siempre"
   if (plan === "pro") return "Pro"
   return "Gratis"
 }

@@ -39,6 +39,7 @@ describe("planes", () => {
     expect(entitlementsFor("free", true, "first_fifty").export).toBe(true)
     expect(entitlementsFor("free", true, "early_access").investments).toBe(true)
     expect(entitlementsFor("free", true, "manual").advancedAnalytics).toBe(true)
+    expect(entitlementsFor("free", true, "admin_grant").export).toBe(true)
     expect(entitlementsFor("pro", true, "stripe").export).toBe(true)
     expect(canHaveGoals("free", true, 3, "first_fifty")).toBe(true)
     expect(canHaveGoals("free", true, 3, "early_access")).toBe(true)
@@ -82,6 +83,7 @@ describe("primeros 50", () => {
     expect(firstFiftyGrant({ plan: "pro", source: "early_access" }, true)).toBe("keep")
     expect(firstFiftyGrant({ plan: "founder", source: "stripe" }, true)).toBe("keep")
     expect(firstFiftyGrant({ plan: "pro", source: "manual" }, true)).toBe("keep")
+    expect(firstFiftyGrant({ plan: "pro", source: "admin_grant" }, true)).toBe("keep")
     expect(firstFiftyGrant({ plan: "pro", source: "stripe" }, true)).toBe("keep")
     expect(firstFiftyGrant(null, false)).toBe("keep")
   })
@@ -199,7 +201,11 @@ describe("webhook de Stripe", () => {
       expect(first.plan).toBeUndefined()
       const life = mergePlanPatch({ plan: "founder", source: "stripe" }, canceled.patch)
       expect(life.plan).toBeUndefined()
+      const granted = mergePlanPatch({ plan: "pro", source: "admin_grant" }, canceled.patch)
+      expect(granted.plan).toBeUndefined()
+      expect(granted.source).toBeUndefined()
       expect(isLifetimeAccess("pro", "early_access")).toBe(true)
+      expect(isLifetimeAccess("pro", "admin_grant")).toBe(true)
     }
   })
 

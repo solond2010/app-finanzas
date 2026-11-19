@@ -16,6 +16,7 @@ import {
   filterAdminUsers,
   paginateAdminUsers,
   type AdminPlanKind,
+  type AdminProAction,
   type AdminUserRow,
 } from "@/lib/admin-users"
 
@@ -24,6 +25,7 @@ type ErrorRow = { id: number; source: "navegador" | "servidor"; route: string | 
 type Data = { feedback: FeedbackRow[]; errors: ErrorRow[]; errors24h: number }
 type UsersData = { users: AdminUserRow[]; totals: { users: number; pro: number; paying: number } }
 type Tab = "usuarios" | "comentarios" | "errores"
+type PendingPro = { action: AdminProAction; user: AdminUserRow }
 
 const when = (value: string) => new Date(value).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Madrid" })
 const whenDate = (value: string) => value ? new Date(value).toLocaleDateString("es-ES", { dateStyle: "medium", timeZone: "Europe/Madrid" }) : "—"
@@ -50,6 +52,8 @@ export default function AdminDashboard() {
   const [savingReply, setSavingReply] = useState(false)
   const [userQuery, setUserQuery] = useState("")
   const [userPage, setUserPage] = useState(1)
+  const [pendingPro, setPendingPro] = useState<PendingPro | null>(null)
+  const [savingPro, setSavingPro] = useState(false)
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin", { cache: "no-store" }).catch(() => null)
@@ -110,6 +114,22 @@ export default function AdminDashboard() {
     toast(replying.user_id ? "Respuesta enviada y comentario marcado como hecho" : "Comentario marcado como hecho", "success")
   }
 
+  async function confirmProChange() {
+    if (!pendingPro || savingPro) return
+    setSavingPro(true)
+    const res = await fetch("/api/admin/usuarios/plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: pendingPro.user.id, action: pendingPro.action }),
+    }).catch(() => null)
+    const body = await res?.json().catch(() => null)
+    setSavingPro(false)
+    if (!res?.ok) { toast(body?.error ?? "No se pudo actualizar el plan", "error"); return }
+    setPendingPro(null)
+    toast(pendingPro.action === "grant" ? "Pro de por vida concedido" : "Pro otorgado quitado", "success")
+    await loadUsers()
+  }
+
   if (state === "forbidden") {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
@@ -125,6 +145,7 @@ export default function AdminDashboard() {
     ["comentarios", `Comentarios${nuevos ? ` · ${nuevos} nuevos` : ""}`],
     ["errores", `Errores${data ? ` · ${data.errors24h} hoy` : ""}`],
   ]
+  const pendingEmail = pendingPro?.user.email ?? "esta persona"
 
   return (
     <div className="content-fade space-y-6 sm:space-y-7">
@@ -152,6 +173,8 @@ export default function AdminDashboard() {
           onQuery={setUserQuery}
           paged={pagedUsers}
           onPage={setUserPage}
+          busy={savingPro}
+          onAskPro={setPendingPro}
         />
       )}
 
@@ -254,6 +277,25 @@ export default function AdminDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={pendingPro !== null} onOpenChange={(open) => { if (!open && !savingPro) setPendingPro(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{pendingPro?.action === "revoke" ? "¿Quitar Pro?" : "¿Dar Pro de por vida?"}</DialogTitle>
+            <DialogDescription>
+              {pendingPro?.action === "revoke"
+                ? `Solo se quita el Pro que le diste desde Administración a ${pendingEmail}. Si paga o es de los 50 primeros, no se toca.`
+                : `Le darás Pro para siempre a ${pendingEmail}. No pasa por Stripe y no se le cobrará nada.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" disabled={savingPro} onClick={() => setPendingPro(null)}>Cancelar</Button>
+            <Button type="button" variant={pendingPro?.action === "revoke" ? "destructive" : "default"} disabled={savingPro} onClick={() => void confirmProChange()}>
+              {savingPro ? "Guardando…" : pendingPro?.action === "revoke" ? "Quitar Pro" : "Dar Pro de por vida"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -265,6 +307,8 @@ function UsersPanel({
   onQuery,
   paged,
   onPage,
+  busy,
+  onAskPro,
 }: {
   state: "idle" | "loading" | "ok" | "error"
   data: UsersData | null
@@ -272,6 +316,8 @@ function UsersPanel({
   onQuery: (value: string) => void
   paged: { items: AdminUserRow[]; page: number; pages: number; total: number }
   onPage: (page: number) => void
+  busy: boolean
+  onAskPro: (pending: PendingPro) => void
 }) {
   if (state === "loading" || state === "idle") {
     return <div className="space-y-3"><Skeleton className="h-24" /><Skeleton className="h-24" /></div>
@@ -299,30 +345,33 @@ function UsersPanel({
         <>
           <ul className="space-y-2 sm:hidden">
             {paged.items.map((user) => (
-              <li key={`${user.email}-${user.created_at}`} className="rounded-2xl border border-border bg-card px-4 py-3">
+              <li key={user.id} className="rounded-2xl border border-border bg-card px-4 py-3">
                 <p className="break-all text-sm font-medium text-foreground">{user.email ?? "Sin email"}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <PlanBadge plan={user.plan} />
                   <span className="text-xs text-muted-foreground">{whenDate(user.created_at)}</span>
                 </div>
+                <UserProActions user={user} busy={busy} onAskPro={onAskPro} className="mt-3" />
               </li>
             ))}
           </ul>
           <div className="hidden overflow-x-auto rounded-2xl border border-border sm:block">
-            <table className="w-full min-w-[36rem] text-left text-sm">
+            <table className="w-full min-w-[40rem] text-left text-sm">
               <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Email</th>
                   <th className="px-4 py-3 font-semibold">Alta</th>
                   <th className="px-4 py-3 font-semibold">Plan</th>
+                  <th className="px-4 py-3 font-semibold">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {paged.items.map((user) => (
-                  <tr key={`${user.email}-${user.created_at}`} className="border-b border-border last:border-0">
+                  <tr key={user.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3 font-medium break-all">{user.email ?? "Sin email"}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{whenDate(user.created_at)}</td>
                     <td className="px-4 py-3"><PlanBadge plan={user.plan} /></td>
+                    <td className="px-4 py-3"><UserProActions user={user} busy={busy} onAskPro={onAskPro} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -339,6 +388,34 @@ function UsersPanel({
             </div>
           )}
         </>
+      )}
+    </div>
+  )
+}
+
+function UserProActions({
+  user,
+  busy,
+  onAskPro,
+  className,
+}: {
+  user: AdminUserRow
+  busy: boolean
+  onAskPro: (pending: PendingPro) => void
+  className?: string
+}) {
+  if (!user.canGrant && !user.canRevoke) return null
+  return (
+    <div className={cn("flex flex-wrap", className)}>
+      {user.canGrant && (
+        <Button type="button" size="sm" variant="outline" disabled={busy} className="w-full sm:w-auto" onClick={() => onAskPro({ action: "grant", user })}>
+          Dar Pro de por vida
+        </Button>
+      )}
+      {user.canRevoke && (
+        <Button type="button" size="sm" variant="destructive" disabled={busy} className="w-full sm:w-auto" onClick={() => onAskPro({ action: "revoke", user })}>
+          Quitar Pro
+        </Button>
       )}
     </div>
   )

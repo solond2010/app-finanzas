@@ -14,7 +14,7 @@ export const FIRST_FIFTY_LIMIT = 50
 
 export const PRICES_EUR: Record<CheckoutOption, number> = { pro_monthly: 1.99, pro_lifetime: 14.99 }
 
-export type PlanSource = "early_access" | "first_fifty" | "manual" | "stripe"
+export type PlanSource = "early_access" | "first_fifty" | "manual" | "admin_grant" | "stripe"
 
 export type Entitlements = {
   maxAccounts: number | null // null = sin límite
@@ -35,7 +35,7 @@ export function isPaid(plan: Plan): boolean {
 /** Fuentes o planes que son Pro de por vida y no se degradan por un evento de Stripe. */
 export function isLifetimeAccess(plan: Plan | null | undefined, source: string | null | undefined): boolean {
   if (plan === "founder") return true
-  return source === "early_access" || source === "first_fifty" || source === "manual"
+  return source === "early_access" || source === "first_fifty" || source === "manual" || source === "admin_grant"
 }
 
 /** Lo que puede usar el usuario. Con los pagos apagados: todo. */
@@ -92,7 +92,7 @@ export function isFirstFiftyUser(userId: string, users: RankedUser[], limit = FI
 
 /**
  * Qué hacer al conceder el Pro de los 50 primeros. Nunca degrada un Pro
- * o un derecho vitalicio ya existente (early_access, manual, founder, stripe de pago).
+ * o un derecho vitalicio ya existente (early_access, manual, admin_grant, founder, stripe de pago).
  */
 export function firstFiftyGrant(existing: { plan: Plan; source: string } | null, eligible: boolean): { plan: Plan; source: string } | "keep" {
   if (!eligible) return "keep"

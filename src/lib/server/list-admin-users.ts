@@ -2,6 +2,7 @@ import "server-only"
 import { supabaseServer } from "@/lib/supabase-server"
 import {
   adminPlanKind,
+  adminProCapabilities,
   sortAdminUsersBySignup,
   summarizeAdminUsers,
   type AdminUserRow,
@@ -46,15 +47,25 @@ export async function listAdminUsers() {
   const withSource = authUsers.map((user) => {
     const plan = planByUser.get(user.id)
     const kind = adminPlanKind(plan)
+    const caps = adminProCapabilities(plan)
     return {
+      id: user.id,
       email: user.email ?? null,
       created_at: user.created_at ?? "",
       plan: kind,
       source: plan?.source ?? null,
+      ...caps,
     }
   })
   const users: AdminUserRow[] = sortAdminUsersBySignup(
-    withSource.map(({ email, created_at, plan }) => ({ email, created_at, plan })),
+    withSource.map(({ id, email, created_at, plan, canGrant, canRevoke }) => ({
+      id,
+      email,
+      created_at,
+      plan,
+      canGrant,
+      canRevoke,
+    })),
   )
   return { users, totals: summarizeAdminUsers(withSource) }
 }
