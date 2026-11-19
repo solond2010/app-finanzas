@@ -31,7 +31,7 @@ export function MobileBottomNav() {
   const { privacy, toggle: togglePrivacy } = usePrivacy()
   const admin = useAdminNav(pathname)
   const notifications = useFeedbackNotifications()
-  const sheetItems = admin.isAdmin ? [...moreItems, { href: ADMIN_HREF, label: "Administración", description: "Comentarios y errores de la beta", icon: ShieldCheck }] : moreItems
+  const sheetItems = admin.showAdminLink ? [...moreItems, { href: ADMIN_HREF, label: "Administración", description: "Comentarios, errores y usuarios", icon: ShieldCheck }] : moreItems
   const moreActive = sheetItems.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
 
   const toggleTheme = () => {

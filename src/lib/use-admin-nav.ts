@@ -1,21 +1,22 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { fetchMe } from "@/lib/use-me"
+import { useAdminNavVisibility } from "@/lib/admin-nav-visibility"
 
-// Menú «Administración»: solo aparece si /api/auth/me dice isAdmin (la misma
-// comprobación de servidor que usa /api/admin). Para el admin, además, el
-// número de comentarios sin revisar. Una petición compartida por carga.
-let summary: Promise<{ isAdmin: boolean; nuevos: number }> | null = null
+// Menú «Administración»: el servidor es quien decide si hay sesión de admin
+// (AdminNavProvider). Aquí solo se cuenta el badge de comentarios sin revisar
+// y se respeta la preferencia de ocultarlo en este dispositivo.
 
-function loadSummary() {
+let summary: Promise<number> | null = null
+
+function loadNuevos() {
   if (!summary) {
-    summary = fetchMe().then(async (me) => {
-      if (!me?.isAdmin) return { isAdmin: false, nuevos: 0 }
-      const res = await fetch("/api/admin/resumen", { cache: "no-store" }).catch(() => null)
-      const data = res?.ok ? ((await res.json().catch(() => null)) as { nuevos?: number } | null) : null
-      return { isAdmin: true, nuevos: Math.max(0, Number(data?.nuevos) || 0) }
-    })
+    summary = fetch("/api/admin/resumen", { cache: "no-store" })
+      .then(async (res) => {
+        const data = res.ok ? ((await res.json().catch(() => null)) as { nuevos?: number } | null) : null
+        return Math.max(0, Number(data?.nuevos) || 0)
+      })
+      .catch(() => 0)
   }
   return summary
 }
@@ -26,14 +27,25 @@ export function refreshAdminNav() {
 }
 
 export function useAdminNav(pathname: string) {
-  const [state, setState] = useState({ isAdmin: false, nuevos: 0 })
+  const visibility = useAdminNavVisibility()
+  const [nuevos, setNuevos] = useState(0)
+
   useEffect(() => {
+    if (!visibility.isAdminSession) {
+      setNuevos(0)
+      return
+    }
     let alive = true
     if (pathname.startsWith("/admin")) refreshAdminNav()
-    void loadSummary().then((value) => { if (alive) setState(value) })
+    void loadNuevos().then((value) => { if (alive) setNuevos(value) })
     return () => { alive = false }
-  }, [pathname])
-  return state
+  }, [pathname, visibility.isAdminSession])
+
+  return {
+    isAdmin: visibility.isAdminSession,
+    showAdminLink: visibility.showAdminLink,
+    nuevos: visibility.showAdminLink ? nuevos : 0,
+  }
 }
 
 export const ADMIN_HREF = "/admin"
