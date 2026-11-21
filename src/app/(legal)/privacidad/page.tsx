@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { LegalPage } from "../legal-page"
 
-export const metadata: Metadata = { title: "Política de privacidad · Garra" }
+export const metadata: Metadata = { title: "Política de privacidad" }
 
 export default function PrivacidadPage() {
   return (

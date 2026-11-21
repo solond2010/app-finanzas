@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { LegalPage } from "../legal-page"
 
-export const metadata: Metadata = { title: "Condiciones de uso · Garra" }
+export const metadata: Metadata = { title: "Condiciones de uso" }
 
 export default function TerminosPage() {
   return (
