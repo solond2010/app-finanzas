@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
+import { Info } from "@/components/icons"
 import { PRICES_EUR, isLifetimeAccess, type CheckoutOption, type Entitlements, type Plan } from "@/lib/billing/plans"
 import { formatProUntil } from "@/lib/billing/portal-policy"
 import { cn } from "@/lib/utils"
@@ -135,10 +136,18 @@ export function PlanCard() {
           </div>
         ) : info.plan === "pro" ? (
           <div className="space-y-3">
-            <p className="text-sm">
-              <span className="font-semibold">{until ?? label}</span>
-              {!until && info.renews && <span className="text-muted-foreground"> · se renueva el {renewsOn(info.renews)}</span>}
-            </p>
+            <div className="space-y-1.5">
+              <p className="text-sm">
+                <span className="font-semibold">{until ?? label}</span>
+                {!until && info.renews && <span className="text-muted-foreground"> · se renueva el {renewsOn(info.renews)}</span>}
+              </p>
+              {until && (
+                <p className="flex items-start gap-1.5 text-xs leading-5 text-amber-800/80 dark:text-amber-200/80">
+                  <Info className="mt-0.5 size-3.5 shrink-0 opacity-80" aria-hidden />
+                  Tu suscripción no se renovará. Puedes reactivarla desde Gestionar suscripción.
+                </p>
+              )}
+            </div>
             <FeatureList items={PRO_FEATURES} />
             {info.canManageSubscription && (
               <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={!!busy} onClick={() => void openPortal()}>
