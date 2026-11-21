@@ -105,17 +105,28 @@ describe("decideAdminProChange", () => {
 })
 
 describe("summarizeAdminUsers", () => {
-  it("cuenta usuarios, Pro y solo los que han pagado por Stripe", () => {
+  it("cuenta usuarios, Pro, pagos y las cifras del panel de Administración", () => {
+    const now = new Date("2026-11-21T15:00:00.000Z")
     const totals = summarizeAdminUsers([
-      { plan: "free" },
-      { plan: "early_access", source: "early_access" },
-      { plan: "first_fifty", source: "first_fifty" },
-      { plan: "lifetime", source: "manual" },
-      { plan: "lifetime", source: "admin_grant" },
-      { plan: "lifetime", source: "stripe" },
-      { plan: "monthly", source: "stripe" },
-    ])
-    expect(totals).toEqual({ users: 7, pro: 6, paying: 2 })
+      { plan: "free", created_at: "2026-11-20T10:00:00.000Z" },
+      { plan: "early_access", source: "early_access", created_at: "2026-10-01T00:00:00.000Z" },
+      { plan: "first_fifty", source: "first_fifty", created_at: "2026-10-02T00:00:00.000Z" },
+      { plan: "lifetime", source: "manual", created_at: "2026-10-03T00:00:00.000Z" },
+      { plan: "lifetime", source: "admin_grant", created_at: "2026-11-18T00:00:00.000Z" },
+      { plan: "lifetime", source: "stripe", created_at: "2026-11-01T00:00:00.000Z" },
+      { plan: "monthly", source: "stripe", created_at: "2026-11-21T00:00:00.000Z" },
+    ], now)
+    expect(totals).toEqual({
+      users: 7,
+      pro: 6,
+      paying: 2,
+      monthlyPaid: 1,
+      lifetimePaid: 1,
+      firstFifty: 1,
+      adminGrant: 1,
+      free: 1,
+      signedUpLast7Days: 3,
+    })
   })
 })
 

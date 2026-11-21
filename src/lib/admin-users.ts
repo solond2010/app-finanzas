@@ -97,11 +97,39 @@ export function countsAsPaying(kind: AdminPlanKind, source?: string | null): boo
   return kind === "lifetime" && source === "stripe"
 }
 
-export function summarizeAdminUsers(users: { plan: AdminPlanKind; source?: string | null }[]) {
+export type AdminUserTotals = {
+  users: number
+  pro: number
+  paying: number
+  monthlyPaid: number
+  lifetimePaid: number
+  firstFifty: number
+  adminGrant: number
+  free: number
+  signedUpLast7Days: number
+}
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+
+/** Cifras del panel de usuarios. `now` se inyecta en tests. */
+export function summarizeAdminUsers(
+  users: { plan: AdminPlanKind; source?: string | null; created_at?: string }[],
+  now: Date = new Date(),
+): AdminUserTotals {
+  const since = now.getTime() - SEVEN_DAYS_MS
   return {
     users: users.length,
     pro: users.filter((user) => user.plan !== "free").length,
     paying: users.filter((user) => countsAsPaying(user.plan, user.source)).length,
+    monthlyPaid: users.filter((user) => user.plan === "monthly").length,
+    lifetimePaid: users.filter((user) => user.plan === "lifetime" && user.source === "stripe").length,
+    firstFifty: users.filter((user) => user.plan === "first_fifty").length,
+    adminGrant: users.filter((user) => user.source === "admin_grant").length,
+    free: users.filter((user) => user.plan === "free").length,
+    signedUpLast7Days: users.filter((user) => {
+      const t = user.created_at ? Date.parse(user.created_at) : NaN
+      return Number.isFinite(t) && t >= since && t <= now.getTime()
+    }).length,
   }
 }
 

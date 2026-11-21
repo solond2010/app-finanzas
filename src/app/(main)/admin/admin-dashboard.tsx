@@ -18,12 +18,13 @@ import {
   type AdminPlanKind,
   type AdminProAction,
   type AdminUserRow,
+  type AdminUserTotals,
 } from "@/lib/admin-users"
 
 type FeedbackRow = { id: string; user_id: string | null; kind: "fallo" | "idea"; message: string; page: string | null; email: string | null; user_agent: string | null; status: "nuevo" | "visto" | "hecho"; created_at: string }
 type ErrorRow = { id: number; source: "navegador" | "servidor"; route: string | null; message: string; stack: string | null; digest: string | null; user_agent: string | null; user_id: string | null; created_at: string }
 type Data = { feedback: FeedbackRow[]; errors: ErrorRow[]; errors24h: number }
-type UsersData = { users: AdminUserRow[]; totals: { users: number; pro: number; paying: number } }
+type UsersData = { users: AdminUserRow[]; totals: AdminUserTotals }
 type Tab = "usuarios" | "comentarios" | "errores"
 type PendingPro = { action: AdminProAction; user: AdminUserRow }
 
@@ -330,10 +331,13 @@ function UsersPanel({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard label="Usuarios" value={totals.users} />
-        <StatCard label="Con Pro" value={totals.pro} />
-        <StatCard label="De pago" value={totals.paying} />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <StatCard label="Pro mensual" hint="Pro mensual de pago activos" value={totals.monthlyPaid} />
+        <StatCard label="Vitalicios de pago" hint="Pro de por vida pagado" value={totals.lifetimePaid} />
+        <StatCard label="50 primeros" hint="Pro de los 50 primeros" value={totals.firstFifty} />
+        <StatCard label="Regalados" hint="Pro regalado desde Administración" value={totals.adminGrant} />
+        <StatCard label="Gratis" hint="Usuarios en plan gratis" value={totals.free} />
+        <StatCard label="Altas (7 días)" hint="Altas en los últimos 7 días" value={totals.signedUpLast7Days} />
       </div>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -421,12 +425,12 @@ function UserProActions({
   )
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value, hint }: { label: string; value: number; hint?: string }) {
   return (
-    <Card className="border border-border">
-      <CardContent className="px-4 py-4">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight">{value}</p>
+    <Card className="min-w-0 border border-border">
+      <CardContent className="px-3 py-3 sm:px-4 sm:py-3.5">
+        <p className="truncate text-[11px] font-medium leading-4 text-muted-foreground sm:text-xs" title={hint ?? label}>{label}</p>
+        <p className="mt-1 text-xl font-bold tabular-nums tracking-tight sm:text-2xl">{value}</p>
       </CardContent>
     </Card>
   )
