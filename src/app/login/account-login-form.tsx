@@ -64,9 +64,8 @@ export function AccountLoginForm({ googleEnabled = false }: { googleEnabled?: bo
         setInfo("¡Cuenta creada! Te hemos enviado un email: pulsa el enlace para activarla.")
         return
       }
-      const redirect = searchParams.get("redirect") || "/dashboard"
       // Navegación completa: así la app arranca de cero con el nuevo usuario.
-      window.location.href = redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/dashboard"
+      window.location.href = safeNextPath(searchParams.get("redirect"))
     } catch {
       setError("Error de conexión. Verifica tu red e inténtalo de nuevo.")
     } finally {

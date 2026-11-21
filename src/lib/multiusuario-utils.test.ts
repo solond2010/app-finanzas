@@ -80,6 +80,7 @@ describe("rutas públicas", () => {
     expect(isPublicAuthPath("/api/auth/login")).toBe(true)
     expect(isPublicAuthPath("/privacidad")).toBe(true)
     expect(isPublicAuthPath("/terminos")).toBe(true)
+    expect(isPublicAuthPath("/precios")).toBe(true)
     expect(isPublicAuthPath("/registro")).toBe(true)
     expect(isPublicAuthPath("/robots.txt")).toBe(true)
     expect(isPublicAuthPath("/sitemap.xml")).toBe(true)

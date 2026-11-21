@@ -37,6 +37,7 @@ export function isPublicAuthPath(pathname: string): boolean {
     // Páginas legales: públicas (se enlazan desde la pantalla de entrada).
     pathname === "/privacidad" ||
     pathname === "/terminos" ||
+    pathname === "/precios" ||
     // Registro vive en /login?modo=registro; esta ruta redirige ahí.
     pathname === "/registro" ||
     // robots y sitemap deben ser públicos (si no, el proxy manda a /login).

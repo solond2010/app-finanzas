@@ -22,6 +22,8 @@ export default async function LoginPage() {
         </Suspense>
         {!accounts && <DemoEntryButton className="mt-6" />}
         <nav aria-label="Información legal" className="mt-6 flex justify-center gap-4 text-xs text-muted-foreground">
+          <a href="/precios" className="hover:text-foreground hover:underline">Precios</a>
+          <span aria-hidden>·</span>
           <a href="/privacidad" className="hover:text-foreground hover:underline">Privacidad</a>
           <span aria-hidden>·</span>
           <a href="/terminos" className="hover:text-foreground hover:underline">Condiciones</a>

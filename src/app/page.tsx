@@ -62,6 +62,7 @@ export default function Landing() {
         <nav className="flex items-center justify-between gap-3 py-4">
           <Link href="/" className="flex min-w-0 items-center gap-2 text-lg font-extrabold sm:gap-2.5 sm:text-xl"><GarraMark className="size-7 shrink-0 sm:size-8" />Garra</Link>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <Link href="/precios" className="inline-flex min-h-10 items-center px-2 text-sm font-semibold text-[#C3CAD3] hover:text-[#F5A524] sm:px-3">Precios</Link>
             <Link href="/login" className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-full border border-[#232B36] px-3 text-sm font-semibold hover:bg-white/[0.06] sm:px-4">Entrar</Link>
             <Link href={SIGNUP} className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-full bg-[#F5A524] px-3 text-sm font-bold text-[#0B0F14] hover:brightness-110 sm:px-4">Crear cuenta</Link>
           </div>
@@ -177,6 +178,7 @@ export default function Landing() {
             <Envelope weight="regular" className="size-4 text-[#F5A524]" />
             <span>Contacto · <span className="font-semibold text-[#F5A524]">contacto@migarra.app</span></span>
           </a>
+          <Link href="/precios" className="hover:text-[#EEF1F4]">Precios</Link>
           <Link href="/privacidad" className="hover:text-[#EEF1F4]">Privacidad</Link>
           <Link href="/terminos" className="hover:text-[#EEF1F4]">Condiciones de uso</Link>
           <Link href="/login" className="hover:text-[#EEF1F4]">Entrar</Link>

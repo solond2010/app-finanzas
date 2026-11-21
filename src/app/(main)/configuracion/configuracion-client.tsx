@@ -366,7 +366,7 @@ export default function ConfiguracionPage({ adminSettings = null }: { adminSetti
             {isOwnerDevice && <p className="px-1 text-xs text-muted-foreground">En este Mac se guarda al iniciar sesión si falta la copia del mes y los días 1 y 2 a las 09:15, en Documentos → Finanzas Backups.</p>}
           </CardContent>
         </Card>}
-          {!demo && <PlanCard />}
+          {!demo && <div id="plan" className="scroll-mt-24"><PlanCard /></div>}
           {!demo && <AccountSettings part="cuenta" />}
           {!demo && <FeedbackCard />}{adminSettings}
           {!demo && <DeleteAccountCard />}
