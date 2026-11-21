@@ -127,9 +127,7 @@ export function Sidebar({ showAdminNav = false }: { showAdminNav?: boolean }) {
       }
     : syncStatus === "offline" || investmentSyncStatus === "offline"
       ? {
-          label: syncStatus === "offline" && investmentSyncStatus === "offline"
-            ? "Sin conexión · cambios pendientes"
-            : syncStatus === "offline" ? "Sin conexión · datos pendientes" : "Sin conexión · inversiones pendientes",
+          label: "Sin conexión, se guardará al volver.",
           icon: <CloudOff className="h-3.5 w-3.5" />,
           className: "text-muted-foreground",
           retry: true,

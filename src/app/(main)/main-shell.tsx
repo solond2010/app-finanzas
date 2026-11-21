@@ -2,6 +2,7 @@
 
 import { Sidebar } from "@/components/layout/sidebar"
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav"
+import { SyncOfflineNotice } from "@/components/layout/sync-offline-notice"
 import { QuickActionsFAB } from "@/components/layout/quick-actions"
 import { FeedbackDialog } from "@/components/feedback/feedback-dialog"
 import { GoalsEditor } from "@/components/goals/goals-editor"
@@ -44,6 +45,7 @@ function MainInner({ children, demo, showAdminNav }: { children: React.ReactNode
           </div>
         </main>
       </div>
+      <SyncOfflineNotice />
       <MobileBottomNav showAdminNav={showAdminNav} />
     </div>
   )

@@ -5,6 +5,7 @@ import { findBlockingCategory, transactionMatchesCategoryKind } from "./category
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
 import { reportClientError } from "./report-error-client"
+import { isSyncNetworkError } from "./sync-offline-notice"
 import { type CurrencyCode, refreshExchangeRates } from "./currency"
 import { buildPreciseNetWorthHistory, hasTransferPair, isTransfer } from "./calculations"
 import { localDateKey, parseLocalDate } from "./date-utils"
@@ -544,8 +545,9 @@ interface SyncStatusContextValue {
   lastSyncedAt: number | null
   localBackupStatus: "idle" | "saved" | "error"
   retryLocalBackup: () => void
+  pendingSync: boolean
 }
-const SyncStatusContext = createContext<SyncStatusContextValue>({ status: "idle", failedStep: null, retrySync: () => {}, lastSyncedAt: null, localBackupStatus: "idle", retryLocalBackup: () => {} })
+const SyncStatusContext = createContext<SyncStatusContextValue>({ status: "idle", failedStep: null, retrySync: () => {}, lastSyncedAt: null, localBackupStatus: "idle", retryLocalBackup: () => {}, pendingSync: false })
 
 const LOCAL_STATE_KEY = "app-finanzas-data"
 const LOCAL_OUTBOX_KEY = "app-finanzas-outbox-v1"
@@ -618,6 +620,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [localBackupStatus, setLocalBackupStatus] = useState<"idle" | "saved" | "error">("idle")
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null)
   const [initialized, setInitialized] = useState(false)
+  const [pendingSync, setPendingSync] = useState(false)
   const loadedRef = useRef(false)
   const syncChainRef = useRef(Promise.resolve())
   // El estado recién leído de Supabase no necesita volver a escribirse: sin
@@ -642,6 +645,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const confirmedAt = Date.now()
     setSyncStatus("saved")
     setFailedSyncStep(null)
+    setPendingSync(false)
     setLastSyncedAt(confirmedAt)
     try { localStorage.setItem(LOCAL_SYNCED_AT_KEY, String(confirmedAt)) } catch { /* la lectura remota ya confirmó el estado */ }
   }, [])
@@ -750,6 +754,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const attemptSync = useCallback(() => {
     clearRetry()
     if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setPendingSync(dirtyRef.current)
       setSyncStatus("offline")
       return
     }
@@ -786,17 +791,20 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         const savedAt = Date.now()
         setLastSyncedAt(savedAt)
         try { localStorage.setItem(LOCAL_SYNCED_AT_KEY, String(savedAt)) } catch { /* el estado ya quedó guardado en Supabase */ }
+        setPendingSync(false)
         setSyncStatus("saved")
         setFailedSyncStep(null)
       })
       .catch((err) => {
         console.error("[Finance] Error al sincronizar con Supabase:", err)
         if (!mountedRef.current) return
-        if (typeof navigator !== "undefined" && !navigator.onLine) {
+        if (isSyncNetworkError(err)) {
+          setPendingSync(true)
           setSyncStatus("offline")
-          return
+          if (typeof navigator !== "undefined" && !navigator.onLine) return
+        } else {
+          setSyncStatus("error")
         }
-        setSyncStatus("error")
         const step = err instanceof FinanceSyncError ? err.step : null
         setFailedSyncStep(step)
         // Los fallos de sincronización estaban capturados aquí y nunca
@@ -854,7 +862,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // cada pocos segundos (solo va a fallar); en cuanto vuelve, se reintenta ya.
   useEffect(() => {
     const handleOnline = () => { retryAttemptRef.current = 0; attemptSync() }
-    const handleOffline = () => { clearRetry(); setSyncStatus("offline") }
+    const handleOffline = () => {
+      clearRetry()
+      if (dirtyRef.current) {
+        setPendingSync(true)
+        setSyncStatus("offline")
+      }
+    }
     window.addEventListener("online", handleOnline)
     window.addEventListener("offline", handleOffline)
     return () => {
@@ -940,7 +954,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // cambio en cualquier parte del árbol forzaba un re-render de absolutamente
   // todo lo que usa useFinance() en la app.
   const contextValue = useMemo(() => ({ state, dispatch: trackedDispatch, loading }), [state, trackedDispatch, loading])
-  const syncStatusValue = useMemo(() => ({ status: syncStatus, failedStep: failedSyncStep, retrySync, lastSyncedAt, localBackupStatus, retryLocalBackup }), [syncStatus, failedSyncStep, retrySync, lastSyncedAt, localBackupStatus, retryLocalBackup])
+  const syncStatusValue = useMemo(() => ({ status: syncStatus, failedStep: failedSyncStep, retrySync, lastSyncedAt, localBackupStatus, retryLocalBackup, pendingSync }), [syncStatus, failedSyncStep, retrySync, lastSyncedAt, localBackupStatus, retryLocalBackup, pendingSync])
 
   return (
     <FinanceContext.Provider value={contextValue}>
