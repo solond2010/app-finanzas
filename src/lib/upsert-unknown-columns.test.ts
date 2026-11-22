@@ -6,6 +6,7 @@ describe("upsertIgnoringUnknownColumns", () => {
     expect(missingColumnFromError("Could not find the 'interest_tae' column of 'accounts' in the schema cache")).toBe("interest_tae")
     expect(missingColumnFromError('column "interest_frequency" of relation "accounts" does not exist')).toBe("interest_frequency")
     expect(missingColumnFromError('column "logo_url" does not exist')).toBe("logo_url")
+    expect(missingColumnFromError("Could not find the 'tienda' column of 'transactions' in the schema cache")).toBe("tienda")
     expect(missingColumnFromError("duplicate key value violates unique constraint")).toBeNull()
   })
 
@@ -13,10 +14,15 @@ describe("upsertIgnoringUnknownColumns", () => {
     const rows = [
       { id: "a1", nombre: "Cuenta", interest_tae: 2.5, saldo: 10 },
       { id: "a2", nombre: "Efectivo", saldo: 3 },
+      { id: "t1", descripcion: "Compra", tienda: "Mercadona" },
     ]
     expect(stripColumnFromRows(rows, "interest_tae")).toEqual([
       { id: "a1", nombre: "Cuenta", saldo: 10 },
       { id: "a2", nombre: "Efectivo", saldo: 3 },
+      { id: "t1", descripcion: "Compra", tienda: "Mercadona" },
+    ])
+    expect(stripColumnFromRows([{ id: "t1", descripcion: "Compra", tienda: "Mercadona" }], "tienda")).toEqual([
+      { id: "t1", descripcion: "Compra" },
     ])
   })
 

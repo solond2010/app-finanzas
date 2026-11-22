@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { AlertCircle, Check, Plus, X } from "@/components/icons"
 import { ArrowRightLeft, ArrowsLeftRight, HandCoins, Receipt, Repeat2 } from "@/components/icons"
@@ -34,6 +34,8 @@ import { transferDescription } from "@/lib/transfer-description"
 import { CategoryIcon } from "@/components/icons/category-icon"
 import { CategoryIconPicker } from "@/components/categories/category-icon-picker"
 import { MAX_CATEGORY_NAME, cleanCategoryName, findBlockingCategory } from "@/lib/category-names"
+import { StoreField } from "@/components/transactions/store-field"
+import { isSupermarketCategory, lastUsedStore, rememberedStores, resolvedStoreForCategory } from "@/lib/supermarket"
 
 type MovementType = "gasto" | "ingreso" | "traspaso"
 
@@ -183,6 +185,17 @@ function UnifiedMovementForm({
   const [newCatMsg, setNewCatMsg] = useState<{ tone: "info" | "error"; text: string } | null>(null)
   const [esNecesidad, setEsNecesidad] = useState(initialTipo !== "ingreso")
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "")
+  const [tienda, setTienda] = useState("")
+  const rememberedShopNames = useMemo(() => rememberedStores(transactions), [transactions])
+  const showStoreField = tipo === "gasto" && isSupermarketCategory(categoria)
+  const chooseCategory = (name: string) => {
+    setCategoria(name)
+    if (errorField === "categoria") setErrorField("resuelto")
+    if (tipo === "gasto" && isSupermarketCategory(name) && !tienda) {
+      const last = lastUsedStore(transactions)
+      if (last) setTienda(last)
+    }
+  }
   const [recurrente, setRecurrente] = useState(Boolean(initial?.recurrente))
   const [frecuencia, setFrecuencia] = useState<RecurringFrequency>("mensual")
   const [origenId, setOrigenId] = useState(initial?.origenId || initial?.cuentaId || accounts[0]?.id || "")
@@ -214,13 +227,13 @@ function UnifiedMovementForm({
     if (!name) { setNewCatMsg({ tone: "error", text: "Escribe un nombre." }); return }
     const existing = findBlockingCategory(categories, name, tipo)
     if (existing) {
-      setCategoria(existing.name)
+      chooseCategory(existing.name)
       setNewCatOpen(false); setNewCatName("")
       setNewCatMsg({ tone: "info", text: `Ya tenías «${existing.name}»; la he elegido.` })
       return
     }
     onCreateCategory(name, tipo, newCatIcon)
-    setCategoria(name)
+    chooseCategory(name)
     setNewCatOpen(false); setNewCatName(""); setNewCatIcon(null); setNewCatPicker(false)
     setNewCatMsg({ tone: "info", text: `Categoría «${name}» creada.` })
   }
@@ -273,6 +286,7 @@ function UnifiedMovementForm({
       // fuera de las métricas de necesidades y deseos aunque cambie el tipo.
       es_necesidad: tipo === "gasto" ? esNecesidad : false,
       descripcion,
+      tienda: resolvedStoreForCategory(categoria, tipo, tienda),
       tags: recurrente
         ? [recurringTag(frecuencia), ...(frecuencia === "mensual" ? [`recurrente-dia:${Number(fecha.slice(8, 10))}`] : [])]
         : [],
@@ -404,7 +418,7 @@ function UnifiedMovementForm({
             </div>
             <div className={cn("space-y-1.5", newCatOpen && "sm:col-span-2")}>
               <label className="text-sm font-medium text-foreground">Categoría</label>
-              {(showCatSelect || frequentCategories.length === 0 || (categoria && !frequentCategories.includes(categoria))) && <Select value={categoria} onValueChange={(v) => { if (v) { setCategoria(v); if (errorField === "categoria") setErrorField("resuelto") } }}>
+              {(showCatSelect || frequentCategories.length === 0 || (categoria && !frequentCategories.includes(categoria))) && <Select value={categoria} onValueChange={(v) => { if (v) chooseCategory(v) }}>
                 <SelectTrigger className="h-12 w-full text-sm">
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
@@ -416,7 +430,7 @@ function UnifiedMovementForm({
               </Select>}
               <FieldError show={errorField === "categoria"} message={error} />
               <div className="flex flex-wrap gap-1.5 pt-1" aria-label="Categorías frecuentes">
-                {frequentCategories.map((name) => <button key={name} type="button" onClick={() => { setCategoria(name); if (errorField === "categoria") setErrorField("resuelto") }} aria-pressed={categoria === name} className={cn("min-h-9 rounded-full border px-3 text-xs font-medium transition-colors", categoria === name ? "border-primary/45 bg-primary/10 text-primary" : "border-border bg-background/50 text-muted-foreground hover:text-foreground")}>{name}</button>)}
+                {frequentCategories.map((name) => <button key={name} type="button" onClick={() => chooseCategory(name)} aria-pressed={categoria === name} className={cn("inline-flex min-h-9 items-center justify-center rounded-full border px-3 text-xs font-medium transition-colors", categoria === name ? "border-primary/45 bg-primary/10 text-primary" : "border-border bg-background/50 text-muted-foreground hover:text-foreground")}>{name}</button>)}
                 {frequentCategories.length > 0 && !showCatSelect && <button type="button" onClick={() => setShowCatSelect(true)} className="min-h-9 rounded-full border border-border bg-background/50 px-3 text-xs font-medium text-muted-foreground hover:text-foreground">Más…</button>}
                 {!newCatOpen && (
                   <button type="button" onClick={() => { setNewCatOpen(true); setNewCatMsg(null) }} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-primary/45 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/10">
@@ -455,6 +469,10 @@ function UnifiedMovementForm({
               {newCatOpen && newCatPicker && <CategoryIconPicker value={newCatIcon} onChange={setNewCatIcon} name={newCatName} />}
               {newCatMsg && <p role={newCatMsg.tone === "error" ? "alert" : "status"} className={cn("text-xs", newCatMsg.tone === "error" ? "text-red-500" : "text-muted-foreground")}>{newCatMsg.text}</p>}
             </div>
+
+            {showStoreField && (
+              <StoreField value={tienda} onChange={setTienda} remembered={rememberedShopNames} id="quick-store" />
+            )}
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Cuenta</label>

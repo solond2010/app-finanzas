@@ -51,6 +51,16 @@ describe("reducer / ADD_ACCOUNT", () => {
   })
 })
 
+describe("reducer / ADD_TRANSACTION tienda", () => {
+  it("conserva la tienda al crear o actualizar un gasto de súper", () => {
+    const withStore = tx({ id: "super1", categoria: "Supermercado", tienda: "Mercadona" })
+    const added = reducer({ ...emptyState, accounts: [baseAccount] }, { type: "ADD_TRANSACTION", payload: withStore })
+    expect(added.transactions[0].tienda).toBe("Mercadona")
+    const updated = reducer(added, { type: "UPDATE_TRANSACTION", payload: { ...withStore, tienda: "Lidl" } })
+    expect(updated.transactions.find((item) => item.id === "super1")?.tienda).toBe("Lidl")
+  })
+})
+
 describe("reducer / SET_STATE", () => {
   it("marca el residual de saldo con un ID que no se confunde con una apertura real", () => {
     const state: FinanceState = {

@@ -41,6 +41,9 @@ export interface Transaction {
   es_necesidad: boolean
   descripcion: string
   tags: string[]
+  // Tienda del supermercado. Opcional: ausente en diarios antiguos y en
+  // clientes que aún no tenían el campo, para no enviarlo al sincronizar.
+  tienda?: string
   // Momento real de creación del registro (no el día del movimiento, que es
   // `fecha`). Permite ordenar varias transacciones del mismo día en el
   // histórico de patrimonio. Opcional porque las filas anteriores a la
@@ -248,6 +251,7 @@ type TransactionRow = {
   es_necesidad: boolean
   descripcion: string | null
   tags: unknown
+  tienda?: string | null
   created_at?: string
 }
 
@@ -260,7 +264,7 @@ type SinkingFundRow = {
   cuenta_id?: string | null
 }
 
-type TransactionPayload = Omit<TransactionRow, "monto" | "tags" | "descripcion"> & { monto: number; tags: string[]; descripcion: string }
+type TransactionPayload = Omit<TransactionRow, "monto" | "tags" | "descripcion" | "tienda"> & { monto: number; tags: string[]; descripcion: string; tienda?: string }
 
 export const defaultState: FinanceState = {
   // Una cuenta nueva empieza vacía: el usuario crea sus propias cuentas
@@ -1198,7 +1202,11 @@ function normalizeFinanceState(state: FinanceState): FinanceState {
 }
 
 function formatTransaction(t: TransactionRow): Transaction {
-  return { id: t.id, cuenta_id: t.cuenta_id, monto: Number(t.monto), fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion ?? "", tags: Array.isArray(t.tags) ? t.tags.map(String) : [], created_at: t.created_at }
+  const transaction: Transaction = { id: t.id, cuenta_id: t.cuenta_id, monto: Number(t.monto), fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion ?? "", tags: Array.isArray(t.tags) ? t.tags.map(String) : [], created_at: t.created_at }
+  // Si la columna aún no existe o el diario es antiguo, se deja undefined
+  // para que el upsert no mande `tienda` y no pise un valor ya guardado.
+  if ("tienda" in t) transaction.tienda = String(t.tienda ?? "")
+  return transaction
 }
 
 function formatSinkingFund(s: SinkingFundRow): SinkingFund {
@@ -1229,7 +1237,7 @@ function unformatTransaction(t: Transaction): TransactionPayload {
   // created_at NO se manda: la columna la rellena Supabase con su propio
   // default (now()) al insertar, y así el guardado sigue funcionando aunque
   // todavía no se haya ejecutado supabase-transactions-timestamp.sql.
-  return { id: t.id, cuenta_id: t.cuenta_id, monto: t.monto, fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion, tags: t.tags }
+  return { id: t.id, cuenta_id: t.cuenta_id, monto: t.monto, fecha: t.fecha, tipo: t.tipo, categoria: t.categoria, es_necesidad: t.es_necesidad, descripcion: t.descripcion, tags: t.tags, ...(t.tienda !== undefined ? { tienda: t.tienda } : {}) }
 }
 
 function unformatSinkingFund(s: SinkingFund) {

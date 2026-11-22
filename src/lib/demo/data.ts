@@ -90,7 +90,7 @@ export function buildDemoDatabase(now: Date = new Date()): DemoDatabase {
   let seq = 0
   const nameOf = (id: string) => ACCOUNTS.find((a) => a.id === id)?.nombre ?? ""
 
-  function add(cuenta: string, tipo: "ingreso" | "gasto", monto: number, fecha: string, categoria: string, descripcion: string, opts: { necesidad?: boolean; tags?: string[]; id?: string } = {}) {
+  function add(cuenta: string, tipo: "ingreso" | "gasto", monto: number, fecha: string, categoria: string, descripcion: string, opts: { necesidad?: boolean; tags?: string[]; id?: string; tienda?: string } = {}) {
     if (fecha > today) return
     seq += 1
     const hour = String(8 + (seq % 13)).padStart(2, "0")
@@ -106,6 +106,7 @@ export function buildDemoDatabase(now: Date = new Date()): DemoDatabase {
       descripcion,
       tags: opts.tags ?? [],
       created_at: `${fecha}T${hour}:${minute}:00.000Z`,
+      ...(opts.tienda ? { tienda: opts.tienda } : {}),
     })
   }
 
@@ -176,7 +177,10 @@ export function buildDemoDatabase(now: Date = new Date()): DemoDatabase {
 
     // Gastos variables
     const shops = 4 + Math.floor(rand() * 3)
-    for (let i = 0; i < shops; i++) add(nomina, "gasto", between(32, 96), day(2 + Math.floor((i * 27) / shops) + Math.floor(rand() * 3)), "Supermercado", pick(supers), { necesidad: true })
+    for (let i = 0; i < shops; i++) {
+      const shop = pick(supers)
+      add(nomina, "gasto", between(32, 96), day(2 + Math.floor((i * 27) / shops) + Math.floor(rand() * 3)), "Supermercado", shop, { necesidad: true, tienda: shop })
+    }
     const meals = 2 + Math.floor(rand() * 3)
     for (let i = 0; i < meals; i++) add(nomina, "gasto", between(16, 58), day(5 + Math.floor(rand() * 24)), "Restaurantes", pick(restaurants))
     const coffees = 3 + Math.floor(rand() * 3)

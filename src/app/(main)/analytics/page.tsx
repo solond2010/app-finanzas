@@ -29,6 +29,7 @@ import { PatrimonioObjetivos } from "@/components/analytics/patrimonio-objetivos
 import { PaywallDialog, PaywallPreview } from "@/components/billing/paywall-preview"
 import { usePlan } from "@/lib/billing/use-plan"
 import { CategoryIcon } from "@/components/icons/category-icon"
+import { SUPERMARKET_UNKNOWN_STORE, supermarketStoreBreakdown, supermarketStoreTotal } from "@/lib/supermarket"
 
 // Mismo umbral que MonthlyBudget (src/components/dashboard/monthly-budget.tsx).
 const BUDGET_WARNING_THRESHOLD = 80
@@ -192,6 +193,9 @@ export default function AnalyticsPage() {
   const firstWeekday = (new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1).getDay() + 6) % 7
   const { necesidades, deseos } = useMemo(() => getNeedsVsWantsForMonth(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
   const categoryBreakdown = useMemo(() => getCategoryBreakdown(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
+  const storeBreakdown = useMemo(() => supermarketStoreBreakdown(analysisTransactions, selectedMonth, currencyByAccount), [analysisTransactions, selectedMonth, currencyByAccount])
+  const storeBreakdownTotal = supermarketStoreTotal(storeBreakdown)
+  const topStore = storeBreakdown.find((row) => row.tienda !== SUPERMARKET_UNKNOWN_STORE) ?? storeBreakdown[0]
   // De qué cuenta sale el gasto del mes (no solo en qué categoría se va),
   // para detectar qué cuenta se vacía más rápido.
   const spendByAccount = useMemo(() => {
@@ -480,6 +484,39 @@ export default function AnalyticsPage() {
                   {categoryBreakdown.length === 0 ? <EmptyState icon={Layers3} title="Sin gasto categorizado" description="Cuando registres gastos, aquí verás las categorías que más pesan." bordered className="h-full" /> : (
                     <div role="img" aria-label={`Gráfico de barras: gasto por categoría${topCategory ? `, encabezado por ${topCategory.categoria}` : ""}`} className="min-w-0" style={{ height: categoryBreakdown.slice(0, 8).length * 52 + 48 }}>
                       <BarChart data={categoryBreakdown.slice(0, 8)} index="categoria" categories={["monto"]} colors={["amber"]} valueFormatter={chartFormatter} yAxisWidth={categoryAxisWidth(categoryBreakdown.slice(0, 8).map((item) => item.categoria), 184)} customTooltip={CategoryTooltip} className="h-full min-w-0" showAnimation showLegend={false} layout="vertical" />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="stagger-fade min-w-0">
+                <CardHeader className="flex flex-col items-start gap-1 pb-2 sm:flex-row sm:items-start sm:justify-between">
+                  <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
+                    <CategoryIcon name="Supermercado" className="size-4 shrink-0" />
+                    <span className="min-w-0">Supermercado por tienda</span>
+                    {analyticsLocked && <span className="shrink-0 rounded-full border border-border bg-background/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Solo en Pro</span>}
+                  </CardTitle>
+                  {topStore && <span className="max-w-full break-words text-xs text-muted-foreground sm:max-w-[55%] sm:text-right">Top: <strong className="text-foreground">{topStore.tienda}</strong></span>}
+                </CardHeader>
+                <CardContent>
+                  {storeBreakdown.length === 0 ? (
+                    <EmptyState icon={Layers3} title="Sin gasto de supermercado" description="Cuando registres gastos de súper, aquí verás el desglose por tienda." bordered className="h-full" />
+                  ) : (
+                    <div className="space-y-3" role="img" aria-label={"Desglose de supermercado por tienda" + (topStore ? ", encabezado por " + topStore.tienda : "")}>
+                      {storeBreakdown.map((row) => (
+                        <div key={row.tienda} className={cn("grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,8.5rem)_minmax(0,1fr)_auto]", row.tienda === SUPERMARKET_UNKNOWN_STORE && "text-muted-foreground")}>
+                          <span className="truncate text-sm font-medium text-foreground">{row.tienda}</span>
+                          <Progress value={row.porcentaje} className={cn("[&_[data-slot=progress-track]]:h-2", row.tienda === SUPERMARKET_UNKNOWN_STORE ? "[&_[data-slot=progress-indicator]]:bg-muted-foreground/50" : "[&_[data-slot=progress-indicator]]:bg-amber-500")} />
+                          <span className="shrink-0 text-right text-xs tabular-nums">
+                            <Sensitive as="span" className="font-semibold text-foreground">{formatMoney(row.monto, "EUR")}</Sensitive>
+                            <span className="ml-1.5 text-muted-foreground">{row.porcentaje} %</span>
+                          </span>
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between border-t border-border pt-3 text-sm">
+                        <span className="text-muted-foreground">Total supermercado</span>
+                        <Sensitive as="span" className="font-semibold tabular-nums text-foreground">{formatMoney(storeBreakdownTotal, "EUR")}</Sensitive>
+                      </div>
                     </div>
                   )}
                 </CardContent>

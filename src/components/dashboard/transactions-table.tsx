@@ -46,6 +46,8 @@ import { Skeleton } from "@/components/shared/skeleton"
 import { AccountDot } from "@/components/dashboard/account-dot"
 import { MonthGrid, PeriodDivider, PeriodOption, PeriodPopover } from "@/components/ui/period-popover"
 import { CategoryIcon } from "@/components/icons/category-icon"
+import { StoreField } from "@/components/transactions/store-field"
+import { isSupermarketCategory, rememberedStores, resolvedStoreForCategory, storeLabelForList, transactionStore } from "@/lib/supermarket"
 
 // Estilo del chip de categoría a partir del color REAL de la categoría (el
 // hex que el usuario ve en Configuración y en el punto de la descripción),
@@ -86,6 +88,10 @@ function TransactionForm({
   const [categoria, setCategoria] = useState(transaction?.categoria ?? "")
   const [esNecesidad, setEsNecesidad] = useState(transaction?.es_necesidad ?? false)
   const [descripcion, setDescripcion] = useState(transaction?.descripcion ?? "")
+  const [tienda, setTienda] = useState(transaction?.tienda ?? "")
+  const { state } = useFinance()
+  const rememberedShopNames = useMemo(() => rememberedStores(state.transactions), [state.transactions])
+  const showStoreField = tipo === "gasto" && isSupermarketCategory(categoria)
   const [tagInput, setTagInput] = useState("")
   const [tags, setTags] = useState<string[]>(transaction?.tags ?? [])
   const [recurFreq, setRecurFreq] = useState<RecurringFrequency>(transaction ? recurringFrequency(transaction) : "mensual")
@@ -119,6 +125,7 @@ function TransactionForm({
       es_necesidad: esNecesidad,
       descripcion,
       tags,
+      tienda: resolvedStoreForCategory(categoria, tipo, tienda),
     })
   }
 
@@ -192,6 +199,11 @@ function TransactionForm({
           <label htmlFor="transaction-description" className="text-xs text-muted-foreground">Descripción</label>
           <Input id="transaction-description" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Opcional" />
         </div>
+        {showStoreField && (
+          <div className="sm:col-span-2">
+            <StoreField value={tienda} onChange={setTienda} remembered={rememberedShopNames} labelClassName="text-xs font-normal text-muted-foreground" />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
@@ -430,7 +442,7 @@ export function TransactionsTable({
   }
   const bulkRecategorize = (categoria: string) => {
     for (const t of state.transactions) {
-      if (selectedIds.has(t.id)) dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, categoria } })
+      if (selectedIds.has(t.id)) dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, categoria, tienda: resolvedStoreForCategory(categoria, t.tipo, t.tienda ?? "") } })
     }
     toast(`${selectedIds.size} movimientos recategorizados`, "success")
     clearSelection()
@@ -507,7 +519,7 @@ export function TransactionsTable({
       dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, descripcion: rawValue } })
     } else if (field === "categoria") {
       if (!rawValue || rawValue === t.categoria) return
-      dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, categoria: rawValue } })
+      dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, categoria: rawValue, tienda: resolvedStoreForCategory(rawValue, t.tipo, t.tienda ?? "") } })
     } else if (field === "fecha") {
       if (!rawValue) return
       dispatch({ type: "UPDATE_TRANSACTION", payload: { ...t, fecha: rawValue } })
@@ -532,7 +544,7 @@ export function TransactionsTable({
           if (filterTipo === "traspaso") return isTransfer(t)
           return t.tipo === filterTipo && !isTransfer(t)
         })
-        .filter((t) => !search || t.descripcion.toLowerCase().includes(search.toLowerCase()) || t.categoria.toLowerCase().includes(search.toLowerCase()) || t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())))
+        .filter((t) => !search || t.descripcion.toLowerCase().includes(search.toLowerCase()) || t.categoria.toLowerCase().includes(search.toLowerCase()) || (t.tienda ?? "").toLowerCase().includes(search.toLowerCase()) || t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())))
         .sort((a, b) =>
           (sortOrder === "newest" ? safeTime(b.fecha) - safeTime(a.fecha) : safeTime(a.fecha) - safeTime(b.fecha))
           || safeTime(b.created_at ?? "") - safeTime(a.created_at ?? "")
@@ -960,7 +972,10 @@ export function TransactionsTable({
                           ) : (
                             <button disabled={systemAdjustment} title={systemAdjustment ? "Ajuste de saldo de solo lectura" : undefined} onClick={() => setEditingCell({ id: t.id, field: "descripcion" })} className="flex w-full items-center gap-2 rounded px-1 py-0.5 -mx-1 text-left hover:bg-muted/60" aria-label="Editar descripción">
                               <CategoryIcon name={t.categoria} color={catHex} />
-                              <span className="truncate font-medium">{t.descripcion || t.categoria}</span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate font-medium">{t.descripcion || t.categoria}</span>
+                                {storeLabelForList(t) ? <span className="mt-0.5 block truncate text-[11px] font-normal text-muted-foreground">{storeLabelForList(t)}</span> : null}
+                              </span>
                             </button>
                           )}
                         </TableCell>
@@ -1092,7 +1107,7 @@ export function TransactionsTable({
                             </span>
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-                            <span>{t.categoria}</span><span aria-hidden="true">·</span><span className="inline-flex min-w-0 max-w-full items-center gap-1">{account && <AccountDot account={account} className="size-1.5" />}<span className="truncate">{account?.nombre ?? "Cuenta eliminada"}</span></span>
+                            <span>{t.categoria}</span>{transactionStore(t) ? <><span aria-hidden="true">·</span><span className="truncate">{transactionStore(t)}</span></> : null}<span aria-hidden="true">·</span><span className="inline-flex min-w-0 max-w-full items-center gap-1">{account && <AccountDot account={account} className="size-1.5" />}<span className="truncate">{account?.nombre ?? "Cuenta eliminada"}</span></span>
                             {mobileMode === "list" && <><span aria-hidden="true">·</span><span className="tabular-nums">{dateLabel(t.fecha)}</span></>}
                           </div>
                           <div className="mt-3 flex items-center justify-between gap-3">
@@ -1163,7 +1178,7 @@ export function TransactionsTable({
                               <span className={cn("shrink-0 text-sm font-bold tabular-nums", positive ? "text-emerald-500" : transfer ? "text-violet-500" : "text-foreground")}><Sensitive>{positive ? "+" : transfer ? "" : "−"}{formatMoney(t.monto, account?.currency ?? "EUR")}</Sensitive></span>
                             </div>
                             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-                              <span>{t.categoria}</span><span aria-hidden="true">·</span><span className="inline-flex min-w-0 max-w-full items-center gap-1">{account && <AccountDot account={account} className="size-1.5" />}<span className="truncate">{account?.nombre ?? "Cuenta eliminada"}</span></span>
+                              <span>{t.categoria}</span>{transactionStore(t) ? <><span aria-hidden="true">·</span><span className="truncate">{transactionStore(t)}</span></> : null}<span aria-hidden="true">·</span><span className="inline-flex min-w-0 max-w-full items-center gap-1">{account && <AccountDot account={account} className="size-1.5" />}<span className="truncate">{account?.nombre ?? "Cuenta eliminada"}</span></span>
                             </div>
                             <div className="mt-3 flex items-center justify-between gap-3">
                               <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", transfer ? "bg-violet-500/10 text-violet-500" : positive ? "bg-emerald-500/10 text-emerald-500" : systemAdjustment ? "bg-muted text-muted-foreground" : "bg-red-500/10 text-red-500")}>{systemAdjustment ? "Ajuste" : transfer ? "Traspaso" : positive ? "Ingreso" : "Gasto"}</span>
