@@ -91,8 +91,10 @@ export default async function PreciosPage() {
           <PlanCard
             badge="Pago único"
             title="Pro de por vida"
-            price={catalog.lifetimePrice}
+            price={catalog.lifetimeSalePrice ?? catalog.lifetimePrice}
+            wasPrice={catalog.lifetimeSalePrice ? catalog.lifetimePrice : undefined}
             unit="pago único"
+            offerNote={catalog.lifetimeOffer?.notice}
             note="Pagas una vez. Pro para siempre."
             features={catalog.proFeatures}
             cta={<Link href={proHref} className={OUTLINE}>Hazte Pro</Link>}
@@ -141,7 +143,9 @@ function PlanCard({
   badge,
   title,
   price,
+  wasPrice,
   unit,
+  offerNote,
   note,
   features,
   cta,
@@ -150,7 +154,9 @@ function PlanCard({
   badge: string
   title: string
   price: string
+  wasPrice?: string
   unit: string
+  offerNote?: string
   note: string
   features: PricingFeature[]
   cta: ReactNode
@@ -167,8 +173,10 @@ function PlanCard({
       </p>
       <h2 className="font-heading text-lg font-bold tracking-tight">{title}</h2>
       <p className="mt-1.5 font-heading text-3xl font-extrabold tracking-tight text-[#F5A524]">
+        {wasPrice && <span className="mr-2 text-lg font-semibold text-[#8C96A3] line-through decoration-[#8C96A3]">{wasPrice}</span>}
         {price}{" "}<span className="text-sm font-medium text-[#8C96A3]">{unit}</span>
       </p>
+      {offerNote && <p className="mt-1.5 text-xs font-medium leading-5 text-[#F5A524]">{offerNote}</p>}
       <p className="mt-1.5 text-xs leading-5 text-[#8C96A3]">{note}</p>
       <ul className="mt-4 grid grow gap-2 border-t border-[#232B36] pt-4">
         {features.map((item) => (

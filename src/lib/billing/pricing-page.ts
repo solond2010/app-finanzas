@@ -1,6 +1,7 @@
 // Textos y enlaces de la página pública /precios.
 // Precios y límites salen de PRICES_EUR y entitlementsFor; no se copian a mano.
 
+import { publicLifetimeOffer, type PublicLifetimeOffer } from "./black-friday"
 import { entitlementsFor, PRICES_EUR, type Entitlements } from "./plans"
 
 export const PRICING_SIGNUP_HREF = "/login?modo=registro"
@@ -86,12 +87,15 @@ export function pricingFaqItems(free: Entitlements = entitlementsFor("free", tru
   ]
 }
 
-export function pricingCatalog() {
+export function pricingCatalog(now: Date | number = Date.now()) {
   const free = entitlementsFor("free", true)
   const pro = entitlementsFor("pro", true)
+  const offer = publicLifetimeOffer(now)
   return {
     monthlyPrice: formatPriceEur(PRICES_EUR.pro_monthly),
     lifetimePrice: formatPriceEur(PRICES_EUR.pro_lifetime),
+    lifetimeSalePrice: offer ? formatPriceEur(offer.salePrice) : null,
+    lifetimeOffer: offer as PublicLifetimeOffer | null,
     freeFeatures: featuresFromEntitlements(free),
     proFeatures: featuresFromEntitlements(pro),
     faq: pricingFaqItems(free),
