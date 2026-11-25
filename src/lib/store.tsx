@@ -4,6 +4,7 @@ import { registerCategoryIcons } from "@/components/icons/category-icon"
 import { findBlockingCategory, transactionMatchesCategoryKind } from "./category-names"
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
+import { signedAmount, isInitialTx, isLocalOnlyOpeningTx, collectSaldoDeltas, transactionsForSync, isPendingSaldoDelta, type PendingSaldoDelta } from "./saldo-sync"
 import { reportClientError } from "./report-error-client"
 import { isSyncNetworkError } from "./sync-offline-notice"
 import { type CurrencyCode, refreshExchangeRates } from "./currency"
@@ -49,6 +50,8 @@ export interface Transaction {
   // histórico de patrimonio. Opcional porque las filas anteriores a la
   // migración `supabase-transactions-timestamp.sql` no la tenían.
   created_at?: string
+  // Solo en memoria: un residual que normalize crea al cargar. No se envía ni se borra en el servidor.
+  localOnly?: boolean
 }
 
 export interface SinkingFund {
@@ -487,14 +490,6 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
   }
 }
 
-function isInitialTx(t: Transaction) {
-  return t.categoria === "Saldo inicial" && (t.id.startsWith("init_") || t.id.startsWith("adj_init_"))
-}
-
-function signedAmount(t: Transaction): number {
-  return t.tipo === "ingreso" ? t.monto : -t.monto
-}
-
 function updateTransactionWithBalance(state: FinanceState, updated: Transaction): FinanceState {
   const prev = state.transactions.find((t) => t.id === updated.id)
   if (!prev) return { ...state, transactions: state.transactions.map((t) => (t.id === updated.id ? updated : t)) }
@@ -518,7 +513,9 @@ function updateTransactionWithBalance(state: FinanceState, updated: Transaction)
 function deleteTransactionWithBalance(state: FinanceState, id: string): FinanceState {
   const deleted = state.transactions.find((t) => t.id === id)
   if (!deleted) return { ...state, transactions: state.transactions.filter((t) => t.id !== id) }
-  if (isInitialTx(deleted)) return { ...state, transactions: state.transactions.filter((t) => t.id !== id) }
+  // Un inicial sintético (localOnly) solo se quita de la vista; no toca el saldo ni el servidor.
+  // Borrar un inicial real sí mueve el saldo, para no dejar una cuenta nueva con saldo y sin movimiento.
+  if (isLocalOnlyOpeningTx(deleted)) return { ...state, transactions: state.transactions.filter((t) => t.id !== id) }
 
   return {
     ...state,
@@ -558,15 +555,16 @@ const LOCAL_OUTBOX_KEY = "app-finanzas-outbox-v1"
 const LOCAL_JOURNAL_KEY = "app-finanzas-journal-v1"
 const LOCAL_SYNCED_AT_KEY = "app-finanzas-last-synced-at"
 
-type LocalJournal = { version: 1; writtenAt: number; state: FinanceState; pendingSync: boolean; pendingDeletes: Record<keyof PendingDeletes, string[]> }
+type LocalJournal = { version: 1; writtenAt: number; state: FinanceState; pendingSync: boolean; pendingDeletes: Record<keyof PendingDeletes, string[]>; pendingSaldoDeltas?: PendingSaldoDelta[] }
 
-function writeLocalJournal(state: FinanceState, pending: PendingDeletes, pendingSync = false) {
+function writeLocalJournal(state: FinanceState, pending: PendingDeletes, pendingSync = false, saldoDeltas: PendingSaldoDelta[] = []) {
   const journal: LocalJournal = {
     version: 1,
     writtenAt: Date.now(),
     state,
     pendingSync,
     pendingDeletes: serializePendingDeletes(pending) as LocalJournal["pendingDeletes"],
+    pendingSaldoDeltas: saldoDeltas,
   }
   // Una sola escritura hace atómicos snapshot + borrados pendientes: evita que
   // un cierre entre ambas escrituras resucite una cuenta recién eliminada.
@@ -594,7 +592,7 @@ function readLocalJournal(): LocalJournal | null {
 function hasPendingLocalChanges() {
   try {
     const journal = readLocalJournal()
-    if (journal?.pendingSync || (journal && Object.values(journal.pendingDeletes).some((ids) => Array.isArray(ids) && ids.length > 0))) return true
+    if (journal?.pendingSync || (journal && Object.values(journal.pendingDeletes).some((ids) => Array.isArray(ids) && ids.length > 0)) || (journal?.pendingSaldoDeltas && journal.pendingSaldoDeltas.length > 0)) return true
     return localStorage.getItem(LOCAL_OUTBOX_KEY) !== null
   } catch { return false }
 }
@@ -611,6 +609,24 @@ function restorePendingDeletes(): PendingDeletes {
     }
   } catch { /* se conserva la copia local aunque el outbox esté corrupto */ }
   return pending
+}
+
+function restorePendingSaldoDeltas(): PendingSaldoDelta[] {
+  try {
+    const journal = readLocalJournal()
+    if (!Array.isArray(journal?.pendingSaldoDeltas)) return []
+    return journal.pendingSaldoDeltas.filter(isPendingSaldoDelta)
+  } catch {
+    return []
+  }
+}
+
+function journalHasSaldoDeltasField(): boolean {
+  try {
+    return Array.isArray(readLocalJournal()?.pendingSaldoDeltas)
+  } catch {
+    return false
+  }
 }
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
@@ -635,6 +651,9 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const skipNextSyncRef = useRef(false)
   // Borrados explícitos pendientes de enviar a Supabase (no espejo remoto).
   const pendingDeletesRef = useRef<PendingDeletes>(emptyPendingDeletes())
+  const pendingSaldoDeltasRef = useRef<PendingSaldoDelta[]>([])
+  // Diarios antiguos (antes de este cambio) no traen deltas: se sigue subiendo el saldo absoluto una última vez.
+  const legacySaldoUpsertRef = useRef(false)
   // true tras cualquier acción del usuario aún no confirmada en remoto: evita
   // que un refetch al recuperar el foco pise cambios locales no sincronizados.
   const dirtyRef = useRef(false)
@@ -666,6 +685,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       const hasOutbox = typeof window !== "undefined" && hasPendingLocalChanges()
       if (hasOutbox && local) {
         pendingDeletesRef.current = restorePendingDeletes()
+        pendingSaldoDeltasRef.current = restorePendingSaldoDeltas()
+        legacySaldoUpsertRef.current = !journalHasSaldoDeltasField()
         dirtyRef.current = true
         dispatch({ type: "SET_STATE", payload: { ...local, categories: mergeDefaultCategories(local.categories) } })
       } else if (hasRemoteData(remote)) {
@@ -774,9 +795,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       budgets: new Set(pendingDeletesRef.current.budgets),
       categories: new Set(pendingDeletesRef.current.categories),
     }
+    const deltasSnapshot = pendingSaldoDeltasRef.current.slice()
+    const legacySaldoUpsert = legacySaldoUpsertRef.current
     const generationAtStart = dirtyGenerationRef.current
     syncChainRef.current = syncChainRef.current
-      .then(() => syncToSupabase(stateRef.current, deletesSnapshot))
+      .then(() => syncToSupabase(stateRef.current, deletesSnapshot, { saldoDeltas: deltasSnapshot, legacySaldoUpsert }))
       .then(() => {
         if (!mountedRef.current) return
         for (const id of deletesSnapshot.accounts) pendingDeletesRef.current.accounts.delete(id)
@@ -784,11 +807,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         for (const id of deletesSnapshot.sinking_funds) pendingDeletesRef.current.sinking_funds.delete(id)
         for (const id of deletesSnapshot.budgets) pendingDeletesRef.current.budgets.delete(id)
         for (const id of deletesSnapshot.categories) pendingDeletesRef.current.categories.delete(id)
+        const sentDeltaIds = new Set(deltasSnapshot.map((delta) => delta.id))
+        pendingSaldoDeltasRef.current = pendingSaldoDeltasRef.current.filter((delta) => !sentDeltaIds.has(delta.id))
         if (dirtyGenerationRef.current === generationAtStart) {
           dirtyRef.current = false
+          legacySaldoUpsertRef.current = false
           try {
             localStorage.removeItem(LOCAL_OUTBOX_KEY)
-            writeLocalJournal(stateRef.current, emptyPendingDeletes(), false)
+            writeLocalJournal(stateRef.current, emptyPendingDeletes(), false, [])
           } catch { /* Supabase ya confirmó el guardado */ }
         }
         retryAttemptRef.current = 0
@@ -831,7 +857,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const retryLocalBackup = useCallback(() => {
     try {
-      writeLocalJournal(stateRef.current, dirtyRef.current ? pendingDeletesRef.current : emptyPendingDeletes(), dirtyRef.current)
+      writeLocalJournal(stateRef.current, dirtyRef.current ? pendingDeletesRef.current : emptyPendingDeletes(), dirtyRef.current, dirtyRef.current ? pendingSaldoDeltasRef.current : [])
       queueMicrotask(() => setLocalBackupStatus("saved"))
     } catch (error) {
       console.error("[Finance] No se pudo guardar la copia local:", error)
@@ -844,7 +870,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     // Copia de seguridad local en cada cambio (red de seguridad ante pérdidas en
     // Supabase). La app la usa como fallback si Supabase está vacío/caído.
     try {
-      writeLocalJournal(state, dirtyRef.current ? pendingDeletesRef.current : emptyPendingDeletes(), dirtyRef.current)
+      writeLocalJournal(state, dirtyRef.current ? pendingDeletesRef.current : emptyPendingDeletes(), dirtyRef.current, dirtyRef.current ? pendingSaldoDeltasRef.current : [])
       queueMicrotask(() => setLocalBackupStatus("saved"))
     } catch (error) {
       console.error("[Finance] No se pudo guardar la copia local:", error)
@@ -911,11 +937,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       dirtyRef.current = true
       dirtyGenerationRef.current += 1
       collectDeletesFromAction(stateRef.current, prepared, pendingDeletesRef.current)
-      const next = reducer(stateRef.current, prepared)
+      const previous = stateRef.current
+      const next = reducer(previous, prepared)
       nextState = next
       stateRef.current = next
+      const { deltas } = collectSaldoDeltas(previous, next)
+      if (deltas.length) pendingSaldoDeltasRef.current = [...pendingSaldoDeltasRef.current, ...deltas]
       try {
-        writeLocalJournal(next, pendingDeletesRef.current, true)
+        writeLocalJournal(next, pendingDeletesRef.current, true, pendingSaldoDeltasRef.current)
         setLocalBackupStatus("saved")
       } catch (error) {
         console.error("[Finance] No se pudo guardar la copia local inmediata:", error)
@@ -1021,16 +1050,20 @@ export function collectDeletesFromAction(state: FinanceState, action: Action, pe
     case "DELETE_ACCOUNT": {
       pending.accounts.add(action.payload)
       for (const t of state.transactions) {
-        if (t.cuenta_id === action.payload) pending.transactions.add(t.id)
+        if (t.cuenta_id === action.payload && !isLocalOnlyOpeningTx(t)) pending.transactions.add(t.id)
       }
       for (const s of state.sinkingFunds) {
         if (s.cuenta_id === action.payload) pending.sinking_funds.add(s.id)
       }
       break
     }
-    case "DELETE_TRANSACTION":
+    case "DELETE_TRANSACTION": {
+      const deleted = state.transactions.find((t) => t.id === action.payload)
+      // Los residuales sintéticos y los init_ fantasma ocultos no se borran en el servidor.
+      if (!deleted || isLocalOnlyOpeningTx(deleted)) break
       pending.transactions.add(action.payload)
       break
+    }
     // «Deshacer» tras borrar: si el borrado aún no se había sincronizado, se
     // cancela (si no, la sincronización lo volvería a borrar tras subirlo).
     case "ADD_TRANSACTION":
@@ -1075,9 +1108,15 @@ export function collectDeletesFromAction(state: FinanceState, action: Action, pe
   }
 }
 
-async function syncToSupabase(state: FinanceState, pending: PendingDeletes) {
-  await syncStep("cuentas", () => dbUpsert("accounts", state.accounts.map(a => unformatAccount(a))))
-  await syncStep("movimientos", () => dbUpsert("transactions", state.transactions.map(t => unformatTransaction(t))))
+async function syncToSupabase(state: FinanceState, pending: PendingDeletes, opts: { saldoDeltas?: PendingSaldoDelta[]; legacySaldoUpsert?: boolean } = {}) {
+  const preserveExistingSaldo = !opts.legacySaldoUpsert
+  await syncStep("cuentas", () => dbUpsert("accounts", state.accounts.map(a => unformatAccount(a)), { preserveExistingSaldo }))
+  const txRows = transactionsForSync(state.transactions).map((t) => unformatTransaction(t))
+  if (preserveExistingSaldo) {
+    await syncStep("movimientos", () => dbUpsert("transactions", txRows, { saldoDeltas: opts.saldoDeltas ?? [], deleteIds: [...pending.transactions] }))
+  } else {
+    await syncStep("movimientos", () => dbUpsert("transactions", txRows))
+  }
   await syncStep("fondos", () => dbUpsert("sinking_funds", state.sinkingFunds.map(sf => unformatSinkingFund(sf))))
   await syncStep("categorías", () => dbUpsert("categories", state.categories))
   // Los presupuestos deben subirse DESPUÉS de las categorías: budgets.category_id
@@ -1086,7 +1125,7 @@ async function syncToSupabase(state: FinanceState, pending: PendingDeletes) {
 
   // Solo se borran IDs marcados por acciones explícitas del usuario (ver
   // collectDeletesFromAction). Orden: presupuestos antes que categorías (FK).
-  if (pending.transactions.size) await syncStep("borrados", () => dbDeleteIn("transactions", [...pending.transactions]))
+  if (pending.transactions.size && !preserveExistingSaldo) await syncStep("borrados", () => dbDeleteIn("transactions", [...pending.transactions]))
   if (pending.sinking_funds.size) await syncStep("borrados", () => dbDeleteIn("sinking_funds", [...pending.sinking_funds]))
   if (pending.accounts.size) await syncStep("borrados", () => dbDeleteIn("accounts", [...pending.accounts]))
   if (pending.budgets.size) await syncStep("borrados", () => dbDeleteIn("budgets", [...pending.budgets]))
@@ -1146,7 +1185,7 @@ function formatAccount(a: AccountRow): Account {
   return account
 }
 
-function normalizeFinanceState(state: FinanceState): FinanceState {
+export function normalizeFinanceState(state: FinanceState): FinanceState {
   const accounts = state.accounts.map((account) => ({ ...account, currency: account.currency ?? "EUR" }))
   let transactions = [...state.transactions]
 
@@ -1157,7 +1196,7 @@ function normalizeFinanceState(state: FinanceState): FinanceState {
     return { ...t, tags: t.tags.filter((tag) => tag !== "traspaso") }
   })
 
-  // 2) Eliminar init_ fantasma: se crearon con monto = saldo actual aunque ya
+  // 2) Ocultar init_ fantasma en memoria (no en pendingDeletes ni en el servidor): se crearon con monto = saldo actual aunque ya
   //    hubiera movimientos que explicaban ese saldo (p.ej. un "Otros" de
   //    apertura). Si sin el init_ la suma del ledger ya cuadra con el saldo,
   //    el init_ sobra y desincroniza sumTx vs saldo.
@@ -1196,6 +1235,7 @@ function normalizeFinanceState(state: FinanceState): FinanceState {
       es_necesidad: false,
       descripcion: `Saldo inicial de ${account.nombre}`,
       tags: [],
+      localOnly: true,
     })
   }
   return { ...state, accounts, transactions }

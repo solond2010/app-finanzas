@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { type Account, generateId, useFinance } from "@/lib/store"
+import { accountSaldoDivergesFromLedger } from "@/lib/saldo-sync"
 import { uploadLogo } from "@/lib/db-client"
 import { formatMoney } from "@/lib/currency"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -257,6 +258,12 @@ export function AccountDialog({
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Saldo ({currencySymbol(currency)})</label>
               <Input type="number" value={saldo} onChange={(e) => setSaldo(e.target.value)} />
+              {account && accountSaldoDivergesFromLedger(account, state.transactions) ? (
+                <p role="status" className="flex gap-1.5 text-xs leading-5 text-amber-800 dark:text-amber-300">
+                  <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
+                  El saldo guardado y la suma de los movimientos no coinciden. Si ajustas el saldo, el cambio se calculará respecto al saldo guardado, no respecto a los movimientos.
+                </p>
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Divisa</label>

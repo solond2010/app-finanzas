@@ -5,6 +5,8 @@ import { withUserId } from "@/lib/user-scope"
 import { canHaveAccounts, canHaveGoals, FREE_MAX_ACCOUNTS, FREE_MAX_GOALS, isPaid } from "@/lib/billing/plans"
 import { getUserPlan, paymentsEnabled } from "@/lib/server/billing"
 import { upsertIgnoringUnknownColumns } from "@/lib/upsert-unknown-columns"
+import { isPendingSaldoDelta, stripSaldoFromExistingAccounts } from "@/lib/saldo-sync"
+import { applyConditionalSaldoDeltas, classifyTransactionWrites, type ExistingTransaction } from "@/lib/server/saldo-delta"
 
 // Únicas tablas a las que esta ruta puede dar acceso — evita que un valor de
 // [table] arbitrario llegue a supabase.from(). El navegador ya no tiene la
@@ -67,7 +69,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tab
 
   let body: unknown
   try { body = await request.json() } catch { return NextResponse.json({ error: "El cuerpo JSON no es válido" }, { status: 400 }) }
-  const rows = body && typeof body === "object" ? (body as { rows?: unknown }).rows : undefined
+  const payload = body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : null
+  const rows = payload?.rows
   if (!Array.isArray(rows)) return NextResponse.json({ error: "rows debe ser un array" }, { status: 400 })
   if (rows.length === 0) return NextResponse.json({ ok: true })
   if (!rows.every((row) => !!row && typeof row === "object" && !Array.isArray(row))) return NextResponse.json({ error: "Cada fila debe ser un objeto" }, { status: 400 })
@@ -95,14 +98,86 @@ export async function POST(request: Request, { params }: { params: Promise<{ tab
     }
   }
 
+  let outgoingRows = rows as Record<string, unknown>[]
+  if (table === "accounts" && payload?.preserve_existing_saldo === true) {
+    const ids = outgoingRows.map((row) => row.id).filter((id): id is string => typeof id === "string")
+    if (ids.length) {
+      const { data: existing, error: existingError } = await ctx.db.from("accounts").select("id").eq("user_id", ctx.userId).in("id", ids)
+      if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+      outgoingRows = stripSaldoFromExistingAccounts(outgoingRows, new Set((existing ?? []).map((row: { id: string }) => row.id)))
+    }
+  }
+
+  const saldoDeltas = table === "transactions" && Array.isArray(payload?.saldo_deltas)
+    ? payload.saldo_deltas.filter(isPendingSaldoDelta)
+    : null
+  const deleteIds = table === "transactions" && Array.isArray(payload?.delete_ids)
+    ? payload.delete_ids.filter((id: unknown): id is string => typeof id === "string" && id.length > 0 && id.length <= 200)
+    : []
+
+  if (table === "transactions" && (saldoDeltas || deleteIds.length)) {
+    const writeIds = outgoingRows.map((row) => row.id).filter((id): id is string => typeof id === "string")
+    const lookupIds = [...new Set([...writeIds, ...deleteIds])]
+    const existingById = new Map<string, ExistingTransaction>()
+    if (lookupIds.length) {
+      const { data: existing, error: existingError } = await ctx.db.from("transactions").select("id, cuenta_id, monto, tipo").eq("user_id", ctx.userId).in("id", lookupIds)
+      if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+      for (const row of existing ?? []) existingById.set(row.id, row as ExistingTransaction)
+    }
+    const happened = classifyTransactionWrites(
+      outgoingRows.filter((row): row is Record<string, unknown> & { id: string } => typeof row.id === "string"),
+      [...existingById.values()],
+    )
+    if (outgoingRows.length) {
+      const { error } = await upsertIgnoringUnknownColumns(
+        (rowsToWrite) => ctx.db.from(table).upsert(rowsToWrite),
+        withUserId(outgoingRows, ctx.userId),
+      )
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    const actuallyDeleted: string[] = []
+    if (deleteIds.length) {
+      const deletable = deleteIds.filter((id) => existingById.has(id))
+      if (deletable.length) {
+        const { error: deleteError } = await ctx.db.from("transactions").delete().eq("user_id", ctx.userId).in("id", deletable)
+        if (deleteError) {
+          if (happened.inserted.length) await ctx.db.from("transactions").delete().eq("user_id", ctx.userId).in("id", happened.inserted)
+          if (happened.updated.length) {
+            const restore = happened.updated.map((id) => existingById.get(id)).filter((row): row is ExistingTransaction => !!row)
+            if (restore.length) await ctx.db.from("transactions").upsert(withUserId(restore as unknown as Record<string, unknown>[], ctx.userId))
+          }
+          return NextResponse.json({ error: deleteError.message }, { status: 500 })
+        }
+        actuallyDeleted.push(...deletable)
+      }
+    }
+    try {
+      if (saldoDeltas?.length) {
+        await applyConditionalSaldoDeltas(ctx.db, ctx.userId, saldoDeltas, { inserted: happened.inserted, deleted: actuallyDeleted, updated: happened.updated })
+      }
+    } catch (error) {
+      if (happened.inserted.length) await ctx.db.from("transactions").delete().eq("user_id", ctx.userId).in("id", happened.inserted)
+      if (happened.updated.length) {
+        const restore = happened.updated.map((id) => existingById.get(id)).filter((row): row is ExistingTransaction => !!row)
+        if (restore.length) await ctx.db.from("transactions").upsert(withUserId(restore as unknown as Record<string, unknown>[], ctx.userId))
+      }
+      if (actuallyDeleted.length) {
+        const restoreDeleted = actuallyDeleted.map((id) => existingById.get(id)).filter((row): row is ExistingTransaction => !!row)
+        if (restoreDeleted.length) await ctx.db.from("transactions").upsert(withUserId(restoreDeleted as unknown as Record<string, unknown>[], ctx.userId))
+      }
+      return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo actualizar el saldo" }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true })
+  }
+
   // user_id lo pone SIEMPRE el servidor: el navegador no puede escribir a
   // nombre de otro usuario (y RLS lo rechazaría igualmente).
   // Si el cliente envía una columna que aún no existe en producción (p. ej.
   // interest_* antes de aplicar la migración), se reintenta sin esa columna
   // para no bloquear el resto del guardado (movimientos, etc.).
   const { error } = await upsertIgnoringUnknownColumns(
-    (payload) => ctx.db.from(table).upsert(payload),
-    withUserId(rows as Record<string, unknown>[], ctx.userId),
+    (rowsToWrite) => ctx.db.from(table).upsert(rowsToWrite),
+    withUserId(outgoingRows, ctx.userId),
   )
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

@@ -5,6 +5,7 @@ import { resolveShortcutUser } from "@/lib/server/shortcut-auth"
 import { guessCategory } from "@/lib/guess-category"
 import { dateKeyInTimeZone, isDateKey } from "@/lib/date-utils"
 import { AUTO_CATEGORY, movementMessage, transferMessage } from "@/lib/shortcut-messages"
+import { applySaldoDelta } from "@/lib/server/saldo-delta"
 
 
 // Endpoint pensado para un Atajo de iOS disparado a mano (Toque Trasero o
@@ -141,10 +142,18 @@ export async function POST(request: Request) {
     ])
     if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
-    const { error: updateOrigenError } = await supabaseServer.from("accounts").update({ saldo: Number(origen.saldo) - monto }).eq("user_id", userId).eq("id", origen.id)
-    if (updateOrigenError) return NextResponse.json({ error: updateOrigenError.message }, { status: 500 })
-    const { error: updateDestinoError } = await supabaseServer.from("accounts").update({ saldo: Number(destino.saldo) + destinationAmount }).eq("user_id", userId).eq("id", destino.id)
-    if (updateDestinoError) return NextResponse.json({ error: updateDestinoError.message }, { status: 500 })
+    let originDeltaApplied = false
+    try {
+      await applySaldoDelta(supabaseServer, userId, origen.id, -monto)
+      originDeltaApplied = true
+      await applySaldoDelta(supabaseServer, userId, destino.id, destinationAmount)
+    } catch (error) {
+      if (originDeltaApplied) {
+        await applySaldoDelta(supabaseServer, userId, origen.id, monto).catch(() => undefined)
+      }
+      await supabaseServer.from("transactions").delete().eq("user_id", userId).in("id", [sourceTransactionId, destinationTransactionId])
+      return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo actualizar el saldo" }, { status: 500 })
+    }
 
     return NextResponse.json({
       ok: true,
@@ -196,9 +205,13 @@ export async function POST(request: Request) {
   })
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
-  const newSaldo = body.tipo === "ingreso" ? Number(account.saldo) + monto : Number(account.saldo) - monto
-  const { error: updateError } = await supabaseServer.from("accounts").update({ saldo: newSaldo }).eq("user_id", userId).eq("id", account.id)
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+  const delta = body.tipo === "ingreso" ? monto : -monto
+  try {
+    await applySaldoDelta(supabaseServer, userId, account.id, delta)
+  } catch (error) {
+    await supabaseServer.from("transactions").delete().eq("user_id", userId).eq("id", id)
+    return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo actualizar el saldo" }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true, id, mensaje: movementMessage(body.tipo, monto, account.currency || "EUR", categoria, account.nombre) })
 }
