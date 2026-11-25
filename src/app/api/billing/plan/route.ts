@@ -1,5 +1,6 @@
 import { getDataContext } from "@/lib/server/request-context"
 import { json } from "@/lib/server/auth-helpers"
+import { publicLifetimeOffer } from "@/lib/billing/black-friday"
 import { entitlementsFor, isLifetimeAccess, PRICES_EUR } from "@/lib/billing/plans"
 import { canManageStripeSubscription } from "@/lib/billing/portal-policy"
 import { shouldOfferMonthlyTrial } from "@/lib/billing/monthly-trial"
@@ -30,6 +31,7 @@ export async function GET() {
       trialing: row?.subscription_status === "trialing",
       entitlements: entitlementsFor(plan, true, source),
       prices: PRICES_EUR,
+      lifetimeOffer: publicLifetimeOffer(),
     })
   } catch (error) {
     console.warn("[billing] plan:", error instanceof Error ? error.message : error)

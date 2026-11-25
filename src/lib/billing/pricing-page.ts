@@ -1,6 +1,7 @@
 // Textos y enlaces de la página pública /precios.
 // Precios y límites salen de PRICES_EUR y entitlementsFor; no se copian a mano.
 
+import { publicLifetimeOffer, type PublicLifetimeOffer } from "./black-friday"
 import { entitlementsFor, PRICES_EUR, type Entitlements } from "./plans"
 import { MONTHLY_NOTE_WITHOUT_TRIAL, MONTHLY_TRIAL_BADGE, monthlyTrialNote } from "./monthly-trial"
 
@@ -95,13 +96,17 @@ export function pricingFaqItems(free: Entitlements = entitlementsFor("free", tru
   ]
 }
 
-export function pricingCatalog(options?: { offerMonthlyTrial?: boolean }) {
+export function pricingCatalog(options?: { offerMonthlyTrial?: boolean; now?: Date | number }) {
   const offerMonthlyTrial = options?.offerMonthlyTrial !== false
+  const now = options?.now ?? Date.now()
   const free = entitlementsFor("free", true)
   const pro = entitlementsFor("pro", true)
+  const offer = publicLifetimeOffer(now)
   return {
     monthlyPrice: formatPriceEur(PRICES_EUR.pro_monthly),
     lifetimePrice: formatPriceEur(PRICES_EUR.pro_lifetime),
+    lifetimeSalePrice: offer ? formatPriceEur(offer.salePrice) : null,
+    lifetimeOffer: offer as PublicLifetimeOffer | null,
     offerMonthlyTrial,
     monthlyBadge: offerMonthlyTrial ? MONTHLY_TRIAL_BADGE : "Recomendado",
     monthlyNote: offerMonthlyTrial ? monthlyTrialNote() : MONTHLY_NOTE_WITHOUT_TRIAL,

@@ -1,5 +1,6 @@
 import { getDataContext, unauthorizedResponse } from "@/lib/server/request-context"
 import { json, readJson, siteOrigin } from "@/lib/server/auth-helpers"
+import { checkoutCouponParams } from "@/lib/billing/black-friday"
 import { decideCheckout } from "@/lib/billing/checkout-policy"
 import { monthlySubscriptionCheckoutParams, shouldOfferMonthlyTrial } from "@/lib/billing/monthly-trial"
 import { customerHasSubscriptionHistory, getUserPlanRow, paymentsEnabled, priceIdFor, stripeKey, stripeRequest } from "@/lib/server/billing"
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     "metadata[user_id]": ctx.userId,
     "metadata[option]": decision.option,
     locale: "es",
+    ...checkoutCouponParams(decision.option),
   }
   if (row?.stripe_customer_id) params.customer = row.stripe_customer_id
   else if (ctx.email) params.customer_email = ctx.email

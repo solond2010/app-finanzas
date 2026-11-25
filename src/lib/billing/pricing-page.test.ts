@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { BLACK_FRIDAY_END_UTC, BLACK_FRIDAY_NOTICE, BLACK_FRIDAY_START_UTC } from "./black-friday"
 import { entitlementsFor, PRICES_EUR } from "./plans"
 import {
   formatPriceEur,
@@ -44,5 +45,33 @@ describe("página de precios", () => {
     expect(pricingStartHref(true)).toBe("/dashboard")
     expect(pricingProHref(true)).toBe("/configuracion#plan")
     expect(pricingProHref(false)).toBe("/login?modo=registro&redirect=%2Fconfiguracion%23plan")
+  })
+
+  it("en /precios muestra la oferta del vitalicio solo dentro de la ventana", () => {
+    const before = pricingCatalog({ now: new Date(Date.parse(BLACK_FRIDAY_START_UTC) - 1) })
+    expect(before.lifetimeSalePrice).toBeNull()
+    expect(before.lifetimeOffer).toBeNull()
+    expect(before.lifetimePrice).toBe(formatPriceEur(PRICES_EUR.pro_lifetime))
+
+    const during = pricingCatalog({ now: new Date("2026-11-28T12:00:00.000Z") })
+    expect(during.lifetimePrice).toBe(formatPriceEur(PRICES_EUR.pro_lifetime))
+    expect(during.lifetimeSalePrice).toBe(formatPriceEur(9.99))
+    expect(during.lifetimeOffer).toEqual({
+      listPrice: PRICES_EUR.pro_lifetime,
+      salePrice: 9.99,
+      notice: BLACK_FRIDAY_NOTICE,
+    })
+
+    const after = pricingCatalog({ now: new Date(BLACK_FRIDAY_END_UTC) })
+    expect(after.lifetimeSalePrice).toBeNull()
+    expect(after.lifetimeOffer).toBeNull()
+
+    const atStart = pricingCatalog({ now: new Date(BLACK_FRIDAY_START_UTC) })
+    expect(atStart.lifetimeSalePrice).toBe(formatPriceEur(9.99))
+    expect(atStart.lifetimeOffer?.notice).toBe(BLACK_FRIDAY_NOTICE)
+    // Hoy, 25-nov-2026 (antes del 27-nov 00:00 Madrid), no hay oferta.
+    const today = pricingCatalog({ now: new Date("2026-11-25T11:39:00.000Z") })
+    expect(today.lifetimeSalePrice).toBeNull()
+    expect(today.offerMonthlyTrial).toBe(true)
   })
 })

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
 import { Info } from "@/components/icons"
+import type { PublicLifetimeOffer } from "@/lib/billing/black-friday"
 import { PRICES_EUR, isLifetimeAccess, type CheckoutOption, type Entitlements, type Plan } from "@/lib/billing/plans"
 import { MONTHLY_NOTE_WITHOUT_TRIAL, MONTHLY_TRIAL_BADGE, monthlyTrialNote, monthlyTrialPriceLabel } from "@/lib/billing/monthly-trial"
 import { formatProUntil } from "@/lib/billing/portal-policy"
@@ -21,6 +22,7 @@ type PlanInfo = {
   offerMonthlyTrial?: boolean
   trialing?: boolean
   entitlements: Entitlements
+  lifetimeOffer?: PublicLifetimeOffer | null
 }
 
 type Busy = CheckoutOption | "portal" | null
@@ -183,7 +185,20 @@ export function PlanCard() {
               </div>
               <div className="flex flex-col rounded-[14px] border border-border bg-card p-4">
                 <p className="font-heading text-lg font-bold">Pro de por vida</p>
-                <p className="font-heading text-2xl font-bold text-primary">{eur(PRICES_EUR.pro_lifetime)} <span className="text-sm font-medium text-muted-foreground">pago único</span></p>
+                <p className="font-heading text-2xl font-bold text-primary">
+                  {info.lifetimeOffer ? (
+                    <>
+                      <span className="mr-2 text-base font-semibold text-muted-foreground line-through">{eur(info.lifetimeOffer.listPrice)}</span>
+                      {eur(info.lifetimeOffer.salePrice)}{" "}
+                    </>
+                  ) : (
+                    <>{eur(PRICES_EUR.pro_lifetime)}{" "}</>
+                  )}
+                  <span className="text-sm font-medium text-muted-foreground">pago único</span>
+                </p>
+                {info.lifetimeOffer && (
+                  <p className="mt-1 text-xs font-medium leading-5 text-amber-800/80 dark:text-amber-200/80">{info.lifetimeOffer.notice}</p>
+                )}
                 <p className="mt-1 text-xs text-muted-foreground">Pagas una vez. Pro para siempre.</p>
                 <div className="mt-3 grow"><FeatureList items={PRO_FEATURES} /></div>
                 <Button className="mt-4 w-full" variant="outline" disabled={!!busy} onClick={() => buy("pro_lifetime")}>{busy === "pro_lifetime" ? "Abriendo…" : "Pagar una vez"}</Button>
