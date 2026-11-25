@@ -42,7 +42,10 @@ export function isPublicAuthPath(pathname: string): boolean {
     pathname === "/registro" ||
     // robots y sitemap deben ser públicos (si no, el proxy manda a /login).
     pathname === "/robots.txt" ||
-    pathname === "/sitemap.xml"
+    pathname === "/sitemap.xml" ||
+    // MCP remoto: se autentica con un token personal, no con la cookie de sesión.
+    pathname === "/api/mcp" ||
+    pathname.startsWith("/api/mcp/")
   )
 }
 
