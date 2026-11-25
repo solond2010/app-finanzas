@@ -12,7 +12,6 @@ import {
   toolResultText,
   type McpStore,
 } from "@/lib/mcp/tools"
-import { isMcpTokenFormat } from "@/lib/mcp/token"
 
 export type McpUserResolver = (token: string) => Promise<{ userId: string } | null>
 
@@ -86,7 +85,7 @@ export function createGarraMcpHandler(store: McpStore, resolveUser: McpUserResol
   )
 
   const verifyToken = async (_req: Request, bearerToken?: string): Promise<AuthInfo | undefined> => {
-    if (!bearerToken || !isMcpTokenFormat(bearerToken)) return undefined
+    if (!bearerToken) return undefined
     const user = await resolveUser(bearerToken)
     if (!user) return undefined
     return {
@@ -97,5 +96,10 @@ export function createGarraMcpHandler(store: McpStore, resolveUser: McpUserResol
     }
   }
 
-  return withMcpAuth(handler, verifyToken, { required: true, requiredScopes: ["garra"] })
+  return withMcpAuth(handler, verifyToken, {
+    required: true,
+    requiredScopes: ["garra"],
+    resourceMetadataPath: "/.well-known/oauth-protected-resource",
+  })
 }
+

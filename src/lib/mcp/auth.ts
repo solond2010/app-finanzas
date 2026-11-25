@@ -3,6 +3,7 @@ import "server-only"
 import { supabaseServer } from "@/lib/supabase-server"
 import { generateMcpToken, hashMcpToken, isMcpTokenFormat } from "@/lib/mcp/token"
 import type { McpTokenItem } from "@/lib/mcp/public"
+import { getOauthService } from "@/lib/oauth/server"
 
 export type McpAuthUser = {
   userId: string
@@ -34,6 +35,14 @@ export async function resolveMcpUser(token: string): Promise<McpAuthUser | null>
     .eq("id", row.id)
     .then(() => undefined, () => undefined)
   return { userId: row.user_id, tokenId: row.id }
+}
+
+/** Acepta un token personal (grr_) o un access token OAuth (gat_). */
+export async function resolveMcpRequestUser(token: string): Promise<McpAuthUser | null> {
+  if (isMcpTokenFormat(token)) return resolveMcpUser(token)
+  const resolved = await getOauthService().resolveAccessToken(token)
+  if (!resolved) return null
+  return { userId: resolved.userId, tokenId: resolved.tokenId }
 }
 
 export async function listActiveMcpTokens(userId: string): Promise<McpTokenItem[]> {

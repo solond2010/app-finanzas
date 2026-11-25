@@ -97,6 +97,7 @@ describe("endpoint MCP local (usuario de prueba, sin datos reales)", () => {
   it("rechaza una petición sin token, con token inventado o revocado", async () => {
     const missing = await call(null, { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1.0" } } })
     expect(missing.status).toBe(401)
+    expect(missing.headers.get("www-authenticate") ?? "").toMatch(/resource_metadata=.*oauth-protected-resource/)
     const unknown = await call("grr_token-inventado-con-suficiente-longitud-123456", { jsonrpc: "2.0", id: 1, method: "ping" })
     expect(unknown.status).toBe(401)
     const closed = await call(revoked, { jsonrpc: "2.0", id: 1, method: "ping" })

@@ -7,6 +7,7 @@ describe("safeNextPath", () => {
     expect(safeNextPath("")).toBe("/dashboard")
     expect(safeNextPath("/cuentas")).toBe("/cuentas")
     expect(safeNextPath("/login?modo=registro")).toBe("/login?modo=registro")
+    expect(safeNextPath("/oauth/authorize?client_id=gcl_x&response_type=code")).toBe("/oauth/authorize?client_id=gcl_x&response_type=code")
     expect(safeNextPath("//evil.example")).toBe("/dashboard")
     expect(safeNextPath("https://evil.example/")).toBe("/dashboard")
     expect(safeNextPath("https://www.migarra.app/cuentas")).toBe("/dashboard")

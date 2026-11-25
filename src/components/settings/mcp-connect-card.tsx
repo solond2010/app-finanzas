@@ -5,7 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
 import { Copy, KeyRound } from "@/components/icons"
-import { formatMcpTokenDate, MCP_ENDPOINT_URL, type McpTokenItem } from "@/lib/mcp/public"
+import {
+  formatMcpTokenDate,
+  MCP_ENDPOINT_URL,
+  MCP_OAUTH_CONNECTORS_PUBLIC,
+  MCP_OAUTH_CONNECTOR_STEPS,
+  type McpGrantItem,
+  type McpTokenItem,
+} from "@/lib/mcp/public"
 
 type Me = { mode: "accounts" | "password"; userId: string; email: string | null }
 
@@ -20,21 +27,27 @@ async function copyText(value: string) {
 
 export function McpConnectCardView({
   tokens,
+  grants = [],
   tokensError,
   newToken,
   busy,
+  connectorsPublic = MCP_OAUTH_CONNECTORS_PUBLIC,
   onGenerate,
   onDismissToken,
   onRevoke,
+  onRevokeGrant,
   onCopy,
 }: {
   tokens: McpTokenItem[]
+  grants?: McpGrantItem[]
   tokensError?: string | null
   newToken?: string | null
   busy?: boolean
+  connectorsPublic?: boolean
   onGenerate?: () => void
   onDismissToken?: () => void
   onRevoke?: (id: string) => void
+  onRevokeGrant?: (id: string) => void
   onCopy?: (value: string, label: string) => void
 }) {
   return (
@@ -73,9 +86,20 @@ export function McpConnectCardView({
 
         <div className="rounded-2xl border border-border/70 bg-background/35 p-3 sm:p-4">
           <p className="text-sm font-medium">ChatGPT y Claude.ai</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Próximamente. Esos conectores necesitan un inicio de sesión OAuth, que todavía no está disponible.
-          </p>
+          {connectorsPublic ? (
+            <ol className="mt-2 space-y-3">
+              {MCP_OAUTH_CONNECTOR_STEPS.map((step) => (
+                <li key={step.title}>
+                  <p className="text-xs font-medium">{step.title}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{step.text}</p>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Próximamente. Esos conectores necesitan un inicio de sesión OAuth, que todavía no está desplegado.
+            </p>
+          )}
         </div>
 
         {newToken ? (
@@ -113,7 +137,7 @@ export function McpConnectCardView({
         {tokensError ? (
           <p className="text-xs text-destructive">{tokensError}</p>
         ) : tokens.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Aún no tienes tokens.</p>
+          <p className="text-xs text-muted-foreground">Aún no tienes tokens personales.</p>
         ) : (
           <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
             {tokens.map((token) => (
@@ -140,29 +164,65 @@ export function McpConnectCardView({
             ))}
           </ul>
         )}
+
+        {grants.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Aplicaciones conectadas</p>
+            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+              {grants.map((grant) => (
+                <li key={grant.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{grant.name}</p>
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      Conectada {formatMcpTokenDate(grant.created_at)}
+                      <span className="hidden sm:inline"> · </span>
+                      <span className="block sm:inline">Último uso {formatMcpTokenDate(grant.last_used_at)}</span>
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 shrink-0 self-start sm:self-center"
+                    aria-label={`Revocar ${grant.name}`}
+                    onClick={() => onRevokeGrant?.(grant.id)}
+                  >
+                    Revocar
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   )
 }
 
-/** Tarjeta de Ajustes para generar y revocar tokens MCP. Solo con cuentas reales. */
+/** Tarjeta de Ajustes para generar y revocar tokens MCP y conexiones OAuth. */
 export function McpConnectCard() {
   const { toast } = useToast()
   const [visible, setVisible] = useState(false)
   const [tokens, setTokens] = useState<McpTokenItem[]>([])
+  const [grants, setGrants] = useState<McpGrantItem[]>([])
   const [tokensError, setTokensError] = useState<string | null>(null)
   const [newToken, setNewToken] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const loadTokens = useCallback(async () => {
-    const res = await fetch("/api/mcp/tokens", { cache: "no-store" })
-    const body = await res.json().catch(() => null)
-    if (!res.ok) {
-      setTokensError(body?.error ?? "No se pudieron cargar los tokens")
+    const [tokensRes, grantsRes] = await Promise.all([
+      fetch("/api/mcp/tokens", { cache: "no-store" }),
+      fetch("/api/mcp/grants", { cache: "no-store" }),
+    ])
+    const tokensBody = await tokensRes.json().catch(() => null)
+    const grantsBody = await grantsRes.json().catch(() => null)
+    if (!tokensRes.ok) {
+      setTokensError(tokensBody?.error ?? "No se pudieron cargar los tokens")
       return
     }
     setTokensError(null)
-    setTokens(body.tokens ?? [])
+    setTokens(tokensBody.tokens ?? [])
+    setGrants(grantsRes.ok ? (grantsBody.grants ?? []) : [])
   }, [])
 
   useEffect(() => {
@@ -199,6 +259,14 @@ export function McpConnectCard() {
     await loadTokens()
   }
 
+  async function revokeGrant(id: string) {
+    if (!window.confirm("¿Revocar esta conexión? ChatGPT o Claude dejarán de poder apuntar movimientos hasta que vuelvas a autorizarlos.")) return
+    const res = await fetch("/api/mcp/grants", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+    if (!res.ok) { toast("No se pudo revocar la conexión", "error"); return }
+    toast("Conexión revocada", "success")
+    await loadTokens()
+  }
+
   function handleCopy(value: string, label: string) {
     void copyText(value).then((ok) => toast(ok ? label : "No se pudo copiar", ok ? "success" : "error"))
   }
@@ -206,12 +274,14 @@ export function McpConnectCard() {
   return (
     <McpConnectCardView
       tokens={tokens}
+      grants={grants}
       tokensError={tokensError}
       newToken={newToken}
       busy={busy}
       onGenerate={() => void generateToken()}
       onDismissToken={() => setNewToken(null)}
       onRevoke={(id) => void revokeToken(id)}
+      onRevokeGrant={(id) => void revokeGrant(id)}
       onCopy={handleCopy}
     />
   )
