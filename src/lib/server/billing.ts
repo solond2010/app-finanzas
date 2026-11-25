@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabase-server"
 import { asPlan, type CheckoutOption, type Plan } from "@/lib/billing/plans"
 import { GARRA_PORTAL_METADATA, pickPortalConfiguration, type PortalConfigurationLike } from "@/lib/billing/portal-policy"
 import { paymentsEnabledFor, isLiveStripeKey } from "@/lib/billing/env-policy"
+import { countsAsPriorSubscription } from "@/lib/billing/monthly-trial"
 import { mergePlanPatch, periodEndFromStripeObject, type PlanPatch } from "@/lib/billing/webhook-plan"
 
 // Pagos con Stripe. Apagados salvo PAYMENTS_ENABLED="true".
@@ -134,6 +135,15 @@ export async function ensureStripePortalConfiguration(key: string, returnUrl: st
   }, key)
   if (!created.id) throw new Error("Stripe no devolvió la configuración del portal")
   return created.id
+}
+
+/** ¿Este cliente de Stripe ya tuvo alguna suscripción o trial (para no repetir la prueba)? */
+export async function customerHasSubscriptionHistory(customerId: string, key: string): Promise<boolean> {
+  const listed = await stripeGet<{ data?: { status?: string }[] }>(
+    `subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=20`,
+    key,
+  )
+  return (listed.data ?? []).some((item) => countsAsPriorSubscription(item.status))
 }
 
 export async function createBillingPortalSession(key: string, customerId: string, returnUrl: string): Promise<{ url: string }> {

@@ -29,8 +29,14 @@ describe("página de precios", () => {
     expect(proFeatures.some((item) => item.included && item.label === "Cuentas ilimitadas")).toBe(true)
     expect(proFeatures.some((item) => item.included && item.label === "Inversiones")).toBe(true)
     expect(proFeatures.some((item) => item.included && item.label === "Exportación")).toBe(true)
-    expect(pricingCatalog().faq[1].a).toContain(String(free.maxAccounts))
-    expect(pricingCatalog().faq[1].a).toContain(String(free.maxGoals))
+    expect(pricingCatalog().faq.some((item) => item.a.includes(String(free.maxAccounts)))).toBe(true)
+    expect(pricingCatalog().faq.some((item) => item.a.includes(String(free.maxGoals)))).toBe(true)
+    expect(pricingCatalog().offerMonthlyTrial).toBe(true)
+    expect(pricingCatalog().monthlyBadge).toBe("Primer mes gratis")
+    expect(pricingCatalog().monthlyNote).toMatch(/primer mes es gratis/i)
+    expect(pricingCatalog().monthlyNote).toContain(formatPriceEur(PRICES_EUR.pro_monthly))
+    expect(pricingCatalog({ offerMonthlyTrial: false }).monthlyBadge).toBe("Recomendado")
+    expect(pricingCatalog({ offerMonthlyTrial: false }).faq.some((item) => /primer mes/i.test(item.q))).toBe(false)
   })
 
   it("lleva «Hazte Pro» a la tarjeta de plan, vía registro si no hay sesión", () => {

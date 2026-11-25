@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
 import { Info } from "@/components/icons"
 import { PRICES_EUR, isLifetimeAccess, type CheckoutOption, type Entitlements, type Plan } from "@/lib/billing/plans"
+import { MONTHLY_NOTE_WITHOUT_TRIAL, MONTHLY_TRIAL_BADGE, monthlyTrialNote, monthlyTrialPriceLabel } from "@/lib/billing/monthly-trial"
 import { formatProUntil } from "@/lib/billing/portal-policy"
 import { cn } from "@/lib/utils"
 
@@ -17,6 +18,8 @@ type PlanInfo = {
   renews: string | null
   cancelAtPeriodEnd?: boolean
   canManageSubscription?: boolean
+  offerMonthlyTrial?: boolean
+  trialing?: boolean
   entitlements: Entitlements
 }
 
@@ -138,9 +141,14 @@ export function PlanCard() {
           <div className="space-y-3">
             <div className="space-y-1.5">
               <p className="text-sm">
-                <span className="font-semibold">{until ?? label}</span>
-                {!until && info.renews && <span className="text-muted-foreground"> · se renueva el {renewsOn(info.renews)}</span>}
+                <span className="font-semibold">{until ?? (info.trialing ? "Pro · mes de prueba" : label)}</span>
+                {!until && info.renews && <span className="text-muted-foreground"> · {(info.trialing ? "se cobra el " : "se renueva el ") + renewsOn(info.renews)}</span>}
               </p>
+              {info.trialing && !until && (
+                <p className="text-xs leading-5 text-muted-foreground">
+                  El primer mes es gratis. A partir del 2.º mes se cobra {monthlyTrialPriceLabel()} al mes. Puedes cancelar cuando quieras.
+                </p>
+              )}
               {until && (
                 <p className="flex items-start gap-1.5 text-xs leading-5 text-amber-800/80 dark:text-amber-200/80">
                   <Info className="mt-0.5 size-3.5 shrink-0 opacity-80" aria-hidden />
@@ -166,12 +174,12 @@ export function PlanCard() {
                 <div className="mt-3 grow"><FeatureList items={FREE_FEATURES} /></div>
               </div>
               <div className="flex flex-col rounded-[14px] border-2 border-primary bg-card p-4 shadow-[0_0_0_4px_rgb(245_165_36_/_8%)]">
-                <p className="mb-2 inline-flex w-fit rounded-full border border-primary bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">Recomendado</p>
+                <p className="mb-2 inline-flex w-fit rounded-full border border-primary bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">{info.offerMonthlyTrial ? MONTHLY_TRIAL_BADGE : "Recomendado"}</p>
                 <p className="font-heading text-lg font-bold">Pro mensual</p>
                 <p className="font-heading text-2xl font-bold text-primary">{eur(PRICES_EUR.pro_monthly)} <span className="text-sm font-medium text-muted-foreground">/ mes</span></p>
-                <p className="mt-1 text-xs text-muted-foreground">Se renueva cada mes. Cancela cuando quieras.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{info.offerMonthlyTrial ? monthlyTrialNote() : MONTHLY_NOTE_WITHOUT_TRIAL}</p>
                 <div className="mt-3 grow"><FeatureList items={PRO_FEATURES} /></div>
-                <Button className="mt-4 w-full" disabled={!!busy} onClick={() => buy("pro_monthly")}>{busy === "pro_monthly" ? "Abriendo…" : "Pasar a Pro"}</Button>
+                <Button className="mt-4 w-full" disabled={!!busy} onClick={() => buy("pro_monthly")}>{busy === "pro_monthly" ? "Abriendo…" : info.offerMonthlyTrial ? "Empezar el mes gratis" : "Pasar a Pro"}</Button>
               </div>
               <div className="flex flex-col rounded-[14px] border border-border bg-card p-4">
                 <p className="font-heading text-lg font-bold">Pro de por vida</p>

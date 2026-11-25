@@ -2,6 +2,7 @@
 // Precios y límites salen de PRICES_EUR y entitlementsFor; no se copian a mano.
 
 import { entitlementsFor, PRICES_EUR, type Entitlements } from "./plans"
+import { MONTHLY_NOTE_WITHOUT_TRIAL, MONTHLY_TRIAL_BADGE, monthlyTrialNote } from "./monthly-trial"
 
 export const PRICING_SIGNUP_HREF = "/login?modo=registro"
 export const PRICING_PLAN_HREF = "/configuracion#plan"
@@ -59,7 +60,7 @@ export function pricingProHref(signedIn: boolean): string {
   return `${PRICING_SIGNUP_HREF}&redirect=${encodeURIComponent(PRICING_PLAN_HREF)}`
 }
 
-export function pricingFaqItems(free: Entitlements = entitlementsFor("free", true)): { q: string; a: string }[] {
+export function pricingFaqItems(free: Entitlements = entitlementsFor("free", true), offerMonthlyTrial = true): { q: string; a: string }[] {
   const accounts = free.maxAccounts
   const goals = free.maxGoals
   const limits =
@@ -67,9 +68,17 @@ export function pricingFaqItems(free: Entitlements = entitlementsFor("free", tru
       ? ` En Gratis no podrás añadir más de ${accounts} cuentas o ${goals} metas, ni usar inversiones, historial, análisis avanzado o exportación, pero nada de lo que ya tienes se elimina.`
       : " Nada de lo que ya tienes se elimina."
   return [
+    ...(offerMonthlyTrial
+      ? [{
+          q: "¿El primer mes del Pro mensual es gratis?",
+          a: "Sí. Dejas la tarjeta, no se cobra nada el primer mes y a partir del 2.º mes se cobra " + formatPriceEur(PRICES_EUR.pro_monthly) + " al mes. Puedes cancelar cuando quieras; si lo haces durante la prueba, no hay cobro.",
+        }]
+      : []),
     {
       q: "¿Puedo cancelar cuando quiera?",
-      a: "Sí. La suscripción mensual se renueva cada mes y puedes cancelarla cuando quieras. Sigues con Pro hasta el final del periodo ya pagado.",
+      a: offerMonthlyTrial
+        ? "Sí. Después del mes de prueba, la suscripción se renueva cada mes a " + formatPriceEur(PRICES_EUR.pro_monthly) + " y puedes cancelarla cuando quieras. Si cancelas durante la prueba, no se realiza el cobro."
+        : "Sí. La suscripción mensual se renueva cada mes y puedes cancelarla cuando quieras. Sigues con Pro hasta el final del periodo ya pagado.",
     },
     {
       q: "Si bajo a Gratis, ¿se borra algo?",
@@ -86,14 +95,18 @@ export function pricingFaqItems(free: Entitlements = entitlementsFor("free", tru
   ]
 }
 
-export function pricingCatalog() {
+export function pricingCatalog(options?: { offerMonthlyTrial?: boolean }) {
+  const offerMonthlyTrial = options?.offerMonthlyTrial !== false
   const free = entitlementsFor("free", true)
   const pro = entitlementsFor("pro", true)
   return {
     monthlyPrice: formatPriceEur(PRICES_EUR.pro_monthly),
     lifetimePrice: formatPriceEur(PRICES_EUR.pro_lifetime),
+    offerMonthlyTrial,
+    monthlyBadge: offerMonthlyTrial ? MONTHLY_TRIAL_BADGE : "Recomendado",
+    monthlyNote: offerMonthlyTrial ? monthlyTrialNote() : MONTHLY_NOTE_WITHOUT_TRIAL,
     freeFeatures: featuresFromEntitlements(free),
     proFeatures: featuresFromEntitlements(pro),
-    faq: pricingFaqItems(free),
+    faq: pricingFaqItems(free, offerMonthlyTrial),
   }
 }

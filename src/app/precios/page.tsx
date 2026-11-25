@@ -5,6 +5,8 @@ import { CaretDown, PlayCircle } from "@phosphor-icons/react/dist/ssr"
 import { GarraMark } from "@/components/brand/garra-logo"
 import { createSupabaseRouteClient } from "@/lib/server/request-context"
 import { isSupabaseAuthEnabled } from "@/lib/auth-mode"
+import { getUserPlanRow } from "@/lib/server/billing"
+import { shouldOfferMonthlyTrial } from "@/lib/billing/monthly-trial"
 import {
   pricingCatalog,
   pricingProHref,
@@ -31,20 +33,22 @@ const GHOST = `${BTN} border border-[#232B36] text-[#EEF1F4] hover:bg-white/[0.0
 const OUTLINE = "inline-flex min-h-12 w-full items-center justify-center rounded-full border border-[#232B36] bg-white/[0.03] px-5 text-[15px] font-bold text-[#EEF1F4] transition-[filter,transform] hover:bg-white/[0.07] active:scale-[0.98]"
 const GOLD_LG = "inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[#F5A524] px-5 text-[15px] font-bold text-[#0B0F14] shadow-[0_10px_30px_-10px_#F5A52499] transition-[filter,transform] hover:brightness-110 active:scale-[0.98]"
 
-async function hasSession(): Promise<boolean> {
-  if (!isSupabaseAuthEnabled()) return false
+async function pricingViewer(): Promise<{ signedIn: boolean; offerMonthlyTrial: boolean }> {
+  if (!isSupabaseAuthEnabled()) return { signedIn: false, offerMonthlyTrial: true }
   try {
     const supabase = await createSupabaseRouteClient()
     const { data } = await supabase.auth.getUser()
-    return Boolean(data.user)
+    if (!data.user) return { signedIn: false, offerMonthlyTrial: true }
+    const row = await getUserPlanRow(data.user.id)
+    return { signedIn: true, offerMonthlyTrial: shouldOfferMonthlyTrial(row) }
   } catch {
-    return false
+    return { signedIn: false, offerMonthlyTrial: true }
   }
 }
 
 export default async function PreciosPage() {
-  const signedIn = await hasSession()
-  const catalog = pricingCatalog()
+  const { signedIn, offerMonthlyTrial } = await pricingViewer()
+  const catalog = pricingCatalog({ offerMonthlyTrial })
   const startHref = pricingStartHref(signedIn)
   const proHref = pricingProHref(signedIn)
 
@@ -80,11 +84,11 @@ export default async function PreciosPage() {
           />
           <PlanCard
             featured
-            badge="Recomendado"
+            badge={catalog.monthlyBadge}
             title="Pro mensual"
             price={catalog.monthlyPrice}
             unit="/ mes"
-            note="Se renueva cada mes. Cancela cuando quieras."
+            note={catalog.monthlyNote}
             features={catalog.proFeatures}
             cta={<Link href={proHref} className={GOLD_LG}>Hazte Pro</Link>}
           />
@@ -109,7 +113,7 @@ export default async function PreciosPage() {
               </summary>
               <p className="mt-2.5 text-[15px] leading-6 text-[#8C96A3]">
                 {item.a}
-                {index === 3 && <>{" "}<Link href="/demo" className="font-semibold text-[#F5A524] hover:underline">Probar la demo</Link>.</>}
+                {item.q.includes("probarla") && <>{" "}<Link href="/demo" className="font-semibold text-[#F5A524] hover:underline">Probar la demo</Link>.</>}
               </p>
             </details>
           ))}

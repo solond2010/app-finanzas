@@ -271,6 +271,40 @@ describe("webhook de Stripe", () => {
     }
   })
 
+  it("un checkout en prueba (sin cobro) concede Pro en estado trialing", () => {
+    const decision = decideStripeWebhook({
+      id: "evt_trial",
+      type: "checkout.session.completed",
+      livemode: false,
+      data: { object: { payment_status: "no_payment_required", mode: "subscription", client_reference_id: "user-3", customer: "cus_3", subscription: { id: "sub_3", status: "trialing", current_period_end: 1_800_000_000 } } },
+    }, isolated)
+    expect(decision).toMatchObject({
+      action: "apply",
+      userId: "user-3",
+      patch: { plan: "pro", source: "stripe", stripe_subscription_id: "sub_3", subscription_status: "trialing", current_period_end: new Date(1_800_000_000 * 1000).toISOString() },
+    })
+  })
+
+  it("si cancela durante el trial, el mensual pasa a gratis igual que cualquier baja", () => {
+    const decision = decideStripeWebhook({
+      id: "evt_trial_cancel",
+      type: "customer.subscription.deleted",
+      livemode: false,
+      data: { object: { id: "sub_3", metadata: { user_id: "user-3" }, status: "canceled", current_period_end: 1_800_000_000 } },
+    }, isolated)
+    expect(decision).toMatchObject({ action: "apply", userId: "user-3", patch: { plan: "free", source: "stripe", subscription_status: "canceled" } })
+  })
+
+  it("un evento trialing de suscripción mantiene Pro", () => {
+    const decision = decideStripeWebhook({
+      id: "evt_trialing",
+      type: "customer.subscription.updated",
+      livemode: false,
+      data: { object: { id: "sub_3", metadata: { user_id: "user-3" }, customer: "cus_3", status: "trialing", current_period_end: 1_800_000_000 } },
+    }, isolated)
+    expect(decision).toMatchObject({ action: "apply", patch: { plan: "pro", subscription_status: "trialing" } })
+  })
+
   it("un pago asíncrono exitoso también concede el plan", () => {
     const decision = decideStripeWebhook({
       id: "evt_async",

@@ -1,4 +1,5 @@
 import { asPlan, isLifetimeAccess, subscriptionGivesPro, type Plan } from "./plans"
+import { monthlyStatusFromCheckout } from "./monthly-trial"
 import { allowStripeEventOnLedger, type BillingEnv } from "./env-policy"
 
 export type PlanPatch = {
@@ -49,9 +50,13 @@ export function periodEndFromStripeObject(obj: Record<string, unknown>): string 
 
 /** Completa current_period_end tras un checkout mensual cuando hay que consultar la suscripción. */
 export function withCheckoutPeriodEnd(patch: PlanPatch, subscription: Record<string, unknown> | null | undefined): PlanPatch {
-  if (patch.current_period_end || !patch.stripe_subscription_id || !subscription) return patch
+  if (!patch.stripe_subscription_id || !subscription) return patch
   const end = periodEndFromStripeObject(subscription)
-  return end ? { ...patch, current_period_end: end } : patch
+  const status = typeof subscription.status === "string" && subscription.status ? subscription.status : null
+  const next = { ...patch }
+  if (end && !next.current_period_end) next.current_period_end = end
+  if (status) next.subscription_status = status
+  return next
 }
 
 /** Une un parche de Stripe con el plan actual sin degradar un Pro vitalicio o early_access. */
@@ -87,7 +92,7 @@ export function decideStripeWebhook(event: StripeLikeEvent | null, env: BillingE
         source: "stripe",
         stripe_customer_id: str(obj.customer) ?? (expanded ? str(expanded.customer) : null),
         stripe_subscription_id: lifetime ? null : subscriptionId(subscription),
-        subscription_status: lifetime ? "paid" : "active",
+        subscription_status: lifetime ? "paid" : monthlyStatusFromCheckout(obj),
         current_period_end: expanded ? periodEndFromStripeObject(expanded) : undefined,
         cancel_at_period_end: false,
       },
