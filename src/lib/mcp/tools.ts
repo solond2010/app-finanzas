@@ -132,6 +132,7 @@ export async function listAccountsTool(store: McpStore, userId: string): Promise
 }
 
 export async function listCategoriesTool(store: McpStore, userId: string): Promise<ToolResult<McpCategory[]>> {
+  // Solo lectura: no crea ni actualiza categorías (tampoco les asigna color).
   const categories = await store.listCategories(userId)
   return { ok: true, data: categories }
 }
@@ -182,6 +183,8 @@ export async function addTransactionTool(
   const account = await store.findAccount(userId, cuentaRef)
   if (!account) return { ok: false, status: 400, error: "La cuenta no existe" }
 
+  // Si la categoría no existe se rechaza: esta herramienta no crea filas en
+  // categories, así que no puede volver a insertar una sin color.
   const category = await store.findCategory(userId, categoriaRef)
   if (!category) return { ok: false, status: 400, error: "La categoría no existe" }
   if (!categoryMatchesTipo(category, tipo)) {

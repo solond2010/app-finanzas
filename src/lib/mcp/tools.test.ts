@@ -206,3 +206,24 @@ describe("herramientas MCP", () => {
     expect(result.ok).toBe(true)
   })
 })
+
+describe("add_transaction no crea categorías", () => {
+  it("rechaza una categoría inexistente y no inserta ninguna fila en categories", async () => {
+    const store = memoryStore({
+      accounts: [{ id: "acc-1", nombre: "Cuenta", saldo: 10, currency: "EUR" }],
+      categories: [{ id: "cat_comida", name: "Comida", kind: "gasto" }],
+    })
+    const before = (await store.listCategories("user-test")).map((item) => item.id)
+    const result = await addTransactionTool(store, "user-test", {
+      cuenta: "acc-1",
+      tipo: "gasto",
+      monto: 1,
+      categoria: "NoExiste",
+    })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toMatch(/categoría no existe/i)
+    const after = (await store.listCategories("user-test")).map((item) => item.id)
+    expect(after).toEqual(before)
+    expect(after).toEqual(["cat_comida"])
+  })
+})

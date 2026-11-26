@@ -5,6 +5,7 @@ import { withUserId } from "@/lib/user-scope"
 import { canHaveAccounts, canHaveGoals, FREE_MAX_ACCOUNTS, FREE_MAX_GOALS, isPaid } from "@/lib/billing/plans"
 import { getUserPlan, paymentsEnabled } from "@/lib/server/billing"
 import { upsertIgnoringUnknownColumns } from "@/lib/upsert-unknown-columns"
+import { prepareCategoryRowsForUpsert } from "@/lib/category-color"
 import { isPendingSaldoDelta, stripSaldoFromExistingAccounts } from "@/lib/saldo-sync"
 import { applyConditionalSaldoDeltas, classifyTransactionWrites, type ExistingTransaction } from "@/lib/server/saldo-delta"
 
@@ -168,6 +169,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ tab
       return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo actualizar el saldo" }, { status: 500 })
     }
     return NextResponse.json({ ok: true })
+  }
+
+  if (table === "categories") {
+    const { data: existing, error: existingError } = await ctx.db.from("categories").select("id").eq("user_id", ctx.userId)
+    if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+    outgoingRows = prepareCategoryRowsForUpsert(
+      outgoingRows,
+      new Set((existing ?? []).map((row: { id: string }) => row.id)),
+    )
   }
 
   // user_id lo pone SIEMPRE el servidor: el navegador no puede escribir a

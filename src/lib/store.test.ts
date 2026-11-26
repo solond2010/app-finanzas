@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { reducer, defaultState, collectDeletesFromAction, emptyPendingDeletes, normalizeFinanceState, type Account, type Transaction, type Category, type FinanceState, hasRemoteData } from "./store"
+import { reducer, defaultState, collectDeletesFromAction, emptyPendingDeletes, normalizeFinanceState, type Account, type Transaction, type Category, type FinanceState, hasRemoteData, hydrateFinanceState, isFinanceState, categoriesForSync } from "./store"
 import { cleanLoadSyncWrites, collectSaldoDeltas } from "./saldo-sync"
 
 const baseAccount: Account = {
@@ -453,5 +453,94 @@ describe("hasRemoteData", () => {
   it("sí cuenta cuentas o movimientos", () => {
     expect(hasRemoteData({ ...empty, accounts: [{ id: "a" }] } as never)).toBe(true)
     expect(hasRemoteData({ ...empty, transactions: [{ id: "t" }] } as never)).toBe(true)
+  })
+})
+
+import { DEFAULT_CATEGORY_COLOR } from "./category-color"
+
+function baseState(overrides: Partial<FinanceState> = {}): FinanceState {
+  return { accounts: [], transactions: [], sinkingFunds: [], categories: [], budgets: [], ...overrides }
+}
+
+describe("hydrateFinanceState y color de categoría vacío", () => {
+  const account: Account = { id: "acc-1", nombre: "Cuenta", tipo: "efectivo", banco: "", saldo: 10, currency: "EUR", objetivo: null, limite_mensual: null, color: "" }
+  const tx: Transaction = { id: "tx-1", cuenta_id: "acc-1", monto: 1.23, fecha: "2026-11-26", tipo: "gasto", categoria: "Prueba MCP", es_necesidad: false, descripcion: "", tags: ["mcp"] }
+
+  it("isFinanceState acepta una categoría con color null o vacío", () => {
+    const state = baseState({
+      accounts: [account],
+      transactions: [tx],
+      categories: [{ id: "mcp-test-cat-1", name: "Prueba MCP", color: null as unknown as string, kind: "both" }],
+    })
+    expect(isFinanceState(state)).toBe(true)
+    expect(isFinanceState(baseState({ categories: [{ id: "c1", name: "X", color: "" }] }))).toBe(true)
+  })
+
+  it("al cargar, el color vacío se normaliza al default y no se reescribe en el sync", () => {
+    const hydrated = hydrateFinanceState({
+      accounts: [account],
+      transactions: [tx],
+      sinkingFunds: [],
+      categories: [
+        { id: "mcp-test-cat-1", name: "Prueba MCP", color: null, kind: "both" },
+        { id: "cat_alquiler", name: "Alquiler", color: "#ef4444", kind: "gasto" },
+      ],
+      budgets: [],
+    })
+    expect(hydrated).not.toBeNull()
+    expect(hydrated!.accounts).toHaveLength(1)
+    expect(hydrated!.transactions).toHaveLength(1)
+    const [defaulted, intact] = hydrated!.categories
+    expect(defaulted.color).toBe(DEFAULT_CATEGORY_COLOR)
+    expect(defaulted.colorDefaulted).toBe(true)
+    expect(intact.color).toBe("#ef4444")
+    expect(intact.colorDefaulted).toBeUndefined()
+
+    const payload = categoriesForSync(hydrated!.categories)
+    expect(payload[0]).toEqual({ id: "mcp-test-cat-1", name: "Prueba MCP", kind: "both" })
+    expect("color" in payload[0]).toBe(false)
+    expect("colorDefaulted" in payload[0]).toBe(false)
+    expect(payload[1]).toEqual({ id: "cat_alquiler", name: "Alquiler", color: "#ef4444", kind: "gasto" })
+  })
+
+  it("un elemento irrecuperable se descarta y el resto del estado se conserva", () => {
+    const hydrated = hydrateFinanceState({
+      accounts: [account, { id: "bad", nombre: "Rota", saldo: "no-número" }],
+      transactions: [tx, { id: "tx-bad", cuenta_id: "acc-1", monto: 5, fecha: "2026-11-26", tipo: "otro", categoria: "X", tags: [] }],
+      sinkingFunds: [],
+      categories: [
+        { id: "ok", name: "Ok", color: "#000" },
+        { name: "Sin id", color: "#000" },
+        { id: "c-empty", name: "Vacía", color: "  " },
+      ],
+      budgets: [{ id: "b1", category_id: "ok", amount: 10, month: "2026-11" }, { id: "b-bad", category_id: "ok", amount: "x", month: "2026-11" }],
+    })
+    expect(hydrated).not.toBeNull()
+    expect(hydrated!.accounts.map((a) => a.id)).toEqual(["acc-1"])
+    expect(hydrated!.transactions.map((t) => t.id)).toEqual(["tx-1"])
+    expect(hydrated!.categories.map((c) => c.id)).toEqual(["ok", "c-empty"])
+    expect(hydrated!.categories[1].color).toBe(DEFAULT_CATEGORY_COLOR)
+    expect(hydrated!.budgets.map((b) => b.id)).toEqual(["b1"])
+  })
+
+  it("UPDATE_CATEGORY conserva colorDefaulted si el color no cambia, y lo quita si el usuario elige color", () => {
+    const start: FinanceState = {
+      ...baseState(),
+      categories: [{ id: "c1", name: "Prueba MCP", color: DEFAULT_CATEGORY_COLOR, kind: "both", colorDefaulted: true }],
+    }
+    const kept = reducer(start, { type: "UPDATE_CATEGORY", payload: { id: "c1", name: "Prueba MCP", color: DEFAULT_CATEGORY_COLOR, kind: "both" } })
+    expect(kept.categories[0].colorDefaulted).toBe(true)
+    expect(categoriesForSync(kept.categories)[0]).not.toHaveProperty("color")
+
+    const changed = reducer(start, { type: "UPDATE_CATEGORY", payload: { id: "c1", name: "Prueba MCP", color: "#ef4444", kind: "both" } })
+    expect(changed.categories[0].colorDefaulted).toBeUndefined()
+    expect(categoriesForSync(changed.categories)[0].color).toBe("#ef4444")
+  })
+
+  it("ADD_CATEGORY sin color usa el default (categoría nueva, sí se sincroniza el color)", () => {
+    const next = reducer(baseState(), { type: "ADD_CATEGORY", payload: { id: "c-new", name: "Nueva", color: "", kind: "gasto" } })
+    expect(next.categories[0].color).toBe(DEFAULT_CATEGORY_COLOR)
+    expect(next.categories[0].colorDefaulted).toBeUndefined()
+    expect(categoriesForSync(next.categories)[0].color).toBe(DEFAULT_CATEGORY_COLOR)
   })
 })

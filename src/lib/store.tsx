@@ -2,6 +2,7 @@
 
 import { registerCategoryIcons } from "@/components/icons/category-icon"
 import { findBlockingCategory, transactionMatchesCategoryKind } from "./category-names"
+import { DEFAULT_CATEGORY_COLOR, isMissingCategoryColor, normalizeCategoryColor } from "./category-color"
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import { dbSelect, dbUpsert, dbDeleteIn } from "./db-client"
 import { signedAmount, isInitialTx, isLocalOnlyOpeningTx, collectSaldoDeltas, transactionsForSync, isPendingSaldoDelta, type PendingSaldoDelta } from "./saldo-sync"
@@ -87,6 +88,11 @@ export interface Category {
   kind?: CategoryKind
   /** Icono elegido (clave de CATEGORY_ICON_CHOICES); null/ausente = automático. */
   icon?: string | null
+  /**
+   * Solo en memoria: el color se rellenó al cargar porque en la BD estaba vacío.
+   * No se envía al sincronizar, para no escribirlo como un cambio.
+   */
+  colorDefaulted?: boolean
 }
 
 export interface Budget {
@@ -449,18 +455,33 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
       return { ...state, sinkingFunds: state.sinkingFunds.map((s) => (s.id === action.payload.id ? action.payload : s)) }
     case "DELETE_SINKING_FUND":
       return { ...state, sinkingFunds: state.sinkingFunds.filter((s) => s.id !== action.payload) }
-    case "ADD_CATEGORY":
+    case "ADD_CATEGORY": {
       // Mismo nombre sí puede existir en gasto y en ingreso; no si el tipo
       // coincide o si una de las dos es «Ambos».
-      return findBlockingCategory(state.categories, action.payload.name, action.payload.kind)
-        ? state
-        : { ...state, categories: [...state.categories, { id: action.payload.id ?? generateId(), ...action.payload }] }
+      if (findBlockingCategory(state.categories, action.payload.name, action.payload.kind)) return state
+      const colorMissing = isMissingCategoryColor(action.payload.color)
+      const added: Category = {
+        ...action.payload,
+        id: action.payload.id ?? generateId(),
+        color: colorMissing ? DEFAULT_CATEGORY_COLOR : action.payload.color,
+      }
+      return { ...state, categories: [...state.categories, added] }
+    }
     case "UPDATE_CATEGORY": {
       const previous = state.categories.find((c) => c.id === action.payload.id)
       if (!previous) return state
+      const nextCategory: Category = { ...action.payload }
+      if (isMissingCategoryColor(nextCategory.color)) {
+        nextCategory.color = DEFAULT_CATEGORY_COLOR
+        nextCategory.colorDefaulted = true
+      } else if (previous.colorDefaulted && nextCategory.color === previous.color) {
+        nextCategory.colorDefaulted = true
+      } else {
+        delete nextCategory.colorDefaulted
+      }
       return {
         ...state,
-        categories: state.categories.map((c) => c.id === action.payload.id ? action.payload : c),
+        categories: state.categories.map((c) => c.id === action.payload.id ? nextCategory : c),
         // Solo remapea movimientos del mismo tipo: si hay «Inversión» en
         // ingresos y en gastos, renombrar una no debe arrastrar la otra.
         transactions: previous.name === action.payload.name ? state.transactions : state.transactions.map((t) => (
@@ -584,8 +605,9 @@ function readLocalJournal(): LocalJournal | null {
     const raw = localStorage.getItem(LOCAL_JOURNAL_KEY)
     if (!raw) return null
     const value = JSON.parse(raw) as Partial<LocalJournal>
-    if (value.version !== 1 || !isFinanceState(value.state) || typeof value.pendingSync !== "boolean" || !value.pendingDeletes || typeof value.pendingDeletes !== "object") return null
-    return value as LocalJournal
+    const state = hydrateFinanceState(value.state)
+    if (value.version !== 1 || !state || typeof value.pendingSync !== "boolean" || !value.pendingDeletes || typeof value.pendingDeletes !== "object") return null
+    return { ...value, state } as LocalJournal
   } catch { return null }
 }
 
@@ -1013,7 +1035,8 @@ async function loadFromSupabase(): Promise<FinanceState | null> {
       categories: catData,
       budgets: budData,
     }
-    return isFinanceState(state) ? state : null
+    // Un solo campo o fila inválida no puede vaciar todo el estado remoto.
+    return hydrateFinanceState(state)
   } catch {
     return null
   }
@@ -1118,7 +1141,7 @@ async function syncToSupabase(state: FinanceState, pending: PendingDeletes, opts
     await syncStep("movimientos", () => dbUpsert("transactions", txRows))
   }
   await syncStep("fondos", () => dbUpsert("sinking_funds", state.sinkingFunds.map(sf => unformatSinkingFund(sf))))
-  await syncStep("categorías", () => dbUpsert("categories", state.categories))
+  await syncStep("categorías", () => dbUpsert("categories", categoriesForSync(state.categories)))
   // Los presupuestos deben subirse DESPUÉS de las categorías: budgets.category_id
   // tiene una FK a categories.id, así que la categoría referenciada ya debe existir.
   await syncStep("presupuestos", () => dbUpsert("budgets", state.budgets.map(b => ({ id: b.id, category_id: b.category_id, amount: b.amount, month: b.month }))))
@@ -1147,8 +1170,8 @@ function loadLocalBackup(): FinanceState | null {
     if (journal) return journal.state
     const saved = localStorage.getItem(LOCAL_STATE_KEY)
     if (!saved) return null
-    const parsed = JSON.parse(saved) as FinanceState
-    if (!isFinanceState(parsed)) return null
+    const parsed = hydrateFinanceState(JSON.parse(saved))
+    if (!parsed) return null
     if (!parsed.accounts?.length && !parsed.transactions?.length && !parsed.sinkingFunds?.length) return null
     console.warn("[Finance] Recuperando datos de localStorage (Supabase no tenía datos)")
     return { ...parsed, categories: parsed.categories ?? DEFAULT_CATEGORIES }
@@ -1157,7 +1180,117 @@ function loadLocalBackup(): FinanceState | null {
   }
 }
 
-function isFinanceState(value: unknown): value is FinanceState {
+
+export function isCategoryValidEnough(value: unknown): value is Pick<Category, "id" | "name"> {
+  if (!value || typeof value !== "object") return false
+  const c = value as Partial<Category>
+  return typeof c.id === "string" && c.id.length > 0 && typeof c.name === "string"
+}
+
+function coerceAccount(value: unknown): Account | null {
+  if (!value || typeof value !== "object") return null
+  const a = value as Partial<Account>
+  if (typeof a.id !== "string" || a.id.length === 0) return null
+  const saldo = typeof a.saldo === "number" ? a.saldo : Number(a.saldo)
+  if (!Number.isFinite(saldo)) return null
+  return { ...(a as Account), id: a.id, nombre: typeof a.nombre === "string" ? a.nombre : "", saldo }
+}
+
+function coerceTransaction(value: unknown): Transaction | null {
+  if (!value || typeof value !== "object") return null
+  const t = value as Partial<Transaction>
+  if (typeof t.id !== "string" || t.id.length === 0) return null
+  if (typeof t.cuenta_id !== "string" || t.cuenta_id.length === 0) return null
+  const monto = typeof t.monto === "number" ? t.monto : Number(t.monto)
+  if (!Number.isFinite(monto)) return null
+  if (t.tipo !== "ingreso" && t.tipo !== "gasto") return null
+  return {
+    ...(t as Transaction),
+    id: t.id,
+    cuenta_id: t.cuenta_id,
+    monto,
+    fecha: typeof t.fecha === "string" ? t.fecha : "",
+    tipo: t.tipo,
+    categoria: typeof t.categoria === "string" ? t.categoria : "",
+    tags: Array.isArray(t.tags) ? t.tags.map(String) : [],
+  }
+}
+
+function coerceSinkingFund(value: unknown): SinkingFund | null {
+  if (!value || typeof value !== "object") return null
+  const f = value as Partial<SinkingFund>
+  if (typeof f.id !== "string" || f.id.length === 0) return null
+  const cantidad_objetivo = Number(f.cantidad_objetivo)
+  const ahorrado_actual = Number(f.ahorrado_actual)
+  if (!Number.isFinite(cantidad_objetivo) || !Number.isFinite(ahorrado_actual)) return null
+  return {
+    ...(f as SinkingFund),
+    id: f.id,
+    cuenta_id: typeof f.cuenta_id === "string" ? f.cuenta_id : "",
+    cantidad_objetivo,
+    ahorrado_actual,
+    nombre: typeof f.nombre === "string" ? f.nombre : "",
+  }
+}
+
+function coerceBudget(value: unknown): Budget | null {
+  if (!value || typeof value !== "object") return null
+  const b = value as Partial<Budget>
+  if (typeof b.id !== "string" || b.id.length === 0) return null
+  if (typeof b.category_id !== "string" || b.category_id.length === 0) return null
+  if (typeof b.month !== "string" || b.month.length === 0) return null
+  const amount = typeof b.amount === "number" ? b.amount : Number(b.amount)
+  if (!Number.isFinite(amount)) return null
+  return { ...(b as Budget), id: b.id, category_id: b.category_id, amount, month: b.month }
+}
+
+export function coerceCategory(value: unknown): Category | null {
+  if (!isCategoryValidEnough(value)) return null
+  const c = value as Partial<Category> & Pick<Category, "id" | "name">
+  const missing = isMissingCategoryColor(c.color)
+  const category: Category = {
+    id: c.id,
+    name: c.name,
+    color: normalizeCategoryColor(c.color),
+    kind: c.kind,
+    icon: c.icon,
+  }
+  if (missing || c.colorDefaulted) category.colorDefaulted = true
+  return category
+}
+
+/**
+ * Acepta un estado remoto o local incluso si alguna fila tiene un campo vacío
+ * o inválido: normaliza lo que se puede (p. ej. color de categoría) y descarta
+ * solo el elemento que no se puede reparar. Nunca devuelve null por una sola fila mala.
+ */
+export function hydrateFinanceState(value: unknown): FinanceState | null {
+  if (!value || typeof value !== "object") return null
+  const raw = value as Partial<FinanceState>
+  if (!Array.isArray(raw.accounts) || !Array.isArray(raw.transactions) || !Array.isArray(raw.sinkingFunds) || !Array.isArray(raw.categories) || !Array.isArray(raw.budgets)) {
+    return null
+  }
+  return {
+    accounts: raw.accounts.map(coerceAccount).filter((row): row is Account => row !== null),
+    transactions: raw.transactions.map(coerceTransaction).filter((row): row is Transaction => row !== null),
+    sinkingFunds: raw.sinkingFunds.map(coerceSinkingFund).filter((row): row is SinkingFund => row !== null),
+    categories: raw.categories.map(coerceCategory).filter((row): row is Category => row !== null),
+    budgets: raw.budgets.map(coerceBudget).filter((row): row is Budget => row !== null),
+  }
+}
+
+/** Quita marcas solo de memoria y no envía un color que se rellenó al cargar. */
+export function categoriesForSync(categories: Category[]): Array<Record<string, unknown>> {
+  return categories.map((category) => {
+    const row: Record<string, unknown> = { id: category.id, name: category.name, color: category.color }
+    if (category.kind !== undefined) row.kind = category.kind
+    if (category.icon !== undefined) row.icon = category.icon
+    if (category.colorDefaulted) delete row.color
+    return row
+  })
+}
+
+export function isFinanceState(value: unknown): value is FinanceState {
   if (!value || typeof value !== "object") return false
   const candidate = value as Partial<FinanceState>
   return Array.isArray(candidate.accounts) && Array.isArray(candidate.transactions) &&
@@ -1165,7 +1298,7 @@ function isFinanceState(value: unknown): value is FinanceState {
     candidate.accounts.every((a) => !!a && typeof a.id === "string" && typeof a.nombre === "string" && typeof a.saldo === "number" && Number.isFinite(a.saldo)) &&
     candidate.transactions.every((t) => !!t && typeof t.id === "string" && typeof t.cuenta_id === "string" && typeof t.monto === "number" && Number.isFinite(t.monto) && typeof t.fecha === "string" && typeof t.categoria === "string" && (t.tipo === "ingreso" || t.tipo === "gasto") && Array.isArray(t.tags)) &&
     candidate.sinkingFunds.every((f) => !!f && typeof f.id === "string" && typeof f.cuenta_id === "string" && Number.isFinite(f.cantidad_objetivo) && Number.isFinite(f.ahorrado_actual)) &&
-    candidate.categories.every((c) => !!c && typeof c.id === "string" && typeof c.name === "string" && typeof c.color === "string") &&
+    candidate.categories.every((c) => !!c && typeof c.id === "string" && typeof c.name === "string" && (c.color == null || typeof c.color === "string")) &&
     candidate.budgets.every((b) => !!b && typeof b.id === "string" && typeof b.category_id === "string" && Number.isFinite(b.amount) && typeof b.month === "string")
 }
 
