@@ -7,6 +7,11 @@ describe("textos públicos del MCP", () => {
     expect(MCP_ENDPOINT_URL.toLowerCase()).not.toMatch(/moha|mohamed|amin/)
     expect(MCP_OAUTH_CONNECTORS_PUBLIC).toBe(true)
     expect(MCP_OAUTH_CONNECTOR_STEPS.map((step) => step.title)).toEqual(["ChatGPT", "Claude.ai"])
+    expect(MCP_OAUTH_CONNECTOR_STEPS[0].text).toContain("chatgpt.com/plugins")
+    expect(MCP_OAUTH_CONNECTOR_STEPS[0].text).toContain("@Garra")
+    expect(MCP_OAUTH_CONNECTOR_STEPS[0].text).toContain("https://www.migarra.app/api/mcp")
+    expect(MCP_OAUTH_CONNECTOR_STEPS[0].text).toMatch(/Ligero/)
+    expect(MCP_OAUTH_CONNECTOR_STEPS[0].text.toLowerCase()).not.toMatch(/moha|mohamed/)
   })
 
   it("formatea fechas en Europe/Madrid y deja 'nunca' si no hay uso", () => {

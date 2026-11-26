@@ -3,7 +3,7 @@ import "server-only"
 import { supabaseServer } from "@/lib/supabase-server"
 import { getUserPlan, getUserPlanRow, paymentsEnabled } from "@/lib/server/billing"
 import { applySaldoDelta } from "@/lib/server/saldo-delta"
-import { MCP_TAG, signedAmount, type AddTransactionInput, type McpAccount, type McpCategory, type McpPlanContext, type McpStore, type McpTransaction } from "@/lib/mcp/tools"
+import { MCP_TAG, signedAmount, type AddTransactionInput, type McpAccount, type McpCashFlowTx, type McpCategory, type McpPlanContext, type McpStore, type McpTransaction } from "@/lib/mcp/tools"
 
 function asAccount(row: { id: string; nombre: string; saldo: number | string; currency: string | null }): McpAccount {
   return { id: row.id, nombre: row.nombre, saldo: Number(row.saldo), currency: row.currency }
@@ -165,5 +165,34 @@ export const supabaseMcpStore: McpStore = {
       .limit(limit)
     if (error) throw new Error(error.message)
     return (data ?? []).map((row) => asTransaction(row as never))
+  },
+
+  async listCashFlowTransactions(userId) {
+    const { data, error } = await supabaseServer
+      .from("transactions")
+      .select("id, cuenta_id, monto, fecha, tipo, categoria, tags")
+      .eq("user_id", userId)
+    if (error) throw new Error(error.message)
+    return (data ?? []).map((row) => {
+      const item = row as {
+        id: string
+        cuenta_id: string
+        monto: number | string
+        fecha: string
+        tipo: string
+        categoria?: string | null
+        tags?: string[] | null
+      }
+      const cash: McpCashFlowTx = {
+        id: item.id,
+        cuenta_id: item.cuenta_id,
+        monto: Number(item.monto),
+        fecha: item.fecha,
+        tipo: item.tipo,
+        categoria: item.categoria ?? "",
+        tags: Array.isArray(item.tags) ? item.tags : [],
+      }
+      return cash
+    })
   },
 }

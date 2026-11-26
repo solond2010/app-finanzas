@@ -67,6 +67,18 @@ export type McpStore = {
   getPlan(userId: string): Promise<McpPlanContext>
   insertTransaction(userId: string, input: AddTransactionInput): Promise<McpTransaction>
   listRecentTransactions(userId: string, limit: number): Promise<McpTransaction[]>
+  /** Solo lectura: movimientos con etiquetas, para el resumen de caja. */
+  listCashFlowTransactions(userId: string): Promise<McpCashFlowTx[]>
+}
+
+export type McpCashFlowTx = {
+  id: string
+  cuenta_id: string
+  monto: number
+  fecha: string
+  tipo: string
+  categoria?: string | null
+  tags?: string[] | null
 }
 
 export function signedAmount(tipo: McpTipo, monto: number): number {
