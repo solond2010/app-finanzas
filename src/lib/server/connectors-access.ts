@@ -1,6 +1,6 @@
 import "server-only"
 
-import { canUseConnectors } from "@/lib/billing/connectors-access"
+import { canUseConnectors, jsonArrayContains } from "@/lib/billing/connectors-access"
 import { getUserPlanRow, paymentsEnabled } from "@/lib/server/billing"
 import { supabaseServer } from "@/lib/supabase-server"
 
@@ -19,7 +19,7 @@ async function createdAtFromTaggedTransactions(userId: string, tag: "atajo" | "m
     .from("transactions")
     .select("created_at")
     .eq("user_id", userId)
-    .contains("tags", [tag])
+    .filter("tags", "cs", jsonArrayContains(tag))
     .limit(20)
   if (error) throw new Error(error.message)
   return ((data ?? []) as CreatedRow[]).map((row) => row.created_at).filter((value): value is string => Boolean(value))
@@ -27,14 +27,19 @@ async function createdAtFromTaggedTransactions(userId: string, tag: "atajo" | "m
 
 /** Fechas de conexión o uso ya existentes: tokens MCP, claves del Atajo, grants OAuth y movimientos etiquetados. */
 export async function loadConnectorEvidenceCreatedAt(userId: string): Promise<string[]> {
-  const [mcp, api, grants, atajo, mcpTx] = await Promise.all([
+  const settled = await Promise.allSettled([
     createdAtFrom("mcp_tokens", userId),
     createdAtFrom("api_tokens", userId),
     createdAtFrom("oauth_grants", userId),
     createdAtFromTaggedTransactions(userId, "atajo"),
     createdAtFromTaggedTransactions(userId, "mcp"),
   ])
-  return [...mcp, ...api, ...grants, ...atajo, ...mcpTx]
+  const dates: string[] = []
+  for (const result of settled) {
+    if (result.status === "fulfilled") dates.push(...result.value)
+    else console.warn("[connectors] evidencia:", result.reason instanceof Error ? result.reason.message : result.reason)
+  }
+  return dates
 }
 
 export async function userCanUseConnectors(userId: string): Promise<boolean> {

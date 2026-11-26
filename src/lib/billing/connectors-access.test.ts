@@ -4,6 +4,7 @@ import {
   canUseConnectors,
   hasLegacyConnectorEvidence,
   hasProConnectorPlan,
+  jsonArrayContains,
 } from "./connectors-access"
 
 const beforeCutoff = "2026-11-26T16:59:59.999Z"
@@ -29,6 +30,11 @@ describe("acceso al MCP y al Atajo", () => {
     expect(hasLegacyConnectorEvidence([afterCutoff, beforeCutoff])).toBe(true)
     expect(hasLegacyConnectorEvidence([null, "", undefined])).toBe(false)
     expect(hasLegacyConnectorEvidence([])).toBe(false)
+  })
+
+  it("serializa el filtro jsonb de etiquetas como array JSON", () => {
+    expect(jsonArrayContains("atajo")).toBe("[\"atajo\"]")
+    expect(jsonArrayContains("mcp")).toBe("[\"mcp\"]")
   })
 
   it("con los pagos apagados no limita a nadie", () => {
