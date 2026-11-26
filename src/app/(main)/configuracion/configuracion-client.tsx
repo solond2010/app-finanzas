@@ -19,6 +19,7 @@ import { AccountSettings } from "@/components/settings/account-settings"
 import { FeedbackCard } from "@/components/settings/feedback-card"
 import { DeleteAccountCard } from "@/components/settings/delete-account-card"
 import { PlanCard } from "@/components/settings/plan-card"
+import { McpConnectCard } from "@/components/settings/mcp-connect-card"
 import { CategoryIcon } from "@/components/icons/category-icon"
 import { CategoryIconPicker } from "@/components/categories/category-icon-picker"
 import { DemoLockedCard } from "@/components/demo/demo-locked-card"
@@ -295,6 +296,9 @@ export default function ConfiguracionPage({ adminSettings = null }: { adminSetti
           {demo
             ? <DemoLockedCard title="Atajo de iPhone" text="Con tu cuenta puedes apuntar un gasto desde el iPhone en dos toques, sin abrir la app." />
             : <AccountSettings part="atajos" />}
+          {demo
+            ? <DemoLockedCard title="Conectar con ChatGPT/Claude" text="Con tu cuenta podrás apuntar gastos e ingresos desde un chat, y se verán en tu cuenta." />
+            : <McpConnectCard />}
         </div>
         <div className="flex min-w-0 flex-col gap-6">
         {demo && <DemoLockedCard title="Exportar datos y copias" text="Con tu cuenta puedes descargar todos tus movimientos (CSV) y una copia completa de tus datos, guardados en la nube." />}
