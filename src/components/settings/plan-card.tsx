@@ -9,6 +9,7 @@ import type { PublicLifetimeOffer } from "@/lib/billing/black-friday"
 import { PRICES_EUR, isLifetimeAccess, type CheckoutOption, type Entitlements, type Plan } from "@/lib/billing/plans"
 import { MONTHLY_NOTE_WITHOUT_TRIAL, MONTHLY_TRIAL_BADGE, monthlyTrialNote, monthlyTrialPriceLabel } from "@/lib/billing/monthly-trial"
 import { formatProUntil } from "@/lib/billing/portal-policy"
+import { persistPromoCode, readStoredPromoCode } from "@/components/billing/lifetime-promo-cta"
 import { cn } from "@/lib/utils"
 
 type PlanInfo = {
@@ -77,6 +78,7 @@ function renewsOn(value: string) {
 export function PlanCard() {
   const [info, setInfo] = useState<PlanInfo | null>(null)
   const [busy, setBusy] = useState<Busy>(null)
+  const [promoCode, setPromoCode] = useState("")
   const { toast } = useToast()
 
   useEffect(() => {
@@ -88,12 +90,17 @@ export function PlanCard() {
     return () => { alive = false }
   }, [])
 
+  useEffect(() => {
+    setPromoCode(readStoredPromoCode())
+  }, [])
+
   if (!info) return null
 
   async function buy(option: CheckoutOption) {
     setBusy(option)
     try {
-      const res = await fetch("/api/billing/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ option }) })
+      if (option === "pro_lifetime") persistPromoCode(promoCode)
+      const res = await fetch("/api/billing/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(option === "pro_lifetime" ? { option, codigo: promoCode } : { option }) })
       const body = await res.json().catch(() => null)
       if (res.ok && typeof body?.url === "string") { window.location.href = body.url; return }
       toast(body?.error ?? "No se pudo abrir el pago", "error")
@@ -201,7 +208,19 @@ export function PlanCard() {
                 )}
                 <p className="mt-1 text-xs text-muted-foreground">Pagas una vez. Pro para siempre.</p>
                 <div className="mt-3 grow"><FeatureList items={PRO_FEATURES} /></div>
-                <Button className="mt-4 w-full" variant="outline" disabled={!!busy} onClick={() => buy("pro_lifetime")}>{busy === "pro_lifetime" ? "Abriendo…" : "Pagar una vez"}</Button>
+                <label className="mt-4 block text-xs font-medium leading-5 text-muted-foreground">
+                  ¿Tienes un código?
+                  <input
+                    type="text"
+                    name="codigo"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={promoCode}
+                    onChange={(event) => setPromoCode(event.target.value)}
+                    className="mt-1.5 min-h-10 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
+                  />
+                </label>
+                <Button className="mt-3 w-full" variant="outline" disabled={!!busy} onClick={() => buy("pro_lifetime")}>{busy === "pro_lifetime" ? "Abriendo…" : "Pagar una vez"}</Button>
               </div>
             </div>
           </>

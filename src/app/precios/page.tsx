@@ -13,6 +13,7 @@ import {
   pricingStartHref,
   type PricingFeature,
 } from "@/lib/billing/pricing-page"
+import { LifetimePromoCta } from "@/components/billing/lifetime-promo-cta"
 
 const TITLE = "Precios · Garra"
 const DESCRIPTION = "Empieza gratis. Pasa a Pro cuando quieras cuentas ilimitadas, inversiones, historial y exportación."
@@ -101,7 +102,7 @@ export default async function PreciosPage() {
             offerNote={catalog.lifetimeOffer?.notice}
             note="Pagas una vez. Pro para siempre."
             features={catalog.proFeatures}
-            cta={<Link href={proHref} className={OUTLINE}>Hazte Pro</Link>}
+            cta={<LifetimePromoCta signedIn={signedIn} href={proHref} className={OUTLINE} />}
           />
         </section>
 

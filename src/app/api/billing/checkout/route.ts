@@ -1,6 +1,6 @@
 import { getDataContext, unauthorizedResponse } from "@/lib/server/request-context"
 import { json, readJson, siteOrigin } from "@/lib/server/auth-helpers"
-import { checkoutCouponParams } from "@/lib/billing/black-friday"
+import { checkoutPromoCouponParams } from "@/lib/billing/tigredirecto"
 import { decideCheckout } from "@/lib/billing/checkout-policy"
 import { monthlySubscriptionCheckoutParams, shouldOfferMonthlyTrial } from "@/lib/billing/monthly-trial"
 import { customerHasSubscriptionHistory, getUserPlanRow, paymentsEnabled, priceIdFor, stripeKey, stripeRequest } from "@/lib/server/billing"
@@ -19,6 +19,9 @@ export async function POST(request: Request) {
   const decision = decideCheckout({ authenticated: true, body, currentPlan: row?.plan ?? "free" })
   if (!decision.ok) return json({ error: decision.error }, decision.status)
 
+  const promo = checkoutPromoCouponParams(decision.option, body && typeof body === "object" ? (body as { codigo?: unknown; code?: unknown }).codigo ?? (body as { code?: unknown }).code : undefined)
+  if (!promo.ok) return json({ error: promo.error }, 400)
+
   const origin = siteOrigin(request)
   const subscription = decision.option === "pro_monthly"
   const params: Record<string, string> = {
@@ -31,7 +34,7 @@ export async function POST(request: Request) {
     "metadata[user_id]": ctx.userId,
     "metadata[option]": decision.option,
     locale: "es",
-    ...checkoutCouponParams(decision.option),
+    ...promo.params,
   }
   if (row?.stripe_customer_id) params.customer = row.stripe_customer_id
   else if (ctx.email) params.customer_email = ctx.email
