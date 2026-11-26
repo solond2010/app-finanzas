@@ -12,6 +12,7 @@ import {
   toolResultText,
   type McpStore,
 } from "@/lib/mcp/tools"
+import { getMonthlySummaryTool } from "@/lib/mcp/monthly-summary-tool"
 
 export type McpUserResolver = (token: string) => Promise<{ userId: string } | null>
 
@@ -80,8 +81,23 @@ export function createGarraMcpHandler(store: McpStore, resolveUser: McpUserResol
         },
         async (args, ctx) => jsonResult(toolResultText(await addTransactionTool(store, userIdFrom(ctx), args))),
       )
+
+      server.registerTool(
+        "get_monthly_summary",
+        {
+          title: "Resumen del mes",
+          description: "Resumen de solo lectura: ingresos y gastos del mes, desglose por categoría y comparación con el mes anterior. El mes es YYYY-MM; si no se indica, se usa el mes actual en Europe/Madrid. No escribe nada.",
+          inputSchema: z.object({
+            month: z.string().regex(/^\d{4}-\d{2}$/).optional().describe("Mes YYYY-MM; por defecto el mes actual en Europe/Madrid"),
+          }),
+        },
+        async (args, ctx) => jsonResult(toolResultText(await getMonthlySummaryTool(store, userIdFrom(ctx), args))),
+      )
     },
-    { serverInfo: { name: "garra", version: "1.0.0" } },
+    {
+      serverInfo: { name: "Garra", version: "1.0.0" },
+      instructions: "Garra es una app de finanzas personales. Usa get_monthly_summary para el resumen de un mes (por defecto el mes actual en Europe/Madrid). En ChatGPT, en cada chat nuevo actívalo con @Garra y un modelo que no sea Ligero.",
+    },
   )
 
   const verifyToken = async (_req: Request, bearerToken?: string): Promise<AuthInfo | undefined> => {

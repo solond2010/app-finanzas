@@ -52,6 +52,17 @@ function testStore(): McpStore & { accounts: McpAccount[]; transactions: McpTran
     async listRecentTransactions(_userId, limit) {
       return [...transactions].reverse().slice(0, limit)
     },
+    async listCashFlowTransactions() {
+      return transactions.map((row) => ({
+        id: row.id,
+        cuenta_id: row.cuenta_id,
+        monto: row.monto,
+        fecha: row.fecha,
+        tipo: row.tipo,
+        categoria: row.categoria,
+        tags: [],
+      }))
+    },
   }
 }
 
@@ -153,5 +164,28 @@ describe("endpoint MCP local (usuario de prueba, sin datos reales)", () => {
     expect(store.transactions).toHaveLength(1)
     expect(store.transactions[0].descripcion).toBe("Prueba local")
     expect(store.accounts[0].saldo).toBe(73.5)
+  })
+
+  it("lista las 5 herramientas, incluida get_monthly_summary, y se anuncia como Garra", async () => {
+    const init = await call(live, {
+      jsonrpc: "2.0",
+      id: 10,
+      method: "initialize",
+      params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "garra-test", version: "1.0" } },
+    })
+    expect(init.status).toBe(200)
+    const initBody = await parseMcpResponse(init)
+    const info = JSON.stringify(initBody)
+    expect(info).toContain("Garra")
+
+    const listed = await call(live, { jsonrpc: "2.0", id: 11, method: "tools/list", params: {} })
+    expect(listed.status).toBe(200)
+    const body = await parseMcpResponse(listed)
+    const names = JSON.stringify(body)
+    for (const tool of ["list_accounts", "list_categories", "list_recent_transactions", "add_transaction", "get_monthly_summary"]) {
+      expect(names).toContain(tool)
+    }
+    const matches = names.match(/"name":"(list_accounts|list_categories|list_recent_transactions|add_transaction|get_monthly_summary)"/g) ?? []
+    expect(new Set(matches).size).toBe(5)
   })
 })

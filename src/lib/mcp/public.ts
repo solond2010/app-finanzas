@@ -10,7 +10,7 @@ export const MCP_OAUTH_CONNECTORS_PUBLIC = true
 export const MCP_OAUTH_CONNECTOR_STEPS = [
   {
     title: "ChatGPT",
-    text: "En ChatGPT, ve a Ajustes › Conectores (activa el modo desarrollador si hace falta) y añade un conector MCP con la URL https://www.migarra.app/api/mcp. Pulsa Conectar e inicia sesión en Garra para autorizarlo.",
+    text: "En la web de ChatGPT (no en el móvil), elige un modelo que no sea Ligero. Ve a Complementos (chatgpt.com/plugins), pulsa + y añade un servidor MCP personalizado llamado «Garra» con la URL https://www.migarra.app/api/mcp. Inicia sesión en Garra con OAuth y autoriza. En cada chat nuevo, escribe @Garra para activarlo y entonces pregunta.",
   },
   {
     title: "Claude.ai",

@@ -68,6 +68,17 @@ function memoryStore(init?: { accounts?: McpAccount[]; categories?: McpCategory[
     async listRecentTransactions(_userId, limit) {
       return [...transactions].reverse().slice(0, limit)
     },
+    async listCashFlowTransactions() {
+      return transactions.map((row) => ({
+        id: row.id,
+        cuenta_id: row.cuenta_id,
+        monto: row.monto,
+        fecha: row.fecha,
+        tipo: row.tipo,
+        categoria: row.categoria,
+        tags: [],
+      }))
+    },
   }
   return store
 }
