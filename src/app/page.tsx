@@ -4,11 +4,16 @@ import Link from "next/link"
 import { CalendarDots, CaretDown, ChartPieSlice, DeviceMobile, Envelope, FileArrowUp, PiggyBank, PlayCircle, Scales, ShieldCheck, Sparkle } from "@phosphor-icons/react/dist/ssr"
 import { GarraMark } from "@/components/brand/garra-logo"
 import { RecoveryHashRedirect } from "@/components/auth/recovery-hash-redirect"
+import { publicLifetimeOffer } from "@/lib/billing/black-friday"
+import { PRICES_EUR } from "@/lib/billing/plans"
+import { formatPriceEur } from "@/lib/billing/pricing-page"
 
 // Portada pública (sin sesión). Con sesión, src/proxy.ts manda directo a
 // /dashboard antes de renderizar nada, así que no hay parpadeo.
 const TITLE = "Garra · Tus finanzas personales, claras y en un solo sitio"
-const DESCRIPTION = "Junta tus cuentas, gastos, inversiones, bienes y deudas para saber cuánto tienes de verdad. Gratis, sin conectar tu banco. Pruébala sin registrarte."
+const DESCRIPTION = "Junta tus cuentas, gastos, inversiones, bienes y deudas para saber cuánto tienes de verdad. Empieza gratis. Pro desde 1,99 €/mes. Pruébala sin registrarte."
+
+export const revalidate = 60
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -19,25 +24,32 @@ export const metadata: Metadata = {
 }
 
 const SIGNUP = "/login?modo=registro"
-const FEATURES = [
-  { icon: Scales, title: "Patrimonio completo", text: "Cuentas, inversiones, vivienda, coche y deudas como la hipoteca: tu patrimonio neto real en una cifra." },
-  { icon: ChartPieSlice, title: "Inversiones", text: "Fondos y acciones con su ganancia, tus aportaciones periódicas y en qué está invertido tu dinero." },
+type Feature = { icon: typeof Scales; title: string; text: string; pro?: boolean }
+const FEATURES: Feature[] = [
+  { icon: Scales, title: "Patrimonio completo", text: "Cuentas, vivienda, coche y deudas como la hipoteca: tu patrimonio neto real en una cifra." },
+  { icon: ChartPieSlice, title: "Inversiones", text: "Fondos y acciones con su ganancia, tus aportaciones periódicas y en qué está invertido tu dinero.", pro: true },
   { icon: CalendarDots, title: "Gastos fijos", text: "Alquiler, nómina, suscripciones y cuotas en una agenda que te avisa antes de cada pago." },
   { icon: FileArrowUp, title: "Importa del banco", text: "Sube el CSV de tu banco y elige qué movimientos guardar. El archivo se lee en tu dispositivo." },
-  { icon: DeviceMobile, title: "Atajo del iPhone", text: "Apunta un gasto en dos toques desde el iPhone, sin abrir la app." },
+  { icon: DeviceMobile, title: "Atajo del iPhone", text: "Apunta un gasto en dos toques desde el iPhone, sin abrir la app.", pro: true },
   { icon: ShieldCheck, title: "Privado por diseño", text: "No te pedimos las claves del banco, no vendemos datos y puedes ocultar las cifras con un toque." },
+  { icon: ChartPieSlice, title: "Historial de patrimonio", text: "Mira cómo evoluciona tu patrimonio en el tiempo, no solo la cifra de hoy.", pro: true },
+  { icon: FileArrowUp, title: "Exportación", text: "Descarga una copia de tus datos desde Configuración cuando la necesites.", pro: true },
 ]
 const STEPS = [
-  { title: "Crea tu cuenta", text: "Solo necesitas un email. Gratis." },
+  { title: "Crea tu cuenta", text: "Regístrate con tu email y empieza en el plan gratis." },
   { title: "Añade tus cuentas", text: "Pon el saldo de cada una o importa los movimientos del banco en CSV." },
-  { title: "Apunta y revisa", text: "Apunta gastos desde el móvil o el atajo del iPhone y mira cómo vas cada mes." },
+  { title: "Apunta y revisa", text: "Apunta gastos desde el móvil y mira cómo vas cada mes." },
 ]
-const FAQ = [
-  { q: "¿Es gratis?", a: "Sí. Puedes crear tu cuenta y usar Garra sin pagar. Si algún día hay funciones de pago, te lo diremos antes y lo que ya usas seguirá funcionando." },
-  { q: "¿Mis datos están seguros?", a: "Tus datos se guardan en servidores de la Unión Europea y solo tu cuenta puede verlos. Garra no se conecta a tu banco ni te pide sus claves. Puedes exportarlo todo o borrar tu cuenta cuando quieras." },
-  { q: "¿Funciona en el móvil?", a: "Sí. Garra está pensada para el móvil y el ordenador, y puedes añadirla a la pantalla de inicio como una app." },
-  { q: "¿Puedo probarla sin registrarme?", a: "Sí: la demo usa datos ficticios, puedes tocarlo todo y nada se guarda." },
-]
+
+function gratisFaqAnswer(now: Date | number = Date.now()) {
+  const monthly = formatPriceEur(PRICES_EUR.pro_monthly)
+  const lifetime = formatPriceEur(PRICES_EUR.pro_lifetime)
+  const offer = publicLifetimeOffer(now)
+  const proPrice = offer
+    ? monthly + "/mes o " + formatPriceEur(offer.salePrice) + " de por vida (oferta Black Friday; el precio habitual es " + lifetime + ")"
+    : monthly + "/mes o " + lifetime + " de por vida"
+  return "Sí. El plan gratis incluye cuentas, importar CSV y la puntuación financiera, con límites. Pro cuesta " + proPrice + ", con inversiones, historial, exportación, MCP y Atajo de iPhone."
+}
 
 const BTN = "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-[15px] font-bold transition-[filter,transform] active:scale-[0.98]"
 const PRI = `${BTN} bg-[#F5A524] text-[#0B0F14] shadow-[0_10px_30px_-10px_#F5A52499] hover:brightness-110`
@@ -70,12 +82,13 @@ export default function Landing() {
 
         <header className="grid items-center gap-10 pb-10 pt-6 lg:grid-cols-[1fr_1.1fr] lg:pt-14">
           <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F5A52440] bg-[#F5A5241a] px-3 py-1 text-[13px] font-bold text-[#F5A524]"><Sparkle weight="duotone" className="size-4" />Gratis · en beta</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F5A52440] bg-[#F5A5241a] px-3 py-1 text-[13px] font-bold text-[#F5A524]"><Sparkle weight="duotone" className="size-4" />Empieza gratis · Pro desde 1,99 €/mes</span>
             <h1 className="my-4 text-[2.4rem] font-extrabold leading-[1.05] tracking-tight sm:text-[3.5rem]">Todo tu dinero, <span className="text-[#F5A524]">claro</span> y en un solo sitio.</h1>
             <p className="max-w-[520px] text-[17px] text-[#C3CAD3] sm:text-[19px]">Garra junta tus cuentas, gastos, inversiones, bienes y deudas para que sepas cuánto tienes de verdad y a dónde va cada euro. Sin conectar tu banco.</p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Link href="/demo" className={PRI}><PlayCircle weight="duotone" className="size-5" />Probar la demo sin cuenta</Link>
               <Link href={SIGNUP} className={SEC}>Crear cuenta gratis</Link>
+              <Link href="/precios" className={SEC}>Ver precios</Link>
               <Link href="/login" className="inline-flex min-h-12 items-center justify-center px-2 text-[15px] font-semibold text-[#EEF1F4] underline-offset-4 hover:text-[#F5A524] hover:underline">Ya tengo cuenta</Link>
             </div>
             <p className="mt-3 text-[13px] text-[#8C96A3]">La demo usa datos ficticios: toca lo que quieras, nada se guarda.</p>
@@ -94,9 +107,12 @@ export default function Landing() {
           <h2 id="funciones" className="text-[1.75rem] font-extrabold tracking-tight sm:text-4xl">Lo que puedes hacer con Garra</h2>
           <p className="mb-7 mt-1 text-[17px] text-[#8C96A3]">Pensada para llevar tus finanzas personales sin hojas de cálculo.</p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, text }) => (
+            {FEATURES.map(({ icon: Icon, title, text, pro }) => (
               <div key={title} className={`${CARD} p-6`}>
-                <Icon weight="duotone" className="size-8 text-[#F5A524]" />
+                <div className="flex items-start justify-between gap-3">
+                  <Icon weight="duotone" className="size-8 text-[#F5A524]" />
+                  {pro ? <span className="rounded-full border border-[#F5A52455] bg-[#F5A5241a] px-2 py-0.5 text-[11px] font-bold text-[#F5A524]">Pro</span> : null}
+                </div>
                 <h3 className="mb-1.5 mt-3 text-lg font-bold">{title}</h3>
                 <p className="text-[15px] text-[#8C96A3]">{text}</p>
               </div>
@@ -148,10 +164,18 @@ export default function Landing() {
         <div className="mx-auto max-w-[820px] px-5">
           <h2 id="faq" className="text-[1.75rem] font-extrabold tracking-tight sm:text-4xl">Preguntas frecuentes</h2>
           <p className="mb-7 mt-1 text-[17px] text-[#8C96A3]">Lo que suele preguntar la gente antes de empezar.</p>
-          {FAQ.map((f) => (
+          {([
+            { q: "¿Es gratis?", a: gratisFaqAnswer(), link: true },
+            { q: "¿Mis datos están seguros?", a: "Tus datos se guardan en servidores de la Unión Europea y solo tu cuenta puede verlos. Garra no se conecta a tu banco ni te pide sus claves. En Pro puedes descargar una copia de tus datos. También puedes borrar tu cuenta cuando quieras." },
+            { q: "¿Funciona en el móvil?", a: "Sí. Garra está pensada para el móvil y el ordenador, y puedes añadirla a la pantalla de inicio como una app." },
+            { q: "¿Puedo probarla sin registrarme?", a: "Sí: la demo usa datos ficticios, puedes tocarlo todo y nada se guarda." },
+          ] as const).map((f) => (
             <details key={f.q} className={`${CARD} group mb-2.5 rounded-[14px] px-5 py-4`}>
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-bold [&::-webkit-details-marker]:hidden">{f.q}<CaretDown weight="bold" className="size-4 shrink-0 text-[#8C96A3] transition-transform group-open:rotate-180" /></summary>
-              <p className="mt-2.5 text-[#8C96A3]">{f.a}</p>
+              <p className="mt-2.5 text-[#8C96A3]">
+                {f.a}
+                {"link" in f && f.link ? <>{" "}<Link href="/precios" className="font-semibold text-[#F5A524] hover:underline">Ver planes en Precios</Link>.</> : null}
+              </p>
             </details>
           ))}
         </div>
@@ -179,6 +203,7 @@ export default function Landing() {
             <span>Contacto · <span className="font-semibold text-[#F5A524]">contacto@migarra.app</span></span>
           </a>
           <Link href="/precios" className="hover:text-[#EEF1F4]">Precios</Link>
+          <Link href="/mcp" className="hover:text-[#EEF1F4]">MCP</Link>
           <Link href="/privacidad" className="hover:text-[#EEF1F4]">Privacidad</Link>
           <Link href="/terminos" className="hover:text-[#EEF1F4]">Condiciones de uso</Link>
           <Link href="/login" className="hover:text-[#EEF1F4]">Entrar</Link>

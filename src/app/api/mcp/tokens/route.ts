@@ -1,8 +1,10 @@
 import { getDataContext, unauthorizedResponse } from "@/lib/server/request-context"
 import { json, readJson } from "@/lib/server/auth-helpers"
 import { isSupabaseAuthEnabled } from "@/lib/auth-mode"
+import { CONNECTORS_PRO_ERROR, CONNECTORS_PRO_HREF } from "@/lib/billing/connectors-access"
 import { countActiveMcpTokens, issueMcpToken, listActiveMcpTokens, revokeMcpToken } from "@/lib/mcp/auth"
 import { MAX_ACTIVE_MCP_TOKENS, MCP_TOKEN_DEFAULT_NAME } from "@/lib/mcp/public"
+import { userCanUseConnectors } from "@/lib/server/connectors-access"
 
 // Gestión de tokens MCP del usuario conectado. Exige sesión (no el Bearer
 // del propio MCP). El hash nunca se devuelve; el token en claro solo en POST.
@@ -16,8 +18,11 @@ export async function GET() {
   const ctx = await requireAccount()
   if (!ctx) return unauthorizedResponse()
   try {
-    const tokens = await listActiveMcpTokens(ctx.userId)
-    return json({ tokens })
+    const [tokens, access] = await Promise.all([
+      listActiveMcpTokens(ctx.userId),
+      userCanUseConnectors(ctx.userId),
+    ])
+    return json({ tokens, access })
   } catch {
     return json({ error: "No se pudieron cargar los tokens" }, 500)
   }
@@ -32,6 +37,9 @@ export async function POST(request: Request) {
     : MCP_TOKEN_DEFAULT_NAME
 
   try {
+    if (!(await userCanUseConnectors(ctx.userId))) {
+      return json({ error: CONNECTORS_PRO_ERROR, href: CONNECTORS_PRO_HREF }, 403)
+    }
     const active = await countActiveMcpTokens(ctx.userId)
     if (active >= MAX_ACTIVE_MCP_TOKENS) {
       return json({ error: `Máximo ${MAX_ACTIVE_MCP_TOKENS} tokens activos. Revoca alguno antes.` }, 400)

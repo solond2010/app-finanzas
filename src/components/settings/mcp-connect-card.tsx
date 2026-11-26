@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
 import { Copy, KeyRound } from "@/components/icons"
+import { ProOnlyNotice } from "@/components/billing/pro-only-notice"
 import {
   formatMcpTokenDate,
   MCP_ENDPOINT_URL,
@@ -37,6 +38,7 @@ export function McpConnectCardView({
   onRevoke,
   onRevokeGrant,
   onCopy,
+  access = true,
 }: {
   tokens: McpTokenItem[]
   grants?: McpGrantItem[]
@@ -49,6 +51,7 @@ export function McpConnectCardView({
   onRevoke?: (id: string) => void
   onRevokeGrant?: (id: string) => void
   onCopy?: (value: string, label: string) => void
+  access?: boolean
 }) {
   return (
     <Card id="mcp" className="scroll-mt-6 border border-border">
@@ -62,6 +65,9 @@ export function McpConnectCardView({
         <p className="text-xs leading-5 text-muted-foreground">
           Apunta gastos e ingresos desde un chat, y se verán en tu cuenta.
         </p>
+        {!access ? (
+          <ProOnlyNotice description="El MCP está en Pro. Si ya lo usabas en el plan gratis, lo conservas." />
+        ) : null}
 
         <div className="space-y-2 rounded-2xl bg-muted/30 p-3 ring-1 ring-border/20 sm:p-4">
           <p className="text-xs font-medium">URL del servidor</p>
@@ -124,15 +130,17 @@ export function McpConnectCardView({
           </div>
         ) : null}
 
-        <Button
-          type="button"
-          className="h-11 w-full rounded-xl sm:w-auto"
-          disabled={busy}
-          onClick={onGenerate}
-        >
-          <KeyRound className="mr-1.5 h-3.5 w-3.5" />
-          Generar token
-        </Button>
+        {access ? (
+          <Button
+            type="button"
+            className="h-11 w-full rounded-xl sm:w-auto"
+            disabled={busy}
+            onClick={onGenerate}
+          >
+            <KeyRound className="mr-1.5 h-3.5 w-3.5" />
+            Generar token
+          </Button>
+        ) : null}
 
         {tokensError ? (
           <p className="text-xs text-destructive">{tokensError}</p>
@@ -208,6 +216,7 @@ export function McpConnectCard() {
   const [tokensError, setTokensError] = useState<string | null>(null)
   const [newToken, setNewToken] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [access, setAccess] = useState(true)
 
   const loadTokens = useCallback(async () => {
     const [tokensRes, grantsRes] = await Promise.all([
@@ -222,6 +231,7 @@ export function McpConnectCard() {
     }
     setTokensError(null)
     setTokens(tokensBody.tokens ?? [])
+    setAccess(tokensBody.access !== false)
     setGrants(grantsRes.ok ? (grantsBody.grants ?? []) : [])
   }, [])
 
@@ -274,6 +284,7 @@ export function McpConnectCard() {
   return (
     <McpConnectCardView
       tokens={tokens}
+      access={access}
       grants={grants}
       tokensError={tokensError}
       newToken={newToken}

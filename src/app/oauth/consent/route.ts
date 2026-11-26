@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { getDataContext } from "@/lib/server/request-context"
 import { isSupabaseAuthEnabled } from "@/lib/auth-mode"
 import { getOauthService } from "@/lib/oauth/server"
+import { CONNECTORS_PRO_HREF } from "@/lib/billing/connectors-access"
+import { userCanUseConnectors } from "@/lib/server/connectors-access"
 
 export const dynamic = "force-dynamic"
 
@@ -16,6 +18,9 @@ export async function POST(request: Request) {
   const form = await request.formData()
   const pendingId = String(form.get("consent") ?? "")
   const allow = String(form.get("decision") ?? "") === "allow"
+  if (allow && !(await userCanUseConnectors(ctx.userId))) {
+    return NextResponse.redirect(new URL(CONNECTORS_PRO_HREF, request.url))
+  }
   if (!/^[0-9a-f-]{36}$/i.test(pendingId)) {
     return new NextResponse("La solicitud de consentimiento no es válida.", { status: 400 })
   }

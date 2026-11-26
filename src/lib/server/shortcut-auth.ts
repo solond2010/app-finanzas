@@ -4,6 +4,8 @@ import { supabaseServer } from "@/lib/supabase-server"
 import { timingSafeEqualString } from "@/lib/auth"
 import { LEGACY_USER_ID } from "@/lib/auth-mode"
 import { hashApiToken, looksLikeApiToken } from "@/lib/api-tokens"
+import { CONNECTORS_PRO_ERROR, CONNECTORS_PRO_HREF } from "@/lib/billing/connectors-access"
+import { userCanUseConnectors } from "@/lib/server/connectors-access"
 
 // ¿De quién es esta llamada de un Atajo de iPhone (o del script de copias)?
 //  1) Clave personal (fz_…) creada en Configuración → se busca su hash en
@@ -28,7 +30,14 @@ export async function resolveShortcutUser(request: Request): Promise<{ userId: s
 
   const legacySecret = process.env.SHORTCUTS_SECRET
   if (legacySecret && timingSafeEqualString(provided, legacySecret)) {
-    return { userId: process.env.SHORTCUTS_SECRET_USER_ID || LEGACY_USER_ID }
+    const userId = process.env.SHORTCUTS_SECRET_USER_ID || LEGACY_USER_ID
+    if (!(await userCanUseConnectors(userId))) {
+      return NextResponse.json(
+        { error: CONNECTORS_PRO_ERROR, href: CONNECTORS_PRO_HREF },
+        { status: 403, headers: { "Cache-Control": "no-store" } },
+      )
+    }
+    return { userId }
   }
 
   if (!looksLikeApiToken(provided)) return denied
@@ -41,6 +50,12 @@ export async function resolveShortcutUser(request: Request): Promise<{ userId: s
     .maybeSingle()
   if (error || !data) return denied
   const row = data as { id: string; user_id: string }
+  if (!(await userCanUseConnectors(row.user_id))) {
+    return NextResponse.json(
+      { error: CONNECTORS_PRO_ERROR, href: CONNECTORS_PRO_HREF },
+      { status: 403, headers: { "Cache-Control": "no-store" } },
+    )
+  }
   // Fecha de último uso: informativa, no bloquea la respuesta si falla.
   void supabaseServer.from("api_tokens").update({ last_used_at: new Date().toISOString() }).eq("id", row.id).then(() => {}, () => {})
   return { userId: row.user_id }

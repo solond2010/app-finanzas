@@ -4,6 +4,7 @@ import { publicLifetimeOffer } from "@/lib/billing/black-friday"
 import { entitlementsFor, isLifetimeAccess, PRICES_EUR } from "@/lib/billing/plans"
 import { canManageStripeSubscription } from "@/lib/billing/portal-policy"
 import { shouldOfferMonthlyTrial } from "@/lib/billing/monthly-trial"
+import { userCanUseConnectors } from "@/lib/server/connectors-access"
 import { ensureFirstFiftyGrant, getUserPlanRow, paymentsEnabled } from "@/lib/server/billing"
 
 export const dynamic = "force-dynamic"
@@ -32,6 +33,7 @@ export async function GET() {
       entitlements: entitlementsFor(plan, true, source),
       prices: PRICES_EUR,
       lifetimeOffer: publicLifetimeOffer(),
+      connectorsAccess: await userCanUseConnectors(ctx.userId),
     })
   } catch (error) {
     console.warn("[billing] plan:", error instanceof Error ? error.message : error)

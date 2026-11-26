@@ -6,6 +6,7 @@ const listActiveMcpTokens = vi.fn()
 const countActiveMcpTokens = vi.fn()
 const issueMcpToken = vi.fn()
 const revokeMcpToken = vi.fn()
+const userCanUseConnectors = vi.fn()
 
 vi.mock("@/lib/server/request-context", () => ({
   getDataContext: () => getDataContext(),
@@ -26,6 +27,10 @@ vi.mock("@/lib/mcp/auth", () => ({
   revokeMcpToken: (...args: unknown[]) => revokeMcpToken(...args),
 }))
 
+vi.mock("@/lib/server/connectors-access", () => ({
+  userCanUseConnectors: (...args: unknown[]) => userCanUseConnectors(...args),
+}))
+
 const USER = "00000000-0000-4000-8000-000000000001"
 const TOKEN_ID = "11111111-1111-4111-8111-111111111111"
 
@@ -38,6 +43,7 @@ describe("API /api/mcp/tokens (sesión, sin datos reales)", () => {
     vi.clearAllMocks()
     isSupabaseAuthEnabled.mockReturnValue(true)
     getDataContext.mockResolvedValue({ userId: USER, db: {}, email: "prueba@example.com" })
+    userCanUseConnectors.mockResolvedValue(true)
   })
 
   it("rechaza si no hay sesión o las cuentas no están activas", async () => {
@@ -57,6 +63,7 @@ describe("API /api/mcp/tokens (sesión, sin datos reales)", () => {
     expect(response.status).toBe(200)
     const json = await body(response)
     expect(json.tokens).toEqual([item])
+    expect(json.access).toBe(true)
     expect(JSON.stringify(json)).not.toMatch(/token_hash|grr_/)
     expect(listActiveMcpTokens).toHaveBeenCalledWith(USER)
   })
@@ -90,5 +97,16 @@ describe("API /api/mcp/tokens (sesión, sin datos reales)", () => {
     }))
     expect(revoked.status).toBe(200)
     expect(revokeMcpToken).toHaveBeenCalledWith(USER, TOKEN_ID)
+  })
+
+  it("rechaza crear un token si el plan gratis no conserva el MCP", async () => {
+    userCanUseConnectors.mockResolvedValue(false)
+    const { POST } = await import("./route")
+    const response = await POST(new Request("http://garra.test/api/mcp/tokens", { method: "POST", body: "{}" }))
+    expect(response.status).toBe(403)
+    const json = await body(response)
+    expect(json.error).toMatch(/Solo en Pro/)
+    expect(json.href).toBe("/precios")
+    expect(issueMcpToken).not.toHaveBeenCalled()
   })
 })

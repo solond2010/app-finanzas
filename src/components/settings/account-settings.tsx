@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
 import { Copy, Download, KeyRound, LogOut, Smartphone, Trash2, UserRound } from "@/components/icons"
 import { PasswordInput } from "@/components/ui/password-input"
+import { ProOnlyNotice } from "@/components/billing/pro-only-notice"
 
 type Me = { mode: "accounts" | "password"; userId: string; email: string | null }
 // Atajo compartido (firmado, sin claves): pide la clave la primera vez que se abre y la guarda en el iPhone (sin preguntas de importación: en iOS 27 «Añadir atajo» no responde si las hay).
@@ -34,6 +35,7 @@ export function AccountSettings({ part = "ambas" }: { part?: "cuenta" | "atajos"
   const [tokenName, setTokenName] = useState("")
   const [password, setPassword] = useState("")
   const [busy, setBusy] = useState(false)
+  const [access, setAccess] = useState(true)
 
   const loadTokens = useCallback(async () => {
     const res = await fetch("/api/tokens", { cache: "no-store" })
@@ -41,6 +43,7 @@ export function AccountSettings({ part = "ambas" }: { part?: "cuenta" | "atajos"
     if (!res.ok) { setTokensError(body?.error ?? "No se pudieron cargar las claves"); return }
     setTokensError(null)
     setTokens(body.tokens ?? [])
+    setAccess(body.access !== false)
   }, [])
 
   useEffect(() => {
@@ -129,6 +132,10 @@ export function AccountSettings({ part = "ambas" }: { part?: "cuenta" | "atajos"
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-xs text-muted-foreground">Apunta gastos, ingresos y traspasos desde el iPhone en dos toques, sin abrir Garra. Tus cuentas y categorías salen solas.</p>
+          {!access ? (
+            <ProOnlyNotice description="El Atajo de iPhone está en Pro. Si ya lo usabas en el plan gratis, lo conservas." />
+          ) : null}
+          {access ? <>
           <ol className="space-y-2">
             {SHORTCUT_STEPS.map((step, i) => (
               <li key={i} className="flex items-start gap-3 text-sm">
@@ -159,6 +166,7 @@ export function AccountSettings({ part = "ambas" }: { part?: "cuenta" | "atajos"
             <Input className="h-11" placeholder="Nombre (p. ej. Mi iPhone)" value={tokenName} maxLength={60} onChange={(e) => setTokenName(e.target.value)} />
             <Button className="h-11 rounded-xl" disabled={busy} onClick={createToken}><KeyRound className="mr-1.5 h-3.5 w-3.5" />Crear clave</Button>
           </div>
+          </> : null}
           {tokensError ? (
             <p className="text-xs text-destructive">{tokensError}</p>
           ) : tokens.length === 0 ? (

@@ -35,6 +35,16 @@ describe("tarjeta Conectar con ChatGPT/Claude", () => {
     expect(html).not.toContain("Próximamente")
   })
 
+  it("muestra el aviso suave Solo en Pro con enlace a /precios, sin el botón de generar token", () => {
+    const html = renderToStaticMarkup(
+      <McpConnectCardView tokens={[]} access={false} />,
+    )
+    expect(html).toContain("Solo en Pro")
+    expect(html).toContain("/precios")
+    expect(html).not.toContain("Generar token")
+    expect(html.toLowerCase()).not.toMatch(/moha|mohamed|amin/)
+  })
+
   it("enseña el token una sola vez, lista tokens y permite revocar conexiones OAuth", () => {
     const html = renderToStaticMarkup(
       <McpConnectCardView

@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next"
 
-const pages = ["/", "/login", "/precios", "/privacidad", "/terminos"] as const
+const pages = ["/", "/login", "/precios", "/mcp", "/privacidad", "/terminos"] as const
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return pages.map((path) => ({

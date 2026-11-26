@@ -7,8 +7,13 @@ export default function TerminosPage() {
   return (
     <LegalPage title="Condiciones de uso" intro="Al crear tu cuenta o usar Garra aceptas estas condiciones. Son cortas a propósito.">
       <section>
-        <h2>Garra está en beta</h2>
-        <p>Garra está en fase de pruebas y es <strong>gratis por ahora</strong>. Puede tener fallos, cambiar de aspecto o de funciones, o dejar de estar disponible en algún momento. Si algún día pasa a ser de pago, te avisaremos antes y podrás decidir.</p>
+        <h2>Planes y cobro</h2>
+        <p>Garra ofrece un plan <strong>gratis</strong> (con límites en cuentas, metas, CSV y puntuación) y un plan <strong>Pro</strong>, mensual o de por vida. Los precios vigentes están siempre en <a className="text-primary hover:underline" href="/precios">/precios</a>. El cobro lo procesa Stripe; Garra no guarda los datos de tu tarjeta.</p>
+        <p>El Pro mensual se puede cancelar cuando quieras: sigues con Pro hasta el final del periodo ya pagado o, si estás en el mes de prueba, no hay cobro si cancelas durante esa prueba. El Pro de por vida es un pago único. Si bajas a Gratis, tus datos se quedan; solo se limitan las funciones de Pro. Quien ya usaba el MCP o el Atajo de iPhone en Gratis los conserva.</p>
+      </section>
+      <section>
+        <h2>Garra sigue evolucionando</h2>
+        <p>Garra puede tener fallos, cambiar de aspecto o de funciones, o dejar de estar disponible en algún momento. Si cambia algo importante de las condiciones o de los planes, te lo diremos en la app.</p>
       </section>
       <section>
         <h2>No es asesoramiento financiero</h2>
