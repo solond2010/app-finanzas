@@ -14,8 +14,8 @@ export const BLACK_FRIDAY_OFF_EUR = 5
 
 export const BLACK_FRIDAY_NOTICE = "Oferta Black Friday · hasta el lunes 30 nov, 23:59"
 
-/** Viernes 27 nov 2026 00:00, hora de Madrid (UTC+1). */
-export const BLACK_FRIDAY_START_UTC = "2026-11-26T23:00:00.000Z"
+/** Jueves 26 nov 2026 21:00, hora de Madrid (UTC+1). */
+export const BLACK_FRIDAY_START_UTC = "2026-11-26T20:00:00.000Z"
 
 /** Fin exclusivo: martes 1 dic 2026 00:00, hora de Madrid. Incluye el lunes 30 nov 23:59. */
 export const BLACK_FRIDAY_END_UTC = "2026-11-30T23:00:00.000Z"

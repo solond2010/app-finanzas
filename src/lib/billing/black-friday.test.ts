@@ -55,6 +55,11 @@ describe("oferta Black Friday del vitalicio", () => {
     }
     expect(BLACK_FRIDAY_REDEEM_BY_UNIX).toBe(1_796_079_600)
     expect(new Date(BLACK_FRIDAY_REDEEM_BY_UNIX * 1000).toISOString()).toBe(BLACK_FRIDAY_END_UTC)
+    expect(BLACK_FRIDAY_START_UTC).toBe("2026-11-26T20:00:00.000Z")
+    expect(isBlackFridayLifetimeActive(new Date("2026-11-26T19:59:59.999Z"))).toBe(false)
+    expect(publicLifetimeOffer(new Date("2026-11-26T19:59:59.999Z"))).toBeNull()
+    expect(isBlackFridayLifetimeActive(new Date("2026-11-26T20:00:00.000Z"))).toBe(true)
+    expect(publicLifetimeOffer(new Date("2026-11-26T20:00:00.000Z"))?.salePrice).toBe(9.99)
   })
 
   it("el cupón no se mezcla con códigos de promoción en los parámetros de Checkout", () => {
