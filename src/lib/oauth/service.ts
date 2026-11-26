@@ -264,16 +264,18 @@ export function createOauthService(store: OauthStore, now: () => Date = () => ne
       })
     },
 
-    async resolveAccessToken(token: string) {
+    async resolveAccessToken(token: string, options?: { touchLastUsed?: boolean }) {
       if (!isOAuthAccessTokenFormat(token)) return null
       const row = await store.getAccessToken(hashOauthSecret(token))
       if (!row || row.revokedAt) return null
       if (isExpired(row.expiresAt, now())) return null
       const grant = await store.getGrant(row.grantId)
       if (!grant || grant.revokedAt) return null
-      const at = now().toISOString()
-      void store.touchAccessToken(row.id, at)
-      void store.touchGrant(row.grantId, at)
+      if (options?.touchLastUsed !== false) {
+        const at = now().toISOString()
+        void store.touchAccessToken(row.id, at)
+        void store.touchGrant(row.grantId, at)
+      }
       return { userId: row.userId, tokenId: row.id, grantId: row.grantId, clientId: row.clientId, scopes: [row.scope] }
     },
 

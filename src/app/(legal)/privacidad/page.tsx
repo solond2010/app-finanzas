@@ -23,6 +23,8 @@ export default function PrivacidadPage() {
       <section>
         <h2>Para qué los usamos</h2>
         <p>Solo para que la app funcione: mostrarte tus cuentas, gráficos y resúmenes, y mejorar Garra con tus comentarios. <strong>No vendemos tus datos, no los cedemos a terceros para publicidad y no usamos herramientas de analítica ni publicidad.</strong></p>
+        <p>Si te haces Pro, el cobro lo procesa <strong>Stripe</strong>, que actúa como encargado del pago. Garra no guarda los datos de tu tarjeta.</p>
+        <p>Si conectas el <strong>MCP</strong> (por ejemplo con ChatGPT o Claude), los datos que consultes o apuntes a través de esa conexión salen hacia ese servicio para poder atenderte. Tú decides cuándo conectar o revocar el acceso. Si ya lo usabas en el plan gratis, lo conservas.</p>
       </section>
       <section>
         <h2>Dónde se guardan</h2>
@@ -38,7 +40,7 @@ export default function PrivacidadPage() {
       </section>
       <section>
         <h2>Tus derechos</h2>
-        <p>Puedes <strong>acceder</strong> a tus datos, <strong>corregirlos</strong> o <strong>borrarlos</strong> cuando quieras. Casi todo lo puedes editar o eliminar desde la propia app, y también puedes descargar una copia desde Configuración. Para eliminar tu cuenta y todos tus datos, ve a Configuración → «Borrar mi cuenta»: antes puedes descargar una copia y el borrado es inmediato y definitivo. Si no puedes entrar, pídenoslo y lo haremos. También puedes reclamar ante la Agencia Española de Protección de Datos (aepd.es).</p>
+        <p>Puedes <strong>acceder</strong> a tus datos, <strong>corregirlos</strong> o <strong>borrarlos</strong> cuando quieras. Casi todo lo puedes editar o eliminar desde la propia app. La descarga de una copia desde Configuración es una función de <strong>Pro</strong>. Para eliminar tu cuenta y todos tus datos, ve a Configuración → «Borrar mi cuenta»: el borrado es inmediato y definitivo. Si no puedes entrar, pídenoslo y lo haremos. También puedes reclamar ante la Agencia Española de Protección de Datos (aepd.es).</p>
       </section>
       <section>
         <h2>Cuánto tiempo</h2>

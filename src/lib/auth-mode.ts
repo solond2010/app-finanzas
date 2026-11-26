@@ -38,6 +38,7 @@ export function isPublicAuthPath(pathname: string): boolean {
     pathname === "/privacidad" ||
     pathname === "/terminos" ||
     pathname === "/precios" ||
+    pathname === "/mcp" ||
     // Registro vive en /login?modo=registro; esta ruta redirige ahí.
     pathname === "/registro" ||
     // robots y sitemap deben ser públicos (si no, el proxy manda a /login).

@@ -22,6 +22,16 @@ export function pricingFeaturesFor(plan: "free" | "pro"): PricingFeature[] {
   return featuresFromEntitlements(entitlements)
 }
 
+/** En preview, permite simular la hora de /precios con ?ahora=ISO. En producción se ignora. */
+export function pricingNowFromPreviewQuery(env: NodeJS.ProcessEnv | { VERCEL_ENV?: string }, ahora: unknown): Date | undefined {
+  if (env.VERCEL_ENV !== "preview") return undefined
+  if (typeof ahora !== "string" || !ahora.trim()) return undefined
+  const t = Date.parse(ahora)
+  return Number.isFinite(t) ? new Date(t) : undefined
+}
+
+export const CONNECTORS_GRANDFATHER_NOTE = "Si ya usabas el MCP o el Atajo de iPhone en el plan gratis, los conservas."
+
 export function featuresFromEntitlements(entitlements: Entitlements): PricingFeature[] {
   return [
     {
@@ -48,6 +58,10 @@ export function featuresFromEntitlements(entitlements: Entitlements): PricingFea
       label: entitlements.export ? "Exportación" : "Sin exportación",
       included: entitlements.export,
     },
+    { label: "Importar CSV", included: true },
+    { label: entitlements.export ? "Puntuación financiera" : "Puntuación financiera (con límites)", included: true },
+    { label: "MCP (ChatGPT y Claude)", included: entitlements.export },
+    { label: "Atajo de iPhone", included: entitlements.export },
   ]
 }
 
@@ -112,6 +126,7 @@ export function pricingCatalog(options?: { offerMonthlyTrial?: boolean; now?: Da
     monthlyNote: offerMonthlyTrial ? monthlyTrialNote() : MONTHLY_NOTE_WITHOUT_TRIAL,
     freeFeatures: featuresFromEntitlements(free),
     proFeatures: featuresFromEntitlements(pro),
+    connectorsNote: CONNECTORS_GRANDFATHER_NOTE,
     faq: pricingFaqItems(free, offerMonthlyTrial),
   }
 }

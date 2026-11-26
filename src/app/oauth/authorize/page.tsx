@@ -7,6 +7,8 @@ import { safeNextPath } from "@/lib/auth-redirect"
 import { getOauthService } from "@/lib/oauth/server"
 import { GarraLogo } from "@/components/brand/garra-logo"
 import { OauthConsentForm } from "@/components/oauth/consent-form"
+import { CONNECTORS_PRO_ERROR, CONNECTORS_PRO_HREF, CONNECTORS_PRO_NOTICE } from "@/lib/billing/connectors-access"
+import { userCanUseConnectors } from "@/lib/server/connectors-access"
 
 export const dynamic = "force-dynamic"
 
@@ -32,6 +34,16 @@ export default async function OauthAuthorizePage({
   const ctx = await getDataContext()
   if (!ctx) {
     redirect(`/login?redirect=${encodeURIComponent(returnTo)}`)
+  }
+
+  if (!(await userCanUseConnectors(ctx.userId))) {
+    return (
+      <ConsentShell>
+        <h1 className="font-heading text-lg font-semibold">{CONNECTORS_PRO_NOTICE}</h1>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">{CONNECTORS_PRO_ERROR}</p>
+        <Link href={CONNECTORS_PRO_HREF} className="mt-6 inline-flex text-sm font-medium underline underline-offset-2">Ver planes en Precios</Link>
+      </ConsentShell>
+    )
   }
 
   const started = await getOauthService().startAuthorization(ctx.userId, query)

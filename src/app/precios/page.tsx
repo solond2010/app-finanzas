@@ -9,6 +9,7 @@ import { getUserPlanRow } from "@/lib/server/billing"
 import { shouldOfferMonthlyTrial } from "@/lib/billing/monthly-trial"
 import {
   pricingCatalog,
+  pricingNowFromPreviewQuery,
   pricingProHref,
   pricingStartHref,
   type PricingFeature,
@@ -16,14 +17,16 @@ import {
 import { LifetimePromoCta } from "@/components/billing/lifetime-promo-cta"
 
 const TITLE = "Precios · Garra"
-const DESCRIPTION = "Empieza gratis. Pasa a Pro cuando quieras cuentas ilimitadas, inversiones, historial y exportación."
+const DESCRIPTION = "Empieza gratis. Pasa a Pro cuando quieras cuentas ilimitadas, MCP, Atajo de iPhone, inversiones, historial y exportación."
+const OG_IMAGE = "https://www.migarra.app/opengraph-image.png"
 const SIGNUP = "/login?modo=registro"
 
 export const metadata: Metadata = {
   title: "Precios",
   description: DESCRIPTION,
   alternates: { canonical: "https://www.migarra.app/precios" },
-  openGraph: { type: "website", url: "https://www.migarra.app/precios", siteName: "Garra", title: TITLE, description: DESCRIPTION, locale: "es_ES" },
+  openGraph: { type: "website", url: "https://www.migarra.app/precios", siteName: "Garra", title: TITLE, description: DESCRIPTION, locale: "es_ES", images: [{ url: OG_IMAGE }] },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: [OG_IMAGE] },
 }
 
 export const dynamic = "force-dynamic"
@@ -47,9 +50,16 @@ async function pricingViewer(): Promise<{ signedIn: boolean; offerMonthlyTrial: 
   }
 }
 
-export default async function PreciosPage() {
+export default async function PreciosPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const raw = await searchParams
+  const ahora = Array.isArray(raw.ahora) ? raw.ahora[0] : raw.ahora
+  const now = pricingNowFromPreviewQuery(process.env, ahora)
   const { signedIn, offerMonthlyTrial } = await pricingViewer()
-  const catalog = pricingCatalog({ offerMonthlyTrial })
+  const catalog = pricingCatalog({ offerMonthlyTrial, now })
   const startHref = pricingStartHref(signedIn)
   const proHref = pricingProHref(signedIn)
 
@@ -106,6 +116,8 @@ export default async function PreciosPage() {
           />
         </section>
 
+        <p className="mx-auto max-w-2xl pb-2 text-center text-sm leading-6 text-[#8C96A3]">{catalog.connectorsNote} Más detalles en <Link href="/mcp" className="font-semibold text-[#F5A524] hover:underline">/mcp</Link>.</p>
+
         <section className="mx-auto max-w-[720px] pb-2 pt-7">
           <h2 className="mb-3.5 text-center font-heading text-[1.35rem] font-extrabold tracking-tight">Preguntas frecuentes</h2>
           {catalog.faq.map((item, index) => (
@@ -134,6 +146,7 @@ export default async function PreciosPage() {
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#232B36] pb-10 pt-6 text-sm text-[#8C96A3]">
           <span className="flex items-center gap-2 font-semibold"><GarraMark className="size-6" />Garra · migarra.app</span>
           <nav className="flex flex-wrap items-center gap-5" aria-label="Legal">
+            <Link href="/mcp" className="hover:text-[#EEF1F4]">MCP</Link>
             <Link href="/privacidad" className="hover:text-[#EEF1F4]">Privacidad</Link>
             <Link href="/terminos" className="hover:text-[#EEF1F4]">Condiciones de uso</Link>
             <Link href="/login" className="hover:text-[#EEF1F4]">Entrar</Link>

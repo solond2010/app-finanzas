@@ -1,6 +1,8 @@
 import { getDataContext, unauthorizedResponse } from "@/lib/server/request-context"
 import { json, readJson } from "@/lib/server/auth-helpers"
 import { generateApiToken, hashApiToken, tokenDisplayPrefix } from "@/lib/api-tokens"
+import { CONNECTORS_PRO_ERROR, CONNECTORS_PRO_HREF } from "@/lib/billing/connectors-access"
+import { userCanUseConnectors } from "@/lib/server/connectors-access"
 
 // Claves personales para los Atajos de iPhone del usuario conectado.
 // GET lista (sin la clave), POST crea (la clave se devuelve UNA sola vez),
@@ -17,7 +19,8 @@ export async function GET() {
     .is("revoked_at", null)
     .order("created_at", { ascending: false })
   if (error) return json({ error: "Las claves aún no están disponibles (falta activar las cuentas)" }, 503)
-  return json({ tokens: data ?? [] })
+  const access = await userCanUseConnectors(ctx.userId)
+  return json({ tokens: data ?? [], access })
 }
 
 export async function POST(request: Request) {
@@ -25,6 +28,10 @@ export async function POST(request: Request) {
   if (!ctx) return unauthorizedResponse()
   const body = await readJson(request)
   const name = typeof body?.name === "string" && body.name.trim() ? body.name.trim().slice(0, 60) : "Atajo de iPhone"
+
+  if (!(await userCanUseConnectors(ctx.userId))) {
+    return json({ error: CONNECTORS_PRO_ERROR, href: CONNECTORS_PRO_HREF }, 403)
+  }
 
   const { count, error: countError } = await ctx.db
     .from("api_tokens")

@@ -113,6 +113,11 @@ async function passwordProxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Mismas páginas públicas que en modo cuentas: /precios, /mcp, legales, etc.
+  if (isPublicAuthPath(request.nextUrl.pathname)) {
+    return NextResponse.next()
+  }
+
   if (!authed) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("redirect", request.nextUrl.pathname)

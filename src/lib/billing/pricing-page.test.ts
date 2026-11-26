@@ -5,6 +5,7 @@ import {
   formatPriceEur,
   pricingCatalog,
   pricingFeaturesFor,
+  pricingNowFromPreviewQuery,
   pricingProHref,
   pricingStartHref,
 } from "./pricing-page"
@@ -30,6 +31,13 @@ describe("página de precios", () => {
     expect(proFeatures.some((item) => item.included && item.label === "Cuentas ilimitadas")).toBe(true)
     expect(proFeatures.some((item) => item.included && item.label === "Inversiones")).toBe(true)
     expect(proFeatures.some((item) => item.included && item.label === "Exportación")).toBe(true)
+    expect(freeFeatures.some((item) => item.included && item.label === "Importar CSV")).toBe(true)
+    expect(freeFeatures.some((item) => item.included && item.label.includes("Puntuación financiera"))).toBe(true)
+    expect(freeFeatures.some((item) => !item.included && item.label === "MCP (ChatGPT y Claude)")).toBe(true)
+    expect(freeFeatures.some((item) => !item.included && item.label === "Atajo de iPhone")).toBe(true)
+    expect(proFeatures.some((item) => item.included && item.label === "MCP (ChatGPT y Claude)")).toBe(true)
+    expect(proFeatures.some((item) => item.included && item.label === "Atajo de iPhone")).toBe(true)
+    expect(pricingCatalog().connectorsNote).toMatch(/conservas/)
     expect(pricingCatalog().faq.some((item) => item.a.includes(String(free.maxAccounts)))).toBe(true)
     expect(pricingCatalog().faq.some((item) => item.a.includes(String(free.maxGoals)))).toBe(true)
     expect(pricingCatalog().offerMonthlyTrial).toBe(true)
@@ -74,5 +82,18 @@ describe("página de precios", () => {
     expect(justBefore2100.lifetimePrice).toBe(formatPriceEur(PRICES_EUR.pro_lifetime))
     const at2100 = pricingCatalog({ now: new Date("2026-11-26T20:00:00.000Z") })
     expect(at2100.lifetimeSalePrice).toBe(formatPriceEur(9.99))
+    expect(at2100.lifetimePrice).toBe(formatPriceEur(PRICES_EUR.pro_lifetime))
+  })
+})
+
+describe("hora simulada de /precios en preview", () => {
+  it("solo admite ?ahora= en preview y no cambia la ventana del Black Friday", () => {
+    const atStart = "2026-11-26T20:00:00.000Z"
+    expect(pricingNowFromPreviewQuery({ VERCEL_ENV: "production" }, atStart)).toBeUndefined()
+    expect(pricingNowFromPreviewQuery({ VERCEL_ENV: "preview" }, atStart)?.toISOString()).toBe(atStart)
+    expect(pricingNowFromPreviewQuery({ VERCEL_ENV: "preview" }, "no-es-una-fecha")).toBeUndefined()
+    const catalog = pricingCatalog({ now: pricingNowFromPreviewQuery({ VERCEL_ENV: "preview" }, atStart) })
+    expect(catalog.lifetimePrice).toBe(formatPriceEur(PRICES_EUR.pro_lifetime))
+    expect(catalog.lifetimeSalePrice).toBe(formatPriceEur(9.99))
   })
 })

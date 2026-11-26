@@ -1,7 +1,7 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
 
-export const LEGAL_UPDATED = "3 de noviembre de 2026"
+export const LEGAL_UPDATED = "26 de noviembre de 2026"
 
 /** Página legal sencilla: se lee igual con o sin sesión y en la demo. */
 export function LegalPage({ title, intro, children }: { title: string; intro: string; children: ReactNode }) {
