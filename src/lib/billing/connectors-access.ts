@@ -23,6 +23,11 @@ export function hasProConnectorPlan(
 }
 
 /** Hay rastro de uso o conexión anterior al corte (tokens, grants o movimientos). */
+/** Filtro PostgREST cs= para un array jsonb, p. ej. tags. */
+export function jsonArrayContains(value: string): string {
+  return JSON.stringify([value])
+}
+
 export function hasLegacyConnectorEvidence(
   createdAtList: Array<string | null | undefined>,
   cutoff: string | number = CONNECTORS_PRO_CUTOFF_UTC,

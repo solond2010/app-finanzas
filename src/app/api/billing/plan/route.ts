@@ -33,7 +33,10 @@ export async function GET() {
       entitlements: entitlementsFor(plan, true, source),
       prices: PRICES_EUR,
       lifetimeOffer: publicLifetimeOffer(),
-      connectorsAccess: await userCanUseConnectors(ctx.userId),
+      connectorsAccess: await userCanUseConnectors(ctx.userId).catch((error) => {
+        console.warn("[billing] connectorsAccess:", error instanceof Error ? error.message : error)
+        return false
+      }),
     })
   } catch (error) {
     console.warn("[billing] plan:", error instanceof Error ? error.message : error)
