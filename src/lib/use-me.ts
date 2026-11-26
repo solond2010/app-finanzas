@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 
-export type Me = { mode: "accounts" | "password"; userId: string; email: string | null; isAdmin?: boolean }
+export type Me = { mode: "accounts" | "password"; userId: string; email: string | null; name?: string | null; isAdmin?: boolean }
 
 // Una sola petición a /api/auth/me por carga de página, compartida por todos
 // los componentes que necesitan saber quién está conectado.

@@ -22,12 +22,17 @@ export type CashTx = {
 export type MonthlySummary = {
   year: number
   month: number
+  key: string
+  prevKey: string
   label: string
   heading: string
   expenses: number
   prevExpenses: number
   expensesDelta: number
   income: number
+  prevIncome: number
+  incomeDelta: number
+  incomeDeltaPct: number | null
   savings: number
   prevSavings: number
   savingsDelta: number
@@ -35,8 +40,16 @@ export type MonthlySummary = {
   prevNetWorth: number | null
   netWorthDelta: number | null
   improved: boolean
+  historyKeys: string[]
   expenseHistory: number[]
+  incomeHistory: number[]
   savingsHistory: number[]
+}
+
+/** Variación porcentual con un decimal. Si no hay base, null. */
+export function signedPercentDelta(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? 0 : null
+  return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10
 }
 
 function isIgnored(tx: CashTx): boolean {
@@ -118,12 +131,21 @@ export function buildMonthlySummary(input: {
   const expensesDelta = Math.round((cur.expenses - prev.expenses) * 100) / 100
   const savingsDelta = Math.round((cur.savings - prev.savings) * 100) / 100
   const improved = (netWorthDelta ?? 0) > 0 || cur.expenses < prev.expenses || cur.savings > prev.savings
+  const incomeHistory = historyKeys.map((k) => totalsFor(input.transactions, k, currencies).income)
+  const expenseHistory = historyKeys.map((k) => totalsFor(input.transactions, k, currencies).expenses)
+  const savingsHistory = historyKeys.map((k) => totalsFor(input.transactions, k, currencies).savings)
+  const incomeDelta = Math.round((cur.income - prev.income) * 100) / 100
   return {
     ...labelOf(key),
+    key,
+    prevKey,
     expenses: cur.expenses,
     prevExpenses: prev.expenses,
     expensesDelta,
     income: cur.income,
+    prevIncome: prev.income,
+    incomeDelta,
+    incomeDeltaPct: signedPercentDelta(cur.income, prev.income),
     savings: cur.savings,
     prevSavings: prev.savings,
     savingsDelta,
@@ -131,8 +153,10 @@ export function buildMonthlySummary(input: {
     prevNetWorth,
     netWorthDelta,
     improved,
-    expenseHistory: historyKeys.map((k) => totalsFor(input.transactions, k, currencies).expenses),
-    savingsHistory: historyKeys.map((k) => totalsFor(input.transactions, k, currencies).savings),
+    historyKeys,
+    expenseHistory,
+    incomeHistory,
+    savingsHistory,
   }
 }
 

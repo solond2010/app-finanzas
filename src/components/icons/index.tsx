@@ -88,6 +88,7 @@ import {
   ShieldCheck as PhShieldCheck,
   ShieldWarning as PhShieldWarning,
   SignOut as PhSignOut,
+  ShareNetwork as PhShareNetwork,
   SlidersHorizontal as PhSlidersHorizontal,
   Sparkle as PhSparkle,
   Stack as PhStack,
@@ -223,6 +224,7 @@ export const RotateCcw = makeIcon(PhArrowCounterClockwise, "regular", "RotateCcw
 export const Search = makeIcon(PhMagnifyingGlass, "regular", "Search")
 export const SearchX = makeIcon(PhMagnifyingGlassMinus, "duotone", "SearchX")
 export const Send = makeIcon(PhPaperPlaneTilt, "regular", "Send")
+export const Share = makeIcon(PhShareNetwork, "regular", "Share")
 export const ShieldAlert = makeIcon(PhShieldWarning, "duotone", "ShieldAlert")
 export const ShieldCheck = makeIcon(PhShieldCheck, "duotone", "ShieldCheck")
 export const SlidersHorizontal = makeIcon(PhSlidersHorizontal, "duotone", "SlidersHorizontal")

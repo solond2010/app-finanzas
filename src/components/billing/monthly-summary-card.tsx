@@ -15,6 +15,7 @@ import { localDateKey } from "@/lib/date-utils"
 import { useAssetsDebts } from "@/lib/use-assets-debts"
 import { useFinance } from "@/lib/store"
 import { cn } from "@/lib/utils"
+import { ShareMonthButton } from "@/components/billing/share-month-button"
 
 const eur = (n: number) => formatMoney(n, "EUR")
 
@@ -78,6 +79,7 @@ export function MonthlySummaryCard({ netWorthNow }: { netWorthNow: number }) {
               {moneyDelta(summary.netWorthDelta ?? 0)}
             </span>
           )}
+          <ShareMonthButton netWorthNow={netWorthNow} compact className="hidden min-[520px]:inline-flex" />
           <button
             type="button"
             onClick={dismiss}
@@ -111,6 +113,9 @@ export function MonthlySummaryCard({ netWorthNow }: { netWorthNow: number }) {
         <p className="text-[11px] text-muted-foreground">Gastos de los últimos meses</p>
         <Spark values={summary.expenseHistory} tone={summary.expensesDelta <= 0 ? "up" : "down"} />
         <TrendingUp className={cn("size-4", summary.improved ? "text-emerald-500" : "text-muted-foreground")} />
+      </div>
+      <div className="mt-4 min-[520px]:hidden">
+        <ShareMonthButton netWorthNow={netWorthNow} />
       </div>
     </section>
   )

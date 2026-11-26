@@ -51,6 +51,7 @@ import { CashflowComboChart, ImportantToday, TopTiles, type Insight } from "@/co
 import { OnboardingGuide } from "@/components/onboarding/onboarding-guide"
 import { CashflowDrilldown, CashflowHoverTooltip, type CashflowBucket } from "@/components/dashboard/cashflow-drilldown"
 import { MonthlySummaryCard } from "@/components/billing/monthly-summary-card"
+import { ShareMonthButton } from "@/components/billing/share-month-button"
 import { PaywallDialog } from "@/components/billing/paywall-preview"
 import { usePlan } from "@/lib/billing/use-plan"
 import { importantTodayKinds, PACE_BANNER_SETTING } from "@/lib/dashboard-banners"
@@ -1141,6 +1142,9 @@ function DashboardInner() {
             <Button onClick={handleExportDashboard} disabled={exportingPdf} variant="outline" className="w-full min-w-0 gap-1.5 whitespace-nowrap rounded-full px-3 text-xs sm:w-auto sm:flex-none sm:px-4 sm:text-sm" title="Incluye resumen, gráficos, cuentas, metas, presupuestos y movimientos del mes seleccionado.">
               <FileDown className="h-4 w-4" /> {exportingPdf ? "Generando…" : "Informe mensual PDF"}
             </Button>
+          )}
+          {hasAnyData && (
+            <ShareMonthButton netWorthNow={netWorthDisplay} />
           )}
         </div>
       </header>
