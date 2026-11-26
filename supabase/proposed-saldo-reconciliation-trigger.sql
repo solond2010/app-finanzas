@@ -1,0 +1,63 @@
+-- PROPUESTA. NO APLICAR en este cambio.
+-- Si se quiere que el saldo no pueda divergir ni aunque falle el código de la
+-- API, un trigger en la base de datos movería accounts.saldo en la misma
+-- transacción que cada INSERT/UPDATE/DELETE de movements.
+--
+-- Qué haría:
+--   * AFTER INSERT en public.transactions: saldo = saldo + signo(nuevo)
+--   * AFTER UPDATE: saldo de la cuenta antigua -= signo(viejo); saldo de la
+--     nueva += signo(nuevo). Si es la misma cuenta, aplica la diferencia.
+--   * AFTER DELETE: saldo = saldo - signo(borrado)
+--   * El cliente y las APIs dejarían de escribir accounts.saldo (salvo altas
+--     con 0). El trigger es la única vía.
+--
+-- Riesgos:
+--   * Hay que probarlo primero en un entorno de copia, nunca sobre las 8
+--     cuentas descuadradas actuales: el trigger no las corrige solo (no se
+--     dispara hasta el siguiente cambio).
+--   * Un backfill que reescriba movimientos antiguos volvería a mover el saldo;
+--     no se debe reimportar el historial con el trigger puesto.
+--   * Si en el futuro se insertan movimientos "fantasma" o de solo lectura,
+--     el trigger también los contaría.
+--
+-- Rollback (solo si un día se llegara a aplicar):
+--   drop trigger if exists trg_transactions_saldo on public.transactions;
+--   drop function if exists public.apply_transaction_saldo();
+--
+-- SQL ilustrativo (no ejecutar):
+--
+-- create or replace function public.apply_transaction_saldo()
+-- returns trigger
+-- language plpgsql
+-- as $$
+-- declare
+--   old_signed numeric;
+--   new_signed numeric;
+-- begin
+--   old_signed := case when tg_op = 'INSERT' then 0
+--                      when old.tipo = 'ingreso' then old.monto
+--                      else -old.monto end;
+--   new_signed := case when tg_op = 'DELETE' then 0
+--                      when new.tipo = 'ingreso' then new.monto
+--                      else -new.monto end;
+--   if tg_op = 'DELETE' or (tg_op = 'UPDATE' and old.cuenta_id is distinct from new.cuenta_id) then
+--     update public.accounts
+--        set saldo = round((saldo - old_signed)::numeric, 2)
+--      where id = old.cuenta_id and user_id = old.user_id;
+--   end if;
+--   if tg_op = 'INSERT' or (tg_op = 'UPDATE' and old.cuenta_id is distinct from new.cuenta_id) then
+--     update public.accounts
+--        set saldo = round((saldo + new_signed)::numeric, 2)
+--      where id = new.cuenta_id and user_id = new.user_id;
+--   elsif tg_op = 'UPDATE' then
+--     update public.accounts
+--        set saldo = round((saldo + (new_signed - old_signed))::numeric, 2)
+--      where id = new.cuenta_id and user_id = new.user_id;
+--   end if;
+--   return null;
+-- end;
+-- $$;
+--
+-- create trigger trg_transactions_saldo
+-- after insert or update or delete on public.transactions
+-- for each row execute function public.apply_transaction_saldo();

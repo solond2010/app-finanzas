@@ -6,8 +6,8 @@ import { canHaveAccounts, canHaveGoals, FREE_MAX_ACCOUNTS, FREE_MAX_GOALS, isPai
 import { getUserPlan, paymentsEnabled } from "@/lib/server/billing"
 import { upsertIgnoringUnknownColumns } from "@/lib/upsert-unknown-columns"
 import { prepareCategoryRowsForUpsert } from "@/lib/category-color"
-import { isPendingSaldoDelta, stripSaldoFromExistingAccounts } from "@/lib/saldo-sync"
-import { applyConditionalSaldoDeltas, classifyTransactionWrites, type ExistingTransaction } from "@/lib/server/saldo-delta"
+import { classifyTransactionWrites, type ExistingTransaction } from "@/lib/server/saldo-delta"
+import { accountsForSaldoSafeUpsert, applyComputedSaldoDeltas, netSaldoDeltasFromWrites, toLedgerTx } from "@/lib/server/saldo-write"
 
 // Únicas tablas a las que esta ruta puede dar acceso — evita que un valor de
 // [table] arbitrario llegue a supabase.from(). El navegador ya no tiene la
@@ -100,23 +100,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ tab
   }
 
   let outgoingRows = rows as Record<string, unknown>[]
-  if (table === "accounts" && payload?.preserve_existing_saldo === true) {
-    const ids = outgoingRows.map((row) => row.id).filter((id): id is string => typeof id === "string")
-    if (ids.length) {
-      const { data: existing, error: existingError } = await ctx.db.from("accounts").select("id").eq("user_id", ctx.userId).in("id", ids)
-      if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
-      outgoingRows = stripSaldoFromExistingAccounts(outgoingRows, new Set((existing ?? []).map((row: { id: string }) => row.id)))
-    }
+  // El saldo de una cuenta que ya existe no lo manda el cliente (ni un
+  // dispositivo desactualizado). Una cuenta nueva entra con saldo 0; el
+  // movimiento de apertura, si lo hay, lo sube por delta en el servidor.
+  if (table === "accounts") {
+    const { data: existing, error: existingError } = await ctx.db.from("accounts").select("id").eq("user_id", ctx.userId)
+    if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+    outgoingRows = accountsForSaldoSafeUpsert(
+      outgoingRows,
+      new Set((existing ?? []).map((row: { id: string }) => row.id)),
+    )
   }
 
-  const saldoDeltas = table === "transactions" && Array.isArray(payload?.saldo_deltas)
-    ? payload.saldo_deltas.filter(isPendingSaldoDelta)
-    : null
   const deleteIds = table === "transactions" && Array.isArray(payload?.delete_ids)
     ? payload.delete_ids.filter((id: unknown): id is string => typeof id === "string" && id.length > 0 && id.length <= 200)
     : []
 
-  if (table === "transactions" && (saldoDeltas || deleteIds.length)) {
+  if (table === "transactions") {
     const writeIds = outgoingRows.map((row) => row.id).filter((id): id is string => typeof id === "string")
     const lookupIds = [...new Set([...writeIds, ...deleteIds])]
     const existingById = new Map<string, ExistingTransaction>()
@@ -152,9 +152,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ tab
         actuallyDeleted.push(...deletable)
       }
     }
+    const existingLedger = [...existingById.values()].map((row) => ({
+      id: row.id,
+      cuenta_id: row.cuenta_id,
+      monto: Number(row.monto),
+      tipo: row.tipo,
+    }))
+    const incomingLedger = outgoingRows
+      .filter((row): row is Record<string, unknown> & { id: string } => typeof row.id === "string")
+      .map(toLedgerTx)
+      .filter((row): row is NonNullable<typeof row> => row !== null)
+    const computedDeltas = netSaldoDeltasFromWrites({ incoming: incomingLedger, existing: existingLedger, deletedIds: actuallyDeleted })
     try {
-      if (saldoDeltas?.length) {
-        await applyConditionalSaldoDeltas(ctx.db, ctx.userId, saldoDeltas, { inserted: happened.inserted, deleted: actuallyDeleted, updated: happened.updated })
+      if (computedDeltas.length) {
+        await applyComputedSaldoDeltas(ctx.db, ctx.userId, computedDeltas)
       }
     } catch (error) {
       if (happened.inserted.length) await ctx.db.from("transactions").delete().eq("user_id", ctx.userId).in("id", happened.inserted)
@@ -193,6 +204,54 @@ export async function POST(request: Request, { params }: { params: Promise<{ tab
   return NextResponse.json({ ok: true })
 }
 
+
+async function deleteTransactionsWithSaldo(
+  ctx: NonNullable<Awaited<ReturnType<typeof getDataContext>>>,
+  ids: string[],
+) {
+  const { data: existing, error: existingError } = await ctx.db
+    .from("transactions")
+    .select("id, cuenta_id, monto, tipo")
+    .eq("user_id", ctx.userId)
+    .in("id", ids)
+  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+  const rows = (existing ?? []) as ExistingTransaction[]
+  if (!rows.length) return NextResponse.json({ ok: true })
+  const existingLedger = rows.map((row) => ({
+    id: row.id,
+    cuenta_id: row.cuenta_id,
+    monto: Number(row.monto),
+    tipo: row.tipo,
+  }))
+  const computedDeltas = netSaldoDeltasFromWrites({
+    incoming: [],
+    existing: existingLedger,
+    deletedIds: rows.map((row) => row.id),
+  })
+  const { error: deleteError } = await ctx.db
+    .from("transactions")
+    .delete()
+    .eq("user_id", ctx.userId)
+    .in("id", rows.map((row) => row.id))
+  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 })
+  try {
+    const accountIds = [...new Set(computedDeltas.map((d) => d.accountId))]
+    const { data: accounts } = accountIds.length
+      ? await ctx.db.from("accounts").select("id").eq("user_id", ctx.userId).in("id", accountIds)
+      : { data: [] }
+    const existingAccounts = new Set((accounts ?? []).map((row: { id: string }) => row.id))
+    await applyComputedSaldoDeltas(
+      ctx.db,
+      ctx.userId,
+      computedDeltas.filter((delta) => existingAccounts.has(delta.accountId)),
+    )
+  } catch (error) {
+    await ctx.db.from("transactions").upsert(withUserId(rows as unknown as Record<string, unknown>[], ctx.userId))
+    return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo actualizar el saldo" }, { status: 500 })
+  }
+  return NextResponse.json({ ok: true })
+}
+
 export async function DELETE(request: Request, { params }: { params: Promise<{ table: string }> }) {
   const { table } = await params
   if (!checkTable(table)) return NextResponse.json({ error: "Tabla no permitida" }, { status: 400 })
@@ -211,6 +270,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ t
   if (Array.isArray(body.ids)) {
     if (body.ids.length === 0) return NextResponse.json({ ok: true })
     if (body.ids.length > 10_000 || !body.ids.every((id: unknown) => typeof id === "string" && id.length <= 200)) return NextResponse.json({ error: "Lista de identificadores no válida" }, { status: 400 })
+    if (table === "transactions") {
+      return deleteTransactionsWithSaldo(ctx, body.ids)
+    }
     const { error } = await ctx.db.from(table).delete().eq("user_id", ctx.userId).in("id", body.ids)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })

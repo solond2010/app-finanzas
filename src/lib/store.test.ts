@@ -183,14 +183,14 @@ describe("reducer / UPDATE_TRANSACTION reajusta el saldo", () => {
     expect(next.accounts[0].saldo).toBe(120) // 150 + 50 (revierte) - 80 (aplica)
   })
 
-  it("no toca el saldo al editar una transacción de saldo inicial (init_)", () => {
+  it("al editar un saldo inicial también reajusta el saldo de la cuenta", () => {
     const state: FinanceState = {
       ...emptyState,
       accounts: [{ ...baseAccount, saldo: 500 }],
       transactions: [tx({ id: "init_acc1", monto: 500, tipo: "ingreso", categoria: "Saldo inicial" })],
     }
     const next = reducer(state, { type: "UPDATE_TRANSACTION", payload: tx({ id: "init_acc1", monto: 999, tipo: "ingreso", categoria: "Saldo inicial" }) })
-    expect(next.accounts[0].saldo).toBe(500)
+    expect(next.accounts[0].saldo).toBe(999)
     expect(next.transactions[0].monto).toBe(999)
   })
 })
