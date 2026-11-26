@@ -9,6 +9,7 @@ import {
   shareDisplayName,
   shareMonthFileName,
   shareMonthView,
+  shareSourceLegend,
 } from "./share-month"
 
 const txs = [
@@ -73,6 +74,42 @@ describe("cifras de compartir mi mes", () => {
     expect(formatDeltaPct(-4)).toBe("−4 %")
     expect(formatDeltaPct(null)).toBeNull()
     expect(shareMonthFileName("Octubre 2026")).toBe("garra-mi-mes-octubre-2026.png")
+  })
+
+  it("en cada fuente muestra el importe en euros y el porcentaje", () => {
+    const view = shareMonthView(buildShareMonth({ transactions: txs, netWorthNow: 100, today: "2026-11-11", name: "Lara Gil" }))
+    const salario = shareSourceLegend(view.sources[0]!)
+    const freelance = shareSourceLegend(view.sources[1]!)
+    expect(salario).toContain("Salario")
+    expect(salario).toContain("1.800,00")
+    expect(salario).toContain("€")
+    expect(salario).toContain("(81,8 %)")
+    expect(salario.startsWith("Salario ")).toBe(true)
+    expect(freelance).toContain("Freelance")
+    expect(freelance).toContain("400,00")
+    expect(freelance).toContain("(18,2 %)")
+    expect(shareSourceLegend(view.sources[0]!)).toBe(`Salario ${view.sources[0]!.amountText} (${view.sources[0]!.pctText})`)
+    expect(shareSourceLegend(exampleShareMonthView().sources[0]!)).toContain("Nómina")
+    expect(shareSourceLegend(exampleShareMonthView().sources[0]!)).toContain("2.100,00")
+    expect(shareSourceLegend(exampleShareMonthView().sources[0]!)).toContain("(85,7 %)")
+  })
+
+  it("si hay más de 4 fuentes agrupa el resto en Otros", () => {
+    const many = [
+      { fecha: "2026-10-01", monto: 1000, tipo: "ingreso", categoria: "Nómina" },
+      { fecha: "2026-10-02", monto: 500, tipo: "ingreso", categoria: "Freelance" },
+      { fecha: "2026-10-03", monto: 300, tipo: "ingreso", categoria: "Alquiler" },
+      { fecha: "2026-10-04", monto: 200, tipo: "ingreso", categoria: "Dividendos" },
+      { fecha: "2026-10-05", monto: 80, tipo: "ingreso", categoria: "Regalo" },
+      { fecha: "2026-10-06", monto: 70, tipo: "ingreso", categoria: "Otros extra" },
+      { fecha: "2026-10-10", monto: 100, tipo: "gasto", categoria: "Comida" },
+    ]
+    const card = buildShareMonth({ transactions: many, netWorthNow: 100, today: "2026-11-11" })
+    expect(card.label).toBe("Octubre 2026")
+    expect(card.incomeSources.map((row) => row.name)).toEqual(["Nómina", "Freelance", "Alquiler", "Dividendos", "Otros"])
+    expect(card.incomeSources).toHaveLength(5)
+    expect(card.incomeSources.at(-1)).toEqual({ name: "Otros", amount: 150, pct: 7 })
+    expect(card.incomeSources.reduce((s, row) => s + row.amount, 0)).toBe(card.income)
   })
 
   it("el ejemplo usa un nombre inventado y no menciona a Moha ni TigreAprende", () => {

@@ -69,6 +69,11 @@ export function formatDeltaPct(pct: number | null): string | null {
   return "0 %"
 }
 
+/** Leyenda de una fuente: «Nómina 2.100,00 € (85,7 %)», con el mismo euro que el resto. */
+export function shareSourceLegend(source: { name: string; amountText: string; pctText: string }): string {
+  return `${source.name} ${source.amountText} (${source.pctText})`
+}
+
 function foldName(value: string): string {
   return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim()
 }

@@ -207,20 +207,28 @@ function drawSources(ctx: Ctx, view: ShareMonthView, x: number, y: number, w: nu
     return barY + 70
   }
 
-  // Leyenda en una sola franja, no una lista vertical.
-  let sx = x
-  const sy = barY + barH + 36
+  // Hasta 5 fuentes (4 + Otros) en dos columnas, con importe y porcentaje.
+  const colGap = 28
+  const colW = (w - colGap) / 2
+  const rowH = 36
+  const legendY = barY + barH + 30
   view.sources.forEach((row, i) => {
+    const col = i % 2
+    const rowIndex = Math.floor(i / 2)
+    const sx = x + col * (colW + colGap)
+    const sy = legendY + rowIndex * rowH
     ctx.fillStyle = tones[i % tones.length]!
     ctx.beginPath()
     ctx.arc(sx + 7, sy - 6, 6, 0, Math.PI * 2)
     ctx.fill()
     font(ctx, fonts.sans, 20, "500")
-    const label = ellipsize(ctx, `${row.name}  ${row.pctText}`, 240)
-    text(ctx, label, sx + 20, sy, INK)
-    sx += ctx.measureText(label).width + 40
+    const amountAndPct = `${row.amountText} (${row.pctText})`
+    const amountWidth = ctx.measureText(` ${amountAndPct}`).width
+    const name = ellipsize(ctx, row.name, Math.max(48, colW - 28 - amountWidth))
+    text(ctx, `${name} ${amountAndPct}`, sx + 20, sy, INK)
   })
-  return sy + 8
+  const rows = Math.ceil(view.sources.length / 2)
+  return legendY + Math.max(rows, 1) * rowH - 8
 }
 
 /** Pinta la tarjeta completa. El canvas debe medir 1080×1350. */
