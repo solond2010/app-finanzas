@@ -4,6 +4,7 @@ import { cookies } from "next/headers"
 import { createServerClient } from "@supabase/ssr"
 import { supabaseServer, type DbScope } from "@/lib/supabase-server"
 import { isSupabaseAuthEnabled, LEGACY_USER_ID } from "@/lib/auth-mode"
+import { rawProfileName, shareDisplayName } from "@/lib/billing/share-month"
 
 // Contexto de datos de cada petición: qué cliente de base de datos usar y de
 // qué usuario son los datos.
@@ -13,7 +14,7 @@ import { isSupabaseAuthEnabled, LEGACY_USER_ID } from "@/lib/auth-mode"
 //  - Modo antiguo: el cliente de servidor de siempre y el dueño histórico.
 // En ambos casos las rutas filtran además por user_id (doble barrera).
 
-export type DataContext = DbScope & { email: string | null }
+export type DataContext = DbScope & { email: string | null; name?: string | null }
 
 export async function createSupabaseRouteClient() {
   const url = process.env.SUPABASE_URL
@@ -36,11 +37,13 @@ export async function createSupabaseRouteClient() {
 }
 
 export async function getDataContext(): Promise<DataContext | null> {
-  if (!isSupabaseAuthEnabled()) return { db: supabaseServer, userId: LEGACY_USER_ID, email: null }
+  if (!isSupabaseAuthEnabled()) return { db: supabaseServer, userId: LEGACY_USER_ID, email: null, name: null }
   const supabase = await createSupabaseRouteClient()
   const { data, error } = await supabase.auth.getUser()
   if (error || !data.user) return null
-  return { db: supabase, userId: data.user.id, email: data.user.email ?? null }
+  const metadata = (data.user.user_metadata ?? {}) as Record<string, unknown>
+  const name = shareDisplayName({ name: rawProfileName(metadata), email: data.user.email ?? null })
+  return { db: supabase, userId: data.user.id, email: data.user.email ?? null, name }
 }
 
 export function unauthorizedResponse() {
