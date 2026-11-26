@@ -514,7 +514,6 @@ export function reducer(state: FinanceState, action: Action): FinanceState {
 function updateTransactionWithBalance(state: FinanceState, updated: Transaction): FinanceState {
   const prev = state.transactions.find((t) => t.id === updated.id)
   if (!prev) return { ...state, transactions: state.transactions.map((t) => (t.id === updated.id ? updated : t)) }
-  if (isInitialTx(prev)) return { ...state, transactions: state.transactions.map((t) => (t.id === updated.id ? updated : t)) }
 
   const withPrevReverted = state.accounts.map((a) =>
     a.id === prev.cuenta_id ? { ...a, saldo: a.saldo - signedAmount(prev) } : a
@@ -643,13 +642,6 @@ function restorePendingSaldoDeltas(): PendingSaldoDelta[] {
   }
 }
 
-function journalHasSaldoDeltasField(): boolean {
-  try {
-    return Array.isArray(readLocalJournal()?.pendingSaldoDeltas)
-  } catch {
-    return false
-  }
-}
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, defaultState)
@@ -674,8 +666,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // Borrados explícitos pendientes de enviar a Supabase (no espejo remoto).
   const pendingDeletesRef = useRef<PendingDeletes>(emptyPendingDeletes())
   const pendingSaldoDeltasRef = useRef<PendingSaldoDelta[]>([])
-  // Diarios antiguos (antes de este cambio) no traen deltas: se sigue subiendo el saldo absoluto una última vez.
-  const legacySaldoUpsertRef = useRef(false)
   // true tras cualquier acción del usuario aún no confirmada en remoto: evita
   // que un refetch al recuperar el foco pise cambios locales no sincronizados.
   const dirtyRef = useRef(false)
@@ -708,7 +698,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       if (hasOutbox && local) {
         pendingDeletesRef.current = restorePendingDeletes()
         pendingSaldoDeltasRef.current = restorePendingSaldoDeltas()
-        legacySaldoUpsertRef.current = !journalHasSaldoDeltasField()
         dirtyRef.current = true
         dispatch({ type: "SET_STATE", payload: { ...local, categories: mergeDefaultCategories(local.categories) } })
       } else if (hasRemoteData(remote)) {
@@ -818,10 +807,9 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       categories: new Set(pendingDeletesRef.current.categories),
     }
     const deltasSnapshot = pendingSaldoDeltasRef.current.slice()
-    const legacySaldoUpsert = legacySaldoUpsertRef.current
     const generationAtStart = dirtyGenerationRef.current
     syncChainRef.current = syncChainRef.current
-      .then(() => syncToSupabase(stateRef.current, deletesSnapshot, { saldoDeltas: deltasSnapshot, legacySaldoUpsert }))
+      .then(() => syncToSupabase(stateRef.current, deletesSnapshot, { saldoDeltas: deltasSnapshot }))
       .then(() => {
         if (!mountedRef.current) return
         for (const id of deletesSnapshot.accounts) pendingDeletesRef.current.accounts.delete(id)
@@ -833,7 +821,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         pendingSaldoDeltasRef.current = pendingSaldoDeltasRef.current.filter((delta) => !sentDeltaIds.has(delta.id))
         if (dirtyGenerationRef.current === generationAtStart) {
           dirtyRef.current = false
-          legacySaldoUpsertRef.current = false
           try {
             localStorage.removeItem(LOCAL_OUTBOX_KEY)
             writeLocalJournal(stateRef.current, emptyPendingDeletes(), false, [])
@@ -1131,15 +1118,12 @@ export function collectDeletesFromAction(state: FinanceState, action: Action, pe
   }
 }
 
-async function syncToSupabase(state: FinanceState, pending: PendingDeletes, opts: { saldoDeltas?: PendingSaldoDelta[]; legacySaldoUpsert?: boolean } = {}) {
-  const preserveExistingSaldo = !opts.legacySaldoUpsert
-  await syncStep("cuentas", () => dbUpsert("accounts", state.accounts.map(a => unformatAccount(a)), { preserveExistingSaldo }))
+async function syncToSupabase(state: FinanceState, pending: PendingDeletes, opts: { saldoDeltas?: PendingSaldoDelta[] } = {}) {
+  // El saldo absoluto de cuentas existentes ya no se envía; el servidor lo
+  // ignora y solo aplica deltas calculados a partir de los movimientos.
+  await syncStep("cuentas", () => dbUpsert("accounts", state.accounts.map(a => unformatAccount(a)), { preserveExistingSaldo: true }))
   const txRows = transactionsForSync(state.transactions).map((t) => unformatTransaction(t))
-  if (preserveExistingSaldo) {
-    await syncStep("movimientos", () => dbUpsert("transactions", txRows, { saldoDeltas: opts.saldoDeltas ?? [], deleteIds: [...pending.transactions] }))
-  } else {
-    await syncStep("movimientos", () => dbUpsert("transactions", txRows))
-  }
+  await syncStep("movimientos", () => dbUpsert("transactions", txRows, { saldoDeltas: opts.saldoDeltas ?? [], deleteIds: [...pending.transactions] }))
   await syncStep("fondos", () => dbUpsert("sinking_funds", state.sinkingFunds.map(sf => unformatSinkingFund(sf))))
   await syncStep("categorías", () => dbUpsert("categories", categoriesForSync(state.categories)))
   // Los presupuestos deben subirse DESPUÉS de las categorías: budgets.category_id
@@ -1148,7 +1132,7 @@ async function syncToSupabase(state: FinanceState, pending: PendingDeletes, opts
 
   // Solo se borran IDs marcados por acciones explícitas del usuario (ver
   // collectDeletesFromAction). Orden: presupuestos antes que categorías (FK).
-  if (pending.transactions.size && !preserveExistingSaldo) await syncStep("borrados", () => dbDeleteIn("transactions", [...pending.transactions]))
+  // Los movimientos se borran en el mismo POST que aplica el delta de saldo.
   if (pending.sinking_funds.size) await syncStep("borrados", () => dbDeleteIn("sinking_funds", [...pending.sinking_funds]))
   if (pending.accounts.size) await syncStep("borrados", () => dbDeleteIn("accounts", [...pending.accounts]))
   if (pending.budgets.size) await syncStep("borrados", () => dbDeleteIn("budgets", [...pending.budgets]))

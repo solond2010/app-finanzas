@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase-server"
 import { resolveShortcutUser } from "@/lib/server/shortcut-auth"
+import { applySaldoDelta } from "@/lib/server/saldo-delta"
+import { dateKeyInTimeZone } from "@/lib/date-utils"
 
 const TIPOS = new Set(["emergencia", "ahorro", "inversion", "efectivo", "gastos"])
 const CURRENCIES = new Set(["EUR", "USD", "CHF"])
@@ -32,7 +34,7 @@ export async function POST(request: Request) {
     nombre: body.nombre.trim(),
     tipo: body.tipo,
     banco: "",
-    saldo,
+    saldo: 0,
     currency,
     objetivo: null,
     limite_mensual: null,
@@ -40,6 +42,35 @@ export async function POST(request: Request) {
     user_id: auth.userId,
   })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Si hay saldo inicial, se apunta como movimiento y el saldo se mueve por
+  // delta. Así no queda una cuenta con saldo y sin historial.
+  if (saldo !== 0) {
+    const initId = `init_${id}`
+    const { error: txError } = await supabaseServer.from("transactions").insert({
+      id: initId,
+      cuenta_id: id,
+      monto: Math.abs(saldo),
+      fecha: dateKeyInTimeZone(new Date(), "Europe/Madrid"),
+      tipo: saldo >= 0 ? "ingreso" : "gasto",
+      categoria: "Saldo inicial",
+      es_necesidad: false,
+      descripcion: `Saldo inicial de ${body.nombre.trim()}`,
+      tags: [],
+      user_id: auth.userId,
+    })
+    if (txError) {
+      await supabaseServer.from("accounts").delete().eq("user_id", auth.userId).eq("id", id)
+      return NextResponse.json({ error: txError.message }, { status: 500 })
+    }
+    try {
+      await applySaldoDelta(supabaseServer, auth.userId, id, saldo)
+    } catch (deltaError) {
+      await supabaseServer.from("transactions").delete().eq("user_id", auth.userId).eq("id", initId)
+      await supabaseServer.from("accounts").delete().eq("user_id", auth.userId).eq("id", id)
+      return NextResponse.json({ error: deltaError instanceof Error ? deltaError.message : "No se pudo actualizar el saldo" }, { status: 500 })
+    }
+  }
 
   return NextResponse.json({ ok: true, id })
 }
