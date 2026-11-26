@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { reducer, defaultState, collectDeletesFromAction, emptyPendingDeletes, type Account, type Transaction, type Category, type FinanceState, hasRemoteData } from "./store"
+import { reducer, defaultState, collectDeletesFromAction, emptyPendingDeletes, normalizeFinanceState, type Account, type Transaction, type Category, type FinanceState, hasRemoteData } from "./store"
+import { cleanLoadSyncWrites, collectSaldoDeltas } from "./saldo-sync"
 
 const baseAccount: Account = {
   id: "acc1",
@@ -74,6 +75,7 @@ describe("reducer / SET_STATE", () => {
       monto: 100,
       tipo: "gasto",
       categoria: "Saldo inicial",
+      localOnly: true,
     })
   })
 })
@@ -205,7 +207,7 @@ describe("reducer / DELETE_TRANSACTION revierte el saldo", () => {
     expect(next.transactions).toHaveLength(0)
   })
 
-  it("un ajuste de saldo (adj_) SÍ revierte el saldo al borrarlo — solo 'init_' se excluye, ver isInitialTx", () => {
+  it("un ajuste de saldo (adj_) SÍ revierte el saldo al borrarlo", () => {
     const state: FinanceState = {
       ...emptyState,
       accounts: [{ ...baseAccount, saldo: 150 }],
@@ -213,6 +215,25 @@ describe("reducer / DELETE_TRANSACTION revierte el saldo", () => {
     }
     const next = reducer(state, { type: "DELETE_TRANSACTION", payload: "adj_1" })
     expect(next.accounts[0].saldo).toBe(100)
+  })
+
+  it("borrar el saldo inicial de una cuenta nueva también mueve el saldo", () => {
+    const created = reducer(emptyState, { type: "ADD_ACCOUNT", payload: { ...baseAccount, saldo: 80 } })
+    expect(created.accounts[0].saldo).toBe(80)
+    const next = reducer(created, { type: "DELETE_TRANSACTION", payload: "init_acc1" })
+    expect(next.transactions).toHaveLength(0)
+    expect(next.accounts[0].saldo).toBe(0)
+  })
+
+  it("borrar un residual sintético localOnly no toca el saldo", () => {
+    const state: FinanceState = {
+      ...emptyState,
+      accounts: [{ ...baseAccount, saldo: 110 }],
+      transactions: [tx({ id: "adj_init_acc1", monto: 110, tipo: "ingreso", categoria: "Saldo inicial", localOnly: true })],
+    }
+    const next = reducer(state, { type: "DELETE_TRANSACTION", payload: "adj_init_acc1" })
+    expect(next.transactions).toHaveLength(0)
+    expect(next.accounts[0].saldo).toBe(110)
   })
 })
 
@@ -340,6 +361,67 @@ describe("collectDeletesFromAction", () => {
     expect([...pending.transactions]).toEqual(["t1"])
     expect([...pending.categories]).toEqual(["cat_custom"])
     expect(pending.accounts.has("acc_principal")).toBe(false)
+  })
+
+  it("no mete en pendingDeletes un inicial sintético localOnly", () => {
+    const state: FinanceState = {
+      ...emptyState,
+      accounts: [baseAccount],
+      transactions: [tx({ id: "adj_init_acc1", categoria: "Saldo inicial", localOnly: true })],
+    }
+    const pending = emptyPendingDeletes()
+    collectDeletesFromAction(state, { type: "DELETE_TRANSACTION", payload: "adj_init_acc1" }, pending)
+    expect([...pending.transactions]).toEqual([])
+  })
+})
+
+describe("carga limpia no escribe datos existentes", () => {
+  it("oculta init_ fantasma en memoria y no planifica borrados, altas ni cambios de saldo", () => {
+    const remote: FinanceState = {
+      ...emptyState,
+      accounts: [
+        { ...baseAccount, id: "c4", saldo: 6 },
+        { ...baseAccount, id: "c5", saldo: 0 },
+        { ...baseAccount, id: "c8", tipo: "inversion", saldo: 110 },
+        { ...baseAccount, id: "ok", saldo: 20 },
+      ],
+      transactions: [
+        tx({ id: "otros4", cuenta_id: "c4", tipo: "ingreso", categoria: "Otros", monto: 65 }),
+        tx({ id: "init_c4", cuenta_id: "c4", tipo: "ingreso", categoria: "Saldo inicial", monto: 65 }),
+        tx({ id: "out4", cuenta_id: "c4", tipo: "gasto", categoria: "Ocio", monto: 59 }),
+        tx({ id: "otros5", cuenta_id: "c5", tipo: "ingreso", categoria: "Otros", monto: 25 }),
+        tx({ id: "init_c5", cuenta_id: "c5", tipo: "ingreso", categoria: "Saldo inicial", monto: 25 }),
+        tx({ id: "out5", cuenta_id: "c5", tipo: "gasto", categoria: "Transferencia", monto: 25 }),
+        tx({ id: "init_ok", cuenta_id: "ok", tipo: "ingreso", categoria: "Saldo inicial", monto: 20 }),
+      ],
+    }
+    const local = normalizeFinanceState(remote)
+    const pending = emptyPendingDeletes()
+    collectDeletesFromAction(remote, { type: "SET_STATE", payload: remote }, pending)
+    const writes = cleanLoadSyncWrites(remote, local, [...pending.transactions])
+    expect(writes.hiddenPhantomInitIds.sort()).toEqual(["init_c4", "init_c5"])
+    expect(local.transactions.some((t) => t.id === "init_c4" || t.id === "init_c5")).toBe(false)
+    expect(local.transactions.find((t) => t.id === "adj_init_c8")).toMatchObject({ localOnly: true, monto: 110 })
+    expect(writes.wouldUploadNewTransactions).toEqual([])
+    expect(writes.wouldDeleteTransactions).toEqual([])
+    expect(writes.wouldSendSaldoDeltas).toEqual([])
+    expect(local.accounts.map((a) => a.saldo)).toEqual(remote.accounts.map((a) => a.saldo))
+  })
+
+  it("un movimiento nuevo sí genera un delta de saldo, una importación que conserva el saldo no", () => {
+    const state: FinanceState = { ...emptyState, accounts: [{ ...baseAccount, saldo: 50 }] }
+    const afterAdd = reducer(state, { type: "ADD_TRANSACTION", payload: tx({ id: "g1", tipo: "gasto", monto: 10 }) })
+    expect(collectSaldoDeltas(state, afterAdd).deltas).toEqual([
+      expect.objectContaining({ accountId: "acc1", delta: -10, ifInserted: ["g1"] }),
+    ])
+    const imported = reducer(afterAdd, {
+      type: "IMPORT_TRANSACTIONS",
+      payload: [tx({ id: "imp1", tipo: "gasto", monto: 7, fecha: "2026-06-01" })],
+      accountId: "acc1",
+      keepBalance: true,
+    })
+    expect(imported.accounts[0].saldo).toBe(afterAdd.accounts[0].saldo)
+    expect(collectSaldoDeltas(afterAdd, imported).deltas).toEqual([])
   })
 })
 

@@ -25,11 +25,15 @@ export async function dbSelect<T>(table: string, fields = "*"): Promise<T[] | nu
   }
 }
 
-export async function dbUpsert(table: string, rows: unknown[]): Promise<void> {
+export async function dbUpsert(table: string, rows: unknown[], extra?: { preserveExistingSaldo?: boolean; saldoDeltas?: unknown[]; deleteIds?: string[] }): Promise<void> {
+  const payload: Record<string, unknown> = { rows }
+  if (extra?.preserveExistingSaldo) payload.preserve_existing_saldo = true
+  if (extra?.saldoDeltas) payload.saldo_deltas = extra.saldoDeltas
+  if (extra?.deleteIds?.length) payload.delete_ids = extra.deleteIds
   const res = await fetch(`/api/data/${table}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ rows }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     const body = await parseJson(res)

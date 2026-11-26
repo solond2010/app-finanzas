@@ -70,7 +70,12 @@ export function createFakeDb(initial: Record<string, Row[]> = {}) {
         return { data: null, error: null }
       }
       if (op === "update") {
-        rows.filter(match).forEach((r) => Object.assign(r, patch))
+        const updated = rows.filter(match)
+        updated.forEach((r) => Object.assign(r, patch))
+        if (returning) {
+          const data = mode === "single" || mode === "maybe" ? (updated[0] ?? null) : updated
+          return { data, error: null }
+        }
         return { data: null, error: null }
       }
       if (op === "delete") {
