@@ -4,8 +4,8 @@ export const MCP_ENDPOINT_URL = "https://www.migarra.app/api/mcp"
 export const MCP_TOKEN_DEFAULT_NAME = "MCP"
 export const MAX_ACTIVE_MCP_TOKENS = 5
 
-/** Tras desplegar OAuth, ponerlo a true para mostrar los pasos de ChatGPT y Claude.ai. */
-export const MCP_OAUTH_CONNECTORS_PUBLIC = false
+/** Pasos de ChatGPT y Claude.ai visibles en Ajustes tras la prueba real. */
+export const MCP_OAUTH_CONNECTORS_PUBLIC = true
 
 export const MCP_OAUTH_CONNECTOR_STEPS = [
   {
