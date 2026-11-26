@@ -113,12 +113,15 @@ export function buildMonthlySummary(input: {
   netWorthByMonth?: Record<string, number>
   currencies?: CurrencyByAccount
   today?: string
+  /** Mes YYYY-MM. Si no se indica, se usa el último mes cerrado (o el actual si no hay uno). */
+  month?: string
 }): MonthlySummary {
   const today = input.today ?? new Date().toISOString().slice(0, 10)
   const current = monthKey(today) ?? today.slice(0, 7)
   const previous = shiftMonth(current, -1)
   const hasPrev = input.transactions.some((tx) => !isIgnored(tx) && monthKey(tx.fecha) === previous)
-  const key = hasPrev ? previous : current
+  const requested = input.month && /^\d{4}-\d{2}$/.test(input.month) ? input.month : null
+  const key = requested ?? (hasPrev ? previous : current)
   const prevKey = shiftMonth(key, -1)
   const currencies = input.currencies
   const cur = totalsFor(input.transactions, key, currencies)

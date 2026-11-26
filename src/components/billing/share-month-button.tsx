@@ -55,10 +55,13 @@ async function shareOrDownloadPng(blob: Blob, fileName: string, title: string): 
 
 export function ShareMonthButton({
   netWorthNow,
+  month,
   className,
   compact = false,
 }: {
   netWorthNow: number
+  /** Mes YYYY-MM de las flechas del dashboard. Si falta, el mes actual. */
+  month?: string
   className?: string
   compact?: boolean
 }) {
@@ -87,10 +90,11 @@ export function ShareMonthButton({
         netWorthNow,
         netWorthByMonth,
         today: localDateKey(),
+        month,
         name: me?.name ?? null,
         email: me?.email ?? null,
       }),
-    [state.transactions, state.accounts, netWorthNow, netWorthByMonth, me?.name, me?.email],
+    [state.transactions, state.accounts, netWorthNow, netWorthByMonth, month, me?.name, me?.email],
   )
 
   const share = async () => {
