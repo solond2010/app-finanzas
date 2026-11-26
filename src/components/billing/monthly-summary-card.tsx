@@ -34,7 +34,7 @@ function Spark({ values, tone }: { values: number[]; tone: "up" | "down" | "flat
   )
 }
 
-export function MonthlySummaryCard({ netWorthNow }: { netWorthNow: number }) {
+export function MonthlySummaryCard({ netWorthNow, month }: { netWorthNow: number; month?: string }) {
   const plan = usePlan()
   const locked = plan.enabled && !isProAccess(plan)
   const { state } = useFinance()
@@ -79,7 +79,7 @@ export function MonthlySummaryCard({ netWorthNow }: { netWorthNow: number }) {
               {moneyDelta(summary.netWorthDelta ?? 0)}
             </span>
           )}
-          <ShareMonthButton netWorthNow={netWorthNow} compact className="hidden min-[520px]:inline-flex" />
+          <ShareMonthButton netWorthNow={netWorthNow} month={month} compact className="hidden min-[520px]:inline-flex" />
           <button
             type="button"
             onClick={dismiss}
@@ -115,7 +115,7 @@ export function MonthlySummaryCard({ netWorthNow }: { netWorthNow: number }) {
         <TrendingUp className={cn("size-4", summary.improved ? "text-emerald-500" : "text-muted-foreground")} />
       </div>
       <div className="mt-4 min-[520px]:hidden">
-        <ShareMonthButton netWorthNow={netWorthNow} />
+        <ShareMonthButton netWorthNow={netWorthNow} month={month} />
       </div>
     </section>
   )

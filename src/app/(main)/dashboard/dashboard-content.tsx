@@ -1144,7 +1144,7 @@ function DashboardInner() {
             </Button>
           )}
           {hasAnyData && (
-            <ShareMonthButton netWorthNow={netWorthDisplay} />
+            <ShareMonthButton netWorthNow={netWorthDisplay} month={selectedMonth} />
           )}
         </div>
       </header>
@@ -1232,7 +1232,7 @@ function DashboardInner() {
               </button>
             </section>
           )}
-          <MonthlySummaryCard netWorthNow={netWorthDisplay} />
+          <MonthlySummaryCard netWorthNow={netWorthDisplay} month={selectedMonth} />
           <ImportantToday items={insights} />
 
           <section className={`${CARD} min-w-0`} aria-label="Ingresos y gastos del periodo">

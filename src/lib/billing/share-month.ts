@@ -167,8 +167,12 @@ export function buildShareMonth(input: {
   today?: string
   name?: string | null
   email?: string | null
+  /** Mes YYYY-MM seleccionado. Si falta, el mes de today (el actual). */
+  month?: string
 }): ShareMonthCard {
-  const summary = buildMonthlySummary(input)
+  const today = input.today ?? new Date().toISOString().slice(0, 10)
+  const month = input.month && /^\d{4}-\d{2}$/.test(input.month) ? input.month : today.slice(0, 7)
+  const summary = buildMonthlySummary({ ...input, today, month })
   const incomeSources = slicesFor(input.transactions, summary.key, "ingreso", input.currencies)
   const expenseSlices = slicesFor(input.transactions, summary.key, "gasto", input.currencies)
   const history: ShareMonthHistoryPoint[] = summary.historyKeys.map((key, index) => {

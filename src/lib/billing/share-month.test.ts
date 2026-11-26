@@ -41,7 +41,7 @@ describe("nombre en la tarjeta compartida", () => {
 
 describe("cifras de compartir mi mes", () => {
   it("cuadran con el resumen mensual y excluyen traspasos y saldo inicial", () => {
-    const input = { transactions: txs, netWorthNow: 100, today: "2026-11-11" }
+    const input = { transactions: txs, netWorthNow: 100, today: "2026-11-11", month: "2026-10" }
     const summary = buildMonthlySummary(input)
     const card = buildShareMonth({ ...input, name: "Lara Gil" })
     expect(card.label).toBe("Octubre 2026")
@@ -77,7 +77,7 @@ describe("cifras de compartir mi mes", () => {
   })
 
   it("en cada fuente muestra el importe en euros y el porcentaje", () => {
-    const view = shareMonthView(buildShareMonth({ transactions: txs, netWorthNow: 100, today: "2026-11-11", name: "Lara Gil" }))
+    const view = shareMonthView(buildShareMonth({ transactions: txs, netWorthNow: 100, today: "2026-11-11", month: "2026-10", name: "Lara Gil" }))
     const salario = shareSourceLegend(view.sources[0]!)
     const freelance = shareSourceLegend(view.sources[1]!)
     expect(salario).toContain("Salario")
@@ -104,7 +104,7 @@ describe("cifras de compartir mi mes", () => {
       { fecha: "2026-10-06", monto: 70, tipo: "ingreso", categoria: "Otros extra" },
       { fecha: "2026-10-10", monto: 100, tipo: "gasto", categoria: "Comida" },
     ]
-    const card = buildShareMonth({ transactions: many, netWorthNow: 100, today: "2026-11-11" })
+    const card = buildShareMonth({ transactions: many, netWorthNow: 100, today: "2026-11-11", month: "2026-10" })
     expect(card.label).toBe("Octubre 2026")
     expect(card.incomeSources.map((row) => row.name)).toEqual(["Nómina", "Freelance", "Alquiler", "Dividendos", "Otros"])
     expect(card.incomeSources).toHaveLength(5)
@@ -112,13 +112,33 @@ describe("cifras de compartir mi mes", () => {
     expect(card.incomeSources.reduce((s, row) => s + row.amount, 0)).toBe(card.income)
   })
 
+
+  it("usa el mes seleccionado o, si no hay uno, el mes actual", () => {
+    const today = "2026-11-26"
+    const current = buildShareMonth({ transactions: txs, netWorthNow: 100, today })
+    expect(current.key).toBe("2026-11")
+    expect(current.label).toBe("Noviembre 2026")
+    expect(current.expenses).toBe(50)
+    expect(current.income).toBe(0)
+
+    const october = buildShareMonth({ transactions: txs, netWorthNow: 100, today, month: "2026-10" })
+    expect(october.key).toBe("2026-10")
+    expect(october.label).toBe("Octubre 2026")
+    expect(october.income).toBe(2200)
+    expect(october.expenses).toBe(780)
+
+    const november = buildShareMonth({ transactions: txs, netWorthNow: 100, today, month: "2026-11" })
+    expect(november.key).toBe("2026-11")
+    expect(november.label).toBe("Noviembre 2026")
+    expect(november.expenses).toBe(50)
+  })
   it("el ejemplo usa un nombre inventado y no menciona a Moha ni TigreAprende", () => {
     const view = exampleShareMonthView()
     expect(view.displayName).toBe("Lara Gil")
     expect(view.footer).toBe("Hecho con Garra · migarra.app")
     const blob = JSON.stringify(view).toLowerCase()
     expect(blob).not.toMatch(/moha|mohamed|tigreaprende|tigre aprende/)
-    const card = shareMonthView(buildShareMonth({ transactions: txs, netWorthNow: 100, today: "2026-11-11", name: "Lara Gil" }))
+    const card = shareMonthView(buildShareMonth({ transactions: txs, netWorthNow: 100, today: "2026-11-11", month: "2026-10", name: "Lara Gil" }))
     expect(card.incomeText).toContain("2.200,00")
     expect(card.incomeDeltaText).toContain("200,00")
     expect(card.incomeDeltaPctText).toBe("+10 %")
