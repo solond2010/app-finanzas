@@ -2,6 +2,7 @@ import "server-only"
 
 import { supabaseServer } from "@/lib/supabase-server"
 import { getUserPlan, getUserPlanRow, paymentsEnabled } from "@/lib/server/billing"
+import { applySaldoDelta } from "@/lib/server/saldo-delta"
 import { MCP_TAG, signedAmount, type AddTransactionInput, type McpAccount, type McpCategory, type McpPlanContext, type McpStore, type McpTransaction } from "@/lib/mcp/tools"
 
 function asAccount(row: { id: string; nombre: string; saldo: number | string; currency: string | null }): McpAccount {
@@ -134,13 +135,13 @@ export const supabaseMcpStore: McpStore = {
     })
     if (insertError) throw new Error(insertError.message)
 
-    const newSaldo = input.account.saldo + signedAmount(input.tipo, input.monto)
-    const { error: updateError } = await supabaseServer
-      .from("accounts")
-      .update({ saldo: newSaldo })
-      .eq("user_id", userId)
-      .eq("id", input.account.id)
-    if (updateError) throw new Error(updateError.message)
+    const delta = signedAmount(input.tipo, input.monto)
+    try {
+      await applySaldoDelta(supabaseServer, userId, input.account.id, delta)
+    } catch (error) {
+      await supabaseServer.from("transactions").delete().eq("user_id", userId).eq("id", id)
+      throw new Error(error instanceof Error ? error.message : "No se pudo actualizar el saldo")
+    }
 
     return {
       id,

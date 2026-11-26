@@ -1,11 +1,7 @@
 // Lógica de las herramientas MCP, independiente del transporte HTTP.
-// El cliente de Garra es local-first, pero la sincronización ya no borra
-// en remoto lo que no está en local (solo IDs de pendingDeletes). Un
-// movimiento insertado aquí no se pierde por un upsert sucio. El riesgo
-// real es que el cliente pise accounts.saldo; por eso add_transaction
-// actualiza el saldo (como el Atajo) y la migración incluye un trigger
-// que reconcilia el saldo con el ledger. Esa migración no se aplica en
-// la fase 1.
+// add_transaction inserta el movimiento y mueve accounts.saldo con un delta
+// atómico (CAS), igual que el arreglo del fallo 2 y el Atajo. No recalcula
+// el saldo a partir del ledger ni usa trigger de reconciliación.
 
 import { dateKeyInTimeZone, isDateKey } from "@/lib/date-utils"
 import { canHaveAccounts, canHaveGoals, type Plan } from "@/lib/billing/plans"
