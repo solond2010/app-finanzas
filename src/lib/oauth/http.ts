@@ -56,3 +56,10 @@ export function withClientCredentials(request: Request, body: Record<string, str
     client_secret: body.client_secret || basic.client_secret || "",
   }
 }
+
+/** Tras POST /oauth/consent hay que redirigir con GET a la redirect_uri del cliente.
+ *  NextResponse.redirect usa 307 por defecto y el navegador repetiría el POST;
+ *  ChatGPT responde entonces «Bad Request». 303 fuerza el GET de OAuth. */
+export function oauthClientRedirect(url: string) {
+  return NextResponse.redirect(url, 303)
+}

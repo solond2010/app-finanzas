@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { oauthClientRedirect } from "@/lib/oauth/http"
 import { getDataContext } from "@/lib/server/request-context"
 import { isSupabaseAuthEnabled } from "@/lib/auth-mode"
 import { getOauthService } from "@/lib/oauth/server"
@@ -28,5 +29,5 @@ export async function POST(request: Request) {
   if ("error" in result) {
     return new NextResponse(result.error_description, { status: result.status })
   }
-  return NextResponse.redirect(result.redirectTo)
+  return oauthClientRedirect(result.redirectTo)
 }
