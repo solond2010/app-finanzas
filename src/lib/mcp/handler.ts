@@ -13,6 +13,7 @@ import {
   type McpStore,
 } from "@/lib/mcp/tools"
 import { getMonthlySummaryTool } from "@/lib/mcp/monthly-summary-tool"
+import { importTransactionsTool, previewImportTransactionsTool, MAX_IMPORT_ROWS } from "@/lib/mcp/import-transactions"
 
 export type McpUserResolver = (token: string) => Promise<{ userId: string } | null>
 
@@ -93,10 +94,42 @@ export function createGarraMcpHandler(store: McpStore, resolveUser: McpUserResol
         },
         async (args, ctx) => jsonResult(toolResultText(await getMonthlySummaryTool(store, userIdFrom(ctx), args))),
       )
+
+      server.registerTool(
+        "preview_import_transactions",
+        {
+          title: "Vista previa de importación",
+          description: "SOLO LECTURA. Vista previa de un lote de hasta 200 movimientos (por ejemplo, leídos de un Excel). Valida, asigna cuentas y categorías ya existentes (no crea ninguna) y detecta posibles duplicados. Devuelve un resumen y un import_token (caduca en 15 min). Llama SIEMPRE primero a esta herramienta, enseña el resumen al usuario y no llames a import_transactions hasta que el usuario confirme explícitamente.",
+          inputSchema: z.object({
+            rows: z.array(z.object({
+              date: z.string().optional().describe("Fecha YYYY-MM-DD o DD/MM/YYYY"),
+              amount: z.union([z.number(), z.string()]).describe("Importe; negativo se trata como gasto"),
+              description: z.string().optional().describe("Descripción o concepto"),
+              account: z.string().min(1).describe("Id o nombre de una cuenta ya existente"),
+              category: z.string().optional().describe("Id o nombre de una categoría ya existente"),
+              type: z.string().optional().describe("gasto o ingreso, si no se puede inferir"),
+            })).min(1).max(MAX_IMPORT_ROWS).describe("Filas a previsualizar, máximo 200"),
+          }),
+        },
+        async (args, ctx) => jsonResult(toolResultText(await previewImportTransactionsTool(store, userIdFrom(ctx), args))),
+      )
+
+      server.registerTool(
+        "import_transactions",
+        {
+          title: "Importar movimientos",
+          description: "INSERTA los movimientos de un import_token generado por preview_import_transactions. Exige confirm=true. Solo inserta, nunca edita ni borra; salta duplicados y es idempotente. Llama SIEMPRE antes a preview_import_transactions, enseña la vista previa al usuario y usa esta herramienta solo tras su confirmación explícita.",
+          inputSchema: z.object({
+            import_token: z.string().min(1).describe("Token devuelto por preview_import_transactions"),
+            confirm: z.boolean().describe("Debe ser true solo si el usuario ha confirmado explícitamente la importación"),
+          }),
+        },
+        async (args, ctx) => jsonResult(toolResultText(await importTransactionsTool(store, userIdFrom(ctx), args))),
+      )
     },
     {
       serverInfo: { name: "Garra", version: "1.0.0" },
-      instructions: "Garra es una app de finanzas personales. Usa get_monthly_summary para el resumen de un mes (por defecto el mes actual en Europe/Madrid). En ChatGPT, en cada chat nuevo actívalo con @Garra y un modelo que no sea Ligero.",
+      instructions: "Garra es una app de finanzas personales. Usa get_monthly_summary para el resumen de un mes (por defecto el mes actual en Europe/Madrid). Si el usuario quiere importar un Excel, llama SIEMPRE primero a preview_import_transactions, enseña el resumen y solo entonces, con confirmación explícita, import_transactions con confirm=true. En ChatGPT, en cada chat nuevo actívalo con @Garra y un modelo que no sea Ligero.",
     },
   )
 
