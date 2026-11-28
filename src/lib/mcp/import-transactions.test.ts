@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   descriptionsAreSimilar,
+  importRowLimitError,
   importTransactionsTool,
   parseImportAmount,
   parseImportDate,
@@ -214,18 +215,24 @@ describe("validación del lote", () => {
     expect(preview.data.errors).toEqual([{ index: 2, error: "type debe ser gasto o ingreso" }])
   })
 
-  it("rechaza más de 200 filas", async () => {
+  it("acepta 500 filas y rechaza 501 con un mensaje para partir el Excel en lotes", async () => {
     const store = memoryImportStore()
-    const rows = Array.from({ length: 201 }, () => ({
-      date: "2026-11-20",
-      amount: 1,
-      account: "Efectivo",
-      category: "Comida",
-      type: "gasto",
-    }))
-    const preview = await previewImportTransactionsTool(store, USER, { rows }, now)
-    expect(preview).toEqual({ ok: false, status: 400, error: "como máximo se pueden importar 200 filas por lote" })
-    expect(store.previews).toHaveLength(0)
+    const row = { date: "2026-11-20", amount: 1, account: "Efectivo", category: "Comida", type: "gasto" }
+    const accepted = await previewImportTransactionsTool(store, USER, { rows: Array.from({ length: 500 }, () => ({ ...row })) }, now)
+    expect(accepted.ok).toBe(true)
+    if (accepted.ok) {
+      expect(accepted.data.summary.total_rows).toBe(500)
+      expect(accepted.data.summary.to_import).toBe(1)
+      expect(accepted.data.summary.duplicates).toBe(499)
+    }
+
+    const rejected = await previewImportTransactionsTool(store, USER, { rows: Array.from({ length: 501 }, () => ({ ...row })) }, now)
+    expect(rejected).toEqual({ ok: false, status: 400, error: importRowLimitError() })
+    expect(importRowLimitError()).toContain("500")
+    expect(importRowLimitError()).toMatch(/pártelas tú en lotes/i)
+    expect(importRowLimitError()).toMatch(/por meses/i)
+    expect(importRowLimitError()).toMatch(/avísale de cuántos lotes/i)
+    expect(store.previews).toHaveLength(1)
   })
 })
 

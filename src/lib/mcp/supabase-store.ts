@@ -199,22 +199,29 @@ export const supabaseMcpStore: McpImportStore = {
 
 async listDuplicateCandidates(userId, fechas) {
     if (fechas.length === 0) return []
-    const { data, error } = await supabaseServer
-      .from("transactions")
-      .select("id, cuenta_id, monto, fecha, descripcion")
-      .eq("user_id", userId)
-      .in("fecha", fechas)
-    if (error) throw new Error(error.message)
-    return (data ?? []).map((row) => {
-      const item = row as { id: string; cuenta_id: string; monto: number | string; fecha: string; descripcion: string | null }
-      return {
-        id: item.id,
-        cuenta_id: item.cuenta_id,
-        monto: Number(item.monto),
-        fecha: item.fecha,
-        descripcion: item.descripcion ?? "",
+    const unique = [...new Set(fechas)]
+    const found: Array<{ id: string; cuenta_id: string; monto: number; fecha: string; descripcion: string }> = []
+    // Partir el .in("fecha") en bloques para no acercarnos al límite de URL de PostgREST con 500 fechas.
+    for (let i = 0; i < unique.length; i += 100) {
+      const slice = unique.slice(i, i + 100)
+      const { data, error } = await supabaseServer
+        .from("transactions")
+        .select("id, cuenta_id, monto, fecha, descripcion")
+        .eq("user_id", userId)
+        .in("fecha", slice)
+      if (error) throw new Error(error.message)
+      for (const row of data ?? []) {
+        const item = row as { id: string; cuenta_id: string; monto: number | string; fecha: string; descripcion: string | null }
+        found.push({
+          id: item.id,
+          cuenta_id: item.cuenta_id,
+          monto: Number(item.monto),
+          fecha: item.fecha,
+          descripcion: item.descripcion ?? "",
+        })
       }
-    })
+    }
+    return found
   },
 
   async countRecentImports(userId, sinceIso) {

@@ -19,12 +19,23 @@ import {
 } from "@/lib/mcp/tools"
 
 export const IMPORT_TOKEN_PREFIX = "gim_"
-export const MAX_IMPORT_ROWS = 200
+export const MAX_IMPORT_ROWS = 500
 export const MAX_IMPORTS_PER_DAY = 10
 export const IMPORT_TOKEN_TTL_SECONDS = 15 * 60
 export const IMPORT_SAMPLE_SIZE = 10
 export const IMPORT_MIN_YEARS_BACK = 15
 export const IMPORT_MAX_DAYS_FORWARD = 366
+
+export function importRowLimitError(): string {
+  return (
+    `como máximo se pueden importar ${MAX_IMPORT_ROWS} filas por lote. ` +
+    `Si hay más, pártelas tú en lotes de como máximo ${MAX_IMPORT_ROWS} filas ` +
+    `(preferiblemente por meses, agrupando meses consecutivos si hace falta), ` +
+    `llama siempre antes a preview_import_transactions, enseña cada vista previa ` +
+    `y espera la confirmación explícita del usuario en cada lote, y avísale de cuántos lotes van a ser.`
+  )
+}
+
 
 export type ImportRowInput = {
   date?: unknown
@@ -378,7 +389,7 @@ export async function previewImportTransactionsTool(
   if (!Array.isArray(args.rows)) return { ok: false, status: 400, error: "rows debe ser una lista de movimientos" }
   if (args.rows.length === 0) return { ok: false, status: 400, error: "rows no puede estar vacía" }
   if (args.rows.length > MAX_IMPORT_ROWS) {
-    return { ok: false, status: 400, error: `como máximo se pueden importar ${MAX_IMPORT_ROWS} filas por lote` }
+    return { ok: false, status: 400, error: importRowLimitError() }
   }
 
   const recent = await store.countRecentImports(userId, new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString())
