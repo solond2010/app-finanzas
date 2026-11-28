@@ -166,7 +166,7 @@ describe("endpoint MCP local (usuario de prueba, sin datos reales)", () => {
     expect(store.accounts[0].saldo).toBe(73.5)
   })
 
-  it("lista las 5 herramientas, incluida get_monthly_summary, y se anuncia como Garra", async () => {
+  it("lista las 7 herramientas, incluidas get_monthly_summary y las de importación, y se anuncia como Garra", async () => {
     const init = await call(live, {
       jsonrpc: "2.0",
       id: 10,
@@ -182,10 +182,10 @@ describe("endpoint MCP local (usuario de prueba, sin datos reales)", () => {
     expect(listed.status).toBe(200)
     const body = await parseMcpResponse(listed)
     const names = JSON.stringify(body)
-    for (const tool of ["list_accounts", "list_categories", "list_recent_transactions", "add_transaction", "get_monthly_summary"]) {
+    for (const tool of ["list_accounts", "list_categories", "list_recent_transactions", "add_transaction", "get_monthly_summary", "preview_import_transactions", "import_transactions"]) {
       expect(names).toContain(tool)
     }
-    const matches = names.match(/"name":"(list_accounts|list_categories|list_recent_transactions|add_transaction|get_monthly_summary)"/g) ?? []
-    expect(new Set(matches).size).toBe(5)
+    const matches = names.match(/"name":"(list_accounts|list_categories|list_recent_transactions|add_transaction|get_monthly_summary|preview_import_transactions|import_transactions)"/g) ?? []
+    expect(new Set(matches).size).toBe(7)
   })
 })
